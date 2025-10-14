@@ -4,10 +4,10 @@ using CSV
 using DataFrames
 using DataFramesMeta
 using Statistics
-using CairoMakie
-using AlgebraOfGraphics
+using PlotlyJS
 
-export load_and_clean_metabolite_timelines, makie_plot_timeline_for_metabolite
+export load_and_clean_metabolite_timelines,
+    makie_plot_timeline_for_metabolite, plotlyjs_plot_timeline_for_metabolite
 
 function load_and_clean_metabolite_timelines()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -32,13 +32,28 @@ function load_and_clean_metabolite_timelines()
     return df_7
 end
 
-function makie_plot_timeline_for_metabolite(df, metabolite)
-    CairoMakie.activate!()
-    filtered_df = subset(df, :Metabolite => x -> x .== metabolite)
-    plt =
-        data(filtered_df) *
-        mapping(:Time, :Abundance, color = :Additive) *
-        visual(Scatter, markersize = 8)
+function plotlyjs_plot_timeline_for_metabolite(everything_df, metabolite)
+    df = subset(everything_df, :Metabolite => x -> x .== metabolite)
+    traces = [
+        scatter(
+            x = df[df.Additive .== additive, :Time],
+            y = df[df.Additive .== additive, :Abundance],
+            mode = "markers",
+            name = string(additive),
+            marker = attr(size = 10),
+        ) for additive in unique(df.Additive)
+    ]
+    layout = Layout(
+        title = "Abundance vs. Time by Additive",
+        xaxis = attr(
+            title = "Time",
+            tickvals = unique(df.Time),
+            ticktext = string.(unique(df.Time)),
+        ),
+        yaxis = attr(title = "Abundance"),
+        legend = attr(title = "Additive"),
+    )
+    plt = plot(traces, layout)
     return plt
 end
 
