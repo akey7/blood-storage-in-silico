@@ -8,7 +8,7 @@ include("src/MetaboliteTimelines.jl")
 using .MetaboliteTimelines
 
 df = load_and_clean_metabolite_timelines()
-plt = plot_timeline_for_metabolite(df, "L-alanine")
+plt = makie_plot_timeline_for_metabolite(df, "L-alanine")
 fig = draw(
     plt;
     axis=(; title="L-alanine"),

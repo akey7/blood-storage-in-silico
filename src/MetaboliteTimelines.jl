@@ -7,7 +7,7 @@ using Statistics
 using CairoMakie
 using AlgebraOfGraphics
 
-export load_and_clean_metabolite_timelines, plot_timeline_for_metabolite
+export load_and_clean_metabolite_timelines, makie_plot_timeline_for_metabolite
 
 function load_and_clean_metabolite_timelines()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -32,7 +32,7 @@ function load_and_clean_metabolite_timelines()
     return df_7
 end
 
-function plot_timeline_for_metabolite(df, metabolite)
+function makie_plot_timeline_for_metabolite(df, metabolite)
     CairoMakie.activate!()
     filtered_df = subset(df, :Metabolite => x -> x .== metabolite)
     plt =
