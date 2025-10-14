@@ -6,10 +6,10 @@ using DataFramesMeta
 using Statistics
 using PlotlyJS
 
-export load_and_clean_metabolite_timelines,
-    makie_plot_timeline_for_metabolite, plotlyjs_plot_timeline_for_metabolite
+export load_and_clean_all_normalized_abundances,
+    makie_plot_timeline_for_metabolite, plot_timeline_for_metabolite
 
-function load_and_clean_metabolite_timelines()
+function load_and_clean_all_normalized_abundances()
     filename = joinpath("input", "Data Sheet 1.CSV")
     df_1 = CSV.read(filename, DataFrame)
     df_2 = stack(
@@ -28,11 +28,11 @@ function load_and_clean_metabolite_timelines()
         df_5,
         [:PeakAreaTop, :MedianPeakAreaTop] => ByRow((x, y) -> x / y) => :Abundance,
     )
-    df_7 = select(df_6, [:Time, :Additive, :Metabolite, :Abundance])
-    return df_7
+    all_abundances_df = select(df_6, [:Time, :Additive, :Metabolite, :Abundance])
+    return all_abundances_df
 end
 
-function plotlyjs_plot_timeline_for_metabolite(everything_df, metabolite)
+function plot_timeline_for_metabolite(everything_df, metabolite)
     df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     traces = [
         scatter(
