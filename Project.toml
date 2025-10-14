@@ -5,6 +5,7 @@ authors = ["Alicia M. Key <alicia.m.key@cuanschutz.edu"]
 
 [deps]
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
@@ -12,6 +13,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 AlgebraOfGraphics = "0.11.8"
+CSV = "0.10.15"
 DataFrames = "1.8.0"
 JuliaFormatter = "2.1.6"
 Makie = "0.24.6"
