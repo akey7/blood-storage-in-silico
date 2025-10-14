@@ -7,7 +7,7 @@ using Statistics
 using PlotlyJS
 
 export load_and_clean_all_normalized_abundances,
-    makie_plot_timeline_for_metabolite, plot_timeline_for_metabolite
+    makie_plot_timeline_for_metabolite, plot_scatter_all_normalized_abundances
 
 function load_and_clean_all_normalized_abundances()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -32,7 +32,7 @@ function load_and_clean_all_normalized_abundances()
     return all_abundances_df
 end
 
-function plot_timeline_for_metabolite(everything_df, metabolite)
+function plot_scatter_all_normalized_abundances(everything_df, metabolite)
     df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     traces = [
         scatter(
