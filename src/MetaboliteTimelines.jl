@@ -14,7 +14,6 @@ using Combinatorics
 using ThreadsX
 using PlotlyJS
 using PlotlyBase
-using PCRE2
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
@@ -24,7 +23,7 @@ export makie_plot_timeline_for_metabolite,
     normalized_abundance_correlations,
     save_aggregation_plot,
     plot_aggregations_for_all_metabolites,
-    normalized_abundance_correlations_by_additive
+    normalized_abundance_correlations_by_additive_and_time
 
 function load_and_clean_01()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -151,14 +150,14 @@ function normalized_abundance_correlations(df)
     return final_df
 end
 
-function normalized_abundance_correlations_by_additive(df)
+function normalized_abundance_correlations_by_additive_and_time(df)
     println("Calculating normalized abundance by additive correlations")
     additives = string.(unique(df.Additive))
     metabolites = unique(df.Metabolite)
     time_points = unique(df.Time)
     unique_pairs = collect(combinations(metabolites, 2))
     jobs = collect(product(additives, time_points, unique_pairs))
-    rows = ThreadsX.map(jobs[1:10]) do job
+    rows = ThreadsX.map(jobs[1:100]) do job
         additive, time_point, unique_pair = job
         m1, m2 = unique_pair
         m1_df = subset(
@@ -182,6 +181,7 @@ function normalized_abundance_correlations_by_additive(df)
         rho = spearman.r
         return (
             additive = additive,
+            time = time_point,
             m1 = m1,
             m2 = m2,
             m1_n = m1_n,
@@ -194,7 +194,7 @@ function normalized_abundance_correlations_by_additive(df)
     fdr_threshold = 0.05
     df.adj_p_value = adjust(df.p_value, BenjaminiHochberg())
     df.significant = df.adj_p_value .< fdr_threshold
-    final_df = sort(df, [:additive, :adj_p_value])
+    final_df = sort(df, [:additive, :time, :adj_p_value])
     return final_df
 end
 
