@@ -155,15 +155,24 @@ function normalized_abundance_correlations_by_additive(df)
     println("Calculating normalized abundance by additive correlations")
     additives = string.(unique(df.Additive))
     metabolites = unique(df.Metabolite)
+    time_points = unique(df.Time)
     unique_pairs = collect(combinations(metabolites, 2))
-    jobs = collect(product(additives, unique_pairs))
+    jobs = collect(product(additives, time_points, unique_pairs))
     rows = ThreadsX.map(jobs[1:10]) do job
-        additive, unique_pair = job
+        additive, time_point, unique_pair = job
         m1, m2 = unique_pair
-        m1_df =
-            subset(df, :Metabolite => x -> x .== m1, :Additive => x -> x .== additive)
-        m2_df =
-            subset(df, :Metabolite => x -> x .== m2, :Additive => x -> x .== additive)
+        m1_df = subset(
+            df,
+            :Metabolite => x -> x .== m1,
+            :Additive => x -> x .== additive,
+            :Time => x -> x .== time_point,
+        )
+        m2_df = subset(
+            df,
+            :Metabolite => x -> x .== m2,
+            :Additive => x -> x .== additive,
+            :Time => x -> x .== time_point,
+        )
         m1_n = length(m1_df.NormalizedAbundance)
         m2_n = length(m2_df.NormalizedAbundance)
         xvs = tiedrank(m1_df.NormalizedAbundance)
