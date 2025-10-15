@@ -5,13 +5,19 @@ using DataFrames
 using DataFramesMeta
 using Statistics
 using Distributions
+using HypothesisTests
+using HypothesisTests: pvalue
+using StatsBase
+using Combinatorics
+using ThreadsX
 using PlotlyJS
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
     load_and_clean_02,
     plot_means_for_metabolite,
-    load_and_clean_01
+    load_and_clean_01,
+    normalized_abundance_correlations
 
 function load_and_clean_01()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -95,6 +101,24 @@ function plot_means_for_metabolite(everything_df, metabolite)
     )
     plt = plot(traces, layout)
     return plt
+end
+
+function normalized_abundance_correlations(df)
+    metabolites = unique(df.Metabolite)
+    unique_pairs = collect(combinations(metabolites, 2))
+    rows = ThreadsX.map(unique_pairs) do unique_pair
+        m1, m2 = unique_pair
+        m1_df = subset(df, :Metabolite => x -> x .== m1)
+        m2_df = subset(df, :Metabolite => x -> x .== m2)
+        xvs = tiedrank(m1_df.NormalizedAbundance)
+        yvs = tiedrank(m2_df.NormalizedAbundance)
+        spearman = CorrelationTest(xvs, yvs)
+        p_value = pvalue(spearman)
+        rho = spearman.r
+        return (m1 = m1, m2 = m2, rho = rho, p_value = p_value)
+    end
+    df = DataFrame(rows)
+    return df
 end
 
 end
