@@ -12,13 +12,16 @@ using MultipleTesting
 using Combinatorics
 using ThreadsX
 using PlotlyJS
+using PlotlyBase
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
     load_and_clean_02,
-    plot_means_for_metabolite,
+    plot_aggregations_for_metabolite,
     load_and_clean_01,
-    normalized_abundance_correlations
+    normalized_abundance_correlations,
+    save_aggregation_plot,
+    plot_aggregations_for_all_metabolites
 
 function load_and_clean_01()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -70,7 +73,7 @@ function load_and_clean_02()
     return abundances_df
 end
 
-function plot_means_for_metabolite(everything_df, metabolite)
+function plot_aggregations_for_metabolite(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     traces::Vector{GenericTrace} = []
     for additive in unique(metabolite_df.Additive)
@@ -102,6 +105,22 @@ function plot_means_for_metabolite(everything_df, metabolite)
     )
     plt = plot(traces, layout)
     return plt
+end
+
+function save_aggregation_plot(plt, filename)
+    open(filename, "w") do io
+        PlotlyBase.to_html(io, plt.plot, include_plotlyjs = "cdn")
+    end
+    println("Wrote $filename")
+end
+
+function plot_aggregations_for_all_metabolites(df)
+    metabolites = unique(df.Metabolite)
+    for metabolite in metabolites[1:10]
+        plt = plot_aggregations_for_metabolite(df, metabolite)
+        filename = joinpath("output", "plots", "$(metabolite).html")
+        save_aggregation_plot(plt, filename)
+    end
 end
 
 function normalized_abundance_correlations(df)
