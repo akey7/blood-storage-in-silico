@@ -160,11 +160,11 @@ function mann_kendall_no_ties(xs)
     n = length(xs)
     var_s = n*(n-1)*(2*n+5)/18.0
     if s > 0.0
-        return abs((s-1) / sqrt(var_s))
+        return n, s, var_s, abs((s-1) / sqrt(var_s))
     elseif s < 0.0
-        return abs((s+1) / sqrt(var_s))
+        return n, s, var_s, abs((s+1) / sqrt(var_s))
     else
-        return 0.0
+        return n, s, var_s, 0.0
     end
 end
 
@@ -180,13 +180,20 @@ function normalized_abundance_correlations_by_additive(input_df)
             :Metabolite => x -> x .== metabolite,
             :Additive => x -> x .== additive,
         )
-        df2 = sort(df1, :Time)
-        xs = df2.NormalizedAbundance
-        mann_kendall_z = mann_kendall_no_ties(xs)
+        df2 = @combine(
+            groupby(df1, :Time),
+            :MedianNormalizedAbundance = median(skipmissing(:NormalizedAbundance))
+        )
+        df3 = sort(df2, :Time)
+        xs = df3.MedianNormalizedAbundance
+        n, s, var_s, mann_kendall_z = mann_kendall_no_ties(xs)
         is_significant = mann_kendall_z > 1.96
         return (
             additive = additive,
             metabolite = metabolite,
+            n = n,
+            s = s,
+            var_s = var_s,
             mann_kendall_z = mann_kendall_z,
             is_significant = is_significant,
         )
