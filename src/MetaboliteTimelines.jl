@@ -1,5 +1,6 @@
 module MetaboliteTimelines
 
+using Base.Iterators
 using CSV
 using DataFrames
 using DataFramesMeta
@@ -13,7 +14,6 @@ using Combinatorics
 using ThreadsX
 using PlotlyJS
 using PlotlyBase
-using PCRE2
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
@@ -22,7 +22,8 @@ export makie_plot_timeline_for_metabolite,
     load_and_clean_01,
     normalized_abundance_correlations,
     save_aggregation_plot,
-    plot_aggregations_for_all_metabolites
+    plot_aggregations_for_all_metabolites,
+    normalized_abundance_correlations_by_additive_and_time
 
 function load_and_clean_01()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -146,6 +147,54 @@ function normalized_abundance_correlations(df)
     df.adj_p_value = adjust(df.p_value, BenjaminiHochberg())
     df.significant = df.adj_p_value .< fdr_threshold
     final_df = sort(df, :adj_p_value)
+    return final_df
+end
+
+function normalized_abundance_correlations_by_additive_and_time(df)
+    println("Calculating normalized abundance by additive correlations")
+    additives = string.(unique(df.Additive))
+    metabolites = unique(df.Metabolite)
+    time_points = unique(df.Time)
+    unique_pairs = collect(combinations(metabolites, 2))
+    jobs = collect(product(additives, time_points, unique_pairs))
+    rows = ThreadsX.map(jobs[1:100]) do job
+        additive, time_point, unique_pair = job
+        m1, m2 = unique_pair
+        m1_df = subset(
+            df,
+            :Metabolite => x -> x .== m1,
+            :Additive => x -> x .== additive,
+            :Time => x -> x .== time_point,
+        )
+        m2_df = subset(
+            df,
+            :Metabolite => x -> x .== m2,
+            :Additive => x -> x .== additive,
+            :Time => x -> x .== time_point,
+        )
+        m1_n = length(m1_df.NormalizedAbundance)
+        m2_n = length(m2_df.NormalizedAbundance)
+        xvs = tiedrank(m1_df.NormalizedAbundance)
+        yvs = tiedrank(m2_df.NormalizedAbundance)
+        spearman = CorrelationTest(xvs, yvs)
+        p_value = pvalue(spearman)
+        rho = spearman.r
+        return (
+            additive = additive,
+            time = time_point,
+            m1 = m1,
+            m2 = m2,
+            m1_n = m1_n,
+            m2_n = m2_n,
+            rho = rho,
+            p_value = p_value,
+        )
+    end
+    df = DataFrame(rows)
+    fdr_threshold = 0.05
+    df.adj_p_value = adjust(df.p_value, BenjaminiHochberg())
+    df.significant = df.adj_p_value .< fdr_threshold
+    final_df = sort(df, [:additive, :time, :adj_p_value])
     return final_df
 end
 
