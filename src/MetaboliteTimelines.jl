@@ -158,7 +158,7 @@ function mann_kendall_no_ties(xs)
         end
     end
     n = length(xs)
-    var_s = n*(n-1)*(2*n-5)/18.0
+    var_s = n*(n-1)*(2*n+5)/18.0
     if s > 0.0
         return abs((s-1) / sqrt(var_s))
     elseif s < 0.0
