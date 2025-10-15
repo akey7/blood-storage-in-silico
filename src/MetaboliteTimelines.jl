@@ -17,62 +17,34 @@ using PlotlyBase
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
-    load_and_clean_02,
     plot_aggregations_for_metabolite,
-    load_and_clean_01,
+    load_and_clean,
     normalized_abundance_correlations,
     save_aggregation_plot,
     plot_aggregations_for_all_metabolites,
     normalized_abundance_correlations_by_additive
 
-function load_and_clean_01()
+function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
-    df_1 = CSV.read(filename, DataFrame)
-    df_2 = stack(
-        df_1,
-        Not([:Sample, :Time, :Additive]),
-        variable_name = :Metabolite,
-        value_name = :PeakAreaTop,
-    )
-    df_3 = @combine(
-        groupby(df_2, [:Time, :Additive, :Metabolite]),
-        :MedianPeakAreaTop = median(skipmissing(:PeakAreaTop))
-    )
-    df_4 = select(df_2, Not(:Sample))
-    df_5 = innerjoin(df_4, df_3, on = [:Time, :Additive, :Metabolite])
-    df_6 = transform(
-        df_5,
-        [:PeakAreaTop, :MedianPeakAreaTop] =>
-            ByRow((x, y) -> x / y) => :NormalizedAbundance,
-    )
-    df_7 = select(df_6, [:Time, :Additive, :Metabolite, :NormalizedAbundance])
-    return df_7
-end
-
-function load_and_clean_02()
-    filename = joinpath("input", "Data Sheet 1.CSV")
-    df_1 = CSV.read(filename, DataFrame)
-    df_2 = stack(
-        df_1,
+    df1 = CSV.read(filename, DataFrame)
+    df2 = stack(
+        df1,
         Not([:Sample, :Time, :Additive]),
         variable_name = :Metabolite,
         value_name = :Intensity,
     )
-    alpha = 0.05
-    abundances_df = @combine(
-        groupby(df_2, [:Time, :Additive, :Metabolite]),
-        :MeanIntensity = mean(skipmissing(:Intensity)),
-        :SEM_min =
-            mean(skipmissing(:Intensity)) -
-            quantile(TDist(length(:Intensity)-1), 1-alpha/2) * std(:Intensity) /
-            sqrt(length(:Intensity)),
-        :SEM_max =
-            mean(skipmissing(:Intensity)) +
-            quantile(TDist(length(:Intensity)-1), 1-alpha/2) * std(:Intensity) /
-            sqrt(length(:Intensity)),
+    df3 = @combine(
+        groupby(df2, :Metabolite),
         :MedianIntensity = median(skipmissing(:Intensity))
     )
-    return abundances_df
+    df4 = innerjoin(df2, df3, on = :Metabolite)
+    df5 = transform(
+        df4,
+        [:Intensity, :MedianIntensity] =>
+            ByRow((x, y) -> x / y) => :MedianNormalizedIntensity,
+    )
+    df6 = select(df5, [:Sample, :Time, :Additive, :Metabolite, :MedianNormalizedIntensity])
+    return df6
 end
 
 function plot_aggregations_for_metabolite(everything_df, metabolite)
@@ -83,16 +55,10 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
         additive_df = subset(metabolite_df, :Additive => x -> x .== additive)
         trace = scatter(
             x = additive_df.Time,
-            y = additive_df.MedianIntensity,
+            y = additive_df.MedianNormalizedIntensity,
             mode = "lines+markers",
             name = additive,
             marker = attr(size = 10),
-            # error_y = attr(
-            #     type = "data",
-            #     array = additive_df.SEM_max,
-            #     arraymin = additive_df.SEM_min,
-            #     visible = true,
-            # )
         )
         push!(traces, trace)
     end
@@ -128,15 +94,15 @@ function plot_aggregations_for_all_metabolites(df)
 end
 
 function normalized_abundance_correlations(df)
-    println("Calculating normalized abundance correlations")
+    println("Calculating MedianNormalizedIntensity correlations")
     metabolites = unique(df.Metabolite)
     unique_pairs = collect(combinations(metabolites, 2))
     rows = ThreadsX.map(unique_pairs) do unique_pair
         m1, m2 = unique_pair
         m1_df = subset(df, :Metabolite => x -> x .== m1)
         m2_df = subset(df, :Metabolite => x -> x .== m2)
-        xvs = tiedrank(m1_df.NormalizedAbundance)
-        yvs = tiedrank(m2_df.NormalizedAbundance)
+        xvs = tiedrank(m1_df.MedianNormalizedIntensity)
+        yvs = tiedrank(m2_df.MedianNormalizedIntensity)
         spearman = CorrelationTest(xvs, yvs)
         p_value = pvalue(spearman)
         rho = spearman.r
@@ -167,42 +133,6 @@ function mann_kendall_no_ties(xs)
     else
         return vals, n, s, var_s, 0.0
     end
-end
-
-function normalized_abundance_correlations_by_additive(input_df)
-    println("Calculating normalized abundance by additive time trends")
-    additives = unique(input_df.Additive)
-    metabolites = unique(input_df.Metabolite)
-    jobs = vec(collect(product(additives, metabolites)))
-    rows = ThreadsX.map(jobs) do job
-        additive, metabolite = job
-        df1 = subset(
-            input_df,
-            :Metabolite => x -> x .== metabolite,
-            :Additive => x -> x .== additive,
-        )
-        df2 = @combine(
-            groupby(df1, :Time),
-            :MeanNormalizedAbundance = mean(skipmissing(:NormalizedAbundance))
-        )
-        df3 = sort(df2, :Time)
-        xs = df3.MeanNormalizedAbundance
-        vals, n, s, var_s, mann_kendall_z = mann_kendall_no_ties(xs)
-        is_significant = mann_kendall_z > 1.96
-        return (
-            additive = additive,
-            metabolite = metabolite,
-            vals = vals,
-            n = n,
-            s = s,
-            var_s = var_s,
-            mann_kendall_z = mann_kendall_z,
-            is_significant = is_significant,
-        )
-    end
-    rows_df = DataFrame(rows)
-    final_df = sort(rows_df, [:additive, :metabolite, :is_significant])
-    return final_df
 end
 
 end
