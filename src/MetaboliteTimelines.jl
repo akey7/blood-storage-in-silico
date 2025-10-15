@@ -13,8 +13,7 @@ using Combinatorics
 using ThreadsX
 using PlotlyJS
 using PlotlyBase
-
-# replace(s, r"[^A-Za-z0-9]" => "_")
+using PCRE2
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
@@ -76,6 +75,7 @@ function load_and_clean_02()
 end
 
 function plot_aggregations_for_metabolite(everything_df, metabolite)
+    println("Plotting $metabolite")
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     traces::Vector{GenericTrace} = []
     for additive in unique(metabolite_df.Additive)
@@ -120,7 +120,8 @@ function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
     for metabolite in metabolites[1:10]
         plt = plot_aggregations_for_metabolite(df, metabolite)
-        filename = joinpath("output", "plots", "$(metabolite).html")
+        clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
+        filename = joinpath("output", "plots", "$(clean_metabolite).html")
         save_aggregation_plot(plt, filename)
     end
 end
