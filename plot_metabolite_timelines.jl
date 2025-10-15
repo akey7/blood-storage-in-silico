@@ -7,14 +7,17 @@ using .MetaboliteTimelines
 # println(first(df, 10))
 # plt = plot_scatter_all_normalized_abundances(df, "L-alanine")
 
-df = load_and_clean_means_only()
+# df = load_and_clean_means_only()
+# println(first(df, 10))
+# plt = plot_means_for_metabolite(df, "L-alanine")
+# plt_save_path = joinpath("output", "L-alanine.html")
+# open(plt_save_path, "w") do io
+#     PlotlyBase.to_html(io, plt.plot, include_plotlyjs = "cdn")
+# end
+# println("Wrote $plt_save_path")
+# display(plt)
+# println("Press enter to exit...")
+# readline()
+
+df = load_and_clean_01()
 println(first(df, 10))
-plt = plot_means_for_metabolite(df, "L-alanine")
-plt_save_path = joinpath("output", "L-alanine.html")
-open(plt_save_path, "w") do io
-    PlotlyBase.to_html(io, plt.plot, include_plotlyjs = "cdn")
-end
-println("Wrote $plt_save_path")
-display(plt)
-println("Press enter to exit...")
-readline()
