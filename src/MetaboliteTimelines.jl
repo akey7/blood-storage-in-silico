@@ -8,6 +8,7 @@ using Distributions
 using HypothesisTests
 using HypothesisTests: pvalue
 using StatsBase
+using MultipleTesting
 using Combinatorics
 using ThreadsX
 using PlotlyJS
@@ -118,7 +119,11 @@ function normalized_abundance_correlations(df)
         return (m1 = m1, m2 = m2, rho = rho, p_value = p_value)
     end
     df = DataFrame(rows)
-    return df
+    fdr_threshold = 0.05
+    df.adj_p_value = adjust(df.p_value, BenjaminiHochberg())
+    df.significant = df.adj_p_value .< fdr_threshold
+    final_df = sort(df, :adj_p_value)
+    return final_df
 end
 
 end

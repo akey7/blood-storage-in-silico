@@ -21,4 +21,4 @@ using .MetaboliteTimelines
 
 df_01 = load_and_clean_01()
 normalized_abundance_correlations_df = normalized_abundance_correlations(df_01)
-println(normalized_abundance_correlations_df)
+println(first(normalized_abundance_correlations_df, 200))
