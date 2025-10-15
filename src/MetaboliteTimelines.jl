@@ -96,13 +96,13 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
         push!(traces, trace)
     end
     layout = Layout(
-        title = "Mean $metabolite Abundance vs. Time by Additive",
+        title = "<b>$metabolite</b>",
         xaxis = attr(
             title = "Time",
             tickvals = unique(everything_df.Time),
             ticktext = string.(unique(everything_df.Time)),
         ),
-        yaxis = attr(title = "Abundance"),
+        yaxis = attr(title = "Median Normalized Abundance"),
         legend = attr(title = "Additive"),
     )
     plt = plot(traces, layout)
@@ -118,7 +118,7 @@ end
 
 function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
-    for metabolite in metabolites[1:10]
+    ThreadsX.map(metabolites) do metabolite
         plt = plot_aggregations_for_metabolite(df, metabolite)
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
         filename = joinpath("output", "plots", "$(clean_metabolite).html")
@@ -127,6 +127,7 @@ function plot_aggregations_for_all_metabolites(df)
 end
 
 function normalized_abundance_correlations(df)
+    println("Calculating normalized abundance correlations")
     metabolites = unique(df.Metabolite)
     unique_pairs = collect(combinations(metabolites, 2))
     rows = ThreadsX.map(unique_pairs) do unique_pair
