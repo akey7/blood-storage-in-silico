@@ -17,7 +17,7 @@ using CairoMakie
 using Makie
 
 export load_and_clean,
-    plot_aggregations_for_all_metabolites_2, normalized_abundance_correlations
+    plot_aggregations_for_all_metabolites, normalized_abundance_correlations
 
 function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -55,7 +55,7 @@ function aggregate_metabolite_additive(everything_df, metabolite, additive)
     return aggregated_df
 end
 
-function plot_aggregations_for_metabolite_2(everything_df, metabolite)
+function plot_aggregations_for_metabolite(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     aggregated_df = @combine(
         groupby(metabolite_df, [:Additive, :Time]),
@@ -79,12 +79,12 @@ function plot_aggregations_for_metabolite_2(everything_df, metabolite)
     return fig
 end
 
-function plot_aggregations_for_all_metabolites_2(df)
+function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
     for metabolite in metabolites
-        fig = plot_aggregations_for_metabolite_2(df, metabolite)
+        fig = plot_aggregations_for_metabolite(df, metabolite)
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
-        filename = joinpath("output", "plots2", "$(clean_metabolite).png")
+        filename = joinpath("output", "plots", "$(clean_metabolite).png")
         save(filename, fig)
         println("Wrote $filename")
     end
