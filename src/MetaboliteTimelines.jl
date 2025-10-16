@@ -49,13 +49,21 @@ end
 
 function plot_aggregations_for_metabolite(everything_df, metabolite)
     println("Plotting $metabolite")
-    metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     traces::Vector{GenericTrace} = []
-    for additive in unique(metabolite_df.Additive)
-        additive_df = subset(metabolite_df, :Additive => x -> x .== additive)
+    additives = unique(everything_df.Additive)
+    for additive in additives
+        additive_df = subset(
+            everything_df,
+            :Additive => x -> x .== additive,
+            :Metabolite => x -> x .== metabolite,
+        )
+        aggregated_df = @combine(
+            groupby(additive_df, :Time),
+            :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
+        )
         trace = scatter(
-            x = additive_df.Time,
-            y = additive_df.MedianNormalizedIntensity,
+            x = aggregated_df.Time,
+            y = aggregated_df.Aggregated,
             mode = "lines+markers",
             name = additive,
             marker = attr(size = 10),
@@ -85,7 +93,7 @@ end
 
 function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
-    ThreadsX.map(metabolites) do metabolite
+    for metabolite in metabolites
         plt = plot_aggregations_for_metabolite(df, metabolite)
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
         filename = joinpath("output", "plots", "$(clean_metabolite).html")
