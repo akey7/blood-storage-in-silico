@@ -124,23 +124,4 @@ function normalized_abundance_correlations(df)
     return final_df
 end
 
-function mann_kendall_no_ties(xs)
-    vals = string(xs)
-    s = 0.0
-    for k in eachindex(xs)[1:(end-1)]
-        for j in eachindex(xs)[2:end]
-            s += sign(xs[j] - xs[k])
-        end
-    end
-    n = length(xs)
-    var_s = n*(n-1)*(2*n+5)/18.0
-    if s > 0.0
-        return vals, n, s, var_s, abs((s-1) / sqrt(var_s))
-    elseif s < 0.0
-        return vals, n, s, var_s, abs((s+1) / sqrt(var_s))
-    else
-        return vals, n, s, var_s, 0.0
-    end
-end
-
 end
