@@ -18,10 +18,10 @@ function load_and_clean_2()
     )
     df3 = subset(df2, :Additive => x -> x .== "01-Ctrl AS3")
     df4 = @combine(
-        groupby(df3, :Metabolite),
+        groupby(df3, [:Metabolite, :Time]),
         :ControlMedianIntensity = median(skipmissing(:Intensity))
     )
-    df5 = innerjoin(df2, df4, on = :Metabolite)
+    df5 = innerjoin(df2, df4, on = [:Metabolite, :Time])
     df6 = transform(
         df5,
         [:Intensity, :ControlMedianIntensity] =>
