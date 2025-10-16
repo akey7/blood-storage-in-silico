@@ -47,7 +47,7 @@ function plot_loess_for_metabolite(everything_df, metabolite)
             :ControlMedianNormalizedIntensity => "Control Median Normalized Intensity",
             color = :Additive => "Additive",
         ) *
-        (visual(Scatter; markersize = 10) + linear())
+        (visual(Scatter; markersize = 10, alpha = 0.3) + linear())
     fig = draw(
         plt;
         figure = (; size = (750, 500)),
