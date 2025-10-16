@@ -12,21 +12,12 @@ using StatsBase
 using MultipleTesting
 using Combinatorics
 using ThreadsX
-using PlotlyJS
-using PlotlyBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
 
-export makie_plot_timeline_for_metabolite,
-    plot_scatter_all_normalized_abundances,
-    plot_aggregations_for_metabolite,
-    load_and_clean,
-    normalized_abundance_correlations,
-    save_aggregation_plot,
-    plot_aggregations_for_all_metabolites,
-    normalized_abundance_correlations_by_additive,
-    plot_aggregations_for_all_metabolites_2
+export load_and_clean,
+    plot_aggregations_for_all_metabolites_2, normalized_abundance_correlations
 
 function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -64,35 +55,6 @@ function aggregate_metabolite_additive(everything_df, metabolite, additive)
     return aggregated_df
 end
 
-function plot_aggregations_for_metabolite(everything_df, metabolite)
-    println("Plotting $metabolite")
-    traces::Vector{GenericTrace} = []
-    additives = unique(everything_df.Additive)
-    for additive in additives
-        aggregated_df = aggregate_metabolite_additive(everything_df, metabolite, additive)
-        trace = PlotlyBase.scatter(
-            x = aggregated_df.Time,
-            y = aggregated_df.Aggregated,
-            mode = "lines+markers",
-            name = additive,
-            marker = attr(size = 10),
-        )
-        push!(traces, trace)
-    end
-    layout = Layout(
-        title = "<b>$metabolite</b>",
-        xaxis = attr(
-            title = "Time",
-            tickvals = unique(everything_df.Time),
-            ticktext = string.(unique(everything_df.Time)),
-        ),
-        yaxis = attr(title = "Median Normalized Abundance"),
-        legend = attr(title = "Additive"),
-    )
-    plt = PlotlyJS.plot(traces, layout)
-    return plt
-end
-
 function plot_aggregations_for_metabolite_2(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     aggregated_df = @combine(
@@ -115,23 +77,6 @@ function plot_aggregations_for_metabolite_2(everything_df, metabolite)
         ),
     )
     return fig
-end
-
-function save_aggregation_plot(plt, filename)
-    open(filename, "w") do io
-        PlotlyBase.to_html(io, plt.plot, include_plotlyjs = "cdn")
-    end
-    println("Wrote $filename")
-end
-
-function plot_aggregations_for_all_metabolites(df)
-    metabolites = unique(df.Metabolite)
-    for metabolite in metabolites
-        plt = plot_aggregations_for_metabolite(df, metabolite)
-        clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
-        filename = joinpath("output", "plots", "$(clean_metabolite).html")
-        save_aggregation_plot(plt, filename)
-    end
 end
 
 function plot_aggregations_for_all_metabolites_2(df)
