@@ -99,6 +99,7 @@ function plot_aggregations_for_metabolite_2(everything_df, metabolite)
         groupby(metabolite_df, [:Additive, :Time]),
         :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
     )
+    time_points = unique(everything_df.Time)
     plt =
         data(aggregated_df) *
         mapping(:Time, :Aggregated, color = :Additive) *
@@ -106,7 +107,12 @@ function plot_aggregations_for_metabolite_2(everything_df, metabolite)
     fig = draw(
         plt;
         figure = (; size = (750, 500)),
-        axis = (; title = metabolite, xlabel = "Time", ylabel = "Normalized Abundance"),
+        axis = (;
+            title = metabolite,
+            xlabel = "Time",
+            ylabel = "Normalized Abundance",
+            xticks = time_points,
+        ),
     )
     return fig
 end
