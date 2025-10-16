@@ -99,7 +99,10 @@ function plot_aggregations_for_metabolite_2(everything_df, metabolite)
         groupby(metabolite_df, [:Additive, :Time]),
         :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
     )
-    plt = data(aggregated_df) * mapping(:Time, :Aggregated, color = :Additive)
+    plt =
+        data(aggregated_df) *
+        mapping(:Time, :Aggregated, color = :Additive) *
+        (visual(Lines) + visual(Scatter; markersize = 10))
     fig = draw(
         plt;
         figure = (; size = (750, 500)),
