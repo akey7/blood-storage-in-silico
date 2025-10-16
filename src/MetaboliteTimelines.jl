@@ -103,7 +103,7 @@ function plot_aggregations_for_metabolite_2(everything_df, metabolite)
     fig = draw(
         plt;
         figure = (; size = (750, 500)),
-        axis = (; xlabel = "Time", ylabel = "Normalized Abundance"),
+        axis = (; title = metabolite, xlabel = "Time", ylabel = "Normalized Abundance"),
     )
     return fig
 end
