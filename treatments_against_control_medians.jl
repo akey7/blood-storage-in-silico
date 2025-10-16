@@ -6,3 +6,8 @@ using .TreatmentsAgainstControlMedians
 
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
+
+df = load_and_clean_2()
+df_filename = joinpath("output", "control_median_normalized_intensity.csv")
+CSV.write(df_filename, df)
+println("Wrote $df_filename")
