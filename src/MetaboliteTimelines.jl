@@ -47,20 +47,25 @@ function load_and_clean()
     return df6
 end
 
+function aggregate_metabolite_additive(everything_df, metabolite, additive)
+    additive_df = subset(
+        everything_df,
+        :Additive => x -> x .== additive,
+        :Metabolite => x -> x .== metabolite,
+    )
+    aggregated_df = @combine(
+        groupby(additive_df, :Time),
+        :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
+    )
+    return aggregated_df
+end
+
 function plot_aggregations_for_metabolite(everything_df, metabolite)
     println("Plotting $metabolite")
     traces::Vector{GenericTrace} = []
     additives = unique(everything_df.Additive)
     for additive in additives
-        additive_df = subset(
-            everything_df,
-            :Additive => x -> x .== additive,
-            :Metabolite => x -> x .== metabolite,
-        )
-        aggregated_df = @combine(
-            groupby(additive_df, :Time),
-            :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
-        )
+        aggregated_df = aggregate_metabolite_additive(everything_df, metabolite, additive)
         trace = scatter(
             x = aggregated_df.Time,
             y = aggregated_df.Aggregated,
