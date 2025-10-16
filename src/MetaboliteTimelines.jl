@@ -16,6 +16,7 @@ using PlotlyJS
 using PlotlyBase
 using AlgebraOfGraphics
 using CairoMakie
+using Makie
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
@@ -24,7 +25,8 @@ export makie_plot_timeline_for_metabolite,
     normalized_abundance_correlations,
     save_aggregation_plot,
     plot_aggregations_for_all_metabolites,
-    normalized_abundance_correlations_by_additive
+    normalized_abundance_correlations_by_additive,
+    plot_aggregations_for_all_metabolites_2
 
 function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -68,7 +70,7 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
     additives = unique(everything_df.Additive)
     for additive in additives
         aggregated_df = aggregate_metabolite_additive(everything_df, metabolite, additive)
-        trace = scatter(
+        trace = PlotlyBase.scatter(
             x = aggregated_df.Time,
             y = aggregated_df.Aggregated,
             mode = "lines+markers",
@@ -87,17 +89,23 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
         yaxis = attr(title = "Median Normalized Abundance"),
         legend = attr(title = "Additive"),
     )
-    plt = plot(traces, layout)
+    plt = PlotlyJS.plot(traces, layout)
     return plt
 end
 
 function plot_aggregations_for_metabolite_2(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
-    aggregated_df = @combine(groupby(metabolite_df, [:Additive, :Time]), :Aggregated = mean(skipmissing(:MedianNormalizedIntensity)))
-    set_aog_theme!()
-    update_theme!(Axis = (; width = 500, height = 500))
-    plt = draw(data(aggregated_df) * mapping(:Time, :Aggregated, color = :Additive))
-    return plt
+    aggregated_df = @combine(
+        groupby(metabolite_df, [:Additive, :Time]),
+        :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
+    )
+    plt = data(aggregated_df) * mapping(:Time, :Aggregated, color = :Additive)
+    fig = draw(
+        plt;
+        figure = (; size = (750, 500)),
+        axis = (; xlabel = "Time", ylabel = "Normalized Abundance"),
+    )
+    return fig
 end
 
 function save_aggregation_plot(plt, filename)
@@ -114,6 +122,17 @@ function plot_aggregations_for_all_metabolites(df)
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
         filename = joinpath("output", "plots", "$(clean_metabolite).html")
         save_aggregation_plot(plt, filename)
+    end
+end
+
+function plot_aggregations_for_all_metabolites_2(df)
+    metabolites = unique(df.Metabolite)
+    for metabolite in metabolites
+        fig = plot_aggregations_for_metabolite_2(df, metabolite)
+        clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
+        filename = joinpath("output", "plots2", "$(clean_metabolite).png")
+        save(filename, fig)
+        println("Wrote $filename")
     end
 end
 
