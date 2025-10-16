@@ -14,6 +14,8 @@ using Combinatorics
 using ThreadsX
 using PlotlyJS
 using PlotlyBase
+using AlgebraOfGraphics
+using CairoMakie
 
 export makie_plot_timeline_for_metabolite,
     plot_scatter_all_normalized_abundances,
@@ -86,6 +88,15 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
         legend = attr(title = "Additive"),
     )
     plt = plot(traces, layout)
+    return plt
+end
+
+function plot_aggregations_for_metabolite_2(everything_df, metabolite)
+    metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
+    aggregated_df = @combine(groupby(metabolite_df, [:Additive, :Time]), :Aggregated = mean(skipmissing(:MedianNormalizedIntensity)))
+    set_aog_theme!()
+    update_theme!(Axis = (; width = 500, height = 500))
+    plt = draw(data(aggregated_df) * mapping(:Time, :Aggregated, color = :Additive))
     return plt
 end
 
