@@ -12,6 +12,7 @@ using CategoricalArrays
 using Base.Iterators
 using ThreadsX
 using MultipleTesting
+using Clustering
 
 export load_and_clean_2,
     plot_loess_for_all_metabolites,
@@ -124,14 +125,18 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
     df4 =
         filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
     df5 = sort(df4, :Metabolite)
-    df5_mat = Matrix(df5[:, Not(:Metabolite)])
+    X = Matrix{Float64}(disallowmissing(df5[:, Not(:Metabolite)]))
     println(
         "Feature matrix: ",
-        size(df5_mat, 1),
+        size(X, 1),
         " Metabolites, ",
-        size(df5_mat, 2),
+        size(X, 2),
         " Time Points",
     )
+    R = fuzzy_cmeans(X', 3, 2.0, maxiter = 200, display = :iter)
+    M = R.centers
+    memberships = R.weights
+    println(memberships)
 end
 
 end
