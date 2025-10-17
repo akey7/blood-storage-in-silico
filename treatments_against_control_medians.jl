@@ -18,4 +18,3 @@ df = load_and_clean_2()
 # CSV.write(results_filename, results_df)
 
 c_means_df = c_means_metabolite_trajectories_in_additive(df, "01-Ctrl AS3")
-println(c_means_df)
