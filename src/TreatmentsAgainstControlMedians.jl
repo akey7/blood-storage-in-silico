@@ -16,7 +16,8 @@ using MultipleTesting
 export load_and_clean_2,
     plot_loess_for_all_metabolites,
     test_mixed_models,
-    find_significant_metabolites_additives
+    find_significant_metabolites_additives,
+    c_means_metabolite_trajectories_in_additive
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -114,6 +115,13 @@ function find_significant_metabolites_additives(everything_df)
     result_df.significant = result_df.adj_p_value .< fdr_threshold
     final_df = sort(result_df, :adj_p_value)
     return final_df
+end
+
+function c_means_metabolite_trajectories_in_additive(everything_df, additive)
+    df1 = subset(everything_df, :Additive => x -> x .== additive)
+    df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
+    df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
+    return df3
 end
 
 end
