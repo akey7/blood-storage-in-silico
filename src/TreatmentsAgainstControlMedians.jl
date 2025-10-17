@@ -121,7 +121,9 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
     df1 = subset(everything_df, :Additive => x -> x .== additive)
     df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
     df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
-    return df3
+    df4 = filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
+    df5 = sort(df4, :Metabolite)
+    return df5
 end
 
 end
