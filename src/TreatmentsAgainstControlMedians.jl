@@ -130,10 +130,14 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
     R = fuzzy_cmeans(X', 3, 2.0, maxiter = 200, display = :iter)
     memberships_df = DataFrame(R.weights, [:Cluster1, :Cluster2, :Cluster3])
     memberships_df.Metabolite = df5.Metabolite
-    select!(memberships_df, :Metabolite, :)
     memberships_df.PrimaryCluster =
-        [argmax(row) for row in eachrow(Matrix(memberships_df[:, 2:4]))]
-    return memberships_df
+        [argmax(row) for row in eachrow(Matrix(memberships_df[:, 1:3]))]
+    memberships_df[!, :Additive] .= additive
+    result_df = select(
+        memberships_df,
+        [:Additive, :Metabolite, :PrimaryCluster, :Cluster1, :Cluster2, :Cluster3],
+    )
+    return result_df
 end
 
 end
