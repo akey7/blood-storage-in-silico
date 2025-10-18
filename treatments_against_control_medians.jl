@@ -17,5 +17,6 @@ df = load_and_clean_2()
 # results_filename = joinpath("output", "signficant_pairs.csv")
 # CSV.write(results_filename, results_df)
 
-c_means_df = c_means_metabolite_trajectories_in_additive(df, "01-Ctrl AS3")
+# c_means_df = c_means_metabolite_trajectories_in_additive(df, "01-Ctrl AS3")
+c_means_df = c_means_metabolite_trajectories_in_additive(df, "02-Adenosine")
 println(first(c_means_df, 10))
