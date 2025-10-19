@@ -129,20 +129,13 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
     df5 = sort(df4, :Metabolite)
     X = Matrix{Float64}(disallowmissing(df5[:, Not(:Metabolite)]))
     println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
-    # R = fuzzy_cmeans(X', 3, 2.0, maxiter = 200, display = :iter)
-    R = fuzzy_cmeans(X', 4, 2.0, maxiter = 200, display = :iter)
-    # memberships_df = DataFrame(R.weights, [:Cluster1, :Cluster2, :Cluster3])
-    memberships_df = DataFrame(R.weights, [:Cluster1, :Cluster2, :Cluster3, :Cluster4])
+    R = fuzzy_cmeans(X', 5, 2.0, maxiter = 200, display = :iter)
+    memberships_df =
+        DataFrame(R.weights, [:Cluster1, :Cluster2, :Cluster3, :Cluster4, :Cluster5])
     memberships_df.Metabolite = df5.Metabolite
-    # memberships_df.PrimaryCluster =
-    #     [argmax(row) for row in eachrow(Matrix(memberships_df[:, 1:3]))]
     memberships_df.PrimaryCluster =
-        [argmax(row) for row in eachrow(Matrix(memberships_df[:, 1:4]))]
+        [argmax(row) for row in eachrow(Matrix(memberships_df[:, 1:5]))]
     memberships_df[!, :Additive] .= additive
-    # result_df = select(
-    #     memberships_df,
-    #     [:Additive, :Metabolite, :PrimaryCluster, :Cluster1, :Cluster2, :Cluster3],
-    # )
     result_df = select(
         memberships_df,
         [
@@ -153,6 +146,7 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
             :Cluster2,
             :Cluster3,
             :Cluster4,
+            :Cluster5,
         ],
     )
     return result_df
