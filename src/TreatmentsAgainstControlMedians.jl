@@ -18,7 +18,7 @@ export load_and_clean_2,
     plot_loess_for_all_metabolites,
     test_mixed_models,
     find_significant_metabolites_additives,
-    c_means_metabolite_trajectories_in_additive
+    c_means_metabolite_trajectories
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -137,6 +137,13 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
         memberships_df,
         [:Additive, :Metabolite, :PrimaryCluster, :Cluster1, :Cluster2, :Cluster3],
     )
+    return result_df
+end
+
+function c_means_metabolite_trajectories(everything_df)
+    additives = unique(everything_df.Additive)
+    dfs = [c_means_metabolite_trajectories_in_additive(everything_df, additive) for additive in additives]
+    result_df = vcat(dfs...)
     return result_df
 end
 
