@@ -149,17 +149,21 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
             :Cluster5,
         ],
     )
-    return result_df
+    return result_df, df5
 end
 
 function c_means_metabolite_trajectories(everything_df)
     additives = unique(everything_df.Additive)
-    dfs = [
-        c_means_metabolite_trajectories_in_additive(everything_df, additive) for
-        additive in additives
-    ]
-    result_df = vcat(dfs...)
-    return result_df
+    c_means_dfs = []
+    wide_timeseries_dfs = []
+    for additive in additives
+        c_means_df, wide_timeseries_df = c_means_metabolite_trajectories_in_additive(everything_df, additive)
+        push!(c_means_dfs, c_means_df)
+        push!(wide_timeseries_dfs, wide_timeseries_df)
+    end
+    c_means_df = vcat(c_means_dfs...)
+    wide_timeseries_df = vcat(wide_timeseries_dfs...)
+    return c_means_df, wide_timeseries_df
 end
 
 end
