@@ -18,7 +18,8 @@ export load_and_clean_2,
     plot_loess_for_all_metabolites,
     test_mixed_models,
     find_significant_metabolites_additives,
-    c_means_metabolite_trajectories
+    c_means_metabolite_trajectories,
+    plot_c_means_for_additive
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -149,6 +150,7 @@ function c_means_metabolite_trajectories_in_additive(everything_df, additive)
             :Cluster5,
         ],
     )
+    df5[!, :Additive] .= additive
     return result_df, df5
 end
 
@@ -157,13 +159,20 @@ function c_means_metabolite_trajectories(everything_df)
     c_means_dfs = []
     wide_timeseries_dfs = []
     for additive in additives
-        c_means_df, wide_timeseries_df = c_means_metabolite_trajectories_in_additive(everything_df, additive)
+        c_means_df, wide_timeseries_df =
+            c_means_metabolite_trajectories_in_additive(everything_df, additive)
         push!(c_means_dfs, c_means_df)
         push!(wide_timeseries_dfs, wide_timeseries_df)
     end
     c_means_df = vcat(c_means_dfs...)
     wide_timeseries_df = vcat(wide_timeseries_dfs...)
     return c_means_df, wide_timeseries_df
+end
+
+function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
+    df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
+    df2 = innerjoin(df1, wide_timeseries_df, on = [:Additive, :Metabolite])
+    return df2
 end
 
 end
