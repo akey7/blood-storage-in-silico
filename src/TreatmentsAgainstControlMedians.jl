@@ -119,6 +119,8 @@ function find_significant_metabolites_additives(everything_df)
 end
 
 function c_means_metabolite_trajectories_in_additive(everything_df, additive)
+    println("=" ^ 70)
+    println(uppercase(additive))
     df1 = subset(everything_df, :Additive => x -> x .== additive)
     df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
     df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
