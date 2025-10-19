@@ -142,7 +142,10 @@ end
 
 function c_means_metabolite_trajectories(everything_df)
     additives = unique(everything_df.Additive)
-    dfs = [c_means_metabolite_trajectories_in_additive(everything_df, additive) for additive in additives]
+    dfs = [
+        c_means_metabolite_trajectories_in_additive(everything_df, additive) for
+        additive in additives
+    ]
     result_df = vcat(dfs...)
     return result_df
 end
