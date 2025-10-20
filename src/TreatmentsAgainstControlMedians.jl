@@ -192,7 +192,7 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
             row = :PrimaryCluster,
             group = :Metabolite,
         ) *
-        visual(Lines)
+        visual(Lines) * visual(alpha = 0.1)
     fig = draw(
         plt;
         figure = (; size = (750, 500), title = additive),
