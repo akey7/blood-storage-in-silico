@@ -129,25 +129,41 @@ function prepare_everything_df_for_clustering(everything_df, additive)
     return wide_timeseries_df
 end
 
+function calc_fuzzy_objective(result, X, μ = 2.0)
+    c = result.centers
+    W = result.weights
+    println("W: ", size(W), " X: ", size(X), " centers: ", size(c))
+    total = 0.0
+    for i in axes(X, 1)
+        for j in axes(c, 2)
+            total += W[i, j]^μ * sum((X[i, :] ./ -c[:, j]) .^ 2)
+        end
+    end
+    return total
+end
+
 function c_means_metabolite_trajectories_in_additive(
     everything_df,
     additive,
     n_clusters = 5,
+    μ = 2.0,
 )
     println("=" ^ 70)
     println(uppercase(additive))
     wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
     println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
-    R = fuzzy_cmeans(X', n_clusters, 2.0, maxiter = 200, display = :iter)
-    weights_col_names = ["Cluster$c" for c in axes(R.weights, 2)]
-    memberships_df = DataFrame(R.weights, weights_col_names)
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    weights_col_names = ["Cluster$c" for c in axes(result.weights, 2)]
+    memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
     memberships_df.PrimaryCluster =
-        [argmax(row) for row in eachrow(Matrix(memberships_df[:, axes(R.weights, 2)]))]
+        [argmax(row) for row in eachrow(Matrix(memberships_df[:, axes(result.weights, 2)]))]
     memberships_df[!, :Additive] .= additive
     wide_timeseries_df[!, :Additive] .= additive
-    return memberships_df, wide_timeseries_df
+    wcss = calc_fuzzy_objective(result, X, μ)
+    println("WCSS $wcss")
+    return memberships_df, wide_timeseries_df, wcss
 end
 
 function c_means_metabolite_trajectories(everything_df)
@@ -155,7 +171,7 @@ function c_means_metabolite_trajectories(everything_df)
     c_means_dfs = []
     wide_timeseries_dfs = []
     for additive in additives
-        c_means_df, wide_timeseries_df =
+        c_means_df, wide_timeseries_df, _ =
             c_means_metabolite_trajectories_in_additive(everything_df, additive)
         push!(c_means_dfs, c_means_df)
         push!(wide_timeseries_dfs, wide_timeseries_df)
