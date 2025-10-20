@@ -170,9 +170,38 @@ function c_means_metabolite_trajectories(everything_df)
 end
 
 function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
+    println("Plotting c-means plot for $additive")
     df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
     df2 = innerjoin(df1, wide_timeseries_df, on = [:Additive, :Metabolite])
-    return df2
+    df3 = stack(
+        df2,
+        Not([:Additive, :Metabolite, :PrimaryCluster]),
+        variable_name = :Time,
+        value_name = :MeanNormalizedIntensity,
+    )
+    df4 = sort(df3, [:Additive, :Metabolite, :PrimaryCluster, :Time])
+    df5 = subset(df4, :Additive => x -> x .== additive)
+    df5.Time = parse.(Int, df5.Time)
+    plt_df = dropmissing(df5, :MeanNormalizedIntensity)
+    time_points = unique(plt_df.Time)
+    plt =
+        data(plt_df) *
+        mapping(
+            :Time,
+            :MeanNormalizedIntensity,
+            row = :PrimaryCluster,
+            group = :Metabolite,
+        ) *
+        visual(Lines)
+    fig = draw(
+        plt;
+        figure = (; size = (750, 500)),
+        axis = (; xticks = time_points),
+    )
+    clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
+    fig_filename = joinpath("output", "c_means_plots", "$clean_additive.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
