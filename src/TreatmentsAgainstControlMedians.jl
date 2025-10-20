@@ -173,7 +173,7 @@ function cluster_counts_for_additive(c_means_df, additive)
     println(additive)
     df1 = subset(c_means_df, :Additive => x -> x .== additive)
     df2 = DataFrames.combine(groupby(df1, :PrimaryCluster), nrow => :Count)
-    println(df2)
+    return df2
 end
 
 function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
@@ -191,7 +191,14 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
-    cluster_counts_for_additive(c_means_df, additive)
+    cluster_counts_df = cluster_counts_for_additive(c_means_df, additive)
+    cluster_counts_subtitle = join(
+        [
+            "Cluster $c, n=$n" for (c, n) in
+            zip(cluster_counts_df[!, :PrimaryCluster], cluster_counts_df[!, :Count])
+        ],
+        "; ",
+    )
     plt =
         data(plt_df) *
         mapping(
@@ -200,8 +207,10 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
             row = :PrimaryCluster,
             group = :Metabolite,
         ) *
-        visual(Lines) * visual(alpha = 0.1)
-    figure_options = (; size = (500, 1000), title = additive)
+        visual(Lines) *
+        visual(alpha = 0.1)
+    figure_options =
+        (; size = (500, 1000), title = additive, subtitle = cluster_counts_subtitle)
     fig = draw(
         plt;
         figure = figure_options,
