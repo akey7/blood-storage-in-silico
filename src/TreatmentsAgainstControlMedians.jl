@@ -142,14 +142,11 @@ function calc_fuzzy_objective(result, X, μ = 2.0)
 end
 
 function c_means_metabolite_trajectories_in_additive(
-    everything_df,
+    wide_timeseries_df,
     additive;
     n_clusters = 5,
     μ = 2.0,
 )
-    println("=" ^ 70)
-    println(uppercase(additive))
-    wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
     println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
     result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
@@ -162,7 +159,7 @@ function c_means_metabolite_trajectories_in_additive(
     wide_timeseries_df[!, :Additive] .= additive
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
     println("WCSS $fuzzy_objective")
-    return memberships_df, wide_timeseries_df, fuzzy_objective
+    return memberships_df, fuzzy_objective
 end
 
 function c_means_metabolite_trajectories(everything_df)
@@ -171,9 +168,10 @@ function c_means_metabolite_trajectories(everything_df)
     wide_timeseries_dfs = []
     fuzzy_objectives = []
     for additive in additives
-        c_means_df, wide_timeseries_df, fuzzy_objective =
+        wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
+        c_means_df, fuzzy_objective =
             c_means_metabolite_trajectories_in_additive(
-                everything_df,
+                wide_timeseries_df,
                 additive,
                 n_clusters = 5,
             )
