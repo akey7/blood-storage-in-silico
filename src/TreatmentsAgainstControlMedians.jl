@@ -197,6 +197,7 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
         plt;
         figure = (; size = (750, 500)),
         axis = (; xticks = time_points),
+        facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
     fig_filename = joinpath("output", "c_means_plots", "$clean_additive.png")
