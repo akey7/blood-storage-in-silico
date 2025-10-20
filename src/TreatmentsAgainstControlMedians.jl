@@ -193,9 +193,10 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
             group = :Metabolite,
         ) *
         visual(Lines) * visual(alpha = 0.1)
+    figure_options = (; size = (500, 1000), title = additive)
     fig = draw(
         plt;
-        figure = (; size = (750, 500), title = additive),
+        figure = figure_options,
         axis = (; xticks = time_points),
         facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
     )
