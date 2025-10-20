@@ -12,11 +12,14 @@ using CategoricalArrays
 using Base.Iterators
 using ThreadsX
 using MultipleTesting
+using Clustering
 
 export load_and_clean_2,
     plot_loess_for_all_metabolites,
     test_mixed_models,
-    find_significant_metabolites_additives
+    find_significant_metabolites_additives,
+    c_means_metabolite_trajectories,
+    plot_c_means_for_additive
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -114,6 +117,91 @@ function find_significant_metabolites_additives(everything_df)
     result_df.significant = result_df.adj_p_value .< fdr_threshold
     final_df = sort(result_df, :adj_p_value)
     return final_df
+end
+
+function c_means_metabolite_trajectories_in_additive(everything_df, additive)
+    println("=" ^ 70)
+    println(uppercase(additive))
+    df1 = subset(everything_df, :Additive => x -> x .== additive)
+    df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
+    df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
+    df4 =
+        filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
+    df5 = sort(df4, :Metabolite)
+    X = Matrix{Float64}(disallowmissing(df5[:, Not(:Metabolite)]))
+    println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
+    R = fuzzy_cmeans(X', 5, 2.0, maxiter = 200, display = :iter)
+    memberships_df =
+        DataFrame(R.weights, [:Cluster1, :Cluster2, :Cluster3, :Cluster4, :Cluster5])
+    memberships_df.Metabolite = df5.Metabolite
+    memberships_df.PrimaryCluster =
+        [argmax(row) for row in eachrow(Matrix(memberships_df[:, 1:5]))]
+    memberships_df[!, :Additive] .= additive
+    result_df = select(
+        memberships_df,
+        [
+            :Additive,
+            :Metabolite,
+            :PrimaryCluster,
+            :Cluster1,
+            :Cluster2,
+            :Cluster3,
+            :Cluster4,
+            :Cluster5,
+        ],
+    )
+    df5[!, :Additive] .= additive
+    return result_df, df5
+end
+
+function c_means_metabolite_trajectories(everything_df)
+    additives = unique(everything_df.Additive)
+    c_means_dfs = []
+    wide_timeseries_dfs = []
+    for additive in additives
+        c_means_df, wide_timeseries_df =
+            c_means_metabolite_trajectories_in_additive(everything_df, additive)
+        push!(c_means_dfs, c_means_df)
+        push!(wide_timeseries_dfs, wide_timeseries_df)
+    end
+    c_means_df = vcat(c_means_dfs...)
+    wide_timeseries_df = vcat(wide_timeseries_dfs...)
+    return c_means_df, wide_timeseries_df
+end
+
+function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
+    println("Plotting c-means plot for $additive")
+    df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
+    df2 = innerjoin(df1, wide_timeseries_df, on = [:Additive, :Metabolite])
+    df3 = stack(
+        df2,
+        Not([:Additive, :Metabolite, :PrimaryCluster]),
+        variable_name = :Time,
+        value_name = :MeanNormalizedIntensity,
+    )
+    df4 = sort(df3, [:Additive, :Metabolite, :PrimaryCluster, :Time])
+    df5 = subset(df4, :Additive => x -> x .== additive)
+    df5.Time = parse.(Int, df5.Time)
+    plt_df = dropmissing(df5, :MeanNormalizedIntensity)
+    time_points = unique(plt_df.Time)
+    plt =
+        data(plt_df) *
+        mapping(
+            :Time,
+            :MeanNormalizedIntensity,
+            row = :PrimaryCluster,
+            group = :Metabolite,
+        ) *
+        visual(Lines)
+    fig = draw(
+        plt;
+        figure = (; size = (750, 500)),
+        axis = (; xticks = time_points),
+    )
+    clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
+    fig_filename = joinpath("output", "c_means_plots", "$clean_additive.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
