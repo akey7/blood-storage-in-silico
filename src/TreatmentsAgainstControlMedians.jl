@@ -169,6 +169,13 @@ function c_means_metabolite_trajectories(everything_df)
     return c_means_df, wide_timeseries_df
 end
 
+function cluster_counts_for_additive(c_means_df, additive)
+    println(additive)
+    df1 = subset(c_means_df, :Additive => x -> x .== additive)
+    df2 = DataFrames.combine(groupby(df1, :PrimaryCluster), nrow => :Count)
+    return df2
+end
+
 function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     println("Plotting c-means plot for $additive")
     df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
@@ -184,6 +191,14 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
+    cluster_counts_df = cluster_counts_for_additive(c_means_df, additive)
+    cluster_counts_subtitle = join(
+        [
+            "Cluster $c, n=$n" for (c, n) in
+            zip(cluster_counts_df[!, :PrimaryCluster], cluster_counts_df[!, :Count])
+        ],
+        ";\n",
+    )
     plt =
         data(plt_df) *
         mapping(
@@ -192,11 +207,15 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
             row = :PrimaryCluster,
             group = :Metabolite,
         ) *
-        visual(Lines)
+        visual(Lines) *
+        visual(alpha = 0.1)
+    figure_options =
+        (; size = (500, 1000), title = additive, subtitle = cluster_counts_subtitle)
     fig = draw(
         plt;
-        figure = (; size = (750, 500)),
+        figure = figure_options,
         axis = (; xticks = time_points),
+        facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
     fig_filename = joinpath("output", "c_means_plots", "$clean_additive.png")
