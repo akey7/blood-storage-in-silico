@@ -197,7 +197,7 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
             "Cluster $c, n=$n" for (c, n) in
             zip(cluster_counts_df[!, :PrimaryCluster], cluster_counts_df[!, :Count])
         ],
-        "; ",
+        ";\n",
     )
     plt =
         data(plt_df) *
