@@ -119,31 +119,35 @@ function find_significant_metabolites_additives(everything_df)
     return final_df
 end
 
-function c_means_metabolite_trajectories_in_additive(
-    everything_df,
-    additive,
-    n_clusters = 5,
-    max_clusters = 10,
-)
-    println("=" ^ 70)
-    println(uppercase(additive))
+function prepare_everything_df_for_clustering(everything_df, additive)
     df1 = subset(everything_df, :Additive => x -> x .== additive)
     df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
     df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
     df4 =
         filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
-    df5 = sort(df4, :Metabolite)
-    X = Matrix{Float64}(disallowmissing(df5[:, Not(:Metabolite)]))
+    wide_timeseries_df = sort(df4, :Metabolite)
+    return wide_timeseries_df
+end
+
+function c_means_metabolite_trajectories_in_additive(
+    everything_df,
+    additive,
+    n_clusters = 5,
+)
+    println("=" ^ 70)
+    println(uppercase(additive))
+    wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
+    X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
     println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
     R = fuzzy_cmeans(X', n_clusters, 2.0, maxiter = 200, display = :iter)
     weights_col_names = ["Cluster$c" for c in axes(R.weights, 2)]
     memberships_df = DataFrame(R.weights, weights_col_names)
-    memberships_df.Metabolite = df5.Metabolite
+    memberships_df.Metabolite = wide_timeseries_df.Metabolite
     memberships_df.PrimaryCluster =
         [argmax(row) for row in eachrow(Matrix(memberships_df[:, axes(R.weights, 2)]))]
     memberships_df[!, :Additive] .= additive
-    df5[!, :Additive] .= additive
-    return memberships_df, df5
+    wide_timeseries_df[!, :Additive] .= additive
+    return memberships_df, wide_timeseries_df
 end
 
 function c_means_metabolite_trajectories(everything_df)
