@@ -195,7 +195,7 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
         visual(Lines)
     fig = draw(
         plt;
-        figure = (; size = (750, 500)),
+        figure = (; size = (750, 500), title = additive),
         axis = (; xticks = time_points),
         facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
     )
