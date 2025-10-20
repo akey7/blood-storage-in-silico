@@ -169,6 +169,13 @@ function c_means_metabolite_trajectories(everything_df)
     return c_means_df, wide_timeseries_df
 end
 
+function cluster_counts_for_additive(c_means_df, additive)
+    println(additive)
+    df1 = subset(c_means_df, :Additive => x -> x .== additive)
+    df2 = DataFrames.combine(groupby(df1, :PrimaryCluster), nrow => :Count)
+    println(df2)
+end
+
 function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     println("Plotting c-means plot for $additive")
     df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
@@ -184,6 +191,7 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
+    cluster_counts_for_additive(c_means_df, additive)
     plt =
         data(plt_df) *
         mapping(
