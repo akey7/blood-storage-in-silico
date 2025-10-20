@@ -132,7 +132,6 @@ end
 function calc_fuzzy_objective(result, X, μ = 2.0)
     c = result.centers
     W = result.weights
-    println("W: ", size(W), " X: ", size(X), " centers: ", size(c))
     total = 0.0
     for i in axes(X, 1)
         for j in axes(c, 2)
