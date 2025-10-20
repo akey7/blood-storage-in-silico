@@ -1,4 +1,5 @@
 using Base.Threads
+using Random
 using CSV
 
 include("src/TreatmentsAgainstControlMedians.jl")
@@ -6,6 +7,8 @@ using .TreatmentsAgainstControlMedians
 
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
+
+Random.seed!(123)
 
 df = load_and_clean_2()
 
