@@ -19,7 +19,7 @@ export load_and_clean_2,
     test_mixed_models,
     find_significant_metabolites_additives,
     c_means_metabolite_trajectories,
-    plot_c_means_for_additive
+    plot_c_means_for_all_additives
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -221,6 +221,13 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     fig_filename = joinpath("output", "c_means_plots", "$clean_additive.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function plot_c_means_for_all_additives(c_means_df, wide_timeseries_df)
+    additives = unique(c_means_df.Additive)
+    for additive in additives
+        plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
+    end
 end
 
 end
