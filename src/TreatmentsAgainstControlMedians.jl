@@ -156,7 +156,6 @@ function c_means_metabolite_trajectories_in_additive(
     memberships_df.PrimaryCluster =
         [argmax(row) for row in eachrow(Matrix(memberships_df[:, axes(result.weights, 2)]))]
     memberships_df[!, :Additive] .= additive
-    wide_timeseries_df[!, :Additive] .= additive
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
     return memberships_df, fuzzy_objective
 end
