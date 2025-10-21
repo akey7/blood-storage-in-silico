@@ -171,11 +171,12 @@ function c_means_metabolite_trajectories(everything_df)
     additives_rows = []
     n_clusters_rows = []
     for additive in additives_for_iterator
-        println("=" ^ 60)
-        println(uppercase(additive))
         wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
         push!(wide_timeseries_dfs, wide_timeseries_df)
-        for n_clusters in [5]
+        for n_clusters in collect(2:5)
+            println("=" ^ 60)
+            println(uppercase(additive), " ", n_clusters, " clusters ", typeof(n_clusters))
+            println(first(wide_timeseries_df, 5))
             c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
                 wide_timeseries_df,
                 additive,
