@@ -158,7 +158,7 @@ function c_means_metabolite_trajectories_in_additive(
     memberships_df[!, :Additive] .= additive
     wide_timeseries_df[!, :Additive] .= additive
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
-    println("WCSS $fuzzy_objective")
+    println("Fuzzy objective $fuzzy_objective")
     return memberships_df, fuzzy_objective
 end
 
@@ -170,6 +170,7 @@ function c_means_metabolite_trajectories(everything_df; max_clusters = 3)
     wide_timeseries_dfs = []
     fuzzy_objectives = []
     additives_rows = []
+    n_clusters_rows = []
     for additive in additives_for_iterator
         wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
         push!(wide_timeseries_dfs, wide_timeseries_df)
@@ -181,11 +182,15 @@ function c_means_metabolite_trajectories(everything_df; max_clusters = 3)
         push!(c_means_dfs, c_means_df)
         push!(fuzzy_objectives, fuzzy_objective)
         push!(additives_rows, additive)
+        push!(n_clusters_rows, 5)
     end
     c_means_df = vcat(c_means_dfs...)
     wide_timeseries_df = vcat(wide_timeseries_dfs...)
-    fuzzy_objectives_df =
-        DataFrame(Additive = additives_rows, FuzzyObjective = fuzzy_objectives)
+    fuzzy_objectives_df = DataFrame(
+        Additive = additives_rows,
+        NClusters = n_clusters_rows,
+        FuzzyObjective = fuzzy_objectives,
+    )
     return c_means_df, wide_timeseries_df, fuzzy_objectives_df
 end
 
