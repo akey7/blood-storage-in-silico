@@ -19,7 +19,8 @@ export load_and_clean_2,
     test_mixed_models,
     find_significant_metabolites_additives,
     c_means_metabolite_trajectories,
-    plot_c_means_for_all_additives
+    plot_c_means_for_all_additives,
+    plot_fuzzy_objectives_elbow
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -119,54 +120,91 @@ function find_significant_metabolites_additives(everything_df)
     return final_df
 end
 
-function c_means_metabolite_trajectories_in_additive(everything_df, additive)
-    println("=" ^ 70)
-    println(uppercase(additive))
-    df1 = subset(everything_df, :Additive => x -> x .== additive)
+function prepare_everything_df_for_clustering(everything_df, additive)
+    df0 = deepcopy(everything_df)
+    df1 = subset(df0, :Additive => x -> x .== additive)
     df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
     df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
     df4 =
         filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
-    df5 = sort(df4, :Metabolite)
-    X = Matrix{Float64}(disallowmissing(df5[:, Not(:Metabolite)]))
-    println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
-    R = fuzzy_cmeans(X', 5, 2.0, maxiter = 200, display = :iter)
-    memberships_df =
-        DataFrame(R.weights, [:Cluster1, :Cluster2, :Cluster3, :Cluster4, :Cluster5])
-    memberships_df.Metabolite = df5.Metabolite
-    memberships_df.PrimaryCluster =
-        [argmax(row) for row in eachrow(Matrix(memberships_df[:, 1:5]))]
-    memberships_df[!, :Additive] .= additive
-    result_df = select(
-        memberships_df,
-        [
-            :Additive,
-            :Metabolite,
-            :PrimaryCluster,
-            :Cluster1,
-            :Cluster2,
-            :Cluster3,
-            :Cluster4,
-            :Cluster5,
-        ],
-    )
-    df5[!, :Additive] .= additive
-    return result_df, df5
+    wide_timeseries_df = sort(df4, :Metabolite)
+    return wide_timeseries_df
 end
 
-function c_means_metabolite_trajectories(everything_df)
-    additives = unique(everything_df.Additive)
-    c_means_dfs = []
-    wide_timeseries_dfs = []
-    for additive in additives
-        c_means_df, wide_timeseries_df =
-            c_means_metabolite_trajectories_in_additive(everything_df, additive)
-        push!(c_means_dfs, c_means_df)
-        push!(wide_timeseries_dfs, wide_timeseries_df)
+function calc_fuzzy_objective(result, X, μ = 2.0)
+    c = result.centers
+    W = result.weights
+    total = 0.0
+    for i in axes(X, 1)
+        for j in axes(c, 2)
+            total += W[i, j]^μ * sum((X[i, :] ./ -c[:, j]) .^ 2)
+        end
     end
-    c_means_df = vcat(c_means_dfs...)
-    wide_timeseries_df = vcat(wide_timeseries_dfs...)
-    return c_means_df, wide_timeseries_df
+    return total
+end
+
+function c_means_metabolite_trajectories_in_additive(
+    wide_timeseries_df,
+    additive;
+    n_clusters = 5,
+    μ = 2.0,
+)
+    X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    weights_col_names = string.(axes(result.weights, 2))
+    memberships_df = DataFrame(result.weights, weights_col_names)
+    memberships_df.Metabolite = wide_timeseries_df.Metabolite
+    memberships_df[!, :Additive] .= additive
+    memberships_df[!, :NClusters] .= n_clusters
+    fuzzy_objective = calc_fuzzy_objective(result, X, μ)
+    return memberships_df, fuzzy_objective
+end
+
+function c_means_metabolite_trajectories(everything_df, max_clusters)
+    # additives = unique(everything_df.Additive)
+    additives_for_iterator =
+        ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
+    c_means_long_dfs = []
+    wide_timeseries_dfs = []
+    fuzzy_objectives = []
+    additives_rows = []
+    n_clusters_rows = []
+    for additive in additives_for_iterator
+        for n_clusters in collect(2:max_clusters)
+            wide_timeseries_df =
+                prepare_everything_df_for_clustering(everything_df, additive)
+            println("=" ^ 60)
+            println(uppercase(additive), " ", n_clusters, " clusters ")
+            c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
+                wide_timeseries_df,
+                additive,
+                n_clusters = n_clusters,
+            )
+            wide_timeseries_df[!, :Additive] .= additive
+            wide_timeseries_df[!, :NClusters] .= n_clusters
+            c_means_long_df = stack(
+                c_means_df,
+                Not([:Additive, :Metabolite, :NClusters]),
+                variable_name = :Cluster,
+                value_name = :Weight,
+            )
+            println(first(c_means_long_df, 10))
+            push!(fuzzy_objectives, fuzzy_objective)
+            push!(additives_rows, additive)
+            push!(n_clusters_rows, n_clusters)
+            push!(wide_timeseries_dfs, wide_timeseries_df)
+            push!(c_means_long_dfs, c_means_long_df)
+        end
+    end
+    fuzzy_objectives_df = DataFrame(
+        Additive = additives_rows,
+        NClusters = n_clusters_rows,
+        FuzzyObjective = fuzzy_objectives,
+    )
+    all_wide_timeseries_df = vcat(wide_timeseries_dfs...)
+    all_c_means_df = vcat(c_means_long_dfs...)
+    return all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df
 end
 
 function cluster_counts_for_additive(c_means_df, additive)
@@ -178,11 +216,15 @@ end
 
 function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     println("Plotting c-means plot for $additive")
-    df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
+    c_means_df_copy = deepcopy(c_means_df)
+    df0 = unstack(c_means_df_copy, :Cluster, :Weight)
+    df_clusters = select(df0, Not([:Metabolite, :Additive, :NClusters]))
+    df0.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
+    df1 = select(df0, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = innerjoin(df1, wide_timeseries_df, on = [:Additive, :Metabolite])
     df3 = stack(
         df2,
-        Not([:Additive, :Metabolite, :PrimaryCluster]),
+        Not([:Additive, :Metabolite, :PrimaryCluster, :NClusters]),
         variable_name = :Time,
         value_name = :MeanNormalizedIntensity,
     )
@@ -191,7 +233,8 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
-    cluster_counts_df = cluster_counts_for_additive(c_means_df, additive)
+    cluster_counts_df = cluster_counts_for_additive(df0, additive)
+    println(first(cluster_counts_df, 5))
     cluster_counts_subtitle = join(
         [
             "Cluster $c, n=$n" for (c, n) in
@@ -223,11 +266,33 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     println("Wrote $fig_filename")
 end
 
-function plot_c_means_for_all_additives(c_means_df, wide_timeseries_df)
-    additives = unique(c_means_df.Additive)
+function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_timeseries_df)
+    c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
+    additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
     for additive in additives
+        println(">" ^ 60)
+        println(uppercase(additive))
+        wide_timeseries_df =
+            subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
+        # println(first(wide_timeseries_df, 5))
+        # println(first(c_means_df, 5))
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
+end
+
+function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
+    xticks = unique(fuzzy_objectives_df.NClusters)
+    plt =
+        data(fuzzy_objectives_df) *
+        mapping(:NClusters, :FuzzyObjective, row = :Additive) *
+        visual(Lines)
+    figure_options = (; size = (500, 1000), title = "C-Means Objective Elbow Plots")
+    axis_options = (; xticks = xticks)
+    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
+    fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
+    fig_filename = joinpath("output", "c_means_plots", "elbows.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
