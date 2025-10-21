@@ -162,8 +162,9 @@ function c_means_metabolite_trajectories_in_additive(
     return memberships_df, fuzzy_objective
 end
 
-function c_means_metabolite_trajectories(everything_df)
-    additives = unique(everything_df.Additive)
+function c_means_metabolite_trajectories(everything_df; max_clusters = 3)
+    # additives = unique(everything_df.Additive)
+    additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
     c_means_dfs = []
     wide_timeseries_dfs = []
     fuzzy_objectives = []
