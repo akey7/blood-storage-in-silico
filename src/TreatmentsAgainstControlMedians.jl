@@ -170,9 +170,8 @@ function c_means_metabolite_trajectories(everything_df)
     additives_rows = []
     n_clusters_rows = []
     for additive in additives_for_iterator
-        wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
-        push!(wide_timeseries_dfs, wide_timeseries_df)
         for n_clusters in collect(2:5)
+            wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
             println("=" ^ 60)
             println(uppercase(additive), " ", n_clusters, " clusters ", typeof(n_clusters))
             println(first(wide_timeseries_df, 5))
@@ -181,20 +180,20 @@ function c_means_metabolite_trajectories(everything_df)
                 additive,
                 n_clusters = n_clusters,
             )
+            wide_timeseries_df[!, :Additive] .= additive
+            push!(wide_timeseries_dfs, wide_timeseries_df)
             push!(c_means_dfs, c_means_df)
             push!(fuzzy_objectives, fuzzy_objective)
             push!(additives_rows, additive)
             push!(n_clusters_rows, n_clusters)
         end
     end
-    c_means_df = vcat(c_means_dfs...)
-    wide_timeseries_df = vcat(wide_timeseries_dfs...)
     fuzzy_objectives_df = DataFrame(
         Additive = additives_rows,
         NClusters = n_clusters_rows,
         FuzzyObjective = fuzzy_objectives,
     )
-    return c_means_df, wide_timeseries_df, fuzzy_objectives_df
+    return c_means_dfs, wide_timeseries_dfs, fuzzy_objectives_df
 end
 
 function cluster_counts_for_additive(c_means_df, additive)
