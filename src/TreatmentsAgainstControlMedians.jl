@@ -155,8 +155,6 @@ function c_means_metabolite_trajectories_in_additive(
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
-    memberships_df.PrimaryCluster =
-        [argmax(row) for row in eachrow(Matrix(memberships_df[:, axes(result.weights, 2)]))]
     memberships_df[!, :Additive] .= additive
     memberships_df[!, :NClusters] .= n_clusters
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
@@ -218,11 +216,15 @@ end
 
 function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     println("Plotting c-means plot for $additive")
-    df1 = select(c_means_df, [:Additive, :Metabolite, :PrimaryCluster])
+    c_means_df_copy = deepcopy(c_means_df)
+    df0 = unstack(c_means_df_copy, :Cluster, :Weight)
+    df_clusters = select(df0, Not([:Metabolite, :Additive, :NClusters]))
+    df0.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
+    df1 = select(df0, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = innerjoin(df1, wide_timeseries_df, on = [:Additive, :Metabolite])
     df3 = stack(
         df2,
-        Not([:Additive, :Metabolite, :PrimaryCluster]),
+        Not([:Additive, :Metabolite, :PrimaryCluster, :NClusters]),
         variable_name = :Time,
         value_name = :MeanNormalizedIntensity,
     )
@@ -230,10 +232,9 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5 = subset(df4, :Additive => x -> x .== additive)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
-    println(first(df1, 5))
-    println(first(wide_timeseries_df, 5))
     time_points = unique(plt_df.Time)
-    cluster_counts_df = cluster_counts_for_additive(c_means_df, additive)
+    cluster_counts_df = cluster_counts_for_additive(df0, additive)
+    println(first(cluster_counts_df, 5))
     cluster_counts_subtitle = join(
         [
             "Cluster $c, n=$n" for (c, n) in
