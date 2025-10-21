@@ -165,8 +165,8 @@ function c_means_metabolite_trajectories(everything_df)
     # additives = unique(everything_df.Additive)
     additives_for_iterator =
         ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
-    c_means_dfs = []
-    wide_timeseries_dfs = []
+    c_means_dict::Dict{Int64,DataFrame} = Dict()
+    wide_timeseries_dict::Dict{Int64,DataFrame} = Dict()
     fuzzy_objectives = []
     additives_rows = []
     n_clusters_rows = []
@@ -183,8 +183,8 @@ function c_means_metabolite_trajectories(everything_df)
                 n_clusters = n_clusters,
             )
             wide_timeseries_df[!, :Additive] .= additive
-            push!(wide_timeseries_dfs, wide_timeseries_df)
-            push!(c_means_dfs, c_means_df)
+            wide_timeseries_dict[n_clusters] = wide_timeseries_df
+            c_means_dict[n_clusters] = c_means_df
             push!(fuzzy_objectives, fuzzy_objective)
             push!(additives_rows, additive)
             push!(n_clusters_rows, n_clusters)
@@ -195,7 +195,7 @@ function c_means_metabolite_trajectories(everything_df)
         NClusters = n_clusters_rows,
         FuzzyObjective = fuzzy_objectives,
     )
-    return c_means_dfs, wide_timeseries_dfs, fuzzy_objectives_df
+    return c_means_dict, wide_timeseries_dict, fuzzy_objectives_df
 end
 
 function cluster_counts_for_additive(c_means_df, additive)
