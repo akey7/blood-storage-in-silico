@@ -19,7 +19,8 @@ export load_and_clean_2,
     test_mixed_models,
     find_significant_metabolites_additives,
     c_means_metabolite_trajectories,
-    plot_c_means_for_all_additives
+    plot_c_means_for_all_additives,
+    plot_fuzzy_objectives_elbow
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -171,7 +172,8 @@ function c_means_metabolite_trajectories(everything_df)
     n_clusters_rows = []
     for additive in additives_for_iterator
         for n_clusters in collect(2:5)
-            wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
+            wide_timeseries_df =
+                prepare_everything_df_for_clustering(everything_df, additive)
             println("=" ^ 60)
             println(uppercase(additive), " ", n_clusters, " clusters ", typeof(n_clusters))
             println(first(wide_timeseries_df, 5))
@@ -255,6 +257,21 @@ function plot_c_means_for_all_additives(c_means_df, wide_timeseries_df)
     for additive in additives
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
+end
+
+function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
+    xticks = unique(fuzzy_objectives_df.NClusters)
+    plt =
+        data(fuzzy_objectives_df) *
+        mapping(:NClusters, :FuzzyObjective, row = :Additive) *
+        visual(Lines)
+    figure_options = (; size = (500, 1000), title = "C-Means Objective Elbow Plots")
+    axis_options = (; xticks = xticks)
+    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
+    fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
+    fig_filename = joinpath("output", "c_means_plots", "elbows.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
