@@ -174,15 +174,17 @@ function c_means_metabolite_trajectories(everything_df; max_clusters = 3)
     for additive in additives_for_iterator
         wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
         push!(wide_timeseries_dfs, wide_timeseries_df)
-        c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
-            wide_timeseries_df,
-            additive,
-            n_clusters = 5,
-        )
-        push!(c_means_dfs, c_means_df)
-        push!(fuzzy_objectives, fuzzy_objective)
-        push!(additives_rows, additive)
-        push!(n_clusters_rows, 5)
+        for n_clusters in [5]
+            c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
+                wide_timeseries_df,
+                additive,
+                n_clusters = n_clusters,
+            )
+            push!(c_means_dfs, c_means_df)
+            push!(fuzzy_objectives, fuzzy_objective)
+            push!(additives_rows, additive)
+            push!(n_clusters_rows, n_clusters)
+        end
     end
     c_means_df = vcat(c_means_dfs...)
     wide_timeseries_df = vcat(wide_timeseries_dfs...)
