@@ -158,11 +158,10 @@ function c_means_metabolite_trajectories_in_additive(
     memberships_df[!, :Additive] .= additive
     wide_timeseries_df[!, :Additive] .= additive
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
-    println("Fuzzy objective $fuzzy_objective")
     return memberships_df, fuzzy_objective
 end
 
-function c_means_metabolite_trajectories(everything_df; max_clusters = 3)
+function c_means_metabolite_trajectories(everything_df)
     # additives = unique(everything_df.Additive)
     additives_for_iterator =
         ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
@@ -172,6 +171,8 @@ function c_means_metabolite_trajectories(everything_df; max_clusters = 3)
     additives_rows = []
     n_clusters_rows = []
     for additive in additives_for_iterator
+        println("=" ^ 60)
+        println(uppercase(additive))
         wide_timeseries_df = prepare_everything_df_for_clustering(everything_df, additive)
         push!(wide_timeseries_dfs, wide_timeseries_df)
         for n_clusters in [5]
