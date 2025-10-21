@@ -121,7 +121,8 @@ function find_significant_metabolites_additives(everything_df)
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)
-    df1 = subset(everything_df, :Additive => x -> x .== additive)
+    df0 = deepcopy(everything_df)
+    df1 = subset(df0, :Additive => x -> x .== additive)
     df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
     df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
     df4 =
@@ -151,12 +152,13 @@ function c_means_metabolite_trajectories_in_additive(
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
     println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
     result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
-    weights_col_names = ["Cluster$c" for c in axes(result.weights, 2)]
+    weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
     memberships_df.PrimaryCluster =
         [argmax(row) for row in eachrow(Matrix(memberships_df[:, axes(result.weights, 2)]))]
     memberships_df[!, :Additive] .= additive
+    memberships_df[!, :NClusters] .= n_clusters
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
     return memberships_df, fuzzy_objective
 end
@@ -165,8 +167,8 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
     # additives = unique(everything_df.Additive)
     additives_for_iterator =
         ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
-    c_means_dict::Dict{Int64,DataFrame} = Dict()
-    wide_timeseries_dict::Dict{Int64,DataFrame} = Dict()
+    c_means_long_dfs = []
+    wide_timeseries_dfs = []
     fuzzy_objectives = []
     additives_rows = []
     n_clusters_rows = []
@@ -175,19 +177,26 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
             wide_timeseries_df =
                 prepare_everything_df_for_clustering(everything_df, additive)
             println("=" ^ 60)
-            println(uppercase(additive), " ", n_clusters, " clusters ", typeof(n_clusters))
-            println(first(wide_timeseries_df, 5))
+            println(uppercase(additive), " ", n_clusters, " clusters ")
             c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
                 wide_timeseries_df,
                 additive,
                 n_clusters = n_clusters,
             )
             wide_timeseries_df[!, :Additive] .= additive
-            wide_timeseries_dict[n_clusters] = wide_timeseries_df
-            c_means_dict[n_clusters] = c_means_df
+            wide_timeseries_df[!, :NClusters] .= n_clusters
+            c_means_long_df = stack(
+                c_means_df,
+                Not([:Additive, :Metabolite, :NClusters]),
+                variable_name = :Cluster,
+                value_name = :Weight,
+            )
+            println(first(c_means_long_df, 10))
             push!(fuzzy_objectives, fuzzy_objective)
             push!(additives_rows, additive)
             push!(n_clusters_rows, n_clusters)
+            push!(wide_timeseries_dfs, wide_timeseries_df)
+            push!(c_means_long_dfs, c_means_long_df)
         end
     end
     fuzzy_objectives_df = DataFrame(
@@ -195,7 +204,9 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
         NClusters = n_clusters_rows,
         FuzzyObjective = fuzzy_objectives,
     )
-    return c_means_dict, wide_timeseries_dict, fuzzy_objectives_df
+    all_wide_timeseries_df = vcat(wide_timeseries_dfs...)
+    all_c_means_df = vcat(c_means_long_dfs...)
+    return all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df
 end
 
 function cluster_counts_for_additive(c_means_df, additive)
@@ -219,6 +230,8 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5 = subset(df4, :Additive => x -> x .== additive)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
+    println(first(df1, 5))
+    println(first(wide_timeseries_df, 5))
     time_points = unique(plt_df.Time)
     cluster_counts_df = cluster_counts_for_additive(c_means_df, additive)
     cluster_counts_subtitle = join(
@@ -252,10 +265,16 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     println("Wrote $fig_filename")
 end
 
-function plot_c_means_for_all_additives(c_means_df, wide_timeseries_df)
-    additives = unique(c_means_df.Additive)
-    println("Plotting additives $additives")
+function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_timeseries_df)
+    c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
+    additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
     for additive in additives
+        println(">" ^ 60)
+        println(uppercase(additive))
+        wide_timeseries_df =
+            subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
+        # println(first(wide_timeseries_df, 5))
+        # println(first(c_means_df, 5))
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
 end

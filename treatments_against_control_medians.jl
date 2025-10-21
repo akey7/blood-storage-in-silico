@@ -21,11 +21,11 @@ df = load_and_clean_2()
 # CSV.write(results_filename, results_df)
 # println("Wrote $results_filename")
 
-c_means_dict, wide_timeseries_dict, fuzzy_objectives_df =
+all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df =
     c_means_metabolite_trajectories(df, 10)
 c_means_filename = joinpath("output", "c_means_clusters.csv")
-CSV.write(c_means_filename, c_means_dict[7])
+CSV.write(c_means_filename, all_c_means_df)
 println("Wrote $c_means_filename")
-plot_c_means_for_all_additives(c_means_dict[7], wide_timeseries_dict[7])
+plot_c_means_for_all_additives(7, all_c_means_df, all_wide_timeseries_df)
 println(fuzzy_objectives_df)
 plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
