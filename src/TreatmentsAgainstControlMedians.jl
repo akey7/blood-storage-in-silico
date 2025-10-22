@@ -20,7 +20,8 @@ export load_and_clean_2,
     find_significant_metabolites_additives,
     c_means_metabolite_trajectories,
     plot_c_means_for_all_additives,
-    plot_fuzzy_objectives_elbow
+    plot_fuzzy_objectives_elbow,
+    cluster_enrichment_analysis
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -274,8 +275,6 @@ function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_tim
         println(uppercase(additive))
         wide_timeseries_df =
             subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
-        # println(first(wide_timeseries_df, 5))
-        # println(first(c_means_df, 5))
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
 end
@@ -293,6 +292,20 @@ function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
     fig_filename = joinpath("output", "c_means_plots", "elbows.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function cluster_enrichment_analysis(n_clusters, all_c_means_df, pathways_df)
+    all_c_means_df_copy = deepcopy(all_c_means_df)
+    df0 = subset(all_c_means_df_copy, :NClusters => x -> x .== n_clusters)
+    df05 = unstack(df0, :Cluster, :Weight)
+    df_clusters = select(df05, Not([:Metabolite, :Additive, :NClusters]))
+    df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
+    df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
+    df2 = leftjoin(df1, pathways_df, on = :Metabolite => :Compound)
+    df3 = DataFrames.combine(groupby(df2, [:Additive, :PrimaryCluster, :Pathway]), nrow => :Count)
+    df4 = sort(df3, [:Additive, :PrimaryCluster, :Pathway, :Count], rev = [false, false, false, true])
+    println(first(df4, 10))
+    return df4
 end
 
 end

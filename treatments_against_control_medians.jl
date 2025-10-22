@@ -1,6 +1,7 @@
 using Base.Threads
 using Random
 using CSV
+using DataFrames
 
 include("src/TreatmentsAgainstControlMedians.jl")
 using .TreatmentsAgainstControlMedians
@@ -29,3 +30,10 @@ println("Wrote $c_means_filename")
 plot_c_means_for_all_additives(7, all_c_means_df, all_wide_timeseries_df)
 println(fuzzy_objectives_df)
 plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
+
+pathways_filename = joinpath("input", "Pathways 1.csv")
+pathways_df = CSV.read(pathways_filename, DataFrame)
+cluster_enrichment_df = cluster_enrichment_analysis(7, all_c_means_df, pathways_df)
+cluster_enrichment_filename = joinpath("output", "cluster_enrichment.csv")
+CSV.write(cluster_enrichment_filename, cluster_enrichment_df)
+println("Wrote $cluster_enrichment_filename")
