@@ -294,15 +294,16 @@ function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
     println("Wrote $fig_filename")
 end
 
-function cluster_enrichment_analysis(n_clusters, c_means_df)
-    c_means_df_copy = deepcopy(c_means_df)
-    df0 = subset(c_means_df_copy, :NClusters => x -> x .== n_clusters)
+function cluster_enrichment_analysis(n_clusters, all_c_means_df, pathways_df)
+    all_c_means_df_copy = deepcopy(all_c_means_df)
+    df0 = subset(all_c_means_df_copy, :NClusters => x -> x .== n_clusters)
     df05 = unstack(df0, :Cluster, :Weight)
     df_clusters = select(df05, Not([:Metabolite, :Additive, :NClusters]))
     df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
-    println(first(df1, 5))
-    return df1
+    df2 = leftjoin(df1, pathways_df, on = :Metabolite => :Compound)
+    println(first(df2, 10))
+    return df2
 end
 
 end
