@@ -302,8 +302,10 @@ function cluster_enrichment_analysis(n_clusters, all_c_means_df, pathways_df)
     df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = leftjoin(df1, pathways_df, on = :Metabolite => :Compound)
-    println(first(df2, 10))
-    return df2
+    df3 = DataFrames.combine(groupby(df2, [:Additive, :PrimaryCluster, :Pathway]), nrow => :Count)
+    df4 = sort(df3, [:Additive, :PrimaryCluster, :Pathway, :Count], rev = [false, false, false, true])
+    println(first(df4, 10))
+    return df4
 end
 
 end
