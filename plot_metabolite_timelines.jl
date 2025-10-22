@@ -16,4 +16,3 @@ normalized_abundance_correlations_filename =
     joinpath("output", "normalized_abundance_correlations.csv")
 CSV.write(normalized_abundance_correlations_filename, normalized_abundance_correlations_df)
 plot_aggregations_for_all_metabolites(df)
-plot_aggregations_for_all_metabolites_2(df)
