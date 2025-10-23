@@ -9,12 +9,15 @@ using CairoMakie
 using Makie
 using CategoricalArrays
 using Clustering
+using COBREXA
+import JSONFBCModels
 
 export load_and_clean_2,
     c_means_metabolite_trajectories,
     plot_c_means_for_all_additives,
     plot_fuzzy_objectives_elbow,
-    cluster_enrichment_analysis
+    cluster_enrichment_analysis,
+    load_gem
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -46,6 +49,14 @@ function load_and_clean_2()
     )
     df10 = select(df9, [:Sample, :Time, :Additive, :Metabolite, :SplitIntensity])
     return df10
+end
+
+function load_gem()
+    gem_filename = joinpath("input", "RBC-GEM.json")
+    model = load_model(gem_filename)
+    for rxn in model.reactions[1:10]
+        println(rxn["name"], " => ", rxn["subsystem"])
+    end
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)
