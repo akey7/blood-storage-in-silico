@@ -11,7 +11,6 @@ using CategoricalArrays
 using Clustering
 
 export load_and_clean_2,
-    test_mixed_models,
     c_means_metabolite_trajectories,
     plot_c_means_for_all_additives,
     plot_fuzzy_objectives_elbow,
@@ -23,25 +22,30 @@ function load_and_clean_2()
     df2 = stack(
         df1,
         Not([:Sample, :Time, :Additive]),
-        variable_name = :Metabolite,
+        variable_name = :MixedName,
         value_name = :Intensity,
     )
     df3 = subset(df2, :Additive => x -> x .== "01-Ctrl AS3")
     df4 = @combine(
-        groupby(df3, [:Metabolite, :Time]),
+        groupby(df3, [:MixedName, :Time]),
         :ControlMedianIntensity = median(skipmissing(:Intensity))
     )
-    df5 = innerjoin(df2, df4, on = [:Metabolite, :Time])
+    df5 = innerjoin(df2, df4, on = [:MixedName, :Time])
     df6 = transform(
         df5,
         [:Intensity, :ControlMedianIntensity] =>
             ByRow((x, y) -> x / y) => :ControlMedianNormalizedIntensity,
     )
-    normalized_intensity_df = select(
-        df6,
-        [:Sample, :Time, :Additive, :Metabolite, :ControlMedianNormalizedIntensity],
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
+    df8 = innerjoin(df6, proportination_df, on = :MixedName)
+    df9 = transform(
+        df8,
+        [:ControlMedianNormalizedIntensity, :Proportion] =>
+            ByRow((x, y) -> x * y) => :SplitIntensity,
     )
-    return normalized_intensity_df
+    df10 = select(df9, [:Sample, :Time, :Additive, :Metabolite, :SplitIntensity])
+    return df10
 end
 
 function plot_loess_for_metabolite(everything_df, metabolite)
@@ -244,8 +248,15 @@ function cluster_enrichment_analysis(n_clusters, all_c_means_df, pathways_df)
     df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = leftjoin(df1, pathways_df, on = :Metabolite => :Compound)
-    df3 = DataFrames.combine(groupby(df2, [:Additive, :PrimaryCluster, :Pathway]), nrow => :Count)
-    df4 = sort(df3, [:Additive, :PrimaryCluster, :Pathway, :Count], rev = [false, false, false, true])
+    df3 = DataFrames.combine(
+        groupby(df2, [:Additive, :PrimaryCluster, :Pathway]),
+        nrow => :Count,
+    )
+    df4 = sort(
+        df3,
+        [:Additive, :PrimaryCluster, :Pathway, :Count],
+        rev = [false, false, false, true],
+    )
     println(first(df4, 10))
     return df4
 end
