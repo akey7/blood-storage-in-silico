@@ -54,14 +54,23 @@ end
 function load_gem()
     gem_filename = joinpath("input", "RBC-GEM.json")
     model = load_model(gem_filename)
-    rows = map(keys(model.reactions)) do rxn_id
+    reactions_rows = map(keys(model.reactions)) do r
         return (
-            rxn_id = model.reactions[rxn_id]["id"],
-            rxn_name = model.reactions[rxn_id]["name"],
-            subsystem = model.reactions[rxn_id]["subsystem"],
+            rxn_id = model.reactions[r]["id"],
+            rxn_name = model.reactions[r]["name"],
+            subsystem = model.reactions[r]["subsystem"],
         )
     end
-    return DataFrame(rows)
+    reactions_df = DataFrame(reactions_rows)
+    metabolites_rows = []
+    for r in keys(model.reactions)
+        for m in keys(model.reactions[r]["metabolites"])
+            row = (rxn_id = model.reactions[r]["id"], metabolite = m)
+            push!(metabolites_rows, row)
+        end
+    end
+    metabolites_df = DataFrame(metabolites_rows)
+    return reactions_df, metabolites_df
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)

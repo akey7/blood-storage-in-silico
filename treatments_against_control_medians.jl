@@ -15,8 +15,9 @@ normalized_intensity_df = load_and_clean_2()
 df_filename = joinpath("output", "control_median_normalized_intensity.csv")
 CSV.write(df_filename, normalized_intensity_df)
 println("Wrote $df_filename")
-rxn_df = load_gem()
-println(first(rxn_df, 100))
+reactions_df, metabolites_df = load_gem()
+println(first(reactions_df, 10))
+println(first(metabolites_df, 10))
 
 # all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df =
 #     c_means_metabolite_trajectories(normalized_intensity_df, 10)
