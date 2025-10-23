@@ -11,13 +11,13 @@ println("Num threads $num_threads")
 
 Random.seed!(123)
 
-df = load_and_clean_2()
+normalized_intensity_df = load_and_clean_2()
 df_filename = joinpath("output", "control_median_normalized_intensity.csv")
-CSV.write(df_filename, df)
+CSV.write(df_filename, normalized_intensity_df)
 println("Wrote $df_filename")
 
 all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df =
-    c_means_metabolite_trajectories(df, 10)
+    c_means_metabolite_trajectories(normalized_intensity_df, 10)
 c_means_filename = joinpath("output", "c_means_clusters.csv")
 CSV.write(c_means_filename, all_c_means_df)
 println("Wrote $c_means_filename")

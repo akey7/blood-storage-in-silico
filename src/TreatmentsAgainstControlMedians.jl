@@ -37,11 +37,11 @@ function load_and_clean_2()
         [:Intensity, :ControlMedianIntensity] =>
             ByRow((x, y) -> x / y) => :ControlMedianNormalizedIntensity,
     )
-    df7 = select(
+    normalized_intensity_df = select(
         df6,
         [:Sample, :Time, :Additive, :Metabolite, :ControlMedianNormalizedIntensity],
     )
-    return df7
+    return normalized_intensity_df
 end
 
 function plot_loess_for_metabolite(everything_df, metabolite)
