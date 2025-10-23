@@ -48,30 +48,11 @@ function load_and_clean_2()
     return df10
 end
 
-function plot_loess_for_metabolite(everything_df, metabolite)
-    df = subset(everything_df, :Metabolite => x -> x .== metabolite)
-    time_points = unique(df.Time)
-    plt =
-        data(df) *
-        mapping(
-            :Time => "Time",
-            :ControlMedianNormalizedIntensity => "Control Median Normalized Intensity",
-            color = :Additive => "Additive",
-        ) *
-        (visual(Scatter; markersize = 10, alpha = 0.3) + linear())
-    fig = draw(
-        plt;
-        figure = (; size = (750, 500)),
-        axis = (; title = metabolite, xticks = time_points),
-    )
-    return fig
-end
-
 function prepare_everything_df_for_clustering(everything_df, additive)
     df0 = deepcopy(everything_df)
     df1 = subset(df0, :Additive => x -> x .== additive)
-    df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
-    df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
+    df2 = select(df1, [:Metabolite, :Time, :SplitIntensity])
+    df3 = unstack(df2, :Time, :SplitIntensity, combine = mean)
     df4 =
         filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
     wide_timeseries_df = sort(df4, :Metabolite)
