@@ -19,14 +19,14 @@ gem_reactions_df, gem_metabolites_df = load_gem()
 println(first(gem_reactions_df, 10))
 println(first(gem_metabolites_df, 10))
 
-# all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df =
-#     c_means_metabolite_trajectories(normalized_intensity_df, 10)
-# c_means_filename = joinpath("output", "c_means_clusters.csv")
-# CSV.write(c_means_filename, all_c_means_df)
-# println("Wrote $c_means_filename")
-# plot_c_means_for_all_additives(7, all_c_means_df, all_wide_timeseries_df)
-# println(fuzzy_objectives_df)
-# plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
+all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df =
+    c_means_metabolite_trajectories(normalized_intensity_df, 10)
+c_means_filename = joinpath("output", "c_means_clusters.csv")
+CSV.write(c_means_filename, all_c_means_df)
+println("Wrote $c_means_filename")
+plot_c_means_for_all_additives(7, all_c_means_df, all_wide_timeseries_df)
+println(fuzzy_objectives_df)
+plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
 
 cluster_enrichment_df =
     cluster_enrichment_analysis(7, all_c_means_df, gem_reactions_df, gem_metabolites_df)

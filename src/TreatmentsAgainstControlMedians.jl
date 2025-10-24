@@ -56,16 +56,16 @@ function load_gem()
     model = load_model(gem_filename)
     reactions_rows = map(keys(model.reactions)) do r
         return (
-            rxn_id = model.reactions[r]["id"],
-            rxn_name = model.reactions[r]["name"],
-            subsystem = model.reactions[r]["subsystem"],
+            RxnId = model.reactions[r]["id"],
+            RxnName = model.reactions[r]["name"],
+            Subsystem = model.reactions[r]["subsystem"],
         )
     end
     reactions_df = DataFrame(reactions_rows)
     metabolites_rows = []
     for r in keys(model.reactions)
         for m in keys(model.reactions[r]["metabolites"])
-            row = (rxn_id = model.reactions[r]["id"], metabolite = m)
+            row = (RxnId = model.reactions[r]["id"], Metabolite = m)
             push!(metabolites_rows, row)
         end
     end
@@ -258,7 +258,9 @@ function cluster_enrichment_analysis(
     df_clusters = select(df05, Not([:Metabolite, :Additive, :NClusters]))
     df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
-    return df1
+    df2 = innerjoin(df1, gem_metabolites_df, on = :Metabolite)
+    df3 = innerjoin(df2, gem_reactions_df, on = :RxnId)
+    return df3
 end
 
 end
