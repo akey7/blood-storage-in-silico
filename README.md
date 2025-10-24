@@ -5,9 +5,9 @@ Code (but not data) to analyze in silico models of blood storage.
 
 1. In the root of this repo, create the `input/` and `output/` folders. The contents of these folders will not be committed to this repo. That is intentional--in this project, the repo should only be used to store source code.
 
-2. Place [this `.csv` file from Nemkov et al](https://www.frontiersin.org/api/v4/articles/833242/file/Data_Sheet_1.CSV/833242_supplementary-materials_datasheets_1_csv/1) into the `input` folder.
+2. Place [this `.csv` file from Nemkov et al](https://www.frontiersin.org/api/v4/articles/833242/file/Data_Sheet_1.CSV/833242_supplementary-materials_datasheets_1_csv/1) into the `input/` folder.
 
-3. Download the RBC-GEM XML file from GitHub from Haiman et al: [RBC-GEM.xml](https://github.com/z-haiman/RBC-GEM/blob/main/model/RBC-GEM.xml)
+3. Download the RBC-GEM JSON file as found on GitHub from Haiman et al: [RBC-GEM.xml](https://github.com/z-haiman/RBC-GEM/blob/main/model/RBC-GEM.json) and place it in the `input/` folder.
 
 ## Works Cited
 
