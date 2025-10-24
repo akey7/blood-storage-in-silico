@@ -18,7 +18,8 @@ export load_and_clean_2,
     plot_c_means_for_all_additives,
     plot_fuzzy_objectives_elbow,
     cluster_enrichment_analysis,
-    load_gem_and_subsystems
+    load_gem_and_subsystems,
+    plot_cluster_analysis
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -274,6 +275,20 @@ function cluster_enrichment_analysis(
             sort(sdf, :Count, rev = true)[1:min(3, nrow(sdf)), :]
         end
     return enrichment_df, metabolites_subsystems_df, top3_df
+end
+
+function plot_cluster_analysis(top3_df, additive)
+    plt_df = subset(top3_df, :Additive => x -> x .== additive)
+    println(plt_df)
+    plt =
+        data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
+    figure_options =
+        (; size = (1000, 1000), title = "Top 3 Categories of Reactions in Each Cluster")
+    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
+    fig = draw(plt; figure = figure_options, facet = facet_options)
+    fig_filename = joinpath("output", "c_means_plots", "top3.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
