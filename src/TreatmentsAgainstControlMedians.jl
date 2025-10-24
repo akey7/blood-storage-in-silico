@@ -4,6 +4,7 @@ using CSV
 using DataFrames
 using DataFramesMeta
 using Statistics
+using StatsBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
@@ -17,7 +18,8 @@ export load_and_clean_2,
     plot_c_means_for_all_additives,
     plot_fuzzy_objectives_elbow,
     cluster_enrichment_analysis,
-    load_gem
+    load_gem_and_subsystems,
+    plot_cluster_analysis
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -51,17 +53,17 @@ function load_and_clean_2()
     return df10
 end
 
-function load_gem()
+function load_gem_and_subsystems()
     gem_filename = joinpath("input", "RBC-GEM.json")
     model = load_model(gem_filename)
     reactions_rows = map(keys(model.reactions)) do r
-        return (
+        (
             RxnId = model.reactions[r]["id"],
             RxnName = model.reactions[r]["name"],
             Subsystem = model.reactions[r]["subsystem"],
         )
     end
-    reactions_df = DataFrame(reactions_rows)
+    reactions_df1 = DataFrame(reactions_rows)
     metabolites_rows = []
     for r in keys(model.reactions)
         for m in keys(model.reactions[r]["metabolites"])
@@ -70,7 +72,10 @@ function load_gem()
         end
     end
     metabolites_df = DataFrame(metabolites_rows)
-    return reactions_df, metabolites_df
+    subsystems_filename = joinpath("input", "Subsystem Category Map.csv")
+    subsystems_df = CSV.read(subsystems_filename, DataFrame)
+    reactions_df2 = leftjoin(reactions_df1, subsystems_df, on = :Subsystem => :name)
+    return reactions_df2, metabolites_df
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)
@@ -260,12 +265,30 @@ function cluster_enrichment_analysis(
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = innerjoin(df1, gem_metabolites_df, on = :Metabolite)
     df3 = innerjoin(df2, gem_reactions_df, on = :RxnId)
-    gdf4 = @groupby(df3, [:Additive, :PrimaryCluster, :Subsystem])
+    gdf4 = @groupby(df3, [:Additive, :PrimaryCluster, :category])
     df5 = DataFrames.combine(gdf4, nrow => :Count)
     enrichment_df =
         sort(df5, [:Additive, :PrimaryCluster, :Count], rev = [false, false, true])
     metabolites_subsystems_df = sort(df3, [:Additive, :PrimaryCluster, :Metabolite])
-    return enrichment_df, metabolites_subsystems_df
+    top3_df =
+        DataFrames.combine(groupby(enrichment_df, [:Additive, :PrimaryCluster])) do sdf
+            no_transport_df = subset(sdf, :category => x -> x .!= "Transport reactions")
+            sort(no_transport_df, :Count, rev = true)[1:min(3, nrow(no_transport_df)), :]
+        end
+    return enrichment_df, metabolites_subsystems_df, top3_df
+end
+
+function plot_cluster_analysis(top3_df, additive)
+    plt_df = subset(top3_df, :Additive => x -> x .== additive)
+    println(plt_df)
+    plt =
+        data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
+    figure_options =
+        (; size = (1000, 1000), title = "Top 3 Categories of Reactions in Each Cluster")
+    fig = draw(plt; figure = figure_options)
+    fig_filename = joinpath("output", "c_means_plots", "top3.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end

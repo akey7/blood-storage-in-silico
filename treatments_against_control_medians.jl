@@ -15,9 +15,6 @@ normalized_intensity_df = load_and_clean_2()
 df_filename = joinpath("output", "control_median_normalized_intensity.csv")
 CSV.write(df_filename, normalized_intensity_df)
 println("Wrote $df_filename")
-gem_reactions_df, gem_metabolites_df = load_gem()
-println(first(gem_reactions_df, 10))
-println(first(gem_metabolites_df, 10))
 
 all_c_means_df, all_wide_timeseries_df, fuzzy_objectives_df =
     c_means_metabolite_trajectories(normalized_intensity_df, 10)
@@ -28,7 +25,13 @@ plot_c_means_for_all_additives(7, all_c_means_df, all_wide_timeseries_df)
 println(fuzzy_objectives_df)
 plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
 
-enrichment_df, metabolites_subsystems_df =
+gem_reactions_df, gem_metabolites_df = load_gem_and_subsystems()
+println(first(gem_reactions_df, 10))
+println(first(gem_metabolites_df, 10))
+
+enrichment_df, metabolites_subsystems_df, top3_df =
     cluster_enrichment_analysis(7, all_c_means_df, gem_reactions_df, gem_metabolites_df)
-println(first(enrichment_df, 50))
-println(first(metabolites_subsystems_df, 50))
+# println(first(enrichment_df, 50))
+# println(first(metabolites_subsystems_df, 50))
+# println(first(top3_df, 50))
+plot_cluster_analysis(top3_df, "01-Ctrl AS3")
