@@ -246,7 +246,12 @@ function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
     println("Wrote $fig_filename")
 end
 
-function cluster_enrichment_analysis(n_clusters, all_c_means_df)
+function cluster_enrichment_analysis(
+    n_clusters,
+    all_c_means_df,
+    gem_reactions_df,
+    gem_metabolites_df,
+)
     all_c_means_df_copy = deepcopy(all_c_means_df)
     df0 = subset(all_c_means_df_copy, :NClusters => x -> x .== n_clusters)
     df05 = unstack(df0, :Cluster, :Weight)
