@@ -17,7 +17,7 @@ export load_and_clean_2,
     plot_c_means_for_all_additives,
     plot_fuzzy_objectives_elbow,
     cluster_enrichment_analysis,
-    load_gem
+    load_gem_and_subsystems
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -51,7 +51,7 @@ function load_and_clean_2()
     return df10
 end
 
-function load_gem()
+function load_gem_and_subsystems()
     gem_filename = joinpath("input", "RBC-GEM.json")
     model = load_model(gem_filename)
     reactions_rows = map(keys(model.reactions)) do r
@@ -61,7 +61,7 @@ function load_gem()
             Subsystem = model.reactions[r]["subsystem"],
         )
     end
-    reactions_df = DataFrame(reactions_rows)
+    reactions_df1 = DataFrame(reactions_rows)
     metabolites_rows = []
     for r in keys(model.reactions)
         for m in keys(model.reactions[r]["metabolites"])
@@ -70,7 +70,10 @@ function load_gem()
         end
     end
     metabolites_df = DataFrame(metabolites_rows)
-    return reactions_df, metabolites_df
+    subsystems_filename = joinpath("input", "Subsystem Category Map.csv")
+    subsystems_df = CSV.read(subsystems_filename, DataFrame)
+    reactions_df2 = leftjoin(reactions_df1, subsystems_df, on = :Subsystem => :name)
+    return reactions_df2, metabolites_df
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)
