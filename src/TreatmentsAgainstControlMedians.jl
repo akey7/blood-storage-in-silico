@@ -4,6 +4,7 @@ using CSV
 using DataFrames
 using DataFramesMeta
 using Statistics
+using StatsBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
@@ -55,7 +56,7 @@ function load_gem_and_subsystems()
     gem_filename = joinpath("input", "RBC-GEM.json")
     model = load_model(gem_filename)
     reactions_rows = map(keys(model.reactions)) do r
-        return (
+        (
             RxnId = model.reactions[r]["id"],
             RxnName = model.reactions[r]["name"],
             Subsystem = model.reactions[r]["subsystem"],
@@ -268,7 +269,11 @@ function cluster_enrichment_analysis(
     enrichment_df =
         sort(df5, [:Additive, :PrimaryCluster, :Count], rev = [false, false, true])
     metabolites_subsystems_df = sort(df3, [:Additive, :PrimaryCluster, :Metabolite])
-    return enrichment_df, metabolites_subsystems_df
+    top3_df =
+        DataFrames.combine(groupby(enrichment_df, [:Additive, :PrimaryCluster])) do sdf
+            sort(sdf, :Count, rev = true)[1:min(3, nrow(sdf)), :]
+        end
+    return enrichment_df, metabolites_subsystems_df, top3_df
 end
 
 end
