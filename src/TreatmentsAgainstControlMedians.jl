@@ -263,7 +263,7 @@ function cluster_enrichment_analysis(
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = innerjoin(df1, gem_metabolites_df, on = :Metabolite)
     df3 = innerjoin(df2, gem_reactions_df, on = :RxnId)
-    gdf4 = @groupby(df3, [:Additive, :PrimaryCluster, :Subsystem])
+    gdf4 = @groupby(df3, [:Additive, :PrimaryCluster, :category])
     df5 = DataFrames.combine(gdf4, nrow => :Count)
     enrichment_df =
         sort(df5, [:Additive, :PrimaryCluster, :Count], rev = [false, false, true])
