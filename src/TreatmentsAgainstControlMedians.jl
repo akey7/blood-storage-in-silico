@@ -7,21 +7,17 @@ using Statistics
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
-using GLM
 using CategoricalArrays
-using Base.Iterators
-using ThreadsX
-using MultipleTesting
 using Clustering
+using COBREXA
+import JSONFBCModels
 
 export load_and_clean_2,
-    plot_loess_for_all_metabolites,
-    test_mixed_models,
-    find_significant_metabolites_additives,
     c_means_metabolite_trajectories,
     plot_c_means_for_all_additives,
     plot_fuzzy_objectives_elbow,
-    cluster_enrichment_analysis
+    cluster_enrichment_analysis,
+    load_gem
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -29,103 +25,59 @@ function load_and_clean_2()
     df2 = stack(
         df1,
         Not([:Sample, :Time, :Additive]),
-        variable_name = :Metabolite,
+        variable_name = :MixedName,
         value_name = :Intensity,
     )
     df3 = subset(df2, :Additive => x -> x .== "01-Ctrl AS3")
     df4 = @combine(
-        groupby(df3, [:Metabolite, :Time]),
+        groupby(df3, [:MixedName, :Time]),
         :ControlMedianIntensity = median(skipmissing(:Intensity))
     )
-    df5 = innerjoin(df2, df4, on = [:Metabolite, :Time])
+    df5 = innerjoin(df2, df4, on = [:MixedName, :Time])
     df6 = transform(
         df5,
         [:Intensity, :ControlMedianIntensity] =>
             ByRow((x, y) -> x / y) => :ControlMedianNormalizedIntensity,
     )
-    df7 = select(
-        df6,
-        [:Sample, :Time, :Additive, :Metabolite, :ControlMedianNormalizedIntensity],
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
+    df8 = innerjoin(df6, proportination_df, on = :MixedName)
+    df9 = transform(
+        df8,
+        [:ControlMedianNormalizedIntensity, :Proportion] =>
+            ByRow((x, y) -> x * y) => :SplitIntensity,
     )
-    return df7
+    df10 = select(df9, [:Sample, :Time, :Additive, :Metabolite, :SplitIntensity])
+    return df10
 end
 
-function plot_loess_for_metabolite(everything_df, metabolite)
-    df = subset(everything_df, :Metabolite => x -> x .== metabolite)
-    time_points = unique(df.Time)
-    plt =
-        data(df) *
-        mapping(
-            :Time => "Time",
-            :ControlMedianNormalizedIntensity => "Control Median Normalized Intensity",
-            color = :Additive => "Additive",
-        ) *
-        (visual(Scatter; markersize = 10, alpha = 0.3) + linear())
-    fig = draw(
-        plt;
-        figure = (; size = (750, 500)),
-        axis = (; title = metabolite, xticks = time_points),
-    )
-    return fig
-end
-
-function plot_loess_for_all_metabolites(df)
-    metabolites = unique(df.Metabolite)
-    for metabolite in metabolites
-        fig = plot_loess_for_metabolite(df, metabolite)
-        clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
-        filename = joinpath(
-            "output",
-            "control_median_normalized_intensity_plots",
-            "$(clean_metabolite).png",
+function load_gem()
+    gem_filename = joinpath("input", "RBC-GEM.json")
+    model = load_model(gem_filename)
+    reactions_rows = map(keys(model.reactions)) do r
+        return (
+            RxnId = model.reactions[r]["id"],
+            RxnName = model.reactions[r]["name"],
+            Subsystem = model.reactions[r]["subsystem"],
         )
-        save(filename, fig)
-        println("Wrote $filename")
     end
-end
-
-function find_significant_metabolites_additives(everything_df)
-    control = "01-Ctrl AS3"
-    fdr_threshold = 0.05
-    frm = @formula(ControlMedianNormalizedIntensity ~ Time + AdditiveC)
-    metabolites = unique(everything_df.Metabolite)
-    additives = [
-        additive for
-        additive in unique(everything_df.Additive) if !contains(additive, control)
-    ]
-    df1 = deepcopy(everything_df)
-    df1.AdditiveC = categorical(df1.Additive)
-    pairs = vec(collect(product(additives, metabolites)))
-    rows = ThreadsX.map(pairs) do pair
-        additive, metabolite = pair
-        println(additive, " ", metabolite)
-        df2 = subset(
-            df1,
-            :Additive => x -> x .== additive .|| x .== control,
-            :Metabolite => x -> x .== metabolite,
-        )
-        df3 = select(df2, [:ControlMedianNormalizedIntensity, :Time, :AdditiveC])
-        model = lm(frm, df3)
-        ct = coeftable(model)
-        names = coefnames(model)
-        pvals_vec = ct.cols[4]
-        pvals = Dict(names .=> pvals_vec)
-        p_value =
-            isnan(pvals["AdditiveC: $additive"]) ? 1.0 : pvals["AdditiveC: $additive"]
-        return (additive = additive, metabolite = metabolite, p_value = p_value)
+    reactions_df = DataFrame(reactions_rows)
+    metabolites_rows = []
+    for r in keys(model.reactions)
+        for m in keys(model.reactions[r]["metabolites"])
+            row = (RxnId = model.reactions[r]["id"], Metabolite = m)
+            push!(metabolites_rows, row)
+        end
     end
-    result_df = DataFrame(rows)
-    result_df.adj_p_value = adjust(result_df.p_value, BenjaminiHochberg())
-    result_df.significant = result_df.adj_p_value .< fdr_threshold
-    final_df = sort(result_df, :adj_p_value)
-    return final_df
+    metabolites_df = DataFrame(metabolites_rows)
+    return reactions_df, metabolites_df
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)
     df0 = deepcopy(everything_df)
     df1 = subset(df0, :Additive => x -> x .== additive)
-    df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
-    df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
+    df2 = select(df1, [:Metabolite, :Time, :SplitIntensity])
+    df3 = unstack(df2, :Time, :SplitIntensity, combine = mean)
     df4 =
         filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
     wide_timeseries_df = sort(df4, :Metabolite)
@@ -294,18 +246,26 @@ function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
     println("Wrote $fig_filename")
 end
 
-function cluster_enrichment_analysis(n_clusters, all_c_means_df, pathways_df)
+function cluster_enrichment_analysis(
+    n_clusters,
+    all_c_means_df,
+    gem_reactions_df,
+    gem_metabolites_df,
+)
     all_c_means_df_copy = deepcopy(all_c_means_df)
     df0 = subset(all_c_means_df_copy, :NClusters => x -> x .== n_clusters)
     df05 = unstack(df0, :Cluster, :Weight)
     df_clusters = select(df05, Not([:Metabolite, :Additive, :NClusters]))
     df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
-    df2 = leftjoin(df1, pathways_df, on = :Metabolite => :Compound)
-    df3 = DataFrames.combine(groupby(df2, [:Additive, :PrimaryCluster, :Pathway]), nrow => :Count)
-    df4 = sort(df3, [:Additive, :PrimaryCluster, :Pathway, :Count], rev = [false, false, false, true])
-    println(first(df4, 10))
-    return df4
+    df2 = innerjoin(df1, gem_metabolites_df, on = :Metabolite)
+    df3 = innerjoin(df2, gem_reactions_df, on = :RxnId)
+    gdf4 = @groupby(df3, [:Additive, :PrimaryCluster, :Subsystem])
+    df5 = DataFrames.combine(gdf4, nrow => :Count)
+    enrichment_df =
+        sort(df5, [:Additive, :PrimaryCluster, :Count], rev = [false, false, true])
+    metabolites_subsystems_df = sort(df3, [:Additive, :PrimaryCluster, :Metabolite])
+    return enrichment_df, metabolites_subsystems_df
 end
 
 end
