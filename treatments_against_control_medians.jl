@@ -28,9 +28,7 @@ plot_c_means_for_all_additives(7, all_c_means_df, all_wide_timeseries_df)
 println(fuzzy_objectives_df)
 plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
 
-cluster_enrichment_df =
+enrichment_df, metabolites_subsystems_df =
     cluster_enrichment_analysis(7, all_c_means_df, gem_reactions_df, gem_metabolites_df)
-println(first(cluster_enrichment_df, 100))
-# cluster_enrichment_filename = joinpath("output", "cluster_enrichment.csv")
-# CSV.write(cluster_enrichment_filename, cluster_enrichment_df)
-# println("Wrote $cluster_enrichment_filename")
+println(first(enrichment_df, 50))
+println(first(metabolites_subsystems_df, 50))
