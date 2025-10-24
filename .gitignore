@@ -35,3 +35,6 @@ output/
 
 # Ignore macOS junk
 .DS_Store
+
+# Ignore vscode junk
+.vscode/*
