@@ -272,7 +272,8 @@ function cluster_enrichment_analysis(
     metabolites_subsystems_df = sort(df3, [:Additive, :PrimaryCluster, :Metabolite])
     top3_df =
         DataFrames.combine(groupby(enrichment_df, [:Additive, :PrimaryCluster])) do sdf
-            sort(sdf, :Count, rev = true)[1:min(3, nrow(sdf)), :]
+            no_transport_df = subset(sdf, :category => x -> x .!= "Transport reactions")
+            sort(no_transport_df, :Count, rev = true)[1:min(3, nrow(no_transport_df)), :]
         end
     return enrichment_df, metabolites_subsystems_df, top3_df
 end
@@ -284,8 +285,7 @@ function plot_cluster_analysis(top3_df, additive)
         data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
     figure_options =
         (; size = (1000, 1000), title = "Top 3 Categories of Reactions in Each Cluster")
-    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
-    fig = draw(plt; figure = figure_options, facet = facet_options)
+    fig = draw(plt; figure = figure_options)
     fig_filename = joinpath("output", "c_means_plots", "top3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
