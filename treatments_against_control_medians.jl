@@ -30,6 +30,7 @@ plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
 
 cluster_enrichment_df =
     cluster_enrichment_analysis(7, all_c_means_df, gem_reactions_df, gem_metabolites_df)
-cluster_enrichment_filename = joinpath("output", "cluster_enrichment.csv")
-CSV.write(cluster_enrichment_filename, cluster_enrichment_df)
-println("Wrote $cluster_enrichment_filename")
+println(first(cluster_enrichment_df, 100))
+# cluster_enrichment_filename = joinpath("output", "cluster_enrichment.csv")
+# CSV.write(cluster_enrichment_filename, cluster_enrichment_df)
+# println("Wrote $cluster_enrichment_filename")

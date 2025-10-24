@@ -259,7 +259,7 @@ function cluster_enrichment_analysis(
     df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
     df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
     df2 = innerjoin(df1, gem_metabolites_df, on = :Metabolite)
-    df3 = innerjoin(df2, gem_reactions_df, on = :RxnId)
+    df3 = sort(df2, [:Additive, :PrimaryCluster, :Metabolite])
     return df3
 end
 
