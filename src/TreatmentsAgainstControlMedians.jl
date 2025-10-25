@@ -191,8 +191,9 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
-    cluster_counts_df = cluster_counts_for_additive(df0, additive)
-    println(first(cluster_counts_df, 5))
+    df6 = cluster_counts_for_additive(df0, additive)
+    cluster_counts_df = sort(df6, :Count, rev = true)
+    println(cluster_counts_df)
     cluster_counts_subtitle = join(
         [
             "Cluster $c, n=$n" for (c, n) in
