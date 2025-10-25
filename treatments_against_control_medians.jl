@@ -34,4 +34,4 @@ enrichment_df, metabolites_subsystems_df, top3_df =
 # println(first(enrichment_df, 50))
 # println(first(metabolites_subsystems_df, 50))
 # println(first(top3_df, 50))
-plot_cluster_analysis_bar(top3_df, "01-Ctrl AS3")
+plot_bars_for_all_additives(top3_df)

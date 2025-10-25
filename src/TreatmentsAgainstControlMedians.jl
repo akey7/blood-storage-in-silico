@@ -19,7 +19,7 @@ export load_and_clean_2,
     plot_fuzzy_objectives_elbow,
     cluster_enrichment_analysis,
     load_gem_and_subsystems,
-    plot_cluster_analysis_bar
+    plot_bars_for_all_additives
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -285,11 +285,18 @@ function plot_cluster_analysis_bar(top3_df, additive)
     plt =
         data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
     figure_options =
-        (; size = (1000, 500), title = "Top 3 Categories of Reactions in Each Cluster")
+        (; size = (1000, 500), title = additive, subtitle = "Top 3 Categories of Reactions in Each Cluster")
     fig = draw(plt; figure = figure_options)
-    fig_filename = joinpath("output", "c_means_plots", "top3.png")
+    fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function plot_bars_for_all_additives(top3_df)
+    additives = unique(top3_df.Additive)
+    for additive in additives
+        plot_cluster_analysis_bar(top3_df, additive)
+    end
 end
 
 end
