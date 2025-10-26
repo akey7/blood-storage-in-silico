@@ -297,14 +297,6 @@ function plot_cluster_analysis_bar(top3_df, additive)
 end
 
 function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_cluster)
-    # categories_of_interest = [
-    #     "Amino acid metabolism",
-    #     "Carbohydrate metabolism",
-    #     "Lipid metabolism",
-    #     "Nucleotide metabolism",
-    #     "Metabolism of cofactors and vitamins",
-    #     "Reactive species",
-    # ]
     top3_df1 = subset(
         top3_df,
         :Additive => x -> x .== additive,
