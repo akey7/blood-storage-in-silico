@@ -296,36 +296,48 @@ function plot_cluster_analysis_bar(top3_df, additive)
     println("Wrote $fig_filename")
 end
 
-function plot_cluster_analysis_pie(enrichment_df, additive)
-    categories_of_interest = [
-        "Amino acid metabolism",
-        "Carbohydrate metabolism",
-        "Lipid metabolism",
-        "Nucleotide metabolism",
-        "Metabolism of cofactors and vitamins",
-        "Reactive species",
-    ]
-    df1 = deepcopy(enrichment_df)
-    df2 = subset(df1, :Additive => x -> x .== additive, :category => x -> x .!= "Transport reactions")
-    df3 = transform(
-        df2,
-        :category =>
-            ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
-                :interesting_category,
+function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_cluster)
+    # categories_of_interest = [
+    #     "Amino acid metabolism",
+    #     "Carbohydrate metabolism",
+    #     "Lipid metabolism",
+    #     "Nucleotide metabolism",
+    #     "Metabolism of cofactors and vitamins",
+    #     "Reactive species",
+    # ]
+    top3_df1 = subset(
+        top3_df,
+        :Additive => x -> x .== additive,
+        :category => x -> x .!= "Transport reactions",
     )
-    df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
-    println(df4)
-    values = df4.nrow
-    labels = df4.interesting_category
-    colors = Makie.wong_colors()
-    fig = Figure(; size = (750, 500))
-    ax = Axis(fig[1, 1], title = additive)
-    hidedecorations!(ax)
-    pie!(ax, values, color = colors[eachindex(values)])
-    legend_elements = [PolyElement(color = colors[i]) for i in eachindex(labels)]
-    Legend(fig[1, 2], legend_elements, labels, framevisible = false)
-    fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
-    save(fig_filename, fig)
+    categories_of_interest = top3_df1.category
+    df1 = deepcopy(enrichment_df)
+    df2 = subset(
+        df1,
+        :Additive => x -> x .== additive,
+    )
+    println(">" ^ 60)
+    println("df2")
+    println(df2)
+    # df3 = transform(
+    #     df2,
+    #     :category =>
+    #         ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
+    #             :interesting_category,
+    # )
+    # df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
+    # values = df4.nrow
+    # labels = df4.interesting_category
+    # n_colors = length(values)
+    # color_map = [cgrad(:hawaii10)[i] for i in range(0, 1, length=n_colors)]
+    # fig = Figure(; size = (750, 500))
+    # ax = Axis(fig[1, 1], title = additive)
+    # hidedecorations!(ax)
+    # pie!(ax, values, color = color_map)
+    # legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
+    # Legend(fig[1, 2], legend_elements, labels, framevisible = false)
+    # fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
+    # save(fig_filename, fig)
 end
 
 function plot_bars_for_all_additives(top3_df)
