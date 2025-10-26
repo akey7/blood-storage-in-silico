@@ -19,7 +19,8 @@ export load_and_clean_2,
     plot_fuzzy_objectives_elbow,
     cluster_enrichment_analysis,
     load_gem_and_subsystems,
-    plot_bars_for_all_additives
+    plot_bars_for_all_additives,
+    plot_cluster_analysis_pie
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -284,12 +285,43 @@ function plot_cluster_analysis_bar(top3_df, additive)
     println(plt_df)
     plt =
         data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
-    figure_options =
-        (; size = (1000, 500), title = additive, subtitle = "Top 3 Categories of Reactions in Each Cluster")
+    figure_options = (;
+        size = (1000, 500),
+        title = additive,
+        subtitle = "Top 3 Categories of Reactions in Each Cluster",
+    )
     fig = draw(plt; figure = figure_options)
     fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function plot_cluster_analysis_pie(enrichment_df, additive)
+    categories_of_interest = [
+        "Amino acid metabolism",
+        "Carbohydrate metabolism",
+        "Lipid metabolism",
+        "Nucleotide metabolism",
+        "Metabolism of cofactors and vitamins",
+        "Reactive species",
+    ]
+    df1 = deepcopy(enrichment_df)
+    df2 = subset(df1, :Additive => x -> x .== additive, :category => x -> x .!= "Transport reactions")
+    df3 = transform(
+        df2,
+        :category =>
+            ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
+                :interesting_category,
+    )
+    df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
+    println(df4)
+    values = df4.nrow
+    labels = df4.interesting_category
+    fig = Figure(; size = (500, 500))
+    ax = Axis(fig[1, 1], title = additive)
+    pie!(ax, values)
+    fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
+    save(fig_filename, fig)
 end
 
 function plot_bars_for_all_additives(top3_df)
