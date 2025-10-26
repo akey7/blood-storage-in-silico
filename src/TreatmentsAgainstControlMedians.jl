@@ -317,9 +317,13 @@ function plot_cluster_analysis_pie(enrichment_df, additive)
     println(df4)
     values = df4.nrow
     labels = df4.interesting_category
-    fig = Figure(; size = (500, 500))
+    colors = Makie.wong_colors()
+    fig = Figure(; size = (1000, 500))
     ax = Axis(fig[1, 1], title = additive)
-    pie!(ax, values)
+    hidedecorations!(ax)
+    pie!(ax, values, color = colors[eachindex(values)])
+    legend_elements = [PolyElement(color = colors[i]) for i in eachindex(labels)]
+    Legend(fig[1, 2], legend_elements, labels, framevisible = false)
     fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
     save(fig_filename, fig)
 end
