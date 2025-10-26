@@ -318,7 +318,7 @@ function plot_cluster_analysis_pie(enrichment_df, additive)
     values = df4.nrow
     labels = df4.interesting_category
     colors = Makie.wong_colors()
-    fig = Figure(; size = (1000, 500))
+    fig = Figure(; size = (750, 500))
     ax = Axis(fig[1, 1], title = additive)
     hidedecorations!(ax)
     pie!(ax, values, color = colors[eachindex(values)])
