@@ -286,13 +286,16 @@ function plot_cluster_analysis_bar(top3_df, additive)
     plt_df = subset(top3_df, :Additive => x -> x .== additive)
     println(plt_df)
     plt =
-        data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
+        data(plt_df) *
+        mapping(:PrimaryCluster => "Cluster", :Count => "log10(Count)", color = :category) *
+        visual(BarPlot)
     figure_options = (;
         size = (1000, 500),
         title = additive,
         subtitle = "Top 3 Categories of Reactions in Each Cluster",
     )
-    fig = draw(plt; figure = figure_options)
+    axis_options = (; yscale = log10)
+    fig = draw(plt; figure = figure_options, axis = axis_options)
     fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
@@ -327,7 +330,7 @@ function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_clu
         [cgrad(:hawaii10)[1]]
     title = "$additive, Cluster $primary_cluster"
     fig = Figure(; size = (750, 500))
-    ax = Axis(fig[1, 1], title = additive)
+    ax = Axis(fig[1, 1], title = title)
     hidedecorations!(ax)
     pie!(ax, values, color = color_map)
     legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
