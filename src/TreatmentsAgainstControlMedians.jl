@@ -315,29 +315,28 @@ function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_clu
     df2 = subset(
         df1,
         :Additive => x -> x .== additive,
+        :category => x -> x .!= "Transport reactions",
+        :PrimaryCluster => x -> x .== Symbol(primary_cluster)
     )
-    println(">" ^ 60)
-    println("df2")
-    println(df2)
-    # df3 = transform(
-    #     df2,
-    #     :category =>
-    #         ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
-    #             :interesting_category,
-    # )
-    # df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
-    # values = df4.nrow
-    # labels = df4.interesting_category
-    # n_colors = length(values)
-    # color_map = [cgrad(:hawaii10)[i] for i in range(0, 1, length=n_colors)]
-    # fig = Figure(; size = (750, 500))
-    # ax = Axis(fig[1, 1], title = additive)
-    # hidedecorations!(ax)
-    # pie!(ax, values, color = color_map)
-    # legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
-    # Legend(fig[1, 2], legend_elements, labels, framevisible = false)
-    # fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
-    # save(fig_filename, fig)
+    df3 = transform(
+        df2,
+        :category =>
+            ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
+                :interesting_category,
+    )
+    df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
+    values = df4.nrow
+    labels = df4.interesting_category
+    n_colors = length(values)
+    color_map = [cgrad(:hawaii10)[i] for i in range(0, 1, length=n_colors)]
+    fig = Figure(; size = (750, 500))
+    ax = Axis(fig[1, 1], title = additive)
+    hidedecorations!(ax)
+    pie!(ax, values, color = color_map)
+    legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
+    Legend(fig[1, 2], legend_elements, labels, framevisible = false)
+    fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
+    save(fig_filename, fig)
 end
 
 function plot_bars_for_all_additives(top3_df)
