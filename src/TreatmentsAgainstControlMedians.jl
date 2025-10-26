@@ -19,7 +19,8 @@ export load_and_clean_2,
     plot_fuzzy_objectives_elbow,
     cluster_enrichment_analysis,
     load_gem_and_subsystems,
-    plot_cluster_analysis
+    plot_bars_for_all_additives,
+    plot_cluster_analysis_pie
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -191,8 +192,9 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
-    cluster_counts_df = cluster_counts_for_additive(df0, additive)
-    println(first(cluster_counts_df, 5))
+    df6 = cluster_counts_for_additive(df0, additive)
+    cluster_counts_df = sort(df6, :Count, rev = true)
+    println(cluster_counts_df)
     cluster_counts_subtitle = join(
         [
             "Cluster $c, n=$n" for (c, n) in
@@ -278,17 +280,62 @@ function cluster_enrichment_analysis(
     return enrichment_df, metabolites_subsystems_df, top3_df
 end
 
-function plot_cluster_analysis(top3_df, additive)
+function plot_cluster_analysis_bar(top3_df, additive)
     plt_df = subset(top3_df, :Additive => x -> x .== additive)
     println(plt_df)
     plt =
         data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
-    figure_options =
-        (; size = (1000, 1000), title = "Top 3 Categories of Reactions in Each Cluster")
+    figure_options = (;
+        size = (1000, 500),
+        title = additive,
+        subtitle = "Top 3 Categories of Reactions in Each Cluster",
+    )
     fig = draw(plt; figure = figure_options)
-    fig_filename = joinpath("output", "c_means_plots", "top3.png")
+    fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_cluster)
+    top3_df1 = subset(
+        top3_df,
+        :Additive => x -> x .== additive,
+        :category => x -> x .!= "Transport reactions",
+    )
+    categories_of_interest = top3_df1.category
+    df1 = deepcopy(enrichment_df)
+    df2 = subset(
+        df1,
+        :Additive => x -> x .== additive,
+        :category => x -> x .!= "Transport reactions",
+        :PrimaryCluster => x -> x .== Symbol(primary_cluster)
+    )
+    df3 = transform(
+        df2,
+        :category =>
+            ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
+                :interesting_category,
+    )
+    df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
+    values = df4.nrow
+    labels = df4.interesting_category
+    n_colors = length(values)
+    color_map = [cgrad(:hawaii10)[i] for i in range(0, 1, length=n_colors)]
+    fig = Figure(; size = (750, 500))
+    ax = Axis(fig[1, 1], title = additive)
+    hidedecorations!(ax)
+    pie!(ax, values, color = color_map)
+    legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
+    Legend(fig[1, 2], legend_elements, labels, framevisible = false)
+    fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
+    save(fig_filename, fig)
+end
+
+function plot_bars_for_all_additives(top3_df)
+    additives = unique(top3_df.Additive)
+    for additive in additives
+        plot_cluster_analysis_bar(top3_df, additive)
+    end
 end
 
 end
