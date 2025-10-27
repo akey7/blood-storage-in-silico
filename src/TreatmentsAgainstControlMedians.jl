@@ -305,59 +305,10 @@ function plot_cluster_analysis_bar(top3_df, additive, category_colors)
         title = additive,
         subtitle = "Top 3 Categories of Reactions in Each Cluster",
     )
-    # axis_options = (; yscale = log10)
-    # fig = draw(plt; figure = figure_options, axis = axis_options)
     fig = draw(plt; figure = figure_options)
     fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
-end
-
-function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_cluster)
-    top3_df1 = subset(
-        top3_df,
-        :Additive => x -> x .== additive,
-        :category => x -> x .!= "Transport reactions",
-    )
-    categories_of_interest = top3_df1.category
-    df1 = deepcopy(enrichment_df)
-    df2 = subset(
-        df1,
-        :Additive => x -> x .== additive,
-        :category => x -> x .!= "Transport reactions",
-        :PrimaryCluster => x -> x .== Symbol(primary_cluster),
-    )
-    df3 = transform(
-        df2,
-        :category =>
-            ByRow(x -> x in categories_of_interest ? x : "Other metabolism") =>
-                :interesting_category,
-    )
-    df4 = DataFrames.combine(groupby(df3, :interesting_category), nrow)
-    values = df4.nrow
-    labels = df4.interesting_category
-    n_colors = length(values)
-    color_map =
-        n_colors > 1 ? [cgrad(:hawaii10)[i] for i in range(0, 1, length = n_colors)] :
-        [cgrad(:hawaii10)[1]]
-    title = "$additive, Cluster $primary_cluster"
-    fig = Figure(; size = (750, 500))
-    ax = Axis(fig[1, 1], title = title)
-    hidedecorations!(ax)
-    pie!(ax, values, color = color_map)
-    legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
-    Legend(fig[1, 2], legend_elements, labels, framevisible = false)
-    fig_filename = joinpath("output", "c_means_plots", "Pie $additive $primary_cluster.png")
-    save(fig_filename, fig)
-end
-
-function plot_pies(top3_df, enrichment_df)
-    additives = unique(enrichment_df.Additive)
-    clusters = unique(enrichment_df.PrimaryCluster)
-    pie_specs = product(additives, clusters)
-    for (additive, cluster) in pie_specs
-        plot_cluster_analysis_pie(top3_df, enrichment_df, additive, cluster)
-    end
 end
 
 function plot_bars_for_all_additives(top3_df, category_colors)
