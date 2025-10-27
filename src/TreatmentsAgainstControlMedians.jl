@@ -286,20 +286,28 @@ function cluster_enrichment_analysis(
     return enrichment_df, metabolites_subsystems_df, top3_df, category_colors
 end
 
-function plot_cluster_analysis_bar(top3_df, additive)
+function plot_cluster_analysis_bar(top3_df, additive, category_colors)
     plt_df = subset(top3_df, :Additive => x -> x .== additive)
+    plt_df.color_val = [category_colors[p] for p in plt_df.category]
     println(plt_df)
+    set_theme!(Theme(palette = (color = category_colors,)))
     plt =
         data(plt_df) *
-        mapping(:PrimaryCluster => "Cluster", :Count => "log10(Count)", color = :category) *
+        mapping(
+            :PrimaryCluster => "Cluster",
+            :Count,
+            stack = :category,
+            color = :category,
+        ) *
         visual(BarPlot)
     figure_options = (;
         size = (1000, 500),
         title = additive,
         subtitle = "Top 3 Categories of Reactions in Each Cluster",
     )
-    axis_options = (; yscale = log10)
-    fig = draw(plt; figure = figure_options, axis = axis_options)
+    # axis_options = (; yscale = log10)
+    # fig = draw(plt; figure = figure_options, axis = axis_options)
+    fig = draw(plt; figure = figure_options)
     fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
@@ -352,10 +360,10 @@ function plot_pies(top3_df, enrichment_df)
     end
 end
 
-function plot_bars_for_all_additives(top3_df)
+function plot_bars_for_all_additives(top3_df, category_colors)
     additives = unique(top3_df.Additive)
     for additive in additives
-        plot_cluster_analysis_bar(top3_df, additive)
+        plot_cluster_analysis_bar(top3_df, additive, category_colors)
     end
 end
 
