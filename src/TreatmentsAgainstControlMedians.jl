@@ -136,7 +136,6 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
         for n_clusters in collect(2:max_clusters)
             wide_timeseries_df =
                 prepare_everything_df_for_clustering(everything_df, additive)
-            println("=" ^ 60)
             println(uppercase(additive), " ", n_clusters, " clusters ")
             c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
                 wide_timeseries_df,
@@ -233,7 +232,6 @@ function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_tim
     c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
     additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
     for additive in additives
-        println(">" ^ 60)
         println(uppercase(additive))
         wide_timeseries_df =
             subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
