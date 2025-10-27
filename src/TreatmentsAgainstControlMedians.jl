@@ -1,26 +1,29 @@
 module TreatmentsAgainstControlMedians
 
+using Base.Iterators
 using CSV
 using DataFrames
 using DataFramesMeta
 using Statistics
+using StatsBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
-using GLM
 using CategoricalArrays
-using Base.Iterators
-using ThreadsX
-using MultipleTesting
 using Clustering
+using COBREXA
+import JSONFBCModels
+using ColorSchemes
 
 export load_and_clean_2,
-    plot_loess_for_all_metabolites,
-    test_mixed_models,
-    find_significant_metabolites_additives,
     c_means_metabolite_trajectories,
     plot_c_means_for_all_additives,
-    plot_fuzzy_objectives_elbow
+    plot_fuzzy_objectives_elbow,
+    cluster_enrichment_analysis,
+    load_gem_and_subsystems,
+    plot_bars_for_all_additives,
+    plot_cluster_analysis_pie,
+    plot_pies
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -28,103 +31,62 @@ function load_and_clean_2()
     df2 = stack(
         df1,
         Not([:Sample, :Time, :Additive]),
-        variable_name = :Metabolite,
+        variable_name = :MixedName,
         value_name = :Intensity,
     )
     df3 = subset(df2, :Additive => x -> x .== "01-Ctrl AS3")
     df4 = @combine(
-        groupby(df3, [:Metabolite, :Time]),
+        groupby(df3, [:MixedName, :Time]),
         :ControlMedianIntensity = median(skipmissing(:Intensity))
     )
-    df5 = innerjoin(df2, df4, on = [:Metabolite, :Time])
+    df5 = innerjoin(df2, df4, on = [:MixedName, :Time])
     df6 = transform(
         df5,
         [:Intensity, :ControlMedianIntensity] =>
             ByRow((x, y) -> x / y) => :ControlMedianNormalizedIntensity,
     )
-    df7 = select(
-        df6,
-        [:Sample, :Time, :Additive, :Metabolite, :ControlMedianNormalizedIntensity],
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
+    df8 = innerjoin(df6, proportination_df, on = :MixedName)
+    df9 = transform(
+        df8,
+        [:ControlMedianNormalizedIntensity, :Proportion] =>
+            ByRow((x, y) -> x * y) => :SplitIntensity,
     )
-    return df7
+    df10 = select(df9, [:Sample, :Time, :Additive, :Metabolite, :SplitIntensity])
+    return df10
 end
 
-function plot_loess_for_metabolite(everything_df, metabolite)
-    df = subset(everything_df, :Metabolite => x -> x .== metabolite)
-    time_points = unique(df.Time)
-    plt =
-        data(df) *
-        mapping(
-            :Time => "Time",
-            :ControlMedianNormalizedIntensity => "Control Median Normalized Intensity",
-            color = :Additive => "Additive",
-        ) *
-        (visual(Scatter; markersize = 10, alpha = 0.3) + linear())
-    fig = draw(
-        plt;
-        figure = (; size = (750, 500)),
-        axis = (; title = metabolite, xticks = time_points),
-    )
-    return fig
-end
-
-function plot_loess_for_all_metabolites(df)
-    metabolites = unique(df.Metabolite)
-    for metabolite in metabolites
-        fig = plot_loess_for_metabolite(df, metabolite)
-        clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
-        filename = joinpath(
-            "output",
-            "control_median_normalized_intensity_plots",
-            "$(clean_metabolite).png",
+function load_gem_and_subsystems()
+    gem_filename = joinpath("input", "RBC-GEM.json")
+    model = load_model(gem_filename)
+    reactions_rows = map(keys(model.reactions)) do r
+        (
+            RxnId = model.reactions[r]["id"],
+            RxnName = model.reactions[r]["name"],
+            Subsystem = model.reactions[r]["subsystem"],
         )
-        save(filename, fig)
-        println("Wrote $filename")
     end
-end
-
-function find_significant_metabolites_additives(everything_df)
-    control = "01-Ctrl AS3"
-    fdr_threshold = 0.05
-    frm = @formula(ControlMedianNormalizedIntensity ~ Time + AdditiveC)
-    metabolites = unique(everything_df.Metabolite)
-    additives = [
-        additive for
-        additive in unique(everything_df.Additive) if !contains(additive, control)
-    ]
-    df1 = deepcopy(everything_df)
-    df1.AdditiveC = categorical(df1.Additive)
-    pairs = vec(collect(product(additives, metabolites)))
-    rows = ThreadsX.map(pairs) do pair
-        additive, metabolite = pair
-        println(additive, " ", metabolite)
-        df2 = subset(
-            df1,
-            :Additive => x -> x .== additive .|| x .== control,
-            :Metabolite => x -> x .== metabolite,
-        )
-        df3 = select(df2, [:ControlMedianNormalizedIntensity, :Time, :AdditiveC])
-        model = lm(frm, df3)
-        ct = coeftable(model)
-        names = coefnames(model)
-        pvals_vec = ct.cols[4]
-        pvals = Dict(names .=> pvals_vec)
-        p_value =
-            isnan(pvals["AdditiveC: $additive"]) ? 1.0 : pvals["AdditiveC: $additive"]
-        return (additive = additive, metabolite = metabolite, p_value = p_value)
+    reactions_df1 = DataFrame(reactions_rows)
+    metabolites_rows = []
+    for r in keys(model.reactions)
+        for m in keys(model.reactions[r]["metabolites"])
+            row = (RxnId = model.reactions[r]["id"], Metabolite = m)
+            push!(metabolites_rows, row)
+        end
     end
-    result_df = DataFrame(rows)
-    result_df.adj_p_value = adjust(result_df.p_value, BenjaminiHochberg())
-    result_df.significant = result_df.adj_p_value .< fdr_threshold
-    final_df = sort(result_df, :adj_p_value)
-    return final_df
+    metabolites_df = DataFrame(metabolites_rows)
+    subsystems_filename = joinpath("input", "Subsystem Category Map.csv")
+    subsystems_df = CSV.read(subsystems_filename, DataFrame)
+    reactions_df2 = leftjoin(reactions_df1, subsystems_df, on = :Subsystem => :name)
+    return reactions_df2, metabolites_df
 end
 
 function prepare_everything_df_for_clustering(everything_df, additive)
     df0 = deepcopy(everything_df)
     df1 = subset(df0, :Additive => x -> x .== additive)
-    df2 = select(df1, [:Metabolite, :Time, :ControlMedianNormalizedIntensity])
-    df3 = unstack(df2, :Time, :ControlMedianNormalizedIntensity, combine = mean)
+    df2 = select(df1, [:Metabolite, :Time, :SplitIntensity])
+    df3 = unstack(df2, :Time, :SplitIntensity, combine = mean)
     df4 =
         filter(row -> all(!isnan, skipmissing([row[col] for col in names(df3)[2:7]])), df3)
     wide_timeseries_df = sort(df4, :Metabolite)
@@ -174,7 +136,6 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
         for n_clusters in collect(2:max_clusters)
             wide_timeseries_df =
                 prepare_everything_df_for_clustering(everything_df, additive)
-            println("=" ^ 60)
             println(uppercase(additive), " ", n_clusters, " clusters ")
             c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
                 wide_timeseries_df,
@@ -233,8 +194,9 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     df5.Time = parse.(Int, df5.Time)
     plt_df = dropmissing(df5, :MeanNormalizedIntensity)
     time_points = unique(plt_df.Time)
-    cluster_counts_df = cluster_counts_for_additive(df0, additive)
-    println(first(cluster_counts_df, 5))
+    df6 = cluster_counts_for_additive(df0, additive)
+    cluster_counts_df = sort(df6, :Count, rev = true)
+    println(cluster_counts_df)
     cluster_counts_subtitle = join(
         [
             "Cluster $c, n=$n" for (c, n) in
@@ -270,12 +232,9 @@ function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_tim
     c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
     additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
     for additive in additives
-        println(">" ^ 60)
         println(uppercase(additive))
         wide_timeseries_df =
             subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
-        # println(first(wide_timeseries_df, 5))
-        # println(first(c_means_df, 5))
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
 end
@@ -293,6 +252,68 @@ function plot_fuzzy_objectives_elbow(fuzzy_objectives_df)
     fig_filename = joinpath("output", "c_means_plots", "elbows.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function cluster_enrichment_analysis(
+    n_clusters,
+    all_c_means_df,
+    gem_reactions_df,
+    gem_metabolites_df,
+)
+    all_c_means_df_copy = deepcopy(all_c_means_df)
+    df0 = subset(all_c_means_df_copy, :NClusters => x -> x .== n_clusters)
+    df05 = unstack(df0, :Cluster, :Weight)
+    df_clusters = select(df05, Not([:Metabolite, :Additive, :NClusters]))
+    df05.PrimaryCluster = [argmax(row) for row in eachrow(df_clusters)]
+    df1 = select(df05, [:Metabolite, :Additive, :PrimaryCluster])
+    df2 = innerjoin(df1, gem_metabolites_df, on = :Metabolite)
+    df3 = innerjoin(df2, gem_reactions_df, on = :RxnId)
+    gdf4 = @groupby(df3, [:Additive, :PrimaryCluster, :category])
+    df5 = DataFrames.combine(gdf4, nrow => :Count)
+    enrichment_df =
+        sort(df5, [:Additive, :PrimaryCluster, :Count], rev = [false, false, true])
+    metabolites_subsystems_df = sort(df3, [:Additive, :PrimaryCluster, :Metabolite])
+    top3_df =
+        DataFrames.combine(groupby(enrichment_df, [:Additive, :PrimaryCluster])) do sdf
+            no_transport_df = subset(sdf, :category => x -> x .!= "Transport reactions")
+            sort(no_transport_df, :Count, rev = true)[1:min(3, nrow(no_transport_df)), :]
+        end
+    sorted_categories = unique(sort(df3, :category).category)
+    category_colors =
+        Dict(x => y for (x, y) in zip(sorted_categories, ColorSchemes.tableau_20))
+    return enrichment_df, metabolites_subsystems_df, top3_df, category_colors
+end
+
+function plot_cluster_analysis_bar(top3_df, additive, category_colors)
+    plt_df = subset(top3_df, :Additive => x -> x .== additive)
+    plt_df.color_val = [category_colors[p] for p in plt_df.category]
+    println(plt_df)
+    set_theme!(Theme(palette = (color = category_colors,)))
+    plt =
+        data(plt_df) *
+        mapping(
+            :PrimaryCluster => "Cluster",
+            :Count,
+            stack = :category,
+            color = :category,
+        ) *
+        visual(BarPlot)
+    figure_options = (;
+        size = (1000, 500),
+        title = additive,
+        subtitle = "Top 3 Categories of Reactions in Each Cluster",
+    )
+    fig = draw(plt; figure = figure_options)
+    fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
+end
+
+function plot_bars_for_all_additives(top3_df, category_colors)
+    additives = unique(top3_df.Additive)
+    for additive in additives
+        plot_cluster_analysis_bar(top3_df, additive, category_colors)
+    end
 end
 
 end
