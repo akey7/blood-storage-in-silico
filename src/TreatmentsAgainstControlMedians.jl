@@ -13,6 +13,7 @@ using CategoricalArrays
 using Clustering
 using COBREXA
 import JSONFBCModels
+using ColorSchemes
 
 export load_and_clean_2,
     c_means_metabolite_trajectories,
@@ -280,7 +281,9 @@ function cluster_enrichment_analysis(
             sort(no_transport_df, :Count, rev = true)[1:min(3, nrow(no_transport_df)), :]
         end
     sorted_categories = unique(sort(df3, :category).category)
-    return enrichment_df, metabolites_subsystems_df, top3_df, sorted_categories
+    category_colors =
+        Dict(x => y for (x, y) in zip(sorted_categories, ColorSchemes.tableau_20))
+    return enrichment_df, metabolites_subsystems_df, top3_df, category_colors
 end
 
 function plot_cluster_analysis_bar(top3_df, additive)

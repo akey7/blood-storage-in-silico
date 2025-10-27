@@ -29,12 +29,12 @@ gem_reactions_df, gem_metabolites_df = load_gem_and_subsystems()
 println(first(gem_reactions_df, 10))
 println(first(gem_metabolites_df, 10))
 
-enrichment_df, metabolites_subsystems_df, top3_df, sorted_categories =
+enrichment_df, metabolites_subsystems_df, top3_df, category_colors =
     cluster_enrichment_analysis(7, all_c_means_df, gem_reactions_df, gem_metabolites_df)
 println(first(enrichment_df, 50))
 println(first(metabolites_subsystems_df, 50))
 println(first(top3_df, 50))
-println(sorted_categories)
+println(category_colors)
 # plot_bars_for_all_additives(top3_df)
 # plot_cluster_analysis_pie(top3_df, enrichment_df, "01-Ctrl AS3", 6)
 # plot_pies(top3_df, enrichment_df)
