@@ -279,7 +279,8 @@ function cluster_enrichment_analysis(
             no_transport_df = subset(sdf, :category => x -> x .!= "Transport reactions")
             sort(no_transport_df, :Count, rev = true)[1:min(3, nrow(no_transport_df)), :]
         end
-    return enrichment_df, metabolites_subsystems_df, top3_df
+    sorted_categories = unique(sort(df3, :category).category)
+    return enrichment_df, metabolites_subsystems_df, top3_df, sorted_categories
 end
 
 function plot_cluster_analysis_bar(top3_df, additive)
