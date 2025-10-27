@@ -1,5 +1,6 @@
 module TreatmentsAgainstControlMedians
 
+using Base.Iterators
 using CSV
 using DataFrames
 using DataFramesMeta
@@ -12,6 +13,7 @@ using CategoricalArrays
 using Clustering
 using COBREXA
 import JSONFBCModels
+using ColorSchemes
 
 export load_and_clean_2,
     c_means_metabolite_trajectories,
@@ -20,7 +22,8 @@ export load_and_clean_2,
     cluster_enrichment_analysis,
     load_gem_and_subsystems,
     plot_bars_for_all_additives,
-    plot_cluster_analysis_pie
+    plot_cluster_analysis_pie,
+    plot_pies
 
 function load_and_clean_2()
     filename = joinpath("input", "Data Sheet 1.CSV")
@@ -277,19 +280,33 @@ function cluster_enrichment_analysis(
             no_transport_df = subset(sdf, :category => x -> x .!= "Transport reactions")
             sort(no_transport_df, :Count, rev = true)[1:min(3, nrow(no_transport_df)), :]
         end
-    return enrichment_df, metabolites_subsystems_df, top3_df
+    sorted_categories = unique(sort(df3, :category).category)
+    category_colors =
+        Dict(x => y for (x, y) in zip(sorted_categories, ColorSchemes.tableau_20))
+    return enrichment_df, metabolites_subsystems_df, top3_df, category_colors
 end
 
-function plot_cluster_analysis_bar(top3_df, additive)
+function plot_cluster_analysis_bar(top3_df, additive, category_colors)
     plt_df = subset(top3_df, :Additive => x -> x .== additive)
+    plt_df.color_val = [category_colors[p] for p in plt_df.category]
     println(plt_df)
+    set_theme!(Theme(palette = (color = category_colors,)))
     plt =
-        data(plt_df) * mapping(:PrimaryCluster, :Count, color = :category) * visual(BarPlot)
+        data(plt_df) *
+        mapping(
+            :PrimaryCluster => "Cluster",
+            :Count,
+            stack = :category,
+            color = :category,
+        ) *
+        visual(BarPlot)
     figure_options = (;
         size = (1000, 500),
         title = additive,
         subtitle = "Top 3 Categories of Reactions in Each Cluster",
     )
+    # axis_options = (; yscale = log10)
+    # fig = draw(plt; figure = figure_options, axis = axis_options)
     fig = draw(plt; figure = figure_options)
     fig_filename = joinpath("output", "c_means_plots", "$additive Top 3.png")
     save(fig_filename, fig)
@@ -308,7 +325,7 @@ function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_clu
         df1,
         :Additive => x -> x .== additive,
         :category => x -> x .!= "Transport reactions",
-        :PrimaryCluster => x -> x .== Symbol(primary_cluster)
+        :PrimaryCluster => x -> x .== Symbol(primary_cluster),
     )
     df3 = transform(
         df2,
@@ -320,21 +337,33 @@ function plot_cluster_analysis_pie(top3_df, enrichment_df, additive, primary_clu
     values = df4.nrow
     labels = df4.interesting_category
     n_colors = length(values)
-    color_map = [cgrad(:hawaii10)[i] for i in range(0, 1, length=n_colors)]
+    color_map =
+        n_colors > 1 ? [cgrad(:hawaii10)[i] for i in range(0, 1, length = n_colors)] :
+        [cgrad(:hawaii10)[1]]
+    title = "$additive, Cluster $primary_cluster"
     fig = Figure(; size = (750, 500))
-    ax = Axis(fig[1, 1], title = additive)
+    ax = Axis(fig[1, 1], title = title)
     hidedecorations!(ax)
     pie!(ax, values, color = color_map)
     legend_elements = [PolyElement(color = color_map[i]) for i in eachindex(labels)]
     Legend(fig[1, 2], legend_elements, labels, framevisible = false)
-    fig_filename = joinpath("output", "c_means_plots", "$additive Pie.png")
+    fig_filename = joinpath("output", "c_means_plots", "Pie $additive $primary_cluster.png")
     save(fig_filename, fig)
 end
 
-function plot_bars_for_all_additives(top3_df)
+function plot_pies(top3_df, enrichment_df)
+    additives = unique(enrichment_df.Additive)
+    clusters = unique(enrichment_df.PrimaryCluster)
+    pie_specs = product(additives, clusters)
+    for (additive, cluster) in pie_specs
+        plot_cluster_analysis_pie(top3_df, enrichment_df, additive, cluster)
+    end
+end
+
+function plot_bars_for_all_additives(top3_df, category_colors)
     additives = unique(top3_df.Additive)
     for additive in additives
-        plot_cluster_analysis_bar(top3_df, additive)
+        plot_cluster_analysis_bar(top3_df, additive, category_colors)
     end
 end
 
