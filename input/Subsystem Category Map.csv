@@ -1,0 +1,79 @@
+﻿name,category
+"Alanine, aspartate and glutamate metabolism",Amino acid metabolism
+Arginine and proline metabolism,Amino acid metabolism
+Cysteine and methionine metabolism,Amino acid metabolism
+"Glycine, serine and threonine metabolism",Amino acid metabolism
+Histidine metabolism,Amino acid metabolism
+Lysine metabolism,Amino acid metabolism
+"Phenylalanine, tyrosine and tryptophan metabolism",Amino acid metabolism
+"Valine, leucine, and isoleucine metabolism",Amino acid metabolism
+Amino sugar and nucleotide sugar metabolism,Carbohydrate metabolism
+Ascorbate and aldarate metabolism,Carbohydrate metabolism
+Fructose and mannose metabolism,Carbohydrate metabolism
+Galactose metabolism,Carbohydrate metabolism
+Glycolysis / Gluconeogenesis,Carbohydrate metabolism
+Inositol phosphate metabolism,Carbohydrate metabolism
+Pentose and glucuronate interconversions,Carbohydrate metabolism
+Pentose phosphate pathway,Carbohydrate metabolism
+Pyruvate metabolism,Carbohydrate metabolism
+Starch and sucrose metabolism,Carbohydrate metabolism
+Tricarboxylic acid cycle and glyoxylate/dicarboxylate metabolism,Carbohydrate metabolism
+Renin-angiotensin system,Endocrine system
+Ubiquitin mediated proteolysis,"Folding, sorting and degradation"
+Glycosphingolipid biosynthesis - ganglio series,Glycan biosynthesis and metabolism
+Glycosphingolipid biosynthesis - globo and isoglobo series,Glycan biosynthesis and metabolism
+Glycosphingolipid biosynthesis - lacto and neolacto series,Glycan biosynthesis and metabolism
+N-glycan metabolism,Glycan biosynthesis and metabolism
+Acyl-CoA hydrolysis,Lipid metabolism
+Androgen metabolism,Lipid metabolism
+Arachidonic acid metabolism,Lipid metabolism
+Carnitine shuttle (cytosolic),Lipid metabolism
+Cholesterol metabolism,Lipid metabolism
+Docosahexaenoic acid metabolism,Lipid metabolism
+Eicosapentaenoic acid metabolism,Lipid metabolism
+Estrogen metabolism,Lipid metabolism
+Ether lipid metabolism,Lipid metabolism
+Fatty acid activation (cytosolic),Lipid metabolism
+Fatty acid biosynthesis,Lipid metabolism
+Fatty acid biosynthesis (even-chain),Lipid metabolism
+Fatty acid biosynthesis (unsaturated),Lipid metabolism
+Fatty acid desaturation (even-chain),Lipid metabolism
+Fatty acid elongation (even-chain),Lipid metabolism
+Fatty acid elongation (odd-chain),Lipid metabolism
+Fatty acid oxidation,Lipid metabolism
+Glycerolipid metabolism,Lipid metabolism
+Glycerophospholipid metabolism,Lipid metabolism
+Leukotriene metabolism,Lipid metabolism
+Linoleate metabolism,Lipid metabolism
+Omega-3 fatty acid metabolism,Lipid metabolism
+Omega-6 fatty acid metabolism,Lipid metabolism
+Prostaglandin biosynthesis,Lipid metabolism
+Retinol metabolism,Lipid metabolism
+Sphingolipid metabolism,Lipid metabolism
+Steroid metabolism,Lipid metabolism
+Biopterin metabolism,Metabolism of cofactors and vitamins
+Folate metabolism,Metabolism of cofactors and vitamins
+Nicotinate and nicotinamide metabolism,Metabolism of cofactors and vitamins
+Pantothenate and CoA metabolism,Metabolism of cofactors and vitamins
+Porphyrin metabolism,Metabolism of cofactors and vitamins
+Riboflavin metabolism,Metabolism of cofactors and vitamins
+Thiamine metabolism,Metabolism of cofactors and vitamins
+Vitamin B6 metabolism,Metabolism of cofactors and vitamins
+Vitamin E metabolism,Metabolism of cofactors and vitamins
+Glutathione metabolism,Metabolism of other amino acids
+Selenocompound metabolism,Metabolism of other amino acids
+Nucleotide metabolism,Nucleotide metabolism
+Purine metabolism,Nucleotide metabolism
+Pyrimidine metabolism,Nucleotide metabolism
+Miscellaneous,Other
+Peptide metabolism,Other
+Protein modification,Other
+Pseudoreactions,Pseudoreactions
+Hemoglobin binding and degradation,Reactive species
+Reactive species formation and detoxification,Reactive species
+Sulfur metabolism,Reactive species
+Aminoacyl-tRNA biosynthesis,Translation
+"Transport, extracellular",Transport reactions
+5-fluorouracil metabolism,Xenobiotics biodegradation and metabolism
+Azathioprine and 6-mercaptopurine metabolism,Xenobiotics biodegradation and metabolism
+Ribavirin metabolism,Xenobiotics biodegradation and metabolism
