@@ -29,7 +29,7 @@ function load_and_clean_3()
         transform([:mmol_per_L, :Proportion] => ByRow((x, y) -> x * y) => :prop_mmol_per_L)
         select([:sample_set, :id, :Metabolite, :prop_mmol_per_L])
     end
-    println(first(absolute_quant_df, 10))
+    return absolute_quant_df
 end
 
 end
