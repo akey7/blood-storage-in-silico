@@ -29,7 +29,11 @@ function load_and_clean_3()
         transform([:mmol_per_L, :Proportion] => ByRow((x, y) -> x * y) => :prop_mmol_per_L)
         select([:sample_set, :id, :Metabolite, :prop_mmol_per_L])
     end
-    return absolute_quant_df
+    normalization_df = @chain absolute_quant_df begin
+        @groupby(:sample_set, :Metabolite)
+        @combine(:median_prop_mmol_per_L = median(:prop_mmol_per_L))
+    end
+    return absolute_quant_df, normalization_df
 end
 
 end
