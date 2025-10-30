@@ -24,9 +24,9 @@ function load_absolute_quant()
     absolute_metabolite_ids = DataFrame(XLSX.readtable(absolute_filename, "metabolite_ids"))
     absolute_quant_df = @chain cells_day_1_df begin
         stack(Not(:id), variable_name = :mixed_name, value_name = :mmol_per_L)
-        @transform(@byrow :sample_set = split(:id, "_")[2])
+        @rtransform(:sample_set = split(:id, "_")[2])
         innerjoin(absolute_metabolite_ids, on = :mixed_name => :MixedName)
-        @transform(@byrow :prop_mmol_per_L = :mmol_per_L * :Proportion)
+        @rtransform(:prop_mmol_per_L = :mmol_per_L * :Proportion)
         select([:sample_set, :id, :Metabolite, :prop_mmol_per_L])
     end
     absolute_quant_medians_df = @by absolute_quant_df :Metabolite begin
@@ -53,7 +53,7 @@ function load_relative_quant()
     end
     fold_changes_df = @chain long_df begin
         innerjoin(ctrl_time_1_median_df, on = :MixedName)
-        @transform(@byrow :FoldChange = :Intensity / :CtrlTime1MedianIntensity)
+        @rtransform(:FoldChange = :Intensity / :CtrlTime1MedianIntensity)
         innerjoin(proportination_df, on = :MixedName)
         @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
     end
@@ -63,7 +63,7 @@ end
 function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
-        @transform(@byrow :relative_mmol_per_L = :FoldChange * :median_prop_mmol_per_L)
+        @rtransform(:relative_mmol_per_L = :FoldChange * :median_prop_mmol_per_L)
     end
     wide_df = @chain long_df begin
         @select(:Sample, :Time, :Additive, :Metabolite, :relative_mmol_per_L)
