@@ -64,10 +64,17 @@ function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_med
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
         @rtransform(:relative_mmol_per_L = :FoldChange * :median_prop_mmol_per_L)
+        @orderby(:Additive, :Time, :Metabolite)
     end
     wide_df = @chain long_df begin
         @select(:Sample, :Time, :Additive, :Metabolite, :relative_mmol_per_L)
-        unstack([:Sample, :Time, :Additive], :Metabolite, :relative_mmol_per_L, combine = first)
+        unstack(
+            [:Sample, :Time, :Additive],
+            :Metabolite,
+            :relative_mmol_per_L,
+            combine = first,
+        )
+        @orderby(:Additive, :Time)
     end
     return long_df, wide_df
 end
