@@ -17,7 +17,9 @@ import JSONFBCModels
 using ColorSchemes
 
 export load_absolute_quant,
-    load_relative_quant, combine_relative_and_absolute_quant, cluster_all_additives
+    load_relative_quant,
+    combine_relative_and_absolute_quant,
+    cluster_all_additives_all_n_clusters
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -110,7 +112,7 @@ function c_means_metabolite_trajectories(
     μ = 2.0,
 )
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 500, display = :iter)
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
@@ -120,16 +122,37 @@ function c_means_metabolite_trajectories(
     return memberships_df, fuzzy_objective
 end
 
-function cluster_all_additives(long_df; n_clusters = 7)
+function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
     additives = unique(long_df.Additive)
-    for additive in additives
-        println(uppercase(additive))
-        memberships_df = @chain long_df begin
-            prepare_long_df_for_clustering(additive)
-            c_means_metabolite_trajectories(additive = additive, n_clusters = n_clusters)
+    all_memberships_dfs::Dict{Int64,DataFrame} = Dict()
+    fuzzy_objectives::Vector{NamedTuple} = []
+    for n_clusters = 2:max_clusters
+        memberships_dfs::Vector{DataFrame} = []
+        for additive in additives
+            println(uppercase(additive), " n_clusters ", n_clusters)
+            memberships_df, fuzzy_objective = @chain long_df begin
+                prepare_long_df_for_clustering(additive)
+                c_means_metabolite_trajectories(
+                    additive = additive,
+                    n_clusters = n_clusters,
+                )
+            end
+            push!(
+                fuzzy_objectives,
+                (
+                    additive = additive,
+                    n_clusters = n_clusters,
+                    fuzzy_objective = fuzzy_objective,
+                ),
+            )
+            push!(memberships_dfs, memberships_df)
+            println(first(memberships_df, 10))
+            println("Fuzzy objective: ", fuzzy_objective)
         end
-        println(first(memberships_df, 10))
+        all_memberships_dfs[n_clusters] = vcat(memberships_dfs...)
     end
+    fuzzy_objectives_df = DataFrame(fuzzy_objectives)
+    return all_memberships_dfs, fuzzy_objectives_df
 end
 
 end

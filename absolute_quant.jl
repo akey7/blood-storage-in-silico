@@ -20,4 +20,5 @@ CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
 
 println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
-cluster_all_additives(long_df)
+all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(long_df)
+println(fuzzy_objectives_df)
