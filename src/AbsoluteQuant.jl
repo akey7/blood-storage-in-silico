@@ -183,12 +183,21 @@ function plot_c_means_for_additive_and_n_clusters(
     additive,
     n_clusters,
 )
-    membership_df = deepcopy(all_memberships_dfs[n_clusters])
-    primary_cluster_df = select(membership_df, Not([:Metabolite, :Additive, :NClusters]))
+    df1 = deepcopy(all_memberships_dfs[n_clusters])
+    membership_df = @chain df1 begin
+        @rsubset(:Additive == additive, :NClusters == n_clusters)
+        @orderby(:Metabolite)
+    end
+    primary_cluster_df = @select membership_df Not([:Metabolite, :Additive, :NClusters])
     primary_cluster_df.primary_cluster =
         [argmax(row) for row in eachrow(primary_cluster_df)]
     membership_df.primary_cluster = primary_cluster_df.primary_cluster
-    println(first(membership_df, 10))
+    plt_df = @chain long_df begin
+        @rsubset(:Additive == additive)
+        innerjoin(membership_df, on = [:Additive, :Metabolite])
+        @select(:Sample, :Time, :Metabolite, :primary_cluster, :relative_mmol_per_L)
+    end
+    println(first(plt_df, 100))
 end
 
 end
