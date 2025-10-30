@@ -16,9 +16,9 @@ using COBREXA
 import JSONFBCModels
 using ColorSchemes
 
-export load_and_clean_3
+export load_absolute_quant, load_relative_quant
 
-function load_and_clean_3()
+function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
     cells_day_1_df = DataFrame(XLSX.readtable(absolute_filename, "cells_day_1"))
     absolute_metabolite_ids = DataFrame(XLSX.readtable(absolute_filename, "metabolite_ids"))
@@ -33,6 +33,27 @@ function load_and_clean_3()
         :median_prop_mmol_per_L = median(:prop_mmol_per_L)
     end
     return absolute_quant_df, normalization_df
+end
+
+function load_relative_quant()
+    relative_filename = joinpath("input", "Data Sheet 1.CSV")
+    wide_df = CSV.read(relative_filename, DataFrame)
+    long_df = stack(
+        wide_df,
+        Not([:Sample, :Time, :Additive]),
+        variable_name = :MixedName,
+        value_name = :Intensity,
+    )
+    control_intensity_df =
+        subset(long_df, :Additive => x -> x .== "01-Ctrl AS3", :Time => x -> x .== 1)
+    ctrl_time_1_median_df = @by control_intensity_df :MixedName begin
+        :CtrlTime1MedianIntensity = median(skipmissing(:Intensity))
+    end
+    relative_fold_change_df = @chain long_df begin
+        innerjoin(ctrl_time_1_median_df, on = [:MixedName])
+        @transform(@byrow :RelativeFoldChange = :Intensity / :CtrlTime1MedianIntensity)
+    end
+    return relative_fold_change_df
 end
 
 end
