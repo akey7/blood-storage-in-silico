@@ -19,7 +19,8 @@ using ColorSchemes
 export load_absolute_quant,
     load_relative_quant,
     combine_relative_and_absolute_quant,
-    cluster_all_additives_all_n_clusters
+    cluster_all_additives_all_n_clusters,
+    plot_elbows
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -153,6 +154,26 @@ function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
     end
     fuzzy_objectives_df = DataFrame(fuzzy_objectives)
     return all_memberships_dfs, fuzzy_objectives_df
+end
+
+function plot_elbows(fuzzy_objectives_df)
+    fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
+    xticks = unique(fuzzy_objectives_df.n_clusters)
+    plt =
+        data(fuzzy_objectives_df) *
+        mapping(
+            :n_clusters => "N Clusters",
+            :fuzzy_objective => "Fuzzy Objective",
+            row = :additive,
+        ) *
+        visual(Lines)
+    figure_options = (; size = (500, 1000), title = "C-Means Objective Elbow Plots")
+    axis_options = (; xticks = xticks)
+    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
+    fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
+    fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
