@@ -20,7 +20,8 @@ export load_absolute_quant,
     load_relative_quant,
     combine_relative_and_absolute_quant,
     cluster_all_additives_all_n_clusters,
-    plot_elbows
+    plot_elbows,
+    plot_c_means_for_additive_and_n_clusters
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -174,6 +175,20 @@ function plot_elbows(fuzzy_objectives_df)
     fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function plot_c_means_for_additive_and_n_clusters(
+    long_df,
+    all_memberships_dfs,
+    additive,
+    n_clusters,
+)
+    membership_df = deepcopy(all_memberships_dfs[n_clusters])
+    primary_cluster_df = select(membership_df, Not([:Metabolite, :Additive, :NClusters]))
+    primary_cluster_df.primary_cluster =
+        [argmax(row) for row in eachrow(primary_cluster_df)]
+    membership_df.primary_cluster = primary_cluster_df.primary_cluster
+    println(first(membership_df, 10))
 end
 
 end
