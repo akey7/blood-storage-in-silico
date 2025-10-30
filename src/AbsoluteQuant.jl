@@ -16,7 +16,7 @@ using COBREXA
 import JSONFBCModels
 using ColorSchemes
 
-export load_absolute_quant, load_relative_quant
+export load_absolute_quant, load_relative_quant, combine_relative_and_absolute_quant
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -29,10 +29,10 @@ function load_absolute_quant()
         @transform(@byrow :prop_mmol_per_L = :mmol_per_L * :Proportion)
         select([:sample_set, :id, :Metabolite, :prop_mmol_per_L])
     end
-    normalization_df = @by absolute_quant_df :Metabolite begin
+    absolute_quant_medians_df = @by absolute_quant_df :Metabolite begin
         :median_prop_mmol_per_L = median(:prop_mmol_per_L)
     end
-    return absolute_quant_df, normalization_df
+    return absolute_quant_df, absolute_quant_medians_df
 end
 
 function load_relative_quant()
@@ -60,7 +60,13 @@ function load_relative_quant()
     return fold_changes_df
 end
 
-function combine_relative_and_absolute_quant(relative_fold_changes_df)
+function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+    long_df = @chain fold_changes_df begin
+        innerjoin(absolute_quant_medians_df, on = :Metabolite)
+        @transform(@byrow :relative_mmol_per_L = :FoldChange * :median_prop_mmol_per_L)
+    end
+    wide_df = unstack(long_df, :Metabolite, :relative_mmol_per_L)
+    return long_df, wide_df
 end
 
 end
