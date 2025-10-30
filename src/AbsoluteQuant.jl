@@ -38,6 +38,8 @@ end
 function load_relative_quant()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
     wide_df = CSV.read(relative_filename, DataFrame)
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
     long_df = stack(
         wide_df,
         Not([:Sample, :Time, :Additive]),
@@ -49,11 +51,14 @@ function load_relative_quant()
     ctrl_time_1_median_df = @by control_intensity_df :MixedName begin
         :CtrlTime1MedianIntensity = median(skipmissing(:Intensity))
     end
-    relative_fold_change_df = @chain long_df begin
-        innerjoin(ctrl_time_1_median_df, on = [:MixedName])
+    proportinated_fold_changes_df = @chain long_df begin
+        innerjoin(ctrl_time_1_median_df, on = :MixedName)
         @transform(@byrow :RelativeFoldChange = :Intensity / :CtrlTime1MedianIntensity)
+        innerjoin(proportination_df, on = :MixedName)
+        @transform(@byrow :SplitFoldChange = :RelativeFoldChange * :Proportion)
+        @select(:Sample, :Time, :Additive, :Metabolite, :SplitFoldChange)
     end
-    return relative_fold_change_df
+    return proportinated_fold_changes_df
 end
 
 end
