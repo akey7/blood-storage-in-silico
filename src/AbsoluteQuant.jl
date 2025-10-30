@@ -91,12 +91,44 @@ function prepare_long_df_for_clustering(long_df, additive)
     return wide_timeseries_df
 end
 
-function cluster_all_additives(long_df)
+function calc_fuzzy_objective(result, X, μ = 2.0)
+    c = result.centers
+    W = result.weights
+    total = 0.0
+    for i in axes(X, 1)
+        for j in axes(c, 2)
+            total += W[i, j]^μ * sum((X[i, :] ./ -c[:, j]) .^ 2)
+        end
+    end
+    return total
+end
+
+function c_means_metabolite_trajectories(
+    wide_timeseries_df;
+    additive = "01-Ctrl AS3",
+    n_clusters = 5,
+    μ = 2.0,
+)
+    X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    weights_col_names = string.(axes(result.weights, 2))
+    memberships_df = DataFrame(result.weights, weights_col_names)
+    memberships_df.Metabolite = wide_timeseries_df.Metabolite
+    memberships_df[!, :Additive] .= additive
+    memberships_df[!, :NClusters] .= n_clusters
+    fuzzy_objective = calc_fuzzy_objective(result, X, μ)
+    return memberships_df, fuzzy_objective
+end
+
+function cluster_all_additives(long_df; n_clusters = 7)
     additives = unique(long_df.Additive)
     for additive in additives
         println(uppercase(additive))
-        wide_timeseries_df = prepare_long_df_for_clustering(long_df, additive)
-        println(first(wide_timeseries_df, 10))
+        memberships_df = @chain long_df begin
+            prepare_long_df_for_clustering(additive)
+            c_means_metabolite_trajectories(additive = additive, n_clusters = n_clusters)
+        end
+        println(first(memberships_df, 10))
     end
 end
 
