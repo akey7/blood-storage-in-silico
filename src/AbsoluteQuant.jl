@@ -199,7 +199,29 @@ function plot_c_means_for_additive_and_n_clusters(
         @select(:Patient, :Metabolite, :Time, :primary_cluster, :relative_mmol_per_L)
         @orderby(:Metabolite, :Patient, :Time)
     end
-    println(first(plt_df, 100))
+    time_points = unique(plt_df.Time)
+    plt =
+        data(plt_df) *
+        mapping(
+            :Time,
+            :relative_mmol_per_L,
+            row = :primary_cluster,
+            group = :Metabolite,
+        ) *
+        visual(Lines) *
+        visual(alpha = 0.1)
+    figure_options =
+        (; size = (500, 1000), title = additive)
+    fig = draw(
+        plt;
+        figure = figure_options,
+        axis = (; xticks = time_points),
+        facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
+    )
+    clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
+    fig_filename = joinpath("output", "relative_absolute_c_means", "$clean_additive $n_clusters Clusters.png")
+    save(fig_filename, fig)
+    println("Wrote $fig_filename")
 end
 
 end
