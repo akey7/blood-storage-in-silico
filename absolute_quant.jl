@@ -1,3 +1,5 @@
+using CSV
+
 include("src/AbsoluteQuant.jl")
 using .AbsoluteQuant
 
@@ -5,6 +7,8 @@ num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
 absolute_quant_df, normalization_df = load_absolute_quant()
+absolute_quant_filename = joinpath("output", "absolute_quant.csv")
+CSV.write(absolute_quant_filename, absolute_quant_df)
 println(first(normalization_df, 10))
 
 relative_fold_change_df = load_relative_quant()

@@ -24,12 +24,12 @@ function load_absolute_quant()
     absolute_metabolite_ids = DataFrame(XLSX.readtable(absolute_filename, "metabolite_ids"))
     absolute_quant_df = @chain cells_day_1_df begin
         stack(Not(:id), variable_name = :mixed_name, value_name = :mmol_per_L)
-        transform(:id => ByRow(x -> split(x, "_")[2]) => :sample_set)
+        @transform(@byrow :sample_set = split(:id, "_")[2])
         innerjoin(absolute_metabolite_ids, on = :mixed_name => :MixedName)
-        transform([:mmol_per_L, :Proportion] => ByRow((x, y) -> x * y) => :prop_mmol_per_L)
+        @transform(@byrow :prop_mmol_per_L = :mmol_per_L * :Proportion)
         select([:sample_set, :id, :Metabolite, :prop_mmol_per_L])
     end
-    normalization_df = @by absolute_quant_df [:sample_set, :Metabolite] begin
+    normalization_df = @by absolute_quant_df :Metabolite begin
         :median_prop_mmol_per_L = median(:prop_mmol_per_L)
     end
     return absolute_quant_df, normalization_df
@@ -51,14 +51,16 @@ function load_relative_quant()
     ctrl_time_1_median_df = @by control_intensity_df :MixedName begin
         :CtrlTime1MedianIntensity = median(skipmissing(:Intensity))
     end
-    proportinated_fold_changes_df = @chain long_df begin
+    fold_changes_df = @chain long_df begin
         innerjoin(ctrl_time_1_median_df, on = :MixedName)
-        @transform(@byrow :RelativeFoldChange = :Intensity / :CtrlTime1MedianIntensity)
+        @transform(@byrow :FoldChange = :Intensity / :CtrlTime1MedianIntensity)
         innerjoin(proportination_df, on = :MixedName)
-        @transform(@byrow :SplitFoldChange = :RelativeFoldChange * :Proportion)
-        @select(:Sample, :Time, :Additive, :Metabolite, :SplitFoldChange)
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
     end
-    return proportinated_fold_changes_df
+    return fold_changes_df
+end
+
+function combine_relative_and_absolute_quant(relative_fold_changes_df)
 end
 
 end
