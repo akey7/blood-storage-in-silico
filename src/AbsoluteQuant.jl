@@ -192,6 +192,7 @@ function plot_c_means_for_additive_and_n_clusters(
     primary_cluster_df.primary_cluster =
         [argmax(row) for row in eachrow(primary_cluster_df)]
     membership_df.primary_cluster = primary_cluster_df.primary_cluster
+    println(first(membership_df, 100))
     plt_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
@@ -202,12 +203,7 @@ function plot_c_means_for_additive_and_n_clusters(
     time_points = unique(plt_df.Time)
     plt =
         data(plt_df) *
-        mapping(
-            :Time,
-            :relative_mmol_per_L,
-            row = :primary_cluster,
-            group = :Metabolite,
-        ) *
+        mapping(:Time, :relative_mmol_per_L, row = :primary_cluster, group = :Metabolite) *
         visual(Lines) *
         visual(alpha = 0.1)
     figure_options =
@@ -219,7 +215,11 @@ function plot_c_means_for_additive_and_n_clusters(
         facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
-    fig_filename = joinpath("output", "relative_absolute_c_means", "$clean_additive $n_clusters Clusters.png")
+    fig_filename = joinpath(
+        "output",
+        "relative_absolute_c_means",
+        "$clean_additive $n_clusters Clusters.png",
+    )
     save(fig_filename, fig)
     println("Wrote $fig_filename")
 end
