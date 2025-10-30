@@ -6,6 +6,7 @@ using .AbsoluteQuant
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
+println(">" ^ 10, " WRANGLING DATA ", "<" ^ 10)
 absolute_quant_df, absolute_quant_medians_df = load_absolute_quant()
 absolute_quant_filename = joinpath("output", "absolute_quant.csv")
 CSV.write(absolute_quant_filename, absolute_quant_df)
@@ -17,3 +18,6 @@ println(first(long_df, 10))
 relative_absolute_quant_filename = joinpath("output", "relative_absolute_quant.csv")
 CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
+
+println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
+cluster_all_additives(long_df)

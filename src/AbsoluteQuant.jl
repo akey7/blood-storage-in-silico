@@ -16,7 +16,8 @@ using COBREXA
 import JSONFBCModels
 using ColorSchemes
 
-export load_absolute_quant, load_relative_quant, combine_relative_and_absolute_quant
+export load_absolute_quant,
+    load_relative_quant, combine_relative_and_absolute_quant, cluster_all_additives
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -77,6 +78,26 @@ function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_med
         @orderby(:Additive, :Time)
     end
     return long_df, wide_df
+end
+
+function prepare_long_df_for_clustering(long_df, additive)
+    long_df_2 = deepcopy(long_df)
+    wide_timeseries_df = @chain long_df_2 begin
+        @subset(:Additive .== additive)
+        @select(:Metabolite, :Time, :relative_mmol_per_L)
+        @orderby(:Metabolite, :Time)
+        unstack(:Metabolite, :Time, :relative_mmol_per_L, combine = first)
+    end
+    return wide_timeseries_df
+end
+
+function cluster_all_additives(long_df)
+    additives = unique(long_df.Additive)
+    for additive in additives
+        println(uppercase(additive))
+        wide_timeseries_df = prepare_long_df_for_clustering(long_df, additive)
+        println(first(wide_timeseries_df, 10))
+    end
 end
 
 end
