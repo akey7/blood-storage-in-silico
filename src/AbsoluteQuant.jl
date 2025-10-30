@@ -194,8 +194,10 @@ function plot_c_means_for_additive_and_n_clusters(
     membership_df.primary_cluster = primary_cluster_df.primary_cluster
     plt_df = @chain long_df begin
         @rsubset(:Additive == additive)
+        @rtransform(:Patient = :Sample[7:8])
         innerjoin(membership_df, on = [:Additive, :Metabolite])
-        @select(:Sample, :Time, :Metabolite, :primary_cluster, :relative_mmol_per_L)
+        @select(:Patient, :Metabolite, :Time, :primary_cluster, :relative_mmol_per_L)
+        @orderby(:Metabolite, :Patient, :Time)
     end
     println(first(plt_df, 100))
 end
