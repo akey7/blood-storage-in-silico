@@ -11,6 +11,7 @@ using CairoMakie
 using Makie
 using CategoricalArrays
 using Clustering
+using Distances
 using COBREXA
 import JSONFBCModels
 using ColorSchemes
@@ -124,7 +125,7 @@ function c_means_metabolite_trajectories_in_additive(
     uniq_cols = length(unique(eachcol(X')))
     println("Unique observations: $uniq_cols / $n")
     @assert n_clusters <= uniq_cols "n_clusters must not exceed number of unique observations."
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter, dist_metric = Cityblock())
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
@@ -136,11 +137,11 @@ end
 
 function c_means_metabolite_trajectories(everything_df, max_clusters)
     additives_for_iterator = [
-        # "02-Adenosine",
-        # "01-Ctrl AS3",
-        # "03-Glutamine",
-        # "07-NAC",
-        # "08-Taurine",
+        "02-Adenosine",
+        "01-Ctrl AS3",
+        "03-Glutamine",
+        "07-NAC",
+        "08-Taurine",
         "04-Methionine",
     ]
     c_means_long_dfs = []
@@ -244,11 +245,11 @@ end
 function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_timeseries_df)
     c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
     additives = [
-        # "02-Adenosine",
-        # "01-Ctrl AS3",
-        # "03-Glutamine",
-        # "07-NAC",
-        # "08-Taurine",
+        "02-Adenosine",
+        "01-Ctrl AS3",
+        "03-Glutamine",
+        "07-NAC",
+        "08-Taurine",
         "04-Methionine",
     ]
     for additive in additives
