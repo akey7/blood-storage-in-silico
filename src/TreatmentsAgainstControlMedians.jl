@@ -11,6 +11,7 @@ using CairoMakie
 using Makie
 using CategoricalArrays
 using Clustering
+using Distances
 using COBREXA
 import JSONFBCModels
 using ColorSchemes
@@ -112,7 +113,19 @@ function c_means_metabolite_trajectories_in_additive(
     μ = 2.0,
 )
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    nans = count(isnan, X)
+    infs = count(isinf, X)
+    println("NaN count: $nans, Inf count: $infs")
+    @assert nans == 0 "Remove NaNs before clustering."
+    @assert infs == 0 "Remove Infs before clustering."
+    d, n = size(X')
+    println("Shape d x n = $d x $n  (features x observations)")
+    constf = sum([iszero(X'[i, :]) for i in 1:d])
+    @assert constf == 0 "Drop constant features to avoid zero distances."
+    uniq_cols = length(unique(eachcol(X')))
+    println("Unique observations: $uniq_cols / $n")
+    @assert n_clusters <= uniq_cols "n_clusters must not exceed number of unique observations."
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter, dist_metric = Cityblock())
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
@@ -123,9 +136,14 @@ function c_means_metabolite_trajectories_in_additive(
 end
 
 function c_means_metabolite_trajectories(everything_df, max_clusters)
-    # additives = unique(everything_df.Additive)
-    additives_for_iterator =
-        ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
+    additives_for_iterator = [
+        "02-Adenosine",
+        "01-Ctrl AS3",
+        "03-Glutamine",
+        "07-NAC",
+        "08-Taurine",
+        "04-Methionine",
+    ]
     c_means_long_dfs = []
     wide_timeseries_dfs = []
     fuzzy_objectives = []
@@ -133,6 +151,7 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
     n_clusters_rows = []
     for additive in additives_for_iterator
         for n_clusters in collect(2:max_clusters)
+            println(uppercase(additive), " ", n_clusters, " Clusters")
             wide_timeseries_df =
                 prepare_everything_df_for_clustering(everything_df, additive)
             c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
@@ -225,10 +244,18 @@ end
 
 function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_timeseries_df)
     c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
-    additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
+    additives = [
+        "02-Adenosine",
+        "01-Ctrl AS3",
+        "03-Glutamine",
+        "07-NAC",
+        "08-Taurine",
+        "04-Methionine",
+    ]
     for additive in additives
         wide_timeseries_df =
             subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
+        println(first(wide_timeseries_df, 100))
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
 end
