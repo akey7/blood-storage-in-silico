@@ -9,6 +9,7 @@ using AlgebraOfGraphics
 using CairoMakie
 using Makie
 using Clustering
+using ShiftedArrays
 
 export load_absolute_quant,
     load_relative_quant,
@@ -16,7 +17,8 @@ export load_absolute_quant,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
     plot_c_means_all_additives,
-    plot_all_mmol_per_L_timeseries
+    plot_all_mmol_per_L_timeseries,
+    diff_mmol_per_L
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -259,6 +261,15 @@ function plot_all_mmol_per_L_timeseries(long_df)
         save(filename, fig)
         println("Wrote $filename")
     end
+end
+
+function diff_mmol_per_L(long_df)
+    ordered_df = @chain long_df begin
+        @rtransform(:Patient = :Sample[7:8])
+        @orderby(:Additive, :Metabolite, :Patient, :Time)
+        @select(:Additive, :Metabolite, :Patient, :Time, :relative_mmol_per_L)
+    end
+    println(first(ordered_df, 100))
 end
 
 end
