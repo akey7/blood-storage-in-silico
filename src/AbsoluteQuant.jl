@@ -87,10 +87,10 @@ end
 function prepare_long_df_for_clustering(long_df, additive)
     long_df_2 = deepcopy(long_df)
     wide_timeseries_df = @chain long_df_2 begin
-        @subset(:Additive .== additive)
-        @select(:Metabolite, :Time, :relative_mmol_per_L)
+        @rsubset(:Additive == additive, !isapprox(:FoldChange, 0.0))
+        @select(:Metabolite, :Time, :FoldChange)
         @orderby(:Metabolite, :Time)
-        unstack(:Metabolite, :Time, :relative_mmol_per_L, combine = first)
+        unstack(:Metabolite, :Time, :FoldChange, combine = first)
     end
     return wide_timeseries_df
 end
@@ -197,17 +197,16 @@ function plot_c_means_for_additive_and_n_clusters(
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         innerjoin(membership_df, on = [:Additive, :Metabolite])
-        @select(:Patient, :Metabolite, :Time, :primary_cluster, :relative_mmol_per_L)
+        @select(:Patient, :Metabolite, :Time, :primary_cluster, :FoldChange)
         @orderby(:Metabolite, :Patient, :Time)
     end
     time_points = unique(plt_df.Time)
     plt =
         data(plt_df) *
-        mapping(:Time, :relative_mmol_per_L, row = :primary_cluster, group = :Metabolite) *
+        mapping(:Time, :FoldChange, row = :primary_cluster, group = :Metabolite) *
         visual(Lines) *
         visual(alpha = 0.1)
-    figure_options =
-        (; size = (500, 1000), title = additive)
+    figure_options = (; size = (500, 1000), title = additive)
     fig = draw(
         plt;
         figure = figure_options,
