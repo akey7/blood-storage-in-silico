@@ -95,7 +95,7 @@ function prepare_long_df_for_clustering(long_df, additive)
     return wide_timeseries_df
 end
 
-function calc_fuzzy_objective(result, X, μ = 2.0)
+function calc_fuzzy_objective(result, X, μ)
     c = result.centers
     W = result.weights
     total = 0.0
@@ -111,7 +111,7 @@ function c_means_metabolite_trajectories(
     wide_timeseries_df;
     additive = "01-Ctrl AS3",
     n_clusters = 5,
-    μ = 2.0,
+    μ = 5.0,
 )
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
     result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 500, display = :iter)
