@@ -9,6 +9,7 @@ using AlgebraOfGraphics
 using CairoMakie
 using Makie
 using Clustering
+using Distances
 using ShiftedArrays
 
 export load_absolute_quant,
@@ -111,7 +112,19 @@ function c_means_metabolite_trajectories(
     μ = 5.0,
 )
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 500, display = :iter)
+    nans = count(isnan, X)
+    infs = count(isinf, X)
+    println("NaN count: $nans, Inf count: $infs")
+    @assert nans == 0 "Remove NaNs before clustering."
+    @assert infs == 0 "Remove Infs before clustering."
+    d, n = size(X')
+    println("Shape d x n = $d x $n  (features x observations)")
+    constf = sum([iszero(X'[i, :]) for i in 1:d])
+    @assert constf == 0 "Drop constant features to avoid zero distances."
+    uniq_cols = length(unique(eachcol(X')))
+    println("Unique observations: $uniq_cols / $n")
+    @assert n_clusters <= uniq_cols "n_clusters must not exceed number of unique observations."
+    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter, dist_metric = Cityblock())
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
@@ -281,7 +294,7 @@ function diff_mmol_per_L(long_df)
             :diff_mmol_per_L
         )
     end
-    println(first(diffed_df, 100))
+    return diffed_df
 end
 
 end
