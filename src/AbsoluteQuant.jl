@@ -1,27 +1,21 @@
 module AbsoluteQuant
 
-using Base.Iterators
 using CSV
 using XLSX
 using DataFrames
 using DataFramesMeta
-using Statistics
 using StatsBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
-using CategoricalArrays
 using Clustering
-using COBREXA
-import JSONFBCModels
-using ColorSchemes
 
 export load_absolute_quant,
     load_relative_quant,
     combine_relative_and_absolute_quant,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
-    plot_c_means_for_additive_and_n_clusters
+    plot_c_means_all_additives
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -192,7 +186,7 @@ function plot_c_means_for_additive_and_n_clusters(
     primary_cluster_df.primary_cluster =
         [argmax(row) for row in eachrow(primary_cluster_df)]
     membership_df.primary_cluster = primary_cluster_df.primary_cluster
-    println(first(membership_df, 100))
+    println(first(membership_df, 10))
     plt_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
@@ -226,6 +220,18 @@ function plot_c_means_for_additive_and_n_clusters(
     )
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+end
+
+function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
+    additives = unique(long_df.Additive)
+    for additive in additives
+        plot_c_means_for_additive_and_n_clusters(
+            long_df,
+            all_memberships_dfs,
+            additive,
+            n_clusters,
+        )
+    end
 end
 
 end

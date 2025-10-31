@@ -30,4 +30,4 @@ println(first(fuzzy_objectives_df, 10))
 
 println(">" ^ 10, " MAKING PLOTS ", "<" ^ 10)
 plot_elbows(fuzzy_objectives_df)
-plot_c_means_for_additive_and_n_clusters(long_df, all_memberships_dfs, "01-Ctrl AS3", 6)
+plot_c_means_all_additives(long_df, all_memberships_dfs, 5)
