@@ -15,7 +15,8 @@ export load_absolute_quant,
     combine_relative_and_absolute_quant,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
-    plot_c_means_all_additives
+    plot_c_means_all_additives,
+    aggregate_metabolite_timeseries
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -232,6 +233,15 @@ function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
             n_clusters,
         )
     end
+end
+
+function aggregate_metabolite_timeseries(long_df)
+    agg_df = @chain long_df begin
+        @groupby(:Additive, :Metabolite, :Time)
+        @combine(:median_mmol_per_L = median(skipmissing(:relative_mmol_per_L)))
+        @orderby(:Additive, :Metabolite, :Time)
+    end
+    return agg_df
 end
 
 end
