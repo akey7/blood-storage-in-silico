@@ -15,7 +15,8 @@ export load_absolute_quant,
     combine_relative_and_absolute_quant,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
-    plot_c_means_all_additives
+    plot_c_means_all_additives,
+    plot_all_mmol_per_L_timeseries
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -231,6 +232,32 @@ function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
             additive,
             n_clusters,
         )
+    end
+end
+
+function plot_all_mmol_per_L_timeseries(long_df)
+    agg_df = @chain long_df begin
+        @groupby(:Additive, :Metabolite, :Time)
+        @combine(:median_mmol_per_L = median(skipmissing(:relative_mmol_per_L)))
+        @orderby(:Additive, :Metabolite, :Time)
+    end
+    metabolites = unique(agg_df.Metabolite)
+    time_points = unique(agg_df.Time)
+    for metabolite in metabolites
+        clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
+        filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
+        plt_df = @rsubset(agg_df, :Metabolite == metabolite)
+        plt =
+            data(plt_df) *
+            mapping(:Time, :median_mmol_per_L => "Median mmol/L", color = :Additive) *
+            (visual(Lines) + visual(Scatter; markersize = 10))
+        fig = draw(
+            plt;
+            figure = (; size = (750, 500)),
+            axis = (; title = metabolite, xticks = time_points),
+        )
+        save(filename, fig)
+        println("Wrote $filename")
     end
 end
 

@@ -24,10 +24,13 @@ relative_absolute_quant_filename = joinpath("output", "relative_absolute_quant.c
 CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
 
-println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
-all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
-println(first(fuzzy_objectives_df, 10))
+println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
+plot_all_mmol_per_L_timeseries(long_df)
 
-println(">" ^ 10, " MAKING PLOTS ", "<" ^ 10)
-plot_elbows(fuzzy_objectives_df)
-plot_c_means_all_additives(long_df, all_memberships_dfs, 5)
+# println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
+# all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
+# println(first(fuzzy_objectives_df, 10))
+
+# println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
+# plot_elbows(fuzzy_objectives_df)
+# plot_c_means_all_additives(long_df, all_memberships_dfs, 5)
