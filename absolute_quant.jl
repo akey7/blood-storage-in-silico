@@ -25,8 +25,7 @@ CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
 
 println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
-agg_df = aggregate_metabolite_timeseries(long_df)
-println(first(agg_df, 100))
+plot_all_mmol_per_L_timeseries(long_df)
 
 # println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
 # all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
