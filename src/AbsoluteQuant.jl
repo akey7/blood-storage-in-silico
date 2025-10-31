@@ -264,12 +264,24 @@ function plot_all_mmol_per_L_timeseries(long_df)
 end
 
 function diff_mmol_per_L(long_df)
-    ordered_df = @chain long_df begin
+    diffed_df = @chain long_df begin
         @rtransform(:Patient = :Sample[7:8])
         @orderby(:Additive, :Metabolite, :Patient, :Time)
-        @select(:Additive, :Metabolite, :Patient, :Time, :relative_mmol_per_L)
+        @groupby(:Additive, :Metabolite, :Patient)
+        @transform(
+            :diff_mmol_per_L =
+                :relative_mmol_per_L .- ShiftedArrays.lag(:relative_mmol_per_L)
+        )
+        @select(
+            :Additive,
+            :Metabolite,
+            :Patient,
+            :Time,
+            :relative_mmol_per_L,
+            :diff_mmol_per_L
+        )
     end
-    println(first(ordered_df, 100))
+    println(first(diffed_df, 100))
 end
 
 end
