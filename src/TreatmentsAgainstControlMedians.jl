@@ -120,12 +120,19 @@ function c_means_metabolite_trajectories_in_additive(
     @assert infs == 0 "Remove Infs before clustering."
     d, n = size(X')
     println("Shape d x n = $d x $n  (features x observations)")
-    constf = sum([iszero(X'[i, :]) for i in 1:d])
+    constf = sum([iszero(X'[i, :]) for i = 1:d])
     @assert constf == 0 "Drop constant features to avoid zero distances."
     uniq_cols = length(unique(eachcol(X')))
     println("Unique observations: $uniq_cols / $n")
     @assert n_clusters <= uniq_cols "n_clusters must not exceed number of unique observations."
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter, dist_metric = Cityblock())
+    result = fuzzy_cmeans(
+        X',
+        n_clusters,
+        μ,
+        maxiter = 200,
+        display = :iter,
+        dist_metric = Cityblock(),
+    )
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
