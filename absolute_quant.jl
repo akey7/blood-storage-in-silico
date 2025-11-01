@@ -38,4 +38,4 @@ println(first(fuzzy_objectives_df, 10))
 
 println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
 plot_elbows(fuzzy_objectives_df)
-plot_c_means_all_additives(long_df, all_memberships_dfs, 4)
+plot_c_means_all_additives(long_df, all_memberships_dfs, 6)

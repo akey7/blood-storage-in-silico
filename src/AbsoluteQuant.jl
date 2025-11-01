@@ -111,7 +111,8 @@ function c_means_metabolite_trajectories(
     n_clusters = 5,
     μ = 5.0,
 )
-    X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    X0 = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    X = (X0 .- mean(X0, dims = 1)) ./ std(X0, dims = 1)
     nans = count(isnan, X)
     infs = count(isinf, X)
     println("NaN count: $nans, Inf count: $infs")
@@ -119,19 +120,26 @@ function c_means_metabolite_trajectories(
     @assert infs == 0 "Remove Infs before clustering."
     d, n = size(X')
     println("Shape d x n = $d x $n  (features x observations)")
-    constf = sum([iszero(X'[i, :]) for i in 1:d])
+    constf = sum([iszero(X'[i, :]) for i = 1:d])
     @assert constf == 0 "Drop constant features to avoid zero distances."
     uniq_cols = length(unique(eachcol(X')))
     println("Unique observations: $uniq_cols / $n")
     @assert n_clusters <= uniq_cols "n_clusters must not exceed number of unique observations."
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter, dist_metric = Cityblock())
+    result = fuzzy_cmeans(
+        X',
+        n_clusters,
+        μ,
+        maxiter = 200,
+        display = :iter,
+        dist_metric = Cityblock(),
+    )
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
     memberships_df[!, :Additive] .= additive
     memberships_df[!, :NClusters] .= n_clusters
     fuzzy_objective = calc_fuzzy_objective(result, X, μ)
-    return memberships_df, fuzzy_objective
+    return memberships_df, fuzzy_objective, X
 end
 
 function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
@@ -142,7 +150,7 @@ function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
         memberships_dfs::Vector{DataFrame} = []
         for additive in additives
             println(uppercase(additive), " n_clusters ", n_clusters)
-            memberships_df, fuzzy_objective = @chain long_df begin
+            memberships_df, fuzzy_objective, _ = @chain long_df begin
                 prepare_long_df_for_clustering(additive)
                 c_means_metabolite_trajectories(
                     additive = additive,
@@ -203,19 +211,44 @@ function plot_c_means_for_additive_and_n_clusters(
         [argmax(row) for row in eachrow(primary_cluster_df)]
     membership_df.primary_cluster = primary_cluster_df.primary_cluster
     println(first(membership_df, 10))
-    plt_df = @chain long_df begin
+    standardization_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         innerjoin(membership_df, on = [:Additive, :Metabolite])
-        @select(:Patient, :Metabolite, :Time, :primary_cluster, :relative_mmol_per_L)
-        @orderby(:Metabolite, :Patient, :Time)
+        @select(:primary_cluster, :Patient, :Time, :Metabolite, :relative_mmol_per_L)
+        unstack(
+            [:primary_cluster, :Patient, :Time],
+            :Metabolite,
+            :relative_mmol_per_L,
+            combine = first,
+        )
+        @orderby(:primary_cluster, :Patient, :Time)
     end
+    X1 = Matrix(select(standardization_df, Not([:primary_cluster, :Patient, :Time])))
+    colmeans = map(c -> mean(skipmissing(c)), eachcol(X1))
+    for j = 1:size(X1, 2)
+        @inbounds for i = 1:size(X1, 1)
+            if ismissing(X1[i, j])
+                X1[i, j] = colmeans[j]
+            end
+        end
+    end
+    X2 = Float64.(X1)
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, X2, dims = 1)
+    X3 = StatsBase.transform(zt, X2)
+    standardization_df[:, Not([:primary_cluster, :Patient, :Time])] = X3
+    plt_df = stack(
+        standardization_df,
+        Not([:primary_cluster, :Patient, :Time]),
+        variable_name = :Metabolite,
+        value_name = :standardized_mmol_per_L,
+    )
     time_points = unique(plt_df.Time)
     plt =
         data(plt_df) *
         mapping(
             :Time,
-            :relative_mmol_per_L => "mmol/L",
+            :standardized_mmol_per_L => "standardized mmol/L",
             row = :primary_cluster,
             group = :Metabolite,
         ) *
