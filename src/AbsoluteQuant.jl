@@ -111,7 +111,8 @@ function c_means_metabolite_trajectories(
     n_clusters = 5,
     μ = 5.0,
 )
-    X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    X0 = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    X = (X0 .- mean(X0, dims=1)) ./ std(X0, dims=1)
     nans = count(isnan, X)
     infs = count(isinf, X)
     println("NaN count: $nans, Inf count: $infs")
