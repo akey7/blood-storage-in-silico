@@ -11,7 +11,7 @@ function glycolysis()
     @parameters k_hex1_f, k_hex1_r, k_pgi_f, k_pgi_r, k_pfk_f, k_pfk_r
     @parameters k_fba_f, k_fba_r, k_tpi_f, k_tpi_r, k_gapd_f, k_gapd_r
     @parameters k_pgk_f, k_pgk_r, k_pgm_f, k_pgm_r, k_eno_f, k_eno_r
-    @parameters k_eno_f, k_eno_r, k_pyk_f, k_pyk_r, k_ldh_f, k_ldh_r
+    @parameters k_pyk_f, k_pyk_r, k_ldh_f, k_ldh_r
     @variables t
     @species glc__D_c(t) g6p_c(t) f6p_c(t) fdp_c(t) dhap_c(t)
     @species g3p_c(t) _13dpg_c(t) _3pg_c(t) _2pg_c(t) pep_c(t)
@@ -32,6 +32,31 @@ function glycolysis()
         (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
     end
+
+    p = [
+        k_hex1_f => 0.7,
+        k_hex1_r => 0.0,
+        k_pgi_f => 3644.444,
+        k_pgi_r => 0.0,
+        k_pfk_f => 35.369,
+        k_pfk_r => 0.0,
+        k_fba_f => 2834.568,
+        k_fba_r => 0.0,
+        k_tpi_f => 34.356,
+        k_tpi_r => 0.0,
+        k_gapd_f => 3376.749,
+        k_gapd_r => 0.0,
+        k_pgk_f => 1273531.270,
+        k_pgk_r => 0.0,
+        k_pgm_f => 4868.589,
+        k_pgm_r => 0.0,
+        k_eno_f => 1763.741,
+        k_eno_r => 0.0,
+        k_pyk_f => 454.386,
+        k_pyk_r => 0.0,
+        k_ldh_f => 1112.574,
+        k_ldh_r => 0.0,
+    ]
 
     u0 = [
         glc__D_c => 1.0,
