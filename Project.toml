@@ -1,6 +1,6 @@
 name = "BloodStorageInSilico"
 uuid = "12fa0bc3-1996-4702-b249-fafc788310f3"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Alicia M. Key <alicia.m.key@cuanschutz.edu"]
 
 [deps]
