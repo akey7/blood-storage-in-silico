@@ -82,7 +82,7 @@ function glycolysis()
         h2o_c => 1.0,
     ]
 
-    tspan = (0.0, 500.0)
+    tspan = (0.0, 5.0)
     @info "Formulating glycolysis ODEProblem..."
     prob = ODEProblem(glycolysis, u0, tspan, p)
     @info "Solving ODEs..."
@@ -109,7 +109,8 @@ function glycolysis()
         )
     end
     axislegend(ax1; position = :rb, framevisible = false)
-    save("glucose_in_lactate_out.png", fig1)
+    fig1_filename = joinpath("output", "glucose_in_lactate_out.png")
+    save(fig1_filename, fig1)
 end
 
 end
