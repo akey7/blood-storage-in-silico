@@ -88,22 +88,48 @@ function glycolysis()
     @info "Solving ODEs..."
     sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
 
-    @info "Plotting solution..."
+    @info "Plotting main metabolites..."
     fig1 = Figure(resolution = (900, 600))
     ax1 = Axis(
         fig1[1, 1];
-        xlabel = "time (s)",
-        ylabel = "concentration (mM)",
-        title = "Glucose In, Lactate Out",
+        xlabel = "Time",
+        ylabel = "Concentration",
+        title = "Glycolysis",
     )
 
-    species1 = [glc__D_c, lac__L_c]
-    labels = ["glc__D_c", "lac__L_c"]
-    for (sp, label) in zip(species1, labels)
+    species2 = [
+        glc__D_c,
+        g6p_c,
+        f6p_c,
+        fdp_c,
+        dhap_c,
+        g3p_c,
+        _13dpg_c,
+        _3pg_c,
+        _2pg_c,
+        pep_c,
+        pyr_c,
+        lac__L_c,
+    ]
+    labels2 = [
+        "glc__D_c",
+        "g6p_c",
+        "f6p_c",
+        "fdp_c",
+        "dhap_c",
+        "g3p_c",
+        "_13dpg_c",
+        "_3pg_c",
+        "_2pg_c",
+        "pep_c",
+        "pyr_c",
+        "lac__L_c",
+    ]
+    for (sp, label) in zip(species2, labels2)
         lines!(ax1, sol.t, sol[sp, :]; label = label, linewidth = 2)
     end
     axislegend(ax1; position = :rb, framevisible = false)
-    fig1_filename = joinpath("output", "glucose_in_lactate_out.png")
+    fig1_filename = joinpath("output", "dynamic_model_01.png")
     save(fig1_filename, fig1)
 end
 
