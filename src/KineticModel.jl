@@ -1,4 +1,4 @@
-module KineticModel 
+module KineticModel
 
 using Catalyst
 using Catalyst: species, parameters, reactions, reactionrates
@@ -30,8 +30,31 @@ function glycolysis()
         (k_pgm_f, k_pgm_r), _3pg_c <--> _2pg_c
         (k_eno_f, k_eno_r), _2pg_c <--> h2o_c + pep_c
         (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
-        (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <=> lac__L_c + nad_c
+        (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
     end
+
+    u0 = [
+        glc__D_c => 1.0,
+        g6p_c => 0.0486,
+        f6p_c => 0.0198,
+        fdp_c => 0.0146,
+        dhap_c => 0.16,
+        g3p_c => 0.00728,
+        _13dpg_c => 0.000243,
+        _3pg_c => 0.0773,
+        _2pg_c => 0.0113,
+        pep_c => 0.017,
+        pyr_c => 0.060301,
+        lac__L_c => 1.36,
+        nad_c => 0.0589,
+        nadh_c => 0.0301,
+        amp_c => 0.0867281,
+        adp_c => 0.29,
+        atp_c => 1.6,
+        pi_c => 2.5,
+        h_c => 8.99757e-05,
+        h2o_c => 1.0,
+    ]
 end
 
 end
