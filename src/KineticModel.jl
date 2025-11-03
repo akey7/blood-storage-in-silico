@@ -80,6 +80,13 @@ function glycolysis()
         h_c => 8.99757e-05,
         h2o_c => 1.0,
     ]
+
+    tspan = (0.0, 500.0)
+    @info "Formulating glycolysis ODEProblem..."
+    prob = ODEProblem(glycolysis, u0, tspan, p)
+    @info "Solving ODEs..."
+    sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
+    return sol.u
 end
 
 end

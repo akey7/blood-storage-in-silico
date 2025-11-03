@@ -1,4 +1,6 @@
 include("src/KineticModel.jl")
 using .KineticModel
 
-glycolysis()
+println(glycolysis())
+@info "Press enter to exit..."
+readline()
