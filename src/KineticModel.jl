@@ -89,14 +89,13 @@ function glycolysis()
     sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
 
     @info "Plotting main metabolites..."
-    fig1 = Figure(resolution = (900, 600))
-    ax1 = Axis(
-        fig1[1, 1];
+    fig2 = Figure(resolution = (900, 600))
+    ax2 = Axis(
+        fig2[1, 1];
         xlabel = "Time",
         ylabel = "Concentration",
-        title = "Glycolysis",
+        title = "Glycolysis - Metabolites",
     )
-
     species2 = [
         glc__D_c,
         g6p_c,
@@ -126,11 +125,45 @@ function glycolysis()
         "lac__L_c",
     ]
     for (sp, label) in zip(species2, labels2)
-        lines!(ax1, sol.t, sol[sp, :]; label = label, linewidth = 2)
+        lines!(ax2, sol.t, sol[sp, :]; label = label, linewidth = 2)
     end
-    axislegend(ax1; position = :rb, framevisible = false)
-    fig1_filename = joinpath("output", "dynamic_model_01.png")
-    save(fig1_filename, fig1)
+    axislegend(ax2; position = :rb, framevisible = false)
+    fig2_filename = joinpath("output", "dynamic_model_02.png")
+    save(fig2_filename, fig2)
+
+    @info "Plotting energy and cofactors..."
+    fig3 = Figure(resolution = (900, 600))
+    ax3 = Axis(
+        fig3[1, 1];
+        xlabel = "Time",
+        ylabel = "Concentration",
+        title = "Glycolysis - NAD*",
+    )
+    species3 = [nad_c, nadh_c]
+    labels3 = ["nad_c", "nadh_c"]
+    for (sp, label) in zip(species3, labels3)
+        lines!(ax3, sol.t, sol[sp, :]; label = label, linewidth = 2)
+    end
+    axislegend(ax3; position = :rb, framevisible = false)
+    fig3_filename = joinpath("output", "dynamic_model_03.png")
+    save(fig3_filename, fig3)
+
+    @info "Plotting energy and cofactors..."
+    fig4 = Figure(resolution = (900, 600))
+    ax4 = Axis(
+        fig4[1, 1];
+        xlabel = "Time",
+        ylabel = "Concentration",
+        title = "Glycolysis - ADP, ATP, Pi",
+    )
+    species4 = [pi_c, adp_c, atp_c]
+    labels4 = ["pi_c", "adp_c", "atp_c"]
+    for (sp, label) in zip(species4, labels4)
+        lines!(ax4, sol.t, sol[sp, :]; label = label, linewidth = 2)
+    end
+    axislegend(ax4; position = :rb, framevisible = false)
+    fig4_filename = joinpath("output", "dynamic_model_04.png")
+    save(fig4_filename, fig4)
 end
 
 end
