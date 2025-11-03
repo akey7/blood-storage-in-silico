@@ -82,7 +82,7 @@ function glycolysis()
         h2o_c => 1.0,
     ]
 
-    tspan = (0.0, 5.0)
+    tspan = (0.0, 1.0)
     @info "Formulating glycolysis ODEProblem..."
     prob = ODEProblem(glycolysis, u0, tspan, p)
     @info "Solving ODEs..."
@@ -100,13 +100,7 @@ function glycolysis()
     species1 = [glc__D_c, lac__L_c]
     labels = ["glc__D_c", "lac__L_c"]
     for (sp, label) in zip(species1, labels)
-        lines!(
-            ax1,
-            sol.t,
-            sol[sp, :];
-            label = label,
-            linewidth = 2,
-        )
+        lines!(ax1, sol.t, sol[sp, :]; label = label, linewidth = 2)
     end
     axislegend(ax1; position = :rb, framevisible = false)
     fig1_filename = joinpath("output", "glucose_in_lactate_out.png")
