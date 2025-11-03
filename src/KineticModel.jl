@@ -4,6 +4,7 @@ using Catalyst
 using Catalyst: species, parameters, reactions, reactionrates
 using ModelingToolkit
 using DifferentialEquations
+using CairoMakie
 
 export glycolysis
 
@@ -86,7 +87,29 @@ function glycolysis()
     prob = ODEProblem(glycolysis, u0, tspan, p)
     @info "Solving ODEs..."
     sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
-    return sol.u
+
+    @info "Plotting solution..."
+    fig1 = Figure(resolution = (900, 600))
+    ax1 = Axis(
+        fig1[1, 1];
+        xlabel = "time (s)",
+        ylabel = "concentration (mM)",
+        title = "Glucose In, Lactate Out",
+    )
+
+    species1 = [glc__D_c, lac__L_c]
+    labels = ["glc__D_c", "lac__L_c"]
+    for (sp, label) in zip(species1, labels)
+        lines!(
+            ax1,
+            sol.t,
+            sol[sp, :];
+            label = label,
+            linewidth = 2,
+        )
+    end
+    axislegend(ax1; position = :rb, framevisible = false)
+    save("glucose_in_lactate_out.png", fig1)
 end
 
 end
