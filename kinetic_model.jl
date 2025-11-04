@@ -1,4 +1,4 @@
 include("src/KineticModel.jl")
 using .KineticModel
 
-glycolysis()
+run_glycolysis()

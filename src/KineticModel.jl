@@ -5,10 +5,13 @@ using Catalyst: species, parameters, reactions, reactionrates
 using ModelingToolkit
 using DifferentialEquations
 using CairoMakie
+using GraphMakie
+using NetworkLayout
+using Latexify
 
-export glycolysis
+export run_glycolysis, plot_glycolysis
 
-function glycolysis()
+function run_glycolysis()
     @parameters k_hex1_f, k_hex1_r, k_pgi_f, k_pgi_r, k_pfk_f, k_pfk_r
     @parameters k_fba_f, k_fba_r, k_tpi_f, k_tpi_r, k_gapd_f, k_gapd_r
     @parameters k_pgk_f, k_pgk_r, k_pgm_f, k_pgm_r, k_eno_f, k_eno_r
@@ -20,7 +23,7 @@ function glycolysis()
     @species amp_c(t) adp_c(t) atp_c(t) pi_c(t) h_c(t)
     @species h2o_c(t)
 
-    glycolysis = @reaction_network begin
+    glycolysis_network = @reaction_network begin
         (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
         (k_pfk_f, k_pfk_r), atp_c + f6p_c <--> adp_c + fdp_c + h_c
@@ -84,18 +87,11 @@ function glycolysis()
 
     tspan = (0.0, 1.0)
     @info "Formulating glycolysis ODEProblem..."
-    prob = ODEProblem(glycolysis, u0, tspan, p)
+    prob = ODEProblem(glycolysis_network, u0, tspan, p)
     @info "Solving ODEs..."
     sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
 
     @info "Plotting main metabolites..."
-    fig2 = Figure(resolution = (900, 600))
-    ax2 = Axis(
-        fig2[1, 1];
-        xlabel = "Time",
-        ylabel = "Concentration",
-        title = "Glycolysis - Metabolites",
-    )
     species2 = [
         glc__D_c,
         g6p_c,
@@ -124,46 +120,43 @@ function glycolysis()
         "pyr_c",
         "lac__L_c",
     ]
-    for (sp, label) in zip(species2, labels2)
-        lines!(ax2, sol.t, sol[sp, :]; label = label, linewidth = 2)
-    end
-    axislegend(ax2; position = :rb, framevisible = false)
-    fig2_filename = joinpath("output", "dynamic_model_02.png")
-    save(fig2_filename, fig2)
+    title2 = "Glycolysis Main Metabolites"
+    plot_metabolites(sol, species2, labels2, title2)
 
-    @info "Plotting energy and cofactors..."
-    fig3 = Figure(resolution = (900, 600))
-    ax3 = Axis(
-        fig3[1, 1];
-        xlabel = "Time",
-        ylabel = "Concentration",
-        title = "Glycolysis - NAD*",
-    )
+    @info "Plotting cofactors..."
+    title3 = "Glycolysis NAD and NADH"
     species3 = [nad_c, nadh_c]
     labels3 = ["nad_c", "nadh_c"]
-    for (sp, label) in zip(species3, labels3)
-        lines!(ax3, sol.t, sol[sp, :]; label = label, linewidth = 2)
-    end
-    axislegend(ax3; position = :rb, framevisible = false)
-    fig3_filename = joinpath("output", "dynamic_model_03.png")
-    save(fig3_filename, fig3)
+    plot_metabolites(sol, species3, labels3, title3)
 
-    @info "Plotting energy and cofactors..."
-    fig4 = Figure(resolution = (900, 600))
-    ax4 = Axis(
-        fig4[1, 1];
-        xlabel = "Time",
-        ylabel = "Concentration",
-        title = "Glycolysis - ADP, ATP, Pi",
-    )
+    @info "Plotting ATP/ADP..."
     species4 = [pi_c, adp_c, atp_c]
     labels4 = ["pi_c", "adp_c", "atp_c"]
-    for (sp, label) in zip(species4, labels4)
-        lines!(ax4, sol.t, sol[sp, :]; label = label, linewidth = 2)
+    plot_metabolites(sol, species4, labels4, "Glycolysis ADP and ATP")
+
+    @info "Plotting reaction graph..."
+    plot_reaction_network_graph(glycolysis_network)
+
+    # @info "Calling Latexify..."
+    # display(latexify(glycolysis_network; form = :ode))
+end
+
+function plot_metabolites(sol, species, labels, title)
+    size = (900, 600)
+    fig = Figure(; size = size)
+    ax = Axis(fig[1, 1]; xlabel = "Time", ylabel = "Concentration", title = title)
+    for (species, label) in zip(species, labels)
+        lines!(ax, sol.t, sol[species, :]; label = label, linewidth = 2)
     end
-    axislegend(ax4; position = :rb, framevisible = false)
-    fig4_filename = joinpath("output", "dynamic_model_04.png")
-    save(fig4_filename, fig4)
+    axislegend(ax; position = :rb, framevisible = false)
+    fig_filename = joinpath("output", "kinetic_model", "$(title).png")
+    save(fig_filename, fig)
+end
+
+function plot_reaction_network_graph(rn)
+    g = plot_network(rn)
+    g_filename = joinpath("output", "kinetic_model", "GLycolysis Network.png")
+    save(g_filename, g)
 end
 
 end
