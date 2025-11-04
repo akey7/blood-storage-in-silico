@@ -7,6 +7,7 @@ using DifferentialEquations
 using CairoMakie
 using GraphMakie
 using NetworkLayout
+using Latexify
 
 export run_glycolysis, plot_glycolysis
 
@@ -135,6 +136,9 @@ function run_glycolysis()
 
     @info "Plotting reaction graph..."
     plot_reaction_network_graph(glycolysis_network)
+
+    # @info "Calling Latexify..."
+    # display(latexify(glycolysis_network; form = :ode))
 end
 
 function plot_metabolites(sol, species, labels, title)
