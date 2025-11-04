@@ -5,6 +5,8 @@ using Catalyst: species, parameters, reactions, reactionrates
 using ModelingToolkit
 using DifferentialEquations
 using CairoMakie
+using GraphMakie
+using NetworkLayout
 
 export glycolysis
 
@@ -164,6 +166,10 @@ function glycolysis()
     axislegend(ax4; position = :rb, framevisible = false)
     fig4_filename = joinpath("output", "dynamic_model_04.png")
     save(fig4_filename, fig4)
+
+    g = plot_network(glycolysis)
+    graph_filename = joinpath("output", "glycolysis_graph.png")
+    save(graph_filename, g)
 end
 
 end
