@@ -132,6 +132,9 @@ function run_glycolysis()
     species4 = [pi_c, adp_c, atp_c]
     labels4 = ["pi_c", "adp_c", "atp_c"]
     plot_metabolites(sol, species4, labels4, "Glycolysis ADP and ATP")
+
+    @info "Plotting reaction graph..."
+    plot_reaction_network_graph(glycolysis_network)
 end
 
 function plot_metabolites(sol, species, labels, title)
@@ -144,6 +147,12 @@ function plot_metabolites(sol, species, labels, title)
     axislegend(ax; position = :rb, framevisible = false)
     fig_filename = joinpath("output", "kinetic_model", "$(title).png")
     save(fig_filename, fig)
+end
+
+function plot_reaction_network_graph(rn)
+    g = plot_network(rn)
+    g_filename = joinpath("output", "kinetic_model", "GLycolysis Network.png")
+    save(g_filename, g)
 end
 
 end
