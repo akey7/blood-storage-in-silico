@@ -11,6 +11,8 @@ using Latexify
 
 export run_glycolysis, plot_glycolysis
 
+k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
+
 function run_glycolysis()
     @parameters k_hex1_f, k_hex1_r, k_pgi_f, k_pgi_r, k_pfk_f, k_pfk_r
     @parameters k_fba_f, k_fba_r, k_tpi_f, k_tpi_r, k_gapd_f, k_gapd_r
@@ -37,28 +39,30 @@ function run_glycolysis()
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
     end
 
+    # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
+
     p = [
-        k_hex1_f => 0.7,
+        k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
         k_hex1_r => 0.0,
-        k_pgi_f => 3644.444,
+        k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
         k_pgi_r => 0.0,
-        k_pfk_f => 35.369,
+        k_pfk_f => k1(k2 = 35.369, q10 = 2.65),
         k_pfk_r => 0.0,
-        k_fba_f => 2834.568,
+        k_fba_f => k1(k2 = 2834.568, q10 = 2.65),
         k_fba_r => 0.0,
-        k_tpi_f => 34.356,
+        k_tpi_f => k1(k2 = 34.356, q10 = 2.65),
         k_tpi_r => 0.0,
-        k_gapd_f => 3376.749,
+        k_gapd_f => k1(k2 = 3376.749, q10 = 2.63),
         k_gapd_r => 0.0,
-        k_pgk_f => 1273531.270,
+        k_pgk_f => k1(k2 = 1273531.270, q10 = 2.53),
         k_pgk_r => 0.0,
-        k_pgm_f => 4868.589,
+        k_pgm_f => k1(k2 = 4868.589, q10 = 2.57),
         k_pgm_r => 0.0,
-        k_eno_f => 1763.741,
+        k_eno_f => k1(k2 = 1763.741, q10 = 2.57),
         k_eno_r => 0.0,
-        k_pyk_f => 454.386,
+        k_pyk_f => k1(k2 = 454.386, q10 = 2.59),
         k_pyk_r => 0.0,
-        k_ldh_f => 1112.574,
+        k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
         k_ldh_r => 0.0,
     ]
 
