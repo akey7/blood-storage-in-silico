@@ -132,12 +132,6 @@ function run_glycolysis()
     species4 = [pi_c, adp_c, atp_c]
     labels4 = ["pi_c", "adp_c", "atp_c"]
     plot_metabolites(sol, species4, labels4, "Glycolysis ADP and ATP")
-
-    # g = plot_network(glycolysis_network)
-    # graph_filename = joinpath("output", "glycolysis_graph.png")
-    # save(graph_filename, g)
-
-    return glycolysis_network, sol
 end
 
 function plot_metabolites(sol, species, labels, title)
