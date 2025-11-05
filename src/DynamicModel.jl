@@ -14,11 +14,12 @@ export run_glycolysis, plot_glycolysis
 k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
 
 function run_glycolysis()
+    @info "Creating reaction network..."
     rn = @reaction_network glycolysis begin
         @require_declaration
 
         @parameters begin
-            k_hex1_f 
+            k_hex1_f
             k_hex1_r 
             k_pgi_f 
             k_pgi_r 
@@ -81,6 +82,10 @@ function run_glycolysis()
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
         k_sk_lac__L_f, lac__L_c --> 0
     end
+
+    println("Reaction network name: ", nameof(rn))
+    println("Reaction network parameters: ", parameters(rn))
+    println("Reaction network species: ", species(rn))
 
     # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
     # k2 values from PERC values in Ch. 10 of Systems Biology:
