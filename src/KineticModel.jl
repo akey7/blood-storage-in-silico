@@ -40,6 +40,9 @@ function run_glycolysis()
     end
 
     # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
+    # k2 values from PERC values in Ch. 10 of Systems Biology:
+    # Simulation of Dynamic Network States by Palsson.
+    # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
 
     p = [
         k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
@@ -159,7 +162,7 @@ end
 
 function plot_reaction_network_graph(rn)
     g = plot_network(rn)
-    g_filename = joinpath("output", "kinetic_model", "GLycolysis Network.png")
+    g_filename = joinpath("output", "kinetic_model", "Glycolysis Network.png")
     save(g_filename, g)
 end
 
