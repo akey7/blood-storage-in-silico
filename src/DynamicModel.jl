@@ -18,6 +18,7 @@ function run_glycolysis()
     @parameters k_fba_f, k_fba_r, k_tpi_f, k_tpi_r, k_gapd_f, k_gapd_r
     @parameters k_pgk_f, k_pgk_r, k_pgm_f, k_pgm_r, k_eno_f, k_eno_r
     @parameters k_pyk_f, k_pyk_r, k_ldh_f, k_ldh_r
+    @parameters k_sk_glc__D_c_f, k_sk_lac__L_f
     @variables t
     @species glc__D_c(t) g6p_c(t) f6p_c(t) fdp_c(t) dhap_c(t)
     @species g3p_c(t) _13dpg_c(t) _3pg_c(t) _2pg_c(t) pep_c(t)
@@ -26,6 +27,7 @@ function run_glycolysis()
     @species h2o_c(t)
 
     glycolysis_network = @reaction_network begin
+        k_sk_glc__D_c_f, 0 --> glc__D_c
         (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
         (k_pfk_f, k_pfk_r), atp_c + f6p_c <--> adp_c + fdp_c + h_c
@@ -37,6 +39,7 @@ function run_glycolysis()
         (k_eno_f, k_eno_r), _2pg_c <--> h2o_c + pep_c
         (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
+        k_sk_lac__L_f, lac__L_c --> 0
     end
 
     # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
@@ -44,7 +47,8 @@ function run_glycolysis()
     # Simulation of Dynamic Network States by Palsson.
     # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
 
-    p = [
+    ps = [
+        k_sk_glc__D_c_f => 0.1,
         k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
         k_hex1_r => 0.0,
         k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
@@ -67,6 +71,7 @@ function run_glycolysis()
         k_pyk_r => 0.0,
         k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
         k_ldh_r => 0.0,
+        k_sk_lac__L_f => 10.0,
     ]
 
     u0 = [
@@ -94,7 +99,7 @@ function run_glycolysis()
 
     tspan = (0.0, 1.0)
     @info "Formulating glycolysis ODEProblem..."
-    prob = ODEProblem(glycolysis_network, u0, tspan, p)
+    prob = ODEProblem(glycolysis_network, u0, tspan, ps)
     @info "Solving ODEs..."
     sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
 
