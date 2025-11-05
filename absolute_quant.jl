@@ -25,11 +25,11 @@ CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
 
 println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
-plot_all_mmol_per_L_timeseries(long_df)
+plot_all_mM_timeseries(long_df)
 
 println(">" ^ 10, " RATES ", "<" ^ 10)
-diffed_df = diff_mmol_per_L(long_df)
-diff_filename = joinpath("output", "diff_mmol_per_L.csv")
+diffed_df = diff_mM(long_df)
+diff_filename = joinpath("output", "diff_mM.csv")
 CSV.write(diff_filename, diffed_df)
 
 println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)

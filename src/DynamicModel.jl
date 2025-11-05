@@ -14,9 +14,12 @@ export run_glycolysis, plot_glycolysis
 k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
 
 function run_glycolysis()
-    glycolysis_network = @reaction_network begin
+    @info "Creating reaction network..."
+    rn = @reaction_network glycolysis begin
+        @require_declaration
+
         @parameters begin
-            k_hex1_f 
+            k_hex1_f
             k_hex1_r 
             k_pgi_f 
             k_pgi_r 
@@ -80,6 +83,10 @@ function run_glycolysis()
         k_sk_lac__L_f, lac__L_c --> 0
     end
 
+    println("Reaction network name: ", nameof(rn))
+    println("Reaction network parameters: ", parameters(rn))
+    println("Reaction network species: ", species(rn))
+
     # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
     # k2 values from PERC values in Ch. 10 of Systems Biology:
     # Simulation of Dynamic Network States by Palsson.
@@ -137,9 +144,9 @@ function run_glycolysis()
 
     tspan = (0.0, 1.0)
     @info "Formulating glycolysis ODEProblem..."
-    prob = ODEProblem(glycolysis_network, u0, tspan, ps)
+    prob = ODEProblem(rn, u0, tspan, ps)
     @info "Solving ODEs..."
-    sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
+    sol = solve(prob, Rodas5P(); reltol = 1.0e-8, abstol = 1.0e-10)
 
     @info "Plotting main metabolites..."
     species2 = [
@@ -169,7 +176,7 @@ function run_glycolysis()
     plot_metabolites(sol, species4, "Glycolysis ADP and ATP")
 
     @info "Plotting reaction graph..."
-    plot_reaction_network_graph(glycolysis_network)
+    plot_reaction_network_graph(rn)
 
     # @info "Calling Latexify..."
     # display(latexify(glycolysis_network; form = :ode))

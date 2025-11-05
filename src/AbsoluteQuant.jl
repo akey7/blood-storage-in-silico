@@ -18,22 +18,22 @@ export load_absolute_quant,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
     plot_c_means_all_additives,
-    plot_all_mmol_per_L_timeseries,
-    diff_mmol_per_L
+    plot_all_mM_timeseries,
+    diff_mM
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
     cells_day_1_df = DataFrame(XLSX.readtable(absolute_filename, "cells_day_1"))
     absolute_metabolite_ids = DataFrame(XLSX.readtable(absolute_filename, "metabolite_ids"))
     absolute_quant_df = @chain cells_day_1_df begin
-        stack(Not(:id), variable_name = :mixed_name, value_name = :mmol_per_L)
+        stack(Not(:id), variable_name = :mixed_name, value_name = :mM)
         @rtransform(:sample_set = split(:id, "_")[2])
         innerjoin(absolute_metabolite_ids, on = :mixed_name => :MixedName)
-        @rtransform(:prop_mmol_per_L = :mmol_per_L * :Proportion)
-        select([:sample_set, :id, :Metabolite, :prop_mmol_per_L])
+        @rtransform(:prop_mM = :mM * :Proportion)
+        select([:sample_set, :id, :Metabolite, :prop_mM])
     end
     absolute_quant_medians_df = @by absolute_quant_df :Metabolite begin
-        :median_prop_mmol_per_L = median(:prop_mmol_per_L)
+        :median_prop_mM = median(:prop_mM)
     end
     return absolute_quant_df, absolute_quant_medians_df
 end
@@ -66,15 +66,15 @@ end
 function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
-        @rtransform(:relative_mmol_per_L = :FoldChange * :median_prop_mmol_per_L)
+        @rtransform(:relative_mM = :FoldChange * :median_prop_mM)
         @orderby(:Additive, :Time, :Metabolite)
     end
     wide_df = @chain long_df begin
-        @select(:Sample, :Time, :Additive, :Metabolite, :relative_mmol_per_L)
+        @select(:Sample, :Time, :Additive, :Metabolite, :relative_mM)
         unstack(
             [:Sample, :Time, :Additive],
             :Metabolite,
-            :relative_mmol_per_L,
+            :relative_mM,
             combine = first,
         )
         @orderby(:Additive, :Time)
@@ -85,10 +85,10 @@ end
 function prepare_long_df_for_clustering(long_df, additive)
     long_df_2 = deepcopy(long_df)
     wide_timeseries_df = @chain long_df_2 begin
-        @rsubset(:Additive == additive, !isapprox(:relative_mmol_per_L, 0.0))
-        @select(:Metabolite, :Time, :relative_mmol_per_L)
+        @rsubset(:Additive == additive, !isapprox(:relative_mM, 0.0))
+        @select(:Metabolite, :Time, :relative_mM)
         @orderby(:Metabolite, :Time)
-        unstack(:Metabolite, :Time, :relative_mmol_per_L, combine = first)
+        unstack(:Metabolite, :Time, :relative_mM, combine = first)
     end
     return wide_timeseries_df
 end
@@ -215,11 +215,11 @@ function plot_c_means_for_additive_and_n_clusters(
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         innerjoin(membership_df, on = [:Additive, :Metabolite])
-        @select(:primary_cluster, :Patient, :Time, :Metabolite, :relative_mmol_per_L)
+        @select(:primary_cluster, :Patient, :Time, :Metabolite, :relative_mM)
         unstack(
             [:primary_cluster, :Patient, :Time],
             :Metabolite,
-            :relative_mmol_per_L,
+            :relative_mM,
             combine = first,
         )
         @orderby(:primary_cluster, :Patient, :Time)
@@ -241,14 +241,14 @@ function plot_c_means_for_additive_and_n_clusters(
         standardization_df,
         Not([:primary_cluster, :Patient, :Time]),
         variable_name = :Metabolite,
-        value_name = :standardized_mmol_per_L,
+        value_name = :standardized_mM,
     )
     time_points = unique(plt_df.Time)
     plt =
         data(plt_df) *
         mapping(
             :Time,
-            :standardized_mmol_per_L => "standardized mmol/L",
+            :standardized_mM => "standardized mmol/L",
             row = :primary_cluster,
             group = :Metabolite,
         ) *
@@ -283,10 +283,10 @@ function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     end
 end
 
-function plot_all_mmol_per_L_timeseries(long_df)
+function plot_all_mM_timeseries(long_df)
     agg_df = @chain long_df begin
         @groupby(:Additive, :Metabolite, :Time)
-        @combine(:median_mmol_per_L = median(skipmissing(:relative_mmol_per_L)))
+        @combine(:median_mM = median(skipmissing(:relative_mM)))
         @orderby(:Additive, :Metabolite, :Time)
     end
     metabolites = unique(agg_df.Metabolite)
@@ -297,7 +297,7 @@ function plot_all_mmol_per_L_timeseries(long_df)
         plt_df = @rsubset(agg_df, :Metabolite == metabolite)
         plt =
             data(plt_df) *
-            mapping(:Time, :median_mmol_per_L => "Median mmol/L", color = :Additive) *
+            mapping(:Time, :median_mM => "Median mmol/L", color = :Additive) *
             (visual(Lines) + visual(Scatter; markersize = 10))
         fig = draw(
             plt;
@@ -309,22 +309,22 @@ function plot_all_mmol_per_L_timeseries(long_df)
     end
 end
 
-function diff_mmol_per_L(long_df)
+function diff_mM(long_df)
     diffed_df = @chain long_df begin
         @rtransform(:Patient = :Sample[7:8])
         @orderby(:Additive, :Metabolite, :Patient, :Time)
         @groupby(:Additive, :Metabolite, :Patient)
         @transform(
-            :diff_mmol_per_L =
-                :relative_mmol_per_L .- ShiftedArrays.lag(:relative_mmol_per_L)
+            :diff_mM =
+                :relative_mM .- ShiftedArrays.lag(:relative_mM)
         )
         @select(
             :Additive,
             :Metabolite,
             :Patient,
             :Time,
-            :relative_mmol_per_L,
-            :diff_mmol_per_L
+            :relative_mM,
+            :diff_mM
         )
     end
     return diffed_df
