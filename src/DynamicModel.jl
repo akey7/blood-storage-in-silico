@@ -14,7 +14,9 @@ export run_glycolysis, plot_glycolysis
 k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
 
 function run_glycolysis()
-    glycolysis_network = @reaction_network begin
+    rn = @reaction_network glycolysis begin
+        @require_declaration
+
         @parameters begin
             k_hex1_f 
             k_hex1_r 
@@ -137,9 +139,9 @@ function run_glycolysis()
 
     tspan = (0.0, 1.0)
     @info "Formulating glycolysis ODEProblem..."
-    prob = ODEProblem(glycolysis_network, u0, tspan, ps)
+    prob = ODEProblem(rn, u0, tspan, ps)
     @info "Solving ODEs..."
-    sol = solve(prob, Rodas5(); reltol = 1.0e-8, abstol = 1.0e-10)
+    sol = solve(prob, Rodas5P(); reltol = 1.0e-8, abstol = 1.0e-10)
 
     @info "Plotting main metabolites..."
     species2 = [
@@ -169,7 +171,7 @@ function run_glycolysis()
     plot_metabolites(sol, species4, "Glycolysis ADP and ATP")
 
     @info "Plotting reaction graph..."
-    plot_reaction_network_graph(glycolysis_network)
+    plot_reaction_network_graph(rn)
 
     # @info "Calling Latexify..."
     # display(latexify(glycolysis_network; form = :ode))
