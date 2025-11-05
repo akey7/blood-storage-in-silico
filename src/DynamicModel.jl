@@ -48,53 +48,53 @@ function run_glycolysis()
     # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
 
     ps = [
-        k_sk_glc__D_c_f => 0.1,
-        k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
-        k_hex1_r => 0.0,
-        k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
-        k_pgi_r => 0.0,
-        k_pfk_f => k1(k2 = 35.369, q10 = 2.65),
-        k_pfk_r => 0.0,
-        k_fba_f => k1(k2 = 2834.568, q10 = 2.65),
-        k_fba_r => 0.0,
-        k_tpi_f => k1(k2 = 34.356, q10 = 2.65),
-        k_tpi_r => 0.0,
-        k_gapd_f => k1(k2 = 3376.749, q10 = 2.63),
-        k_gapd_r => 0.0,
-        k_pgk_f => k1(k2 = 1273531.270, q10 = 2.53),
-        k_pgk_r => 0.0,
-        k_pgm_f => k1(k2 = 4868.589, q10 = 2.57),
-        k_pgm_r => 0.0,
-        k_eno_f => k1(k2 = 1763.741, q10 = 2.57),
-        k_eno_r => 0.0,
-        k_pyk_f => k1(k2 = 454.386, q10 = 2.59),
-        k_pyk_r => 0.0,
-        k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
-        k_ldh_r => 0.0,
-        k_sk_lac__L_f => 10.0,
+        :k_sk_glc__D_c_f => 0.1,
+        :k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
+        :k_hex1_r => 0.0,
+        :k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
+        :k_pgi_r => 0.0,
+        :k_pfk_f => k1(k2 = 35.369, q10 = 2.65),
+        :k_pfk_r => 0.0,
+        :k_fba_f => k1(k2 = 2834.568, q10 = 2.65),
+        :k_fba_r => 0.0,
+        :k_tpi_f => k1(k2 = 34.356, q10 = 2.65),
+        :k_tpi_r => 0.0,
+        :k_gapd_f => k1(k2 = 3376.749, q10 = 2.63),
+        :k_gapd_r => 0.0,
+        :k_pgk_f => k1(k2 = 1273531.270, q10 = 2.53),
+        :k_pgk_r => 0.0,
+        :k_pgm_f => k1(k2 = 4868.589, q10 = 2.57),
+        :k_pgm_r => 0.0,
+        :k_eno_f => k1(k2 = 1763.741, q10 = 2.57),
+        :k_eno_r => 0.0,
+        :k_pyk_f => k1(k2 = 454.386, q10 = 2.59),
+        :k_pyk_r => 0.0,
+        :k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
+        :k_ldh_r => 0.0,
+        :k_sk_lac__L_f => 10.0,
     ]
 
     u0 = [
-        glc__D_c => 1.0,
-        g6p_c => 0.0486,
-        f6p_c => 0.0198,
-        fdp_c => 0.0146,
-        dhap_c => 0.16,
-        g3p_c => 0.00728,
-        _13dpg_c => 0.000243,
-        _3pg_c => 0.0773,
-        _2pg_c => 0.0113,
-        pep_c => 0.017,
-        pyr_c => 0.060301,
-        lac__L_c => 1.36,
-        nad_c => 0.0589,
-        nadh_c => 0.0301,
-        amp_c => 0.0867281,
-        adp_c => 0.29,
-        atp_c => 1.6,
-        pi_c => 2.5,
-        h_c => 8.99757e-05,
-        h2o_c => 1.0,
+        :glc__D_c => 1.0,
+        :g6p_c => 0.0486,
+        :f6p_c => 0.0198,
+        :fdp_c => 0.0146,
+        :dhap_c => 0.16,
+        :g3p_c => 0.00728,
+        :_13dpg_c => 0.000243,
+        :_3pg_c => 0.0773,
+        :_2pg_c => 0.0113,
+        :pep_c => 0.017,
+        :pyr_c => 0.060301,
+        :lac__L_c => 1.36,
+        :nad_c => 0.0589,
+        :nadh_c => 0.0301,
+        :amp_c => 0.0867281,
+        :adp_c => 0.29,
+        :atp_c => 1.6,
+        :pi_c => 2.5,
+        :h_c => 8.99757e-05,
+        :h2o_c => 1.0,
     ]
 
     tspan = (0.0, 1.0)
@@ -105,18 +105,18 @@ function run_glycolysis()
 
     @info "Plotting main metabolites..."
     species2 = [
-        glc__D_c,
-        g6p_c,
-        f6p_c,
-        fdp_c,
-        dhap_c,
-        g3p_c,
-        _13dpg_c,
-        _3pg_c,
-        _2pg_c,
-        pep_c,
-        pyr_c,
-        lac__L_c,
+        :glc__D_c,
+        :g6p_c,
+        :f6p_c,
+        :fdp_c,
+        :dhap_c,
+        :g3p_c,
+        :_13dpg_c,
+        :_3pg_c,
+        :_2pg_c,
+        :pep_c,
+        :pyr_c,
+        :lac__L_c,
     ]
     labels2 = [
         "glc__D_c",
@@ -137,12 +137,12 @@ function run_glycolysis()
 
     @info "Plotting cofactors..."
     title3 = "Glycolysis NAD and NADH"
-    species3 = [nad_c, nadh_c]
+    species3 = [:nad_c, :nadh_c]
     labels3 = ["nad_c", "nadh_c"]
     plot_metabolites(sol, species3, labels3, title3)
 
     @info "Plotting ATP/ADP..."
-    species4 = [pi_c, adp_c, atp_c]
+    species4 = [:pi_c, :adp_c, :atp_c]
     labels4 = ["pi_c", "adp_c", "atp_c"]
     plot_metabolites(sol, species4, labels4, "Glycolysis ADP and ATP")
 
