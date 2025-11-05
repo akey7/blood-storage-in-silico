@@ -14,14 +14,34 @@ export run_glycolysis, plot_glycolysis
 k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
 
 function run_glycolysis()
-    @parameters k_hex1_f, k_hex1_r, k_pgi_f, k_pgi_r, k_pfk_f, k_pfk_r
-    @parameters k_fba_f, k_fba_r, k_tpi_f, k_tpi_r, k_gapd_f, k_gapd_r
-    @parameters k_pgk_f, k_pgk_r, k_pgm_f, k_pgm_r, k_eno_f, k_eno_r
-    @parameters k_pyk_f, k_pyk_r, k_ldh_f, k_ldh_r
-    @parameters k_sk_glc__D_c_f, k_sk_lac__L_f
-    @variables t
-
     glycolysis_network = @reaction_network begin
+        @parameters begin
+            k_hex1_f 
+            k_hex1_r 
+            k_pgi_f 
+            k_pgi_r 
+            k_pfk_f 
+            k_pfk_r
+            k_fba_f 
+            k_fba_r 
+            k_tpi_f 
+            k_tpi_r 
+            k_gapd_f 
+            k_gapd_r
+            k_pgk_f 
+            k_pgk_r 
+            k_pgm_f 
+            k_pgm_r 
+            k_eno_f 
+            k_eno_r
+            k_pyk_f 
+            k_pyk_r 
+            k_ldh_f
+            k_ldh_r
+            k_sk_glc__D_c_f
+            k_sk_lac__L_f
+        end
+
         @species begin 
             glc__D_c(t)
             g6p_c(t)
