@@ -20,13 +20,31 @@ function run_glycolysis()
     @parameters k_pyk_f, k_pyk_r, k_ldh_f, k_ldh_r
     @parameters k_sk_glc__D_c_f, k_sk_lac__L_f
     @variables t
-    @species glc__D_c(t) g6p_c(t) f6p_c(t) fdp_c(t) dhap_c(t)
-    @species g3p_c(t) _13dpg_c(t) _3pg_c(t) _2pg_c(t) pep_c(t)
-    @species pep_c(t) pyr_c(t) lac__L_c(t) nad_c(t) nadh_c(t)
-    @species amp_c(t) adp_c(t) atp_c(t) pi_c(t) h_c(t)
-    @species h2o_c(t)
 
     glycolysis_network = @reaction_network begin
+        @species begin 
+            glc__D_c(t)
+            g6p_c(t)
+            f6p_c(t)
+            fdp_c(t)
+            dhap_c(t)
+            g3p_c(t)
+            _13dpg_c(t)
+            _3pg_c(t)
+            _2pg_c(t)
+            pep_c(t)
+            pyr_c(t)
+            lac__L_c(t)
+            nad_c(t)
+            nadh_c(t)
+            amp_c(t)
+            adp_c(t)
+            atp_c(t)
+            pi_c(t)
+            h_c(t)
+            h2o_c(t)
+        end
+
         k_sk_glc__D_c_f, 0 --> glc__D_c
         (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
