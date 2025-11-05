@@ -118,33 +118,17 @@ function run_glycolysis()
         :pyr_c,
         :lac__L_c,
     ]
-    labels2 = [
-        "glc__D_c",
-        "g6p_c",
-        "f6p_c",
-        "fdp_c",
-        "dhap_c",
-        "g3p_c",
-        "_13dpg_c",
-        "_3pg_c",
-        "_2pg_c",
-        "pep_c",
-        "pyr_c",
-        "lac__L_c",
-    ]
     title2 = "Glycolysis Main Metabolites"
-    plot_metabolites(sol, species2, labels2, title2)
+    plot_metabolites(sol, species2, title2)
 
     @info "Plotting cofactors..."
     title3 = "Glycolysis NAD and NADH"
     species3 = [:nad_c, :nadh_c]
-    labels3 = ["nad_c", "nadh_c"]
-    plot_metabolites(sol, species3, labels3, title3)
+    plot_metabolites(sol, species3, title3)
 
     @info "Plotting ATP/ADP..."
     species4 = [:pi_c, :adp_c, :atp_c]
-    labels4 = ["pi_c", "adp_c", "atp_c"]
-    plot_metabolites(sol, species4, labels4, "Glycolysis ADP and ATP")
+    plot_metabolites(sol, species4, "Glycolysis ADP and ATP")
 
     @info "Plotting reaction graph..."
     plot_reaction_network_graph(glycolysis_network)
@@ -153,12 +137,12 @@ function run_glycolysis()
     # display(latexify(glycolysis_network; form = :ode))
 end
 
-function plot_metabolites(sol, species, labels, title)
+function plot_metabolites(sol, species, title)
     size = (900, 600)
     fig = Figure(; size = size)
     ax = Axis(fig[1, 1]; xlabel = "Time", ylabel = "Concentration", title = title)
-    for (species, label) in zip(species, labels)
-        lines!(ax, sol.t, sol[species, :]; label = label, linewidth = 2)
+    for sp in species
+        lines!(ax, sol.t, sol[sp, :]; label = string(sp), linewidth = 2)
     end
     axislegend(ax; position = :rb, framevisible = false)
     fig_filename = joinpath("output", "kinetic_model", "$(title).png")
