@@ -178,8 +178,9 @@ function run_glycolysis()
     @info "Plotting reaction graph..."
     plot_reaction_network_graph(rn)
 
-    # @info "Calling Latexify..."
-    # display(latexify(glycolysis_network; form = :ode))
+    @info "Calling Latexify..."
+    copy_to_clipboard(true)
+    latexify(rn; form = :ode)
 end
 
 function plot_metabolites(sol, species, title)
