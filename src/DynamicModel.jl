@@ -20,32 +20,35 @@ function run_glycolysis()
 
         @parameters begin
             k_hex1_f
-            k_hex1_r 
-            k_pgi_f 
-            k_pgi_r 
-            k_pfk_f 
+            k_hex1_r
+            k_pgi_f
+            k_pgi_r
+            k_pfk_f
             k_pfk_r
-            k_fba_f 
-            k_fba_r 
-            k_tpi_f 
-            k_tpi_r 
-            k_gapd_f 
+            k_fba_f
+            k_fba_r
+            k_tpi_f
+            k_tpi_r
+            k_gapd_f
             k_gapd_r
-            k_pgk_f 
-            k_pgk_r 
-            k_pgm_f 
-            k_pgm_r 
-            k_eno_f 
+            k_pgk_f
+            k_pgk_r
+            k_pgm_f
+            k_pgm_r
+            k_eno_f
             k_eno_r
-            k_pyk_f 
-            k_pyk_r 
+            k_pyk_f
+            k_pyk_r
             k_ldh_f
             k_ldh_r
             k_sk_glc__D_c_f
             k_sk_lac__L_f
+            k_sk_amp_c
+            k_adk_f
+            k_atpm
         end
 
-        @species begin 
+        @species begin
             glc__D_c(t)
             g6p_c(t)
             f6p_c(t)
@@ -66,9 +69,15 @@ function run_glycolysis()
             pi_c(t)
             h_c(t)
             h2o_c(t)
+            a_tot(t)
+        end
+
+        @observables begin
+            a_tot ~ amp_c + adp_c + atp_c
         end
 
         k_sk_glc__D_c_f, 0 --> glc__D_c
+        k_sk_amp_c, 0 --> amp_c
         (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
         (k_pfk_f, k_pfk_r), atp_c + f6p_c <--> adp_c + fdp_c + h_c
@@ -80,6 +89,8 @@ function run_glycolysis()
         (k_eno_f, k_eno_r), _2pg_c <--> h2o_c + pep_c
         (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
+        k_adk_f, 2*adp_c --> amp_c + atp_c
+        k_atpm, atp_c + h2o_c --> adp_c + h_c + pi_c
         k_sk_lac__L_f, lac__L_c --> 0
     end
 
@@ -117,6 +128,9 @@ function run_glycolysis()
         :k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
         :k_ldh_r => 0.0,
         :k_sk_lac__L_f => 10.0,
+        :k_adk_f => 100000.000,
+        :k_sk_amp_c => 0.014,
+        :k_atpm => 1.400,
     ]
 
     u0 = [
@@ -172,8 +186,8 @@ function run_glycolysis()
     plot_metabolites(sol, species3, title3)
 
     @info "Plotting ATP/ADP..."
-    species4 = [:pi_c, :adp_c, :atp_c]
-    plot_metabolites(sol, species4, "Glycolysis ADP and ATP")
+    species4 = [:pi_c, :amp_c, :adp_c, :atp_c, :a_tot]
+    plot_metabolites(sol, species4, "Glycolysis AMP ADP ATP")
 
     @info "Plotting reaction graph..."
     plot_reaction_network_graph(rn)

@@ -71,12 +71,7 @@ function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_med
     end
     wide_df = @chain long_df begin
         @select(:Sample, :Time, :Additive, :Metabolite, :relative_mM)
-        unstack(
-            [:Sample, :Time, :Additive],
-            :Metabolite,
-            :relative_mM,
-            combine = first,
-        )
+        unstack([:Sample, :Time, :Additive], :Metabolite, :relative_mM, combine = first)
         @orderby(:Additive, :Time)
     end
     return long_df, wide_df
@@ -314,18 +309,8 @@ function diff_mM(long_df)
         @rtransform(:Patient = :Sample[7:8])
         @orderby(:Additive, :Metabolite, :Patient, :Time)
         @groupby(:Additive, :Metabolite, :Patient)
-        @transform(
-            :diff_mM =
-                :relative_mM .- ShiftedArrays.lag(:relative_mM)
-        )
-        @select(
-            :Additive,
-            :Metabolite,
-            :Patient,
-            :Time,
-            :relative_mM,
-            :diff_mM
-        )
+        @transform(:diff_mM = :relative_mM .- ShiftedArrays.lag(:relative_mM))
+        @select(:Additive, :Metabolite, :Patient, :Time, :relative_mM, :diff_mM)
     end
     return diffed_df
 end
