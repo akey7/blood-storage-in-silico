@@ -1,4 +1,4 @@
-include("src/KineticModel.jl")
-using .KineticModel
+include("src/DynamicModel.jl")
+using .DynamicModel
 
 run_glycolysis()

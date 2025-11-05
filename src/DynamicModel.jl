@@ -1,4 +1,4 @@
-module KineticModel
+module DynamicModel
 
 using Catalyst
 using Catalyst: species, parameters, reactions, reactionrates
