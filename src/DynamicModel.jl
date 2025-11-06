@@ -41,11 +41,19 @@ function run_glycolysis()
             k_pyk_r
             k_ldh_f
             k_ldh_r
-            k_sk_glc__D_c_f
-            k_sk_lac__L_f
-            k_sk_amp_c
+            k_SK_glc__D_c_f
+            k_SK_lac__L_f
+            k_SK_amp_c
             k_adk_f
-            k_atpm
+            k_atpm_f
+            k_DM_amp_c_f
+            k_DM_nadh_c_f
+            k_SK_pyr_c_f
+            k_SK_pyr_c_r
+            k_SK_h_c_f
+            k_SK_h_c_r
+            k_SK_h2o_c_f
+            k_SK_h2o_c_r
         end
 
         @species begin
@@ -76,8 +84,16 @@ function run_glycolysis()
             a_tot ~ amp_c + adp_c + atp_c
         end
 
-        k_sk_glc__D_c_f, 0 --> glc__D_c
-        k_sk_amp_c, 0 --> amp_c
+        # Boundary reactions
+        k_DM_amp_c_f, amp_c --> 0
+        (k_SK_pyr_c_f, k_SK_pyr_c_r), pyr_c <--> 0
+        k_SK_lac__L_f, lac__L_c --> 0
+        k_SK_glc__D_c_f, 0 --> glc__D_c
+        k_SK_amp_c, 0 --> amp_c
+        (k_SK_h_c_f, k_SK_h_c_r), h_c <--> 0
+        (k_SK_h2o_c_f, k_SK_h2o_c_r), h2o_c <--> 0
+
+        k_DM_nadh_c_f, nadh_c --> h_c + nad_c
         (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
         (k_pfk_f, k_pfk_r), atp_c + f6p_c <--> adp_c + fdp_c + h_c
@@ -90,8 +106,7 @@ function run_glycolysis()
         (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
         k_adk_f, 2*adp_c --> amp_c + atp_c
-        k_atpm, atp_c + h2o_c --> adp_c + h_c + pi_c
-        k_sk_lac__L_f, lac__L_c --> 0
+        k_atpm_f, atp_c + h2o_c --> adp_c + h_c + pi_c
     end
 
     println("Reaction network name: ", nameof(rn))
@@ -104,7 +119,7 @@ function run_glycolysis()
     # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
 
     ps = [
-        :k_sk_glc__D_c_f => 0.1,
+        :k_SK_glc__D_c_f => 1.12,
         :k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
         :k_hex1_r => 0.0,
         :k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
@@ -127,10 +142,18 @@ function run_glycolysis()
         :k_pyk_r => 0.0,
         :k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
         :k_ldh_r => 0.0,
-        :k_sk_lac__L_f => 10.0,
-        :k_adk_f => 100000.000,
-        :k_sk_amp_c => 0.014,
-        :k_atpm => 1.400,
+        :k_atpm_f => 1.400,
+        :k_SK_lac__L_f => 10.0,
+        :k_adk_f => 1.0e6,
+        :k_SK_amp_c => 0.014,
+        :k_DM_amp_c_f => 0.161,
+        :k_DM_nadh_c_f => 7.442,
+        :k_SK_pyr_c_f => 744.186,
+        :k_SK_pyr_c_r => 744.186,
+        :k_SK_h_c_f => 1.0e6,
+        :k_SK_h_c_r => 1.0e6,
+        :k_SK_h2o_c_f => 1.0e6,
+        :k_SK_h2o_c_r => 1.0e6
     ]
 
     u0 = [
