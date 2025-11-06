@@ -11,22 +11,29 @@ using Latexify
 
 export run_glycolysis, plot_glycolysis
 
-k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
+# k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
+
+k1(; k2, q10, t2 = 27.0, t1 = 4.0) = 1.0 * k2
 
 function run_glycolysis()
+    # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
+    #
+    # Reaction directionality from Yurkovich et al, 2017 Figure 3
+    #
+    # k2 values from PERC values in Ch. 10 of Systems Biology:
+    # Simulation of Dynamic Network States by Palsson.
+    # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
+
     @info "Creating reaction network..."
     rn = @reaction_network glycolysis begin
         @require_declaration
 
         @parameters begin
             k_hex1_f
-            k_hex1_r
             k_pgi_f
             k_pgi_r
             k_pfk_f
-            k_pfk_r
             k_fba_f
-            k_fba_r
             k_tpi_f
             k_tpi_r
             k_gapd_f
@@ -38,14 +45,21 @@ function run_glycolysis()
             k_eno_f
             k_eno_r
             k_pyk_f
-            k_pyk_r
             k_ldh_f
             k_ldh_r
-            k_sk_glc__D_c_f
-            k_sk_lac__L_f
-            k_sk_amp_c
+            k_SK_glc__D_c_f
+            k_SK_lac__L_f
+            k_SK_amp_c
             k_adk_f
-            k_atpm
+            k_atpm_f
+            k_DM_amp_c_f
+            k_DM_nadh_c_f
+            k_SK_pyr_c_f
+            k_SK_pyr_c_r
+            k_SK_h_c_f
+            k_SK_h_c_r
+            k_SK_h2o_c_f
+            k_SK_h2o_c_r
         end
 
         @species begin
@@ -76,83 +90,89 @@ function run_glycolysis()
             a_tot ~ amp_c + adp_c + atp_c
         end
 
-        k_sk_glc__D_c_f, 0 --> glc__D_c
-        k_sk_amp_c, 0 --> amp_c
-        (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
+        # Boundary reactions
+        k_DM_amp_c_f, amp_c --> 0
+        (k_SK_pyr_c_f, k_SK_pyr_c_r), pyr_c <--> 0
+        k_SK_lac__L_f, lac__L_c --> 0
+        k_SK_glc__D_c_f, 0 --> glc__D_c
+        k_SK_amp_c, 0 --> amp_c
+        (k_SK_h_c_f, k_SK_h_c_r), h_c <--> 0
+        (k_SK_h2o_c_f, k_SK_h2o_c_r), h2o_c <--> 0
+
+        k_DM_nadh_c_f, nadh_c --> h_c + nad_c
+        k_hex1_f, atp_c + glc__D_c --> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
-        (k_pfk_f, k_pfk_r), atp_c + f6p_c <--> adp_c + fdp_c + h_c
-        (k_fba_f, k_fba_r), fdp_c <--> dhap_c + g3p_c
+        k_pfk_f, atp_c + f6p_c --> adp_c + fdp_c + h_c
+        k_fba_f, fdp_c --> dhap_c + g3p_c
         (k_tpi_f, k_tpi_r), dhap_c <--> g3p_c
         (k_gapd_f, k_gapd_r), g3p_c + nad_c + pi_c <--> _13dpg_c + h_c + nadh_c
         (k_pgk_f, k_pgk_r), _13dpg_c + adp_c <--> _3pg_c + atp_c
         (k_pgm_f, k_pgm_r), _3pg_c <--> _2pg_c
         (k_eno_f, k_eno_r), _2pg_c <--> h2o_c + pep_c
-        (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
+        k_pyk_f, adp_c + h_c + pep_c --> atp_c + pyr_c
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
         k_adk_f, 2*adp_c --> amp_c + atp_c
-        k_atpm, atp_c + h2o_c --> adp_c + h_c + pi_c
-        k_sk_lac__L_f, lac__L_c --> 0
+        k_atpm_f, atp_c + h2o_c --> adp_c + h_c + pi_c
     end
 
     println("Reaction network name: ", nameof(rn))
     println("Reaction network parameters: ", parameters(rn))
     println("Reaction network species: ", species(rn))
 
-    # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
-    # k2 values from PERC values in Ch. 10 of Systems Biology:
-    # Simulation of Dynamic Network States by Palsson.
-    # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
-
     ps = [
-        :k_sk_glc__D_c_f => 0.1,
+        :k_SK_glc__D_c_f => 1.12,
         :k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
-        :k_hex1_r => 0.0,
         :k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
-        :k_pgi_r => 0.0,
+        :k_pgi_r => k1(k2 = 3644.444, q10 = 2.72),
         :k_pfk_f => k1(k2 = 35.369, q10 = 2.65),
-        :k_pfk_r => 0.0,
         :k_fba_f => k1(k2 = 2834.568, q10 = 2.65),
-        :k_fba_r => 0.0,
         :k_tpi_f => k1(k2 = 34.356, q10 = 2.65),
-        :k_tpi_r => 0.0,
+        :k_tpi_r => k1(k2 = 34.356, q10 = 2.65),
         :k_gapd_f => k1(k2 = 3376.749, q10 = 2.63),
-        :k_gapd_r => 0.0,
+        :k_gapd_r => k1(k2 = 3376.749, q10 = 2.63),
         :k_pgk_f => k1(k2 = 1273531.270, q10 = 2.53),
-        :k_pgk_r => 0.0,
+        :k_pgk_r => k1(k2 = 1273531.270, q10 = 2.53),
         :k_pgm_f => k1(k2 = 4868.589, q10 = 2.57),
-        :k_pgm_r => 0.0,
+        :k_pgm_r => k1(k2 = 4868.589, q10 = 2.57),
         :k_eno_f => k1(k2 = 1763.741, q10 = 2.57),
-        :k_eno_r => 0.0,
+        :k_eno_r => k1(k2 = 1763.741, q10 = 2.57),
         :k_pyk_f => k1(k2 = 454.386, q10 = 2.59),
-        :k_pyk_r => 0.0,
         :k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
-        :k_ldh_r => 0.0,
-        :k_sk_lac__L_f => 10.0,
-        :k_adk_f => 100000.000,
-        :k_sk_amp_c => 0.014,
-        :k_atpm => 1.400,
+        :k_ldh_r => k1(k2 = 1112.574, q10 = 2.61),
+        :k_atpm_f => 1.400,
+        :k_SK_lac__L_f => 10.0,
+        :k_adk_f => 1.0e6,
+        :k_SK_amp_c => 0.014,
+        :k_DM_amp_c_f => 0.161,
+        :k_DM_nadh_c_f => 7.442,
+        :k_SK_pyr_c_f => 744.186,
+        :k_SK_pyr_c_r => 744.186,
+        :k_SK_h_c_f => 1.0e6,
+        :k_SK_h_c_r => 1.0e6,
+        :k_SK_h2o_c_f => 1.0e6,
+        :k_SK_h2o_c_r => 1.0e6
     ]
 
     u0 = [
         :glc__D_c => 1.0,
-        :g6p_c => 0.0486,
-        :f6p_c => 0.0198,
-        :fdp_c => 0.0146,
+        :g6p_c => 0.049,
+        :f6p_c => 0.02,
+        :fdp_c => 0.015,
         :dhap_c => 0.16,
-        :g3p_c => 0.00728,
-        :_13dpg_c => 0.000243,
-        :_3pg_c => 0.0773,
-        :_2pg_c => 0.0113,
+        :g3p_c => 0.007,
+        :_13dpg_c => 0.0,
+        :_3pg_c => 0.077,
+        :_2pg_c => 0.011,
         :pep_c => 0.017,
-        :pyr_c => 0.060301,
+        :pyr_c => 0.06,
         :lac__L_c => 1.36,
-        :nad_c => 0.0589,
-        :nadh_c => 0.0301,
-        :amp_c => 0.0867281,
+        :nad_c => 0.059,
+        :nadh_c => 0.03,
+        :amp_c => 0.087,
         :adp_c => 0.29,
         :atp_c => 1.6,
         :pi_c => 2.5,
-        :h_c => 8.99757e-05,
+        :h_c => 0.0,
         :h2o_c => 1.0,
     ]
 
