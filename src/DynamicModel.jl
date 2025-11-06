@@ -20,13 +20,10 @@ function run_glycolysis()
 
         @parameters begin
             k_hex1_f
-            k_hex1_r
             k_pgi_f
             k_pgi_r
             k_pfk_f
-            k_pfk_r
             k_fba_f
-            k_fba_r
             k_tpi_f
             k_tpi_r
             k_gapd_f
@@ -38,7 +35,6 @@ function run_glycolysis()
             k_eno_f
             k_eno_r
             k_pyk_f
-            k_pyk_r
             k_ldh_f
             k_ldh_r
             k_SK_glc__D_c_f
@@ -94,16 +90,16 @@ function run_glycolysis()
         (k_SK_h2o_c_f, k_SK_h2o_c_r), h2o_c <--> 0
 
         k_DM_nadh_c_f, nadh_c --> h_c + nad_c
-        (k_hex1_f, k_hex1_r), atp_c + glc__D_c <--> adp_c + g6p_c + h_c
+        k_hex1_f, atp_c + glc__D_c --> adp_c + g6p_c + h_c
         (k_pgi_f, k_pgi_r), g6p_c <--> f6p_c
-        (k_pfk_f, k_pfk_r), atp_c + f6p_c <--> adp_c + fdp_c + h_c
-        (k_fba_f, k_fba_r), fdp_c <--> dhap_c + g3p_c
+        k_pfk_f, atp_c + f6p_c --> adp_c + fdp_c + h_c
+        k_fba_f, fdp_c --> dhap_c + g3p_c
         (k_tpi_f, k_tpi_r), dhap_c <--> g3p_c
         (k_gapd_f, k_gapd_r), g3p_c + nad_c + pi_c <--> _13dpg_c + h_c + nadh_c
         (k_pgk_f, k_pgk_r), _13dpg_c + adp_c <--> _3pg_c + atp_c
         (k_pgm_f, k_pgm_r), _3pg_c <--> _2pg_c
         (k_eno_f, k_eno_r), _2pg_c <--> h2o_c + pep_c
-        (k_pyk_f, k_pyk_r), adp_c + h_c + pep_c <--> atp_c + pyr_c
+        k_pyk_f, adp_c + h_c + pep_c --> atp_c + pyr_c
         (k_ldh_f, k_ldh_r), h_c + nadh_c + pyr_c <--> lac__L_c + nad_c
         k_adk_f, 2*adp_c --> amp_c + atp_c
         k_atpm_f, atp_c + h2o_c --> adp_c + h_c + pi_c
@@ -121,27 +117,23 @@ function run_glycolysis()
     ps = [
         :k_SK_glc__D_c_f => 1.12,
         :k_hex1_f => k1(k2 = 0.7, q10 = 2.60),
-        :k_hex1_r => 0.0,
         :k_pgi_f => k1(k2 = 3644.444, q10 = 2.72),
-        :k_pgi_r => 0.0,
+        :k_pgi_r => k1(k2 = 3644.444, q10 = 2.72),
         :k_pfk_f => k1(k2 = 35.369, q10 = 2.65),
-        :k_pfk_r => 0.0,
         :k_fba_f => k1(k2 = 2834.568, q10 = 2.65),
-        :k_fba_r => 0.0,
         :k_tpi_f => k1(k2 = 34.356, q10 = 2.65),
-        :k_tpi_r => 0.0,
+        :k_tpi_r => k1(k2 = 34.356, q10 = 2.65),
         :k_gapd_f => k1(k2 = 3376.749, q10 = 2.63),
-        :k_gapd_r => 0.0,
+        :k_gapd_r => k1(k2 = 3376.749, q10 = 2.63),
         :k_pgk_f => k1(k2 = 1273531.270, q10 = 2.53),
-        :k_pgk_r => 0.0,
+        :k_pgk_r => k1(k2 = 1273531.270, q10 = 2.53),
         :k_pgm_f => k1(k2 = 4868.589, q10 = 2.57),
-        :k_pgm_r => 0.0,
+        :k_pgm_r => k1(k2 = 4868.589, q10 = 2.57),
         :k_eno_f => k1(k2 = 1763.741, q10 = 2.57),
-        :k_eno_r => 0.0,
+        :k_eno_r => k1(k2 = 1763.741, q10 = 2.57),
         :k_pyk_f => k1(k2 = 454.386, q10 = 2.59),
-        :k_pyk_r => 0.0,
         :k_ldh_f => k1(k2 = 1112.574, q10 = 2.61),
-        :k_ldh_r => 0.0,
+        :k_ldh_r => k1(k2 = 1112.574, q10 = 2.61),
         :k_atpm_f => 1.400,
         :k_SK_lac__L_f => 10.0,
         :k_adk_f => 1.0e6,
