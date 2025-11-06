@@ -14,6 +14,14 @@ export run_glycolysis, plot_glycolysis
 k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
 
 function run_glycolysis()
+    # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
+    #
+    # Reaction directionality from Yurkovich et al, 2017 Figure 3
+    #
+    # k2 values from PERC values in Ch. 10 of Systems Biology:
+    # Simulation of Dynamic Network States by Palsson.
+    # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
+
     @info "Creating reaction network..."
     rn = @reaction_network glycolysis begin
         @require_declaration
@@ -108,11 +116,6 @@ function run_glycolysis()
     println("Reaction network name: ", nameof(rn))
     println("Reaction network parameters: ", parameters(rn))
     println("Reaction network species: ", species(rn))
-
-    # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
-    # k2 values from PERC values in Ch. 10 of Systems Biology:
-    # Simulation of Dynamic Network States by Palsson.
-    # https://masspy.readthedocs.io/en/latest/education/sb2/chapters/sb2_chapter10.html
 
     ps = [
         :k_SK_glc__D_c_f => 1.12,
