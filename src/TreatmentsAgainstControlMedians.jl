@@ -11,6 +11,7 @@ using CairoMakie
 using Makie
 using CategoricalArrays
 using Clustering
+using Distances
 using COBREXA
 import JSONFBCModels
 using ColorSchemes
@@ -112,8 +113,26 @@ function c_means_metabolite_trajectories_in_additive(
     μ = 2.0,
 )
     X = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
-    println("Feature matrix: ", size(X, 1), " Metabolites, ", size(X, 2), " Time Points")
-    result = fuzzy_cmeans(X', n_clusters, μ, maxiter = 200, display = :iter)
+    nans = count(isnan, X)
+    infs = count(isinf, X)
+    println("NaN count: $nans, Inf count: $infs")
+    @assert nans == 0 "Remove NaNs before clustering."
+    @assert infs == 0 "Remove Infs before clustering."
+    d, n = size(X')
+    println("Shape d x n = $d x $n  (features x observations)")
+    constf = sum([iszero(X'[i, :]) for i = 1:d])
+    @assert constf == 0 "Drop constant features to avoid zero distances."
+    uniq_cols = length(unique(eachcol(X')))
+    println("Unique observations: $uniq_cols / $n")
+    @assert n_clusters <= uniq_cols "n_clusters must not exceed number of unique observations."
+    result = fuzzy_cmeans(
+        X',
+        n_clusters,
+        μ,
+        maxiter = 200,
+        display = :iter,
+        dist_metric = Cityblock(),
+    )
     weights_col_names = string.(axes(result.weights, 2))
     memberships_df = DataFrame(result.weights, weights_col_names)
     memberships_df.Metabolite = wide_timeseries_df.Metabolite
@@ -124,9 +143,14 @@ function c_means_metabolite_trajectories_in_additive(
 end
 
 function c_means_metabolite_trajectories(everything_df, max_clusters)
-    # additives = unique(everything_df.Additive)
-    additives_for_iterator =
-        ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
+    additives_for_iterator = [
+        "02-Adenosine",
+        "01-Ctrl AS3",
+        "03-Glutamine",
+        "07-NAC",
+        "08-Taurine",
+        "04-Methionine",
+    ]
     c_means_long_dfs = []
     wide_timeseries_dfs = []
     fuzzy_objectives = []
@@ -134,9 +158,9 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
     n_clusters_rows = []
     for additive in additives_for_iterator
         for n_clusters in collect(2:max_clusters)
+            println(uppercase(additive), " ", n_clusters, " Clusters")
             wide_timeseries_df =
                 prepare_everything_df_for_clustering(everything_df, additive)
-            println(uppercase(additive), " ", n_clusters, " clusters ")
             c_means_df, fuzzy_objective = c_means_metabolite_trajectories_in_additive(
                 wide_timeseries_df,
                 additive,
@@ -150,7 +174,6 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
                 variable_name = :Cluster,
                 value_name = :Weight,
             )
-            println(first(c_means_long_df, 10))
             push!(fuzzy_objectives, fuzzy_objective)
             push!(additives_rows, additive)
             push!(n_clusters_rows, n_clusters)
@@ -169,7 +192,6 @@ function c_means_metabolite_trajectories(everything_df, max_clusters)
 end
 
 function cluster_counts_for_additive(c_means_df, additive)
-    println(additive)
     df1 = subset(c_means_df, :Additive => x -> x .== additive)
     df2 = DataFrames.combine(groupby(df1, :PrimaryCluster), nrow => :Count)
     return df2
@@ -196,7 +218,6 @@ function plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     time_points = unique(plt_df.Time)
     df6 = cluster_counts_for_additive(df0, additive)
     cluster_counts_df = sort(df6, :Count, rev = true)
-    println(cluster_counts_df)
     cluster_counts_subtitle = join(
         [
             "Cluster $c, n=$n" for (c, n) in
@@ -230,11 +251,18 @@ end
 
 function plot_c_means_for_all_additives(n_clusters, all_c_means_df, all_wide_timeseries_df)
     c_means_df = subset(all_c_means_df, :NClusters => x -> x .== n_clusters)
-    additives = ["02-Adenosine", "01-Ctrl AS3", "03-Glutamine", "07-NAC", "08-Taurine"]
+    additives = [
+        "02-Adenosine",
+        "01-Ctrl AS3",
+        "03-Glutamine",
+        "07-NAC",
+        "08-Taurine",
+        "04-Methionine",
+    ]
     for additive in additives
-        println(uppercase(additive))
         wide_timeseries_df =
             subset(all_wide_timeseries_df, :Additive => x -> x .== additive)
+        println(first(wide_timeseries_df, 100))
         plot_c_means_for_additive(additive, c_means_df, wide_timeseries_df)
     end
 end
@@ -287,7 +315,6 @@ end
 function plot_cluster_analysis_bar(top3_df, additive, category_colors)
     plt_df = subset(top3_df, :Additive => x -> x .== additive)
     plt_df.color_val = [category_colors[p] for p in plt_df.category]
-    println(plt_df)
     set_theme!(Theme(palette = (color = category_colors,)))
     plt =
         data(plt_df) *
