@@ -11,7 +11,9 @@ using Latexify
 
 export run_glycolysis, plot_glycolysis
 
-k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
+# k1(; k2, q10, t2 = 27.0, t1 = 4.0) = k2 / q10^((t2-t1)/10)
+
+k1(; k2, q10, t2 = 27.0, t1 = 4.0) = 1.0 * k2
 
 function run_glycolysis()
     # Q10 values from Yurkovich et al, 2017 Table 1 and Figure 3
