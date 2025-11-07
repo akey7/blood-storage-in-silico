@@ -1,0 +1,1 @@
+module MasspyInterface end
