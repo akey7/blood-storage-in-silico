@@ -264,23 +264,23 @@ function plot_c_means_for_additive_and_n_clusters(
     )
     save(fig_filename, fig)
     println("Wrote $fig_filename")
-    return plt_df
+    return membership_df
 end
 
 function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     additives = unique(long_df.Additive)
-    plt_dfs = []
+    primary_cluster_dfs = []
     for additive in additives
-        plt_df = plot_c_means_for_additive_and_n_clusters(
+        primary_cluster_df = plot_c_means_for_additive_and_n_clusters(
             long_df,
             all_memberships_dfs,
             additive,
             n_clusters,
         )
-        push!(plt_dfs, plt_df)
+        push!(primary_cluster_dfs, primary_cluster_df)
     end
-    all_plt_dfs = vcat(plt_dfs...)
-    return all_plt_dfs
+    primary_cluster_df = vcat(primary_cluster_dfs...)
+    return primary_cluster_df
 end
 
 function plot_all_mM_timeseries(long_df)
