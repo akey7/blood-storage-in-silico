@@ -292,7 +292,7 @@ function plot_all_mM_timeseries(long_df)
         plt_df = @rsubset(agg_df, :Metabolite == metabolite)
         plt =
             data(plt_df) *
-            mapping(:Time, :median_mM => "Median mmol/L", color = :Additive) *
+            mapping(:Time, :median_mM => "Median mM", color = :Additive) *
             (visual(Lines) + visual(Scatter; markersize = 10))
         fig = draw(
             plt;
