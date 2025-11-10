@@ -29,7 +29,8 @@ function plot_solutions(base_title, conc_df, flux_df)
             title = "$base_title Concentrations",
         ),
     )
-    fig_conc_filename = joinpath("output", "masspy_interface", "$base_title concentrations.png")
+    fig_conc_filename =
+        joinpath("output", "masspy_interface", "$base_title concentrations.png")
     save(fig_conc_filename, fig_conc)
     println("Wrote $fig_conc_filename")
     plt_flux = data(plt_flux_df) * mapping(:t, :rate, color = :flux) * visual(Lines)

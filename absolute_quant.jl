@@ -16,7 +16,8 @@ CSV.write(absolute_quant_filename, absolute_quant_df)
 println(first(absolute_quant_medians_df, 10))
 fold_changes_df = load_relative_quant()
 println(first(fold_changes_df, 10))
-long_df, wide_df = combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+long_df, wide_df =
+    combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
 println(first(long_df, 10))
 long_df_filename = joinpath("output", "long_df.csv")
 CSV.write(long_df_filename, long_df)
@@ -33,7 +34,8 @@ diff_filename = joinpath("output", "diff_mM.csv")
 CSV.write(diff_filename, diffed_df)
 
 println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
-all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
+all_memberships_dfs, fuzzy_objectives_df =
+    cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
 println(first(fuzzy_objectives_df, 10))
 
 println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
