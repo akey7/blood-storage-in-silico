@@ -24,8 +24,8 @@ function plot_solutions(base_title, conc_df, flux_df)
         axis = (;
             xscale = log10,
             yscale = log10,
-            xlabel = "log10(Time)",
-            ylabel = "log10(Concentration)",
+            xlabel = "Time",
+            ylabel = "Concentration",
             title = "$base_title Concentrations",
         ),
     )
@@ -39,7 +39,7 @@ function plot_solutions(base_title, conc_df, flux_df)
         figure = figure_options,
         axis = (;
             xscale = log10,
-            xlabel = "log10(Time)",
+            xlabel = "Time",
             ylabel = "Flux",
             title = "$base_title Fluxes",
         ),
