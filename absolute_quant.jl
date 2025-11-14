@@ -40,4 +40,7 @@ println(first(fuzzy_objectives_df, 10))
 
 println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
 plot_elbows(fuzzy_objectives_df)
-plot_c_means_all_additives(long_df, all_memberships_dfs, 6)
+all_primary_cluster_df = plot_c_means_all_additives(long_df, all_memberships_dfs, 6)
+all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.csv")
+CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
+println("Wrote $all_primary_cluster_df_filename")
