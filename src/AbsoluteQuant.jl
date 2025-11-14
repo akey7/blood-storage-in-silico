@@ -19,7 +19,8 @@ export load_absolute_quant,
     plot_elbows,
     plot_c_means_all_additives,
     plot_all_mM_timeseries,
-    diff_mM
+    diff_mM,
+    pca_timeseries
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -324,6 +325,16 @@ function diff_mM(long_df)
         @select(:Additive, :Metabolite, :Patient, :Time, :absolute_mM, :diff_mM)
     end
     return diffed_df
+end
+
+function pca_timeseries(long_df, additive)
+    wide_df = @chain long_df begin
+        @rsubset(:Additive == additive)
+        @rtransform(:Patient = :Sample[7:8])
+        @select(:Metabolite, :Patient, :Time, :absolute_mM)
+        @orderby(:Metabolite, :Patient, :Time)
+        unstack([:Metabolite, :Patient], :Time, :absolute_mM)
+    end
 end
 
 end
