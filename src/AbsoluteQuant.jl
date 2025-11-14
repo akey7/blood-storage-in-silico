@@ -294,11 +294,17 @@ function plot_all_mM_timeseries(long_df)
     for metabolite in metabolites
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
         filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
-        plt_df = @rsubset(agg_df, :Metabolite == metabolite)
-        plt =
-            data(plt_df) *
+        line_plt_df = @rsubset(agg_df, :Metabolite == metabolite)
+        line_plt =
+            data(line_plt_df) *
             mapping(:Time, :median_mM => "Median mM", color = :Additive) *
-            (visual(Lines) + visual(Scatter; markersize = 10))
+            visual(Lines, linewidth = 2)
+        scatter_plt_df = @rsubset(long_df, :Metabolite == metabolite)
+        scatter_plt =
+            data(scatter_plt_df) *
+            mapping(:Time, :absolute_mM, color = :Additive, marker = :Additive) *
+            visual(Scatter, markersize = 14, alpha = 0.5)
+        plt = line_plt + scatter_plt
         fig = draw(
             plt;
             figure = (; size = (750, 500)),
