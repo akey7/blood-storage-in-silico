@@ -298,12 +298,12 @@ function plot_all_mM_timeseries(long_df)
         line_plt =
             data(line_plt_df) *
             mapping(:Time, :median_mM => "Median mM", color = :Additive) *
-            visual(Lines)
+            visual(Lines, linewidth = 2)
         scatter_plt_df = @rsubset(long_df, :Metabolite == metabolite)
         scatter_plt =
             data(scatter_plt_df) *
-            mapping(:Time, :absolute_mM, color = :Additive) *
-            visual(Scatter)
+            mapping(:Time, :absolute_mM, color = :Additive, marker = :Additive) *
+            visual(Scatter, markersize = 14, alpha = 0.5)
         plt = line_plt + scatter_plt
         fig = draw(
             plt;
