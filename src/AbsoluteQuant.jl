@@ -11,6 +11,7 @@ using Makie
 using Clustering
 using Distances
 using ShiftedArrays
+using MultivariateStats
 
 export load_absolute_quant,
     load_relative_quant,
@@ -334,7 +335,16 @@ function pca_timeseries(long_df, additive)
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
         @orderby(:Metabolite, :Patient, :Time)
         unstack([:Metabolite, :Patient], :Time, :absolute_mM)
+        dropmissing()
     end
+    labels_df = select(wide_df, [:Metabolite, :Patient])
+    println(first(labels_df, 10))
+    X = Matrix(select(wide_df, Not([:Metabolite, :Patient])))
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims=1)
+    Xz = StatsBase.transform(zt, X)
+    M = fit(PCA, Xz', maxoutdim = 2)
+    transformed = predict(M, Xz')'
+    println(size(transformed))
 end
 
 end
