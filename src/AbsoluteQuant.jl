@@ -11,6 +11,7 @@ using Makie
 using Clustering
 using Distances
 using ShiftedArrays
+using MultivariateStats
 
 export load_absolute_quant,
     load_relative_quant,
@@ -19,7 +20,8 @@ export load_absolute_quant,
     plot_elbows,
     plot_c_means_all_additives,
     plot_all_mM_timeseries,
-    diff_mM
+    diff_mM,
+    pca_timeseries
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -324,6 +326,32 @@ function diff_mM(long_df)
         @select(:Additive, :Metabolite, :Patient, :Time, :absolute_mM, :diff_mM)
     end
     return diffed_df
+end
+
+function pca_timeseries(long_df, additive)
+    wide_df = @chain long_df begin
+        @rsubset(:Additive == additive)
+        @rtransform(:Patient = :Sample[7:8])
+        @select(:Metabolite, :Patient, :Time, :absolute_mM)
+        @orderby(:Patient, :Time, :Metabolite)
+        unstack([:Patient, :Time], :Metabolite, :absolute_mM)
+        dropmissing()
+    end
+    patient_labels = wide_df[!, :Patient]
+    time_labels = wide_df[!, :Time]
+    X = Matrix(select(wide_df, Not([:Patient, :Time])))
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims=1)
+    Xzt = StatsBase.transform(zt, X)'
+    rows_with_nans =  vec(any(isnan, Xzt, dims=2))
+    display(rows_with_nans)
+    Xzt_no_nans = Xzt[.!(rows_with_nans), :]
+    M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)
+    display(M)
+    Xzt_transform = MultivariateStats.predict(M, Xzt_no_nans)
+    println("size(X) ", size(X))
+    println("size(Xzt) ", size(Xzt))
+    println("size(Xzt_no_nans) ", size(Xzt_no_nans))
+    println("size(Xzt_transform) ", size(Xzt_transform))
 end
 
 end

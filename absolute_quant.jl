@@ -25,22 +25,25 @@ relative_absolute_quant_filename = joinpath("output", "relative_absolute_quant.c
 CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
 
-println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
-plot_all_mM_timeseries(long_df)
+# println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
+# plot_all_mM_timeseries(long_df)
 
-println(">" ^ 10, " RATES ", "<" ^ 10)
-diffed_df = diff_mM(long_df)
-diff_filename = joinpath("output", "diff_mM.csv")
-CSV.write(diff_filename, diffed_df)
+# println(">" ^ 10, " RATES ", "<" ^ 10)
+# diffed_df = diff_mM(long_df)
+# diff_filename = joinpath("output", "diff_mM.csv")
+# CSV.write(diff_filename, diffed_df)
 
-println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
-all_memberships_dfs, fuzzy_objectives_df =
-    cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
-println(first(fuzzy_objectives_df, 10))
+# println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
+# all_memberships_dfs, fuzzy_objectives_df =
+#     cluster_all_additives_all_n_clusters(long_df; max_clusters = 7)
+# println(first(fuzzy_objectives_df, 10))
 
-println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
-plot_elbows(fuzzy_objectives_df)
-all_primary_cluster_df = plot_c_means_all_additives(long_df, all_memberships_dfs, 6)
-all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.csv")
-CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
-println("Wrote $all_primary_cluster_df_filename")
+# println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
+# plot_elbows(fuzzy_objectives_df)
+# all_primary_cluster_df = plot_c_means_all_additives(long_df, all_memberships_dfs, 6)
+# all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.csv")
+# CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
+# println("Wrote $all_primary_cluster_df_filename")
+
+println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
+pca_timeseries(long_df, "01-Ctrl AS3")
