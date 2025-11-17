@@ -337,7 +337,8 @@ function pca_timeseries(long_df, additive)
         unstack([:Patient, :Time], :Metabolite, :absolute_mM)
         dropmissing()
     end
-    labels_df = select(wide_df, [:Patient, :Time])
+    patient_labels = wide_df[:Patient]
+    time_labels = wide_df[:Time]
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
     zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims=1)
     Xz = StatsBase.transform(zt, X)
