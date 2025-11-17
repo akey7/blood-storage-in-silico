@@ -347,8 +347,9 @@ function pca_timeseries(long_df, additive)
     Xzt = Xz'[.!(rows_with_nans), :]
     M = fit(PCA, Xzt; pratio = 0.9, mean = 0)
     display(M)
-    Xz_transform = MultivariateStats.transform(M, Xzt)'
-    println(size(Xz_transform))
+    Xzt_transform = MultivariateStats.predict(M, Xzt)
+    println("size(Xzt) ", size(Xzt))
+    println("size(Xzt_transform) ", size(Xzt_transform))
 end
 
 end
