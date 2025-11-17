@@ -333,16 +333,17 @@ function pca_timeseries(long_df, additive)
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
-        @orderby(:Metabolite, :Patient, :Time)
-        unstack([:Metabolite, :Patient], :Time, :absolute_mM)
+        @orderby(:Patient, :Time, :Metabolite)
+        unstack([:Patient, :Time], :Metabolite, :absolute_mM)
         dropmissing()
     end
-    labels_df = select(wide_df, [:Metabolite, :Patient])
-    println(first(labels_df, 10))
-    X = Matrix(select(wide_df, Not([:Metabolite, :Patient])))
+    # labels_df = select(wide_df, [:Patient, :Time])
+    X = Matrix(select(wide_df, Not([:Patient, :Time])))
     zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims=1)
     Xz = StatsBase.transform(zt, X)
-    M = fit(PCA, Xz'; pratio = 0.95, mean = 0)
+    rows_with_nans =  vec(any(isnan, Xz', dims=2))
+    Xzt = Xz'[.!(rows_with_nans), :]
+    M = fit(PCA, Xzt; pratio = 0.9, mean = 0)
     display(M)
 end
 
