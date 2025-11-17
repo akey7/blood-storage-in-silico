@@ -12,7 +12,7 @@ import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 using DataFrames
 
-export create_3p_model, sample_fluxes
+export create_3p_model, sample_fluxes, constraints_explorer
 
 function create_3p_model()
     println("############################################################")
@@ -233,6 +233,21 @@ function create_3p_model()
     println(model.reactions["R_LOAD_NADPH"])
 
     return model
+end
+
+function constraints_explorer(model)
+    ct = flux_balance_constraints(model)
+    display(ct)
+    println(">" ^ 10, " FLUX CONSTRAINTS ", "<" ^ 10)
+    for k ∈ keys(ct.fluxes)
+        println(k, ": ", ct.fluxes[k].value)
+    end
+    println(">" ^ 10, " STOICHIOMETRY CONSTRAINTS ", "<" ^ 10)
+    for k ∈ keys(ct.flux_stoichiometry)
+        println(k, ": ", ct.flux_stoichiometry[k].value)
+    end
+    println(">" ^ 10, " OBJECTIVE CONSTRAINT ", "<" ^ 10)
+    println(ct.objective.value)
 end
 
 """
