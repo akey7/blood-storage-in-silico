@@ -1,4 +1,4 @@
 include("src/UfbaSampler.jl")
 using .UfbaSampler
 
-println("Hello world")
+create_3p_model()
