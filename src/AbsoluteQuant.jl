@@ -342,9 +342,8 @@ function pca_timeseries(long_df, additive)
     X = Matrix(select(wide_df, Not([:Metabolite, :Patient])))
     zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims=1)
     Xz = StatsBase.transform(zt, X)
-    M = fit(PCA, Xz', maxoutdim = 2)
-    transformed = predict(M, Xz')'
-    println(size(transformed))
+    M = fit(PCA, Xz'; pratio = 0.95, mean = 0)
+    display(M)
 end
 
 end
