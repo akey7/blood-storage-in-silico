@@ -1,12 +1,18 @@
 module UfbaSampler
 
-using COBREXA
+using Distributed
+@everywhere using Pkg
+@everywhere Pkg.activate(".")
+addprocs(3)
+@everywhere using COBREXA, HiGHS
+
 import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using DataFrames
 
-export create_3p_model
+export create_3p_model, sample_fluxes
 
 function create_3p_model()
     println("############################################################")
@@ -227,6 +233,36 @@ function create_3p_model()
     println(model.reactions["R_LOAD_NADPH"])
 
     return model
+end
+
+"""
+    sample_fluxes(model; n_chains::Int64, tolerance::Float64)
+
+Sample the allowable flux space of the `model`. Also see the `addprocs()` call above this function in this source file to adjust number of workers for parallel processing.
+
+# Arguments
+1. `model`: Model to be sampled.
+2. `n_chains::Int64`: The number of chains to calculate, with each chain producing ~126 samples. Defaults to 10 chains.
+3. `tolerance::Float64`: The tolerance bounds on the objective.
+
+# Returns
+`DataFrame`
+1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
+"""
+function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
+    s = flux_sample(
+        model,
+        optimizer = HiGHS.Optimizer,
+        objective_bound = relative_tolerance_bound(tolerance),
+        n_chains = n_chains,
+        workers = workers(),
+        collect_iterations = [10],
+    )
+    s_dict = Dict()
+    for reaction_id ∈ keys(s)
+        s_dict[reaction_id] = s[reaction_id]
+    end
+    DataFrame(s_dict)
 end
 
 end
