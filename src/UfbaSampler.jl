@@ -12,7 +12,7 @@ import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 using DataFrames
 
-export create_3p_model, sample_fluxes, constraints_explorer
+export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump
 
 function create_3p_model()
     println("############################################################")
@@ -248,6 +248,10 @@ function constraints_explorer(model)
     end
     println(">" ^ 10, " OBJECTIVE CONSTRAINT ", "<" ^ 10)
     println(ct.objective.value)
+end
+
+function convert_to_jump(model)
+    jump_model = convert(A.AbstractFBCModel, model)
 end
 
 """
