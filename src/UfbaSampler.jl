@@ -273,6 +273,9 @@ end
 # optimize!(model)
 
 function convert_to_jump(model)
+    println("############################################################")
+    println("# JuMP CONSTRAINTS.                                        #")
+    println("############################################################")
     ct = flux_balance_constraints(model)
     jump_model = optimization_model(ct; optimizer = HiGHS.Optimizer)
     display(jump_model)
@@ -282,6 +285,14 @@ function convert_to_jump(model)
     # display(data.x_upper)
     # display(data.b_lower)
     # display(data.b_upper)
+    # cs = constraints_string(MIME("text/plain"), jump_model)
+    for (F, S) in list_of_constraint_types(jump_model)
+        println("\nType: ($F, $S)")
+        for con in all_constraints(jump_model, F, S)
+            obj = constraint_object(con)
+            println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
+        end
+    end
 end
 
 """
