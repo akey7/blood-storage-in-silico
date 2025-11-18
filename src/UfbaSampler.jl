@@ -240,7 +240,7 @@ function constraints_explorer(model)
     display(ct)
     println(">" ^ 10, " FLUX CONSTRAINTS ", "<" ^ 10)
     for k ∈ keys(ct.fluxes)
-        println(k, ": ", ct.fluxes[k].value)
+        println(k, ": ", ct.fluxes[k].bound)
     end
     println(">" ^ 10, " STOICHIOMETRY CONSTRAINTS ", "<" ^ 10)
     for k ∈ keys(ct.flux_stoichiometry)
