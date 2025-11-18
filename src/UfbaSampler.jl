@@ -4,7 +4,7 @@ using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
 addprocs(3)
-@everywhere using COBREXA, HiGHS
+@everywhere using COBREXA, HiGHS, JuMP
 
 import SBMLFBCModels as S
 import AbstractFBCModels as A
@@ -250,8 +250,31 @@ function constraints_explorer(model)
     println(ct.objective.value)
 end
 
+# # Use JuMP.jl with GLPK
+# model = Model(GLPK.Optimizer)
+
+# # Define flux variables and their constraints
+# @variable(model, 0.0 <= v1 <= 1.0)
+# @variable(model, 0.0 <= v2 <= 1.0)
+# @variable(model, 0.0 <= v3 <= 1.0)
+# @variable(model, 0.0 <= v4 <= 1.0)
+# @variable(model, 0.0 <= v5 <= 1.0)
+
+# # Steady state constraints, Sv=0
+# @constraint(model, -v1 + v2 == 0)
+# @constraint(model, v1 - v2 - v3 == 0)
+# @constraint(model, v3 - v4 + v5 == 0)
+# @constraint(model, v4 - v5 == 0)
+
+# # Set objective function to maximize
+# @objective(model, Max, v4)
+
+# # Solve the model
+# optimize!(model)
+
 function convert_to_jump(model)
-    jump_model = convert(A.AbstractFBCModel, model)
+    jump_model = convert(JuMP.Model, model; optimizer = HiGHS.Optimizer)
+    display(jump_model)
 end
 
 """
