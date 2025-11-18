@@ -276,6 +276,8 @@ function convert_to_jump(model)
     ct = flux_balance_constraints(model)
     jump_model = optimization_model(ct; optimizer = HiGHS.Optimizer)
     display(jump_model)
+    jump_optimized = optimized_values(ct; optimizer = HiGHS.Optimizer)
+    display(jump_optimized)
 end
 
 """
