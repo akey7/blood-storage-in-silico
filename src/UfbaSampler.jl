@@ -13,7 +13,7 @@ import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 using DataFrames
 
-export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump
+export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump, ufba
 
 function create_3p_model()
     println("############################################################")
@@ -256,11 +256,13 @@ function constraints_explorer(model)
     C.pretty(ct)
 end
 
-# function ufva(model, dxdt_ranges::Dict{Symbol,Tuple{Float64, Float64}})
-#     ct = flux_balance_constraints(model)
-#     metabolite_names = collect(keys(ct.flux_stoichiometry))
-#     for (metabolite_name, k) in zip(metabolite_names, ct.)
-# end
+function ufba(model)
+    ct = deepcopy(flux_balance_constraints(model))
+    for k ∈ keys(ct.flux_stoichiometry)
+        ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
+    end
+    C.pretty(ct)
+end
 
 function convert_to_jump(model)
     println("\n############################################################")
