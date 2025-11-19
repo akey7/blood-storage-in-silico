@@ -4,15 +4,16 @@ using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
 addprocs(3)
-@everywhere using COBREXA, HiGHS
+@everywhere using COBREXA, HiGHS, JuMP
 
+import ConstraintTrees as C
 import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 using DataFrames
 
-export create_3p_model, sample_fluxes
+export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump
 
 function create_3p_model()
     println("############################################################")
@@ -233,6 +234,62 @@ function create_3p_model()
     println(model.reactions["R_LOAD_NADPH"])
 
     return model
+end
+
+function constraints_explorer(model)
+    println("\n############################################################")
+    println("# CONSTRAINT TREES                                         #")
+    println("############################################################")
+    ct = flux_balance_constraints(model)
+    display(ct)
+    # println("\n", ">" ^ 10, " FLUX CONSTRAINTS ", "<" ^ 10)
+    # for k ∈ keys(ct.fluxes)
+    #     println(k, ": ", ct.fluxes[k].bound)
+    # end
+    # println("\n", ">" ^ 10, " STOICHIOMETRY CONSTRAINTS ", "<" ^ 10)
+    # for k ∈ keys(ct.flux_stoichiometry)
+    #     println(k, ": ", ct.flux_stoichiometry[k].value)
+    # end
+    # println("\n", ">" ^ 10, " OBJECTIVE CONSTRAINT ", "<" ^ 10)
+    # println(ct.objective.value)
+    println("\n", ">" ^ 10, " PRETTY TREE ", "<" ^ 10)
+    C.pretty(ct)
+end
+
+function convert_to_jump(model)
+    println("\n############################################################")
+    println("# JuMP CONSTRAINTS.                                        #")
+    println("############################################################")
+    ct = flux_balance_constraints(model)
+    flux_names_sequence = collect(keys(ct.fluxes))
+    metabolite_names_sequence = collect(keys(ct.flux_stoichiometry))
+    jump_model = optimization_model(ct; optimizer = HiGHS.Optimizer)
+    display(jump_model)
+
+    println("\n", ">" ^ 10, " CONSTRAINT MATRIX A ", "<" ^ 10)
+    data = lp_matrix_data(jump_model)
+    display(data.A)
+    println("\n", ">" ^ 10, " FLUX VECTOR ", "<" ^ 10)
+    for (i, (flux_name, (lb, ub))) in
+        enumerate(zip(flux_names_sequence, zip(data.x_lower, data.x_upper)))
+        println("v[$i]: $flux_name ($lb, $ub)")
+    end
+    println("\n", ">" ^ 10, " dx/dt VECTOR ", "<" ^ 10)
+    for (i, (metabolite_name, (lb, ub))) in
+        enumerate(zip(metabolite_names_sequence, zip(data.b_lower, data.b_upper)))
+        println("b[$i]: $metabolite_name ($lb, $ub)")
+    end
+
+    # cs = constraints_string(MIME("text/plain"), jump_model)
+
+    println("\n", ">" ^ 10, " JuMP CONSTRAINT TYPES ", "<" ^ 10)
+    for (F, S) in list_of_constraint_types(jump_model)
+        println("\nType: ($F, $S)")
+        for con in all_constraints(jump_model, F, S)
+            obj = constraint_object(con)
+            println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
+        end
+    end
 end
 
 """
