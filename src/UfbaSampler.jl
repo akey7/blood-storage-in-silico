@@ -287,13 +287,7 @@ function convert_to_jump(model)
         println("\nType: ($F, $S)")
         for con in all_constraints(jump_model, F, S)
             obj = constraint_object(con)
-            if typeof(obj.set) == MathOptInterface.LessThan{Float64}
-                println("  ", "d$(obj.func)/dt ub ", name(con), ": ", " ∈ ", obj.set)
-            elseif typeof(obj.set) == MathOptInterface.GreaterThan{Float64}
-                println("  ", "d$(obj.func)/dt lb ", name(con), ": ", " ∈ ", obj.set)
-            else
-                println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
-            end
+            println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
         end
     end
 end
