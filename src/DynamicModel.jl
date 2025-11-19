@@ -150,7 +150,7 @@ function run_glycolysis()
         :k_SK_h_c_f => 1.0e6,
         :k_SK_h_c_r => 1.0e6,
         :k_SK_h2o_c_f => 1.0e6,
-        :k_SK_h2o_c_r => 1.0e6
+        :k_SK_h2o_c_r => 1.0e6,
     ]
 
     u0 = [

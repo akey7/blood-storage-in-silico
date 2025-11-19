@@ -11,6 +11,7 @@ using Makie
 using Clustering
 using Distances
 using ShiftedArrays
+using MultivariateStats
 
 export load_absolute_quant,
     load_relative_quant,
@@ -19,7 +20,8 @@ export load_absolute_quant,
     plot_elbows,
     plot_c_means_all_additives,
     plot_all_mM_timeseries,
-    diff_mM
+    diff_mM,
+    pca_timeseries
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -66,12 +68,12 @@ end
 function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
-        @rtransform(:relative_mM = :FoldChange * :median_prop_mM)
+        @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
         @orderby(:Additive, :Time, :Metabolite)
     end
     wide_df = @chain long_df begin
-        @select(:Sample, :Time, :Additive, :Metabolite, :relative_mM)
-        unstack([:Sample, :Time, :Additive], :Metabolite, :relative_mM, combine = first)
+        @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
+        unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
         @orderby(:Additive, :Time)
     end
     return long_df, wide_df
@@ -80,10 +82,10 @@ end
 function prepare_long_df_for_clustering(long_df, additive)
     long_df_2 = deepcopy(long_df)
     wide_timeseries_df = @chain long_df_2 begin
-        @rsubset(:Additive == additive, !isapprox(:relative_mM, 0.0))
-        @select(:Metabolite, :Time, :relative_mM)
+        @rsubset(:Additive == additive, !isapprox(:absolute_mM, 0.0))
+        @select(:Metabolite, :Time, :absolute_mM)
         @orderby(:Metabolite, :Time)
-        unstack(:Metabolite, :Time, :relative_mM, combine = first)
+        unstack(:Metabolite, :Time, :absolute_mM, combine = first)
     end
     return wide_timeseries_df
 end
@@ -210,11 +212,11 @@ function plot_c_means_for_additive_and_n_clusters(
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         innerjoin(membership_df, on = [:Additive, :Metabolite])
-        @select(:primary_cluster, :Patient, :Time, :Metabolite, :relative_mM)
+        @select(:primary_cluster, :Patient, :Time, :Metabolite, :absolute_mM)
         unstack(
             [:primary_cluster, :Patient, :Time],
             :Metabolite,
-            :relative_mM,
+            :absolute_mM,
             combine = first,
         )
         @orderby(:primary_cluster, :Patient, :Time)
@@ -264,24 +266,29 @@ function plot_c_means_for_additive_and_n_clusters(
     )
     save(fig_filename, fig)
     println("Wrote $fig_filename")
+    return membership_df
 end
 
 function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     additives = unique(long_df.Additive)
+    primary_cluster_dfs = []
     for additive in additives
-        plot_c_means_for_additive_and_n_clusters(
+        primary_cluster_df = plot_c_means_for_additive_and_n_clusters(
             long_df,
             all_memberships_dfs,
             additive,
             n_clusters,
         )
+        push!(primary_cluster_dfs, primary_cluster_df)
     end
+    primary_cluster_df = vcat(primary_cluster_dfs...)
+    return primary_cluster_df
 end
 
 function plot_all_mM_timeseries(long_df)
     agg_df = @chain long_df begin
         @groupby(:Additive, :Metabolite, :Time)
-        @combine(:median_mM = median(skipmissing(:relative_mM)))
+        @combine(:median_mM = median(skipmissing(:absolute_mM)))
         @orderby(:Additive, :Metabolite, :Time)
     end
     metabolites = unique(agg_df.Metabolite)
@@ -289,11 +296,17 @@ function plot_all_mM_timeseries(long_df)
     for metabolite in metabolites
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
         filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
-        plt_df = @rsubset(agg_df, :Metabolite == metabolite)
-        plt =
-            data(plt_df) *
-            mapping(:Time, :median_mM => "Median mmol/L", color = :Additive) *
-            (visual(Lines) + visual(Scatter; markersize = 10))
+        line_plt_df = @rsubset(agg_df, :Metabolite == metabolite)
+        line_plt =
+            data(line_plt_df) *
+            mapping(:Time, :median_mM => "Median mM", color = :Additive) *
+            visual(Lines, linewidth = 2)
+        scatter_plt_df = @rsubset(long_df, :Metabolite == metabolite)
+        scatter_plt =
+            data(scatter_plt_df) *
+            mapping(:Time, :absolute_mM, color = :Additive, marker = :Additive) *
+            visual(Scatter, markersize = 14, alpha = 0.5)
+        plt = line_plt + scatter_plt
         fig = draw(
             plt;
             figure = (; size = (750, 500)),
@@ -309,10 +322,36 @@ function diff_mM(long_df)
         @rtransform(:Patient = :Sample[7:8])
         @orderby(:Additive, :Metabolite, :Patient, :Time)
         @groupby(:Additive, :Metabolite, :Patient)
-        @transform(:diff_mM = :relative_mM .- ShiftedArrays.lag(:relative_mM))
-        @select(:Additive, :Metabolite, :Patient, :Time, :relative_mM, :diff_mM)
+        @transform(:diff_mM = :absolute_mM .- ShiftedArrays.lag(:absolute_mM))
+        @select(:Additive, :Metabolite, :Patient, :Time, :absolute_mM, :diff_mM)
     end
     return diffed_df
+end
+
+function pca_timeseries(long_df, additive)
+    wide_df = @chain long_df begin
+        @rsubset(:Additive == additive)
+        @rtransform(:Patient = :Sample[7:8])
+        @select(:Metabolite, :Patient, :Time, :absolute_mM)
+        @orderby(:Patient, :Time, :Metabolite)
+        unstack([:Patient, :Time], :Metabolite, :absolute_mM)
+        dropmissing()
+    end
+    patient_labels = wide_df[!, :Patient]
+    time_labels = wide_df[!, :Time]
+    X = Matrix(select(wide_df, Not([:Patient, :Time])))
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims = 1)
+    Xzt = StatsBase.transform(zt, X)'
+    rows_with_nans = vec(any(isnan, Xzt, dims = 2))
+    display(rows_with_nans)
+    Xzt_no_nans = Xzt[.!(rows_with_nans), :]
+    M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)
+    display(M)
+    Xzt_transform = MultivariateStats.predict(M, Xzt_no_nans)
+    println("size(X) ", size(X))
+    println("size(Xzt) ", size(Xzt))
+    println("size(Xzt_no_nans) ", size(Xzt_no_nans))
+    println("size(Xzt_transform) ", size(Xzt_transform))
 end
 
 end
