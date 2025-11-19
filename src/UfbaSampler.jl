@@ -6,6 +6,7 @@ using Distributed
 addprocs(3)
 @everywhere using COBREXA, HiGHS, JuMP
 
+import ConstraintTrees as C
 import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels: stoichiometry
@@ -236,22 +237,27 @@ function create_3p_model()
 end
 
 function constraints_explorer(model)
+    println("\n############################################################")
+    println("# CONSTRAINT TREES                                         #")
+    println("############################################################")
     ct = flux_balance_constraints(model)
     display(ct)
-    println(">" ^ 10, " FLUX CONSTRAINTS ", "<" ^ 10)
-    for k ∈ keys(ct.fluxes)
-        println(k, ": ", ct.fluxes[k].bound)
-    end
-    println(">" ^ 10, " STOICHIOMETRY CONSTRAINTS ", "<" ^ 10)
-    for k ∈ keys(ct.flux_stoichiometry)
-        println(k, ": ", ct.flux_stoichiometry[k].value)
-    end
-    println(">" ^ 10, " OBJECTIVE CONSTRAINT ", "<" ^ 10)
-    println(ct.objective.value)
+    # println("\n", ">" ^ 10, " FLUX CONSTRAINTS ", "<" ^ 10)
+    # for k ∈ keys(ct.fluxes)
+    #     println(k, ": ", ct.fluxes[k].bound)
+    # end
+    # println("\n", ">" ^ 10, " STOICHIOMETRY CONSTRAINTS ", "<" ^ 10)
+    # for k ∈ keys(ct.flux_stoichiometry)
+    #     println(k, ": ", ct.flux_stoichiometry[k].value)
+    # end
+    # println("\n", ">" ^ 10, " OBJECTIVE CONSTRAINT ", "<" ^ 10)
+    # println(ct.objective.value)
+    println("\n", ">" ^ 10, " PRETTY TREE ", "<" ^ 10)
+    C.pretty(ct)
 end
 
 function convert_to_jump(model)
-    println("############################################################")
+    println("\n############################################################")
     println("# JuMP CONSTRAINTS.                                        #")
     println("############################################################")
     ct = flux_balance_constraints(model)
