@@ -340,9 +340,9 @@ function pca_timeseries(long_df, additive)
     patient_labels = wide_df[!, :Patient]
     time_labels = wide_df[!, :Time]
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
-    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims=1)
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims = 1)
     Xzt = StatsBase.transform(zt, X)'
-    rows_with_nans =  vec(any(isnan, Xzt, dims=2))
+    rows_with_nans = vec(any(isnan, Xzt, dims = 2))
     display(rows_with_nans)
     Xzt_no_nans = Xzt[.!(rows_with_nans), :]
     M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)

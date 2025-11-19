@@ -261,22 +261,39 @@ function convert_to_jump(model)
     println("# JuMP CONSTRAINTS.                                        #")
     println("############################################################")
     ct = flux_balance_constraints(model)
+    flux_names_sequence = collect(keys(ct.fluxes))
+    metabolite_names_sequence = collect(keys(ct.flux_stoichiometry))
     jump_model = optimization_model(ct; optimizer = HiGHS.Optimizer)
     display(jump_model)
+
+    println("\n", ">" ^ 10, " CONSTRAINT MATRIX A ", "<" ^ 10)
     data = lp_matrix_data(jump_model)
-    # display(data.A)
+    display(data.A)
     # display(data.x_lower)
     # display(data.x_upper)
     # display(data.b_lower)
     # display(data.b_upper)
-    # cs = constraints_string(MIME("text/plain"), jump_model)
-    for (F, S) in list_of_constraint_types(jump_model)
-        println("\nType: ($F, $S)")
-        for con in all_constraints(jump_model, F, S)
-            obj = constraint_object(con)
-            println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
-        end
+    println("\n", ">" ^ 10, " FLUX VECTOR ", "<" ^ 10)
+    for (i, (flux_name, (lb, ub))) in
+        enumerate(zip(flux_names_sequence, zip(data.x_lower, data.x_upper)))
+        println("x[$i]: $flux_name ($lb, $ub)")
     end
+    println("\n", ">" ^ 10, " dx/dt RATE VECTOR ", "<" ^ 10)
+    for (i, (metabolite_name, (lb, ub))) in
+        enumerate(zip(metabolite_names_sequence, zip(data.b_lower, data.b_upper)))
+        println("b[$i]: $metabolite_name ($lb, $ub)")
+    end
+
+    # cs = constraints_string(MIME("text/plain"), jump_model)
+
+    # println("\n", ">" ^ 10, " JuMP CONSTRAINT TYPES ", "<" ^ 10)
+    # for (F, S) in list_of_constraint_types(jump_model)
+    #     println("\nType: ($F, $S)")
+    #     for con in all_constraints(jump_model, F, S)
+    #         obj = constraint_object(con)
+    #         println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
+    #     end
+    # end
 end
 
 """
