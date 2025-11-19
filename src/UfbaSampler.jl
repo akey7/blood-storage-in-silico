@@ -256,12 +256,42 @@ function constraints_explorer(model)
     C.pretty(ct)
 end
 
-function ufba(model)
+function ufba(
+    model::A.AbstractFBCModel;
+    optimizer,
+    objective_bound = relative_tolerance_bound(0.9),
+    reactions = nothing,
+    settings = [],
+    workers = Distributed.workers(),
+)
+    # Place bounds for Sv = b_lb, Sv = b_ub
     ct = deepcopy(flux_balance_constraints(model))
     for k ∈ keys(ct.flux_stoichiometry)
         ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
     end
     C.pretty(ct)
+
+    objective = ct.objective.value
+    objective_flux = optimized_values(
+        ct;
+        objective = ct.objective.value,
+        output = ct.objective,
+        optimizer,
+        settings,
+    )
+
+    isnothing(objective_flux) && return nothing
+
+    return constraints_variability(
+        ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
+        isnothing(reactions) ? ct.fluxes :
+        let s = Set(Symbol.(reactions))
+            C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
+        end;
+        optimizer,
+        settings,
+        workers,
+    )
 end
 
 function convert_to_jump(model)
