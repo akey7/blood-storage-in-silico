@@ -4,7 +4,7 @@ using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
 addprocs(3)
-@everywhere using COBREXA, HiGHS, JuMP
+@everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 
 import ConstraintTrees as C
 import SBMLFBCModels as S
@@ -13,7 +13,7 @@ import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 using DataFrames
 
-export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump
+export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump, ufba
 
 function create_3p_model()
     println("############################################################")
@@ -256,13 +256,51 @@ function constraints_explorer(model)
     C.pretty(ct)
 end
 
+function ufba(
+    model::A.AbstractFBCModel;
+    optimizer,
+    objective_bound = relative_tolerance_bound(0.9),
+    reactions = nothing,
+    settings = [],
+    workers = Distributed.workers(),
+)
+    # Place bounds for Sv = b_lb, Sv = b_ub
+    ct = deepcopy(flux_balance_constraints(model))
+    for k ∈ keys(ct.flux_stoichiometry)
+        ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
+    end
+    C.pretty(ct)
+
+    objective = ct.objective.value
+    objective_flux = optimized_values(
+        ct;
+        objective = ct.objective.value,
+        output = ct.objective,
+        optimizer,
+        settings,
+    )
+
+    isnothing(objective_flux) && return nothing
+
+    return constraints_variability(
+        ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
+        isnothing(reactions) ? ct.fluxes :
+        let s = Set(Symbol.(reactions))
+            C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
+        end;
+        optimizer,
+        settings,
+        workers,
+    )
+end
+
 function convert_to_jump(model)
     println("\n############################################################")
     println("# JuMP CONSTRAINTS.                                        #")
     println("############################################################")
     ct = flux_balance_constraints(model)
-    flux_names_sequence = collect(keys(ct.fluxes))
-    metabolite_names_sequence = collect(keys(ct.flux_stoichiometry))
+    flux_names = collect(keys(ct.fluxes))
+    metabolite_names = collect(keys(ct.flux_stoichiometry))
     jump_model = optimization_model(ct; optimizer = HiGHS.Optimizer)
     display(jump_model)
 
@@ -271,12 +309,12 @@ function convert_to_jump(model)
     display(data.A)
     println("\n", ">" ^ 10, " FLUX VECTOR ", "<" ^ 10)
     for (i, (flux_name, (lb, ub))) in
-        enumerate(zip(flux_names_sequence, zip(data.x_lower, data.x_upper)))
+        enumerate(zip(flux_names, zip(data.x_lower, data.x_upper)))
         println("v[$i]: $flux_name ($lb, $ub)")
     end
     println("\n", ">" ^ 10, " dx/dt VECTOR ", "<" ^ 10)
     for (i, (metabolite_name, (lb, ub))) in
-        enumerate(zip(metabolite_names_sequence, zip(data.b_lower, data.b_upper)))
+        enumerate(zip(metabolite_names, zip(data.b_lower, data.b_upper)))
         println("b[$i]: $metabolite_name ($lb, $ub)")
     end
 
@@ -285,9 +323,17 @@ function convert_to_jump(model)
     println("\n", ">" ^ 10, " JuMP CONSTRAINT TYPES ", "<" ^ 10)
     for (F, S) in list_of_constraint_types(jump_model)
         println("\nType: ($F, $S)")
-        for con in all_constraints(jump_model, F, S)
-            obj = constraint_object(con)
-            println("  ", name(con), ": ", obj.func, " ∈ ", obj.set)
+        if S == MathOptInterface.EqualTo{Float64}
+            for (metabolite_name, con) in
+                zip(metabolite_names, all_constraints(jump_model, F, S))
+                obj = constraint_object(con)
+                println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
+            end
+        else
+            for (flux_name, con) in zip(flux_names, all_constraints(jump_model, F, S))
+                obj = constraint_object(con)
+                println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
+            end
         end
     end
 end
