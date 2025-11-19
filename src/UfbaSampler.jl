@@ -256,6 +256,12 @@ function constraints_explorer(model)
     C.pretty(ct)
 end
 
+# function ufva(model, dxdt_ranges::Dict{Symbol,Tuple{Float64, Float64}})
+#     ct = flux_balance_constraints(model)
+#     metabolite_names = collect(keys(ct.flux_stoichiometry))
+#     for (metabolite_name, k) in zip(metabolite_names, ct.)
+# end
+
 function convert_to_jump(model)
     println("\n############################################################")
     println("# JuMP CONSTRAINTS.                                        #")
