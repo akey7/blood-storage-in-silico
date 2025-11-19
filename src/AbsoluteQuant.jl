@@ -12,6 +12,7 @@ using Clustering
 using Distances
 using ShiftedArrays
 using MultivariateStats
+using GLM
 
 export load_absolute_quant,
     load_relative_quant,
@@ -21,7 +22,8 @@ export load_absolute_quant,
     plot_c_means_all_additives,
     plot_all_mM_timeseries,
     diff_mM,
-    pca_timeseries
+    pca_timeseries,
+    regress_concentration_dxdt
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -352,6 +354,10 @@ function pca_timeseries(long_df, additive)
     println("size(Xzt) ", size(Xzt))
     println("size(Xzt_no_nans) ", size(Xzt_no_nans))
     println("size(Xzt_transform) ", size(Xzt_transform))
+end
+
+function regress_concentration_dxdt(long_df)
+    display(first(long_df, 10))
 end
 
 end
