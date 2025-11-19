@@ -356,8 +356,23 @@ function pca_timeseries(long_df, additive)
     println("size(Xzt_transform) ", size(Xzt_transform))
 end
 
+function additive_metabolite_time_points(long_df, additive, metabolite, final_time_point)
+    result_df = @chain long_df begin
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time >= final_time_point - 1,
+            :Time <= final_time_point
+        )
+        @select(:Time, :absolute_mM)
+        @orderby(:Time)
+    end
+    return result_df
+end
+
 function regress_concentration_dxdt(long_df)
-    display(first(long_df, 10))
+    result_df = additive_metabolite_time_points(long_df, "01-Ctrl AS3", "23dpg_c", 2)
+    display(result_df)
 end
 
 end
