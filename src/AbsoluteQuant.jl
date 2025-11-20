@@ -15,6 +15,8 @@ using ShiftedArrays
 using MultivariateStats
 using GLM
 using StatsModels
+using Statistics
+using Random
 
 export load_absolute_quant,
     load_relative_quant,
@@ -367,34 +369,33 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     return result_df
 end
 
-function regress_concentration_dxdt(long_df)
-    # regression_df = additive_metabolite_time_points(long_df, "01-Ctrl AS3", "23dpg_c", 2)
-    # model = lm(@formula(absolute_mM ~ Time), regression_df)
-    # coefs = coef(model)
-    # rate = coefs[2]
-    # ci = confint(model)
-    # lb = ci[2, 1]
-    # ub = ci[2, 2]
-    # println("Rate estimate: ", rate, " mM/week")
-    # println("95% CI: [", lb, ", ", ub, "]")
-
+function regress_concentration_dxdt(long_df, bootstrap_reps)
     unique_metabolites = unique(long_df.Metabolite)
     unique_additives = unique(long_df.Additive)
     tfs = [2, 3, 4, 5, 6]
     rows = []
     for (metabolite, additive, tf) in product(unique_metabolites, unique_additives, tfs)
         regression_df = additive_metabolite_time_points(long_df, additive, metabolite, tf)
-        model = lm(@formula(absolute_mM ~ Time), regression_df)
-        coefs = coef(model)
-        rate = coefs[2]
-        ci = confint(model)
-        lb = ci[2, 1]
-        ub = ci[2, 2]
+        original_model = lm(@formula(absolute_mM ~ Time), regression_df)
+        original_coefs = coef(original_model)
+        original_rate = original_coefs[2]
+        rng = MersenneTwister(123)
+        n = nrow(regression_df)
+        slopes = zeros(Float64, bootstrap_reps) 
+        for rep in 1:bootstrap_reps
+            sample_idx = rand(rng, 1:n, n)
+            boot_df = regression_df[sample_idx, :]
+            boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
+            boot_coefs = coef(boot_model)
+            slopes[rep] = boot_coefs[2]
+        end
+        lb = quantile(slopes, 0.025)
+        ub = quantile(slopes, 0.975)
         row = (
             Additive = additive,
             Metabolite = metabolite,
             tf = tf,
-            rate = rate,
+            rate = original_rate,
             lb = lb,
             ub = ub,
         )
