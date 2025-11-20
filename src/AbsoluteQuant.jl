@@ -1,5 +1,6 @@
 module AbsoluteQuant
 
+using Base.Iterators
 using CSV
 using XLSX
 using DataFrames
@@ -357,14 +358,9 @@ function pca_timeseries(long_df, additive)
     println("size(Xzt_transform) ", size(Xzt_transform))
 end
 
-function additive_metabolite_time_points(long_df, additive, metabolite, final_time_point)
+function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     result_df = @chain long_df begin
-        @rsubset(
-            :Additive == additive,
-            :Metabolite == metabolite,
-            :Time >= final_time_point - 1,
-            :Time <= final_time_point
-        )
+        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
         @select(:Time, :absolute_mM)
         @orderby(:Time)
     end
@@ -372,15 +368,43 @@ function additive_metabolite_time_points(long_df, additive, metabolite, final_ti
 end
 
 function regress_concentration_dxdt(long_df)
-    regression_df = additive_metabolite_time_points(long_df, "01-Ctrl AS3", "23dpg_c", 2)
-    model = lm(@formula(absolute_mM ~ Time), regression_df)
-    coefs = coef(model)
-    rate = coefs[2]
-    ci = confint(model)
-    lb = ci[2, 1]
-    ub = ci[2, 2]
-    println("Rate estimate: ", rate, " mM/week")
-    println("95% CI: [", lb, ", ", ub, "]")
+    # regression_df = additive_metabolite_time_points(long_df, "01-Ctrl AS3", "23dpg_c", 2)
+    # model = lm(@formula(absolute_mM ~ Time), regression_df)
+    # coefs = coef(model)
+    # rate = coefs[2]
+    # ci = confint(model)
+    # lb = ci[2, 1]
+    # ub = ci[2, 2]
+    # println("Rate estimate: ", rate, " mM/week")
+    # println("95% CI: [", lb, ", ", ub, "]")
+
+    unique_metabolites = unique(long_df.Metabolite)
+    unique_additives = unique(long_df.Additive)
+    tfs = [2, 3, 4, 5, 6]
+    rows = []
+    for (metabolite, additive, tf) in product(unique_metabolites, unique_additives, tfs)
+        regression_df = additive_metabolite_time_points(long_df, additive, metabolite, tf)
+        model = lm(@formula(absolute_mM ~ Time), regression_df)
+        coefs = coef(model)
+        rate = coefs[2]
+        ci = confint(model)
+        lb = ci[2, 1]
+        ub = ci[2, 2]
+        row = (
+            Additive = additive,
+            Metabolite = metabolite,
+            tf = tf,
+            rate = rate,
+            lb = lb,
+            ub = ub,
+        )
+        push!(rows, row)
+    end
+    result_df = @chain rows begin
+        DataFrame()
+        @orderby(:Additive, :Metabolite, :tf)
+    end
+    return result_df
 end
 
 end

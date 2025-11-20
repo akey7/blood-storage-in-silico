@@ -49,4 +49,5 @@ println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
 pca_timeseries(long_df, "01-Ctrl AS3")
 
 println(">" ^ 10, " dx/dt REGRESSION ", "<" ^ 10)
-regress_concentration_dxdt(long_df)
+dxdt_df = regress_concentration_dxdt(long_df)
+display(dxdt_df)
