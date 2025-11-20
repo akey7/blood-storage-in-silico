@@ -11,9 +11,11 @@ import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using CSV
 using DataFrames
+using DataFramesMeta
 
-export create_3p_model, sample_fluxes, ufba
+export create_3p_model, sample_fluxes, ufba, load_metabolite_bounds, query_metabolite_bounds
 
 function create_3p_model()
     println("############################################################")
@@ -236,8 +238,31 @@ function create_3p_model()
     return model
 end
 
+function load_metabolite_bounds()
+    metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
+    metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
+    return metabolite_bounds_df
+end
+
+function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+    query_df = @rsubset(
+        metabolite_bounds_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    if nrow(query_df) > 0
+        lower_bound = query_df[1, :lower_bound]
+        upper_bound = query_df[1, :upper_bound]
+        return (lower_bound, upper_bound)
+    else
+        return nothing
+    end
+end
+
 function ufba(
-    model::A.AbstractFBCModel;
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame;
     optimizer,
     objective_bound = relative_tolerance_bound(0.9),
     reactions = nothing,
@@ -245,7 +270,7 @@ function ufba(
     workers = Distributed.workers(),
 )
     # Place bounds for Sv = b_lb, Sv = b_ub
-    ct = deepcopy(flux_balance_constraints(model))
+    ct = flux_balance_constraints(model)
     for k ∈ keys(ct.flux_stoichiometry)
         ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
     end
