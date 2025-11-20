@@ -1,5 +1,6 @@
 module AbsoluteQuant
 
+using Base.Iterators
 using CSV
 using XLSX
 using DataFrames
@@ -12,6 +13,11 @@ using Clustering
 using Distances
 using ShiftedArrays
 using MultivariateStats
+using GLM
+using StatsModels
+using Statistics
+using Random
+using ThreadsX
 
 export load_absolute_quant,
     load_relative_quant,
@@ -21,7 +27,8 @@ export load_absolute_quant,
     plot_c_means_all_additives,
     plot_all_mM_timeseries,
     diff_mM,
-    pca_timeseries
+    pca_timeseries,
+    regress_concentration_dxdt
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -352,6 +359,54 @@ function pca_timeseries(long_df, additive)
     println("size(Xzt) ", size(Xzt))
     println("size(Xzt_no_nans) ", size(Xzt_no_nans))
     println("size(Xzt_transform) ", size(Xzt_transform))
+end
+
+function additive_metabolite_time_points(long_df, additive, metabolite, tf)
+    result_df = @chain long_df begin
+        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
+        @select(:Time, :absolute_mM)
+        @orderby(:Time)
+    end
+    return result_df
+end
+
+function regress_concentration_dxdt(long_df, bootstrap_reps)
+    Random.seed!(123)
+    unique_additives = unique(long_df.Additive)
+    unique_metabolites = unique(long_df.Metabolite)
+    tfs = [2, 3, 4, 5, 6]
+    rows = []
+    for (metabolite, additive, tf) in product(unique_metabolites, unique_additives, tfs)
+        println("Calculating $additive, $metabolite, $tf")
+        regression_df = additive_metabolite_time_points(long_df, additive, metabolite, tf)
+        n = nrow(regression_df)       
+        slopes = ThreadsX.map(1:bootstrap_reps) do _
+            sample_idx = rand(1:n, n)
+            boot_df = regression_df[sample_idx, :]
+            boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
+            boot_coefs = coef(boot_model)
+            boot_coefs[2]
+        end
+        lb = quantile(slopes, 0.025)
+        ub = quantile(slopes, 0.975)
+        mean_rate = mean(slopes)
+        rate_skew = skewness(slopes)
+        row = (
+            Additive = additive,
+            Metabolite = metabolite,
+            tf = tf,
+            mean_rate = mean_rate,
+            rate_skew = rate_skew,
+            lb = lb,
+            ub = ub,
+        )
+        push!(rows, row)
+    end
+    result_df = @chain rows begin
+        DataFrame()
+        @orderby(:Additive, :Metabolite, :tf)
+    end
+    return result_df
 end
 
 end
