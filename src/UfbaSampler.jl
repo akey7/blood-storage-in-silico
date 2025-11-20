@@ -282,7 +282,7 @@ function ufba(
         bounds = query_metabolite_bounds(metabolite_bounds_df, "01-Ctrl AS3",short_metabolite_id, 2)
         if isnothing(bounds)
             push!(unfound_metabolites, short_metabolite_id)
-            ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
+            ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
         else
             push!(found_metabolites, short_metabolite_id)
             lb, ub = bounds
