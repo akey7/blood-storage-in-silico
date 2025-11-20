@@ -13,6 +13,7 @@ using Distances
 using ShiftedArrays
 using MultivariateStats
 using GLM
+using StatsModels
 
 export load_absolute_quant,
     load_relative_quant,
@@ -371,8 +372,15 @@ function additive_metabolite_time_points(long_df, additive, metabolite, final_ti
 end
 
 function regress_concentration_dxdt(long_df)
-    result_df = additive_metabolite_time_points(long_df, "01-Ctrl AS3", "23dpg_c", 2)
-    display(result_df)
+    regression_df = additive_metabolite_time_points(long_df, "01-Ctrl AS3", "23dpg_c", 2)
+    model = lm(@formula(absolute_mM ~ Time), regression_df)
+    coefs = coef(model)
+    rate = coefs[2]
+    ci = confint(model)
+    lb = ci[2, 1]
+    ub = ci[2, 2]
+    println("Rate estimate: ", rate, " mM/week")
+    println("95% CI: [", lb, ", ", ub, "]")
 end
 
 end
