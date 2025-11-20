@@ -371,20 +371,17 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
 end
 
 function regress_concentration_dxdt(long_df, bootstrap_reps)
-    unique_metabolites = unique(long_df.Metabolite)
+    Random.seed!(123)
     unique_additives = unique(long_df.Additive)
+    unique_metabolites = unique(long_df.Metabolite)
     tfs = [2, 3, 4, 5, 6]
     rows = []
     for (metabolite, additive, tf) in product(unique_metabolites, unique_additives, tfs)
         println("Calculating $additive, $metabolite, $tf")
         regression_df = additive_metabolite_time_points(long_df, additive, metabolite, tf)
-        original_model = lm(@formula(absolute_mM ~ Time), regression_df)
-        original_coefs = coef(original_model)
-        original_rate = original_coefs[2]
         n = nrow(regression_df)       
         slopes = ThreadsX.map(1:bootstrap_reps) do _
-            rng = MersenneTwister(123)
-            sample_idx = rand(rng, 1:n, n)
+            sample_idx = rand(1:n, n)
             boot_df = regression_df[sample_idx, :]
             boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
             boot_coefs = coef(boot_model)
@@ -392,11 +389,12 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         end
         lb = quantile(slopes, 0.025)
         ub = quantile(slopes, 0.975)
+        mean_rate = mean(slopes)
         row = (
             Additive = additive,
             Metabolite = metabolite,
             tf = tf,
-            rate = original_rate,
+            mean_rate = mean_rate,
             lb = lb,
             ub = ub,
         )
