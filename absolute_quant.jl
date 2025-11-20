@@ -49,7 +49,7 @@ println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
 pca_timeseries(long_df, "01-Ctrl AS3")
 
 println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
-rate_df = regress_concentration_dxdt(long_df, 2)
+rate_df = regress_concentration_dxdt(long_df, 100)
 display(first(rate_df, 20))
 rate_filename = joinpath("output", "concentration_rates.csv")
 CSV.write(rate_filename, rate_df)

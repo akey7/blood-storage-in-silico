@@ -17,6 +17,7 @@ using GLM
 using StatsModels
 using Statistics
 using Random
+using ThreadsX
 
 export load_absolute_quant,
     load_relative_quant,
@@ -375,19 +376,19 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
     tfs = [2, 3, 4, 5, 6]
     rows = []
     for (metabolite, additive, tf) in product(unique_metabolites, unique_additives, tfs)
+        println("Calculating $additive, $metabolite, $tf")
         regression_df = additive_metabolite_time_points(long_df, additive, metabolite, tf)
         original_model = lm(@formula(absolute_mM ~ Time), regression_df)
         original_coefs = coef(original_model)
         original_rate = original_coefs[2]
-        rng = MersenneTwister(123)
-        n = nrow(regression_df)
-        slopes = zeros(Float64, bootstrap_reps) 
-        for rep in 1:bootstrap_reps
+        n = nrow(regression_df)       
+        slopes = ThreadsX.map(1:bootstrap_reps) do _
+            rng = MersenneTwister(123)
             sample_idx = rand(rng, 1:n, n)
             boot_df = regression_df[sample_idx, :]
             boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
             boot_coefs = coef(boot_model)
-            slopes[rep] = boot_coefs[2]
+            boot_coefs[2]
         end
         lb = quantile(slopes, 0.025)
         ub = quantile(slopes, 0.975)
