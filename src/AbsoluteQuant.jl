@@ -374,12 +374,14 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
-    tfs = [2, 3, 4, 5, 6]
+    final_times = [2, 3, 4, 5, 6]
     rows = []
-    for (metabolite, additive, tf) in product(unique_metabolites, unique_additives, tfs)
-        println("Calculating $additive, $metabolite, $tf")
-        regression_df = additive_metabolite_time_points(long_df, additive, metabolite, tf)
-        n = nrow(regression_df)       
+    for (metabolite, additive, final_time) in
+        product(unique_metabolites, unique_additives, final_times)
+        println("Calculating $additive, $metabolite, $final_time")
+        regression_df =
+            additive_metabolite_time_points(long_df, additive, metabolite, final_time)
+        n = nrow(regression_df)
         slopes = ThreadsX.map(1:bootstrap_reps) do _
             sample_idx = rand(1:n, n)
             boot_df = regression_df[sample_idx, :]
@@ -387,24 +389,24 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
             boot_coefs = coef(boot_model)
             boot_coefs[2]
         end
-        lb = quantile(slopes, 0.025)
-        ub = quantile(slopes, 0.975)
+        lower_bound = quantile(slopes, 0.025)
+        upper_bound = quantile(slopes, 0.975)
         mean_rate = mean(slopes)
         rate_skew = skewness(slopes)
         row = (
-            Additive = additive,
-            Metabolite = metabolite,
-            tf = tf,
+            additive = additive,
+            metabolite = metabolite,
+            final_time = final_time,
             mean_rate = mean_rate,
-            rate_skew = rate_skew,
-            lb = lb,
-            ub = ub,
+            skew = rate_skew,
+            lower_bound = lower_bound,
+            upper_bound = upper_bound,
         )
         push!(rows, row)
     end
     result_df = @chain rows begin
         DataFrame()
-        @orderby(:Additive, :Metabolite, :tf)
+        @orderby(:additive, :metabolite, :final_time)
     end
     return result_df
 end

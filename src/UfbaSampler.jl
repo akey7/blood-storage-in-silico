@@ -11,9 +11,11 @@ import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using CSV
 using DataFrames
+using DataFramesMeta
 
-export create_3p_model, sample_fluxes, ufba
+export create_3p_model, sample_fluxes, ufba, load_metabolite_bounds, query_metabolite_bounds
 
 function create_3p_model()
     println("############################################################")
@@ -236,21 +238,64 @@ function create_3p_model()
     return model
 end
 
+function load_metabolite_bounds()
+    metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
+    metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
+    return metabolite_bounds_df
+end
+
+function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+    query_df = @rsubset(
+        metabolite_bounds_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    if nrow(query_df) > 0
+        lower_bound = query_df[1, :lower_bound]
+        upper_bound = query_df[1, :upper_bound]
+        return (lower_bound, upper_bound)
+    else
+        return nothing
+    end
+end
+
 function ufba(
-    model::A.AbstractFBCModel;
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame;
     optimizer,
     objective_bound = relative_tolerance_bound(0.9),
     reactions = nothing,
     settings = [],
     workers = Distributed.workers(),
 )
-    # Place bounds for Sv = b_lb, Sv = b_ub
-    ct = deepcopy(flux_balance_constraints(model))
-    for k ∈ keys(ct.flux_stoichiometry)
-        ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
-    end
-    C.pretty(ct)
+    println("\n############################################################")
+    println("# PREPARING MODEL FOR uFBA                                 #")
+    println("############################################################")
 
+    # Place bounds for Sv = b_lb, Sv = b_ub
+    ct = flux_balance_constraints(model)
+    unfound_metabolites = []
+    found_metabolites = []
+    for k ∈ keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        bounds = query_metabolite_bounds(metabolite_bounds_df, "01-Ctrl AS3",short_metabolite_id, 2)
+        if isnothing(bounds)
+            push!(unfound_metabolites, short_metabolite_id)
+            ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+        else
+            push!(found_metabolites, short_metabolite_id)
+            lb, ub = bounds
+            ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+        end
+    end
+    println("\n>>>>>>>>> FOUND METABOLITES <<<<<<<<<")
+    display(found_metabolites)
+    println("\n>>>>>>>>> UNFOUND METABOLITES <<<<<<<<<")
+    display(unfound_metabolites)
+    println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
+    C.pretty(ct)
+    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
     objective = ct.objective.value
     objective_flux = optimized_values(
         ct;
@@ -259,19 +304,21 @@ function ufba(
         optimizer,
         settings,
     )
-
-    isnothing(objective_flux) && return nothing
-
-    return constraints_variability(
-        ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
-        isnothing(reactions) ? ct.fluxes :
-        let s = Set(Symbol.(reactions))
-            C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
-        end;
-        optimizer,
-        settings,
-        workers,
-    )
+    if isnothing(objective_flux)
+        println("Optimization failed")
+        return nothing
+    else
+        return constraints_variability(
+            ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
+            isnothing(reactions) ? ct.fluxes :
+            let s = Set(Symbol.(reactions))
+                C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
+            end;
+            optimizer,
+            settings,
+            workers,
+        )
+    end
 end
 
 """
