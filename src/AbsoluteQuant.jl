@@ -390,11 +390,13 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         lb = quantile(slopes, 0.025)
         ub = quantile(slopes, 0.975)
         mean_rate = mean(slopes)
+        rate_skew = skewness(slopes)
         row = (
             Additive = additive,
             Metabolite = metabolite,
             tf = tf,
             mean_rate = mean_rate,
+            rate_skew = rate_skew,
             lb = lb,
             ub = ub,
         )
