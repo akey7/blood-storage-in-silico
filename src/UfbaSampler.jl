@@ -269,13 +269,33 @@ function ufba(
     settings = [],
     workers = Distributed.workers(),
 )
+    println("\n############################################################")
+    println("# PREPARING MODEL FOR uFBA                                 #")
+    println("############################################################")
+
     # Place bounds for Sv = b_lb, Sv = b_ub
     ct = flux_balance_constraints(model)
+    unfound_metabolites = []
+    found_metabolites = []
     for k ∈ keys(ct.flux_stoichiometry)
-        ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
+        short_metabolite_id = string(k)[3:end]
+        bounds = query_metabolite_bounds(metabolite_bounds_df, "01-Ctrl AS3",short_metabolite_id, 2)
+        if isnothing(bounds)
+            push!(unfound_metabolites, short_metabolite_id)
+            ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
+        else
+            push!(found_metabolites, short_metabolite_id)
+            lb, ub = bounds
+            ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+        end
     end
+    println("\n>>>>>>>>> FOUND METABOLITES <<<<<<<<<")
+    display(found_metabolites)
+    println("\n>>>>>>>>> UNFOUND METABOLITES <<<<<<<<<")
+    display(unfound_metabolites)
+    println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
     C.pretty(ct)
-
+    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
     objective = ct.objective.value
     objective_flux = optimized_values(
         ct;
@@ -284,19 +304,21 @@ function ufba(
         optimizer,
         settings,
     )
-
-    isnothing(objective_flux) && return nothing
-
-    return constraints_variability(
-        ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
-        isnothing(reactions) ? ct.fluxes :
-        let s = Set(Symbol.(reactions))
-            C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
-        end;
-        optimizer,
-        settings,
-        workers,
-    )
+    if isnothing(objective_flux)
+        println("Optimization failed")
+        return nothing
+    else
+        return constraints_variability(
+            ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
+            isnothing(reactions) ? ct.fluxes :
+            let s = Set(Symbol.(reactions))
+                C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
+            end;
+            optimizer,
+            settings,
+            workers,
+        )
+    end
 end
 
 """
