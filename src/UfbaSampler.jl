@@ -15,12 +15,14 @@ import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coup
 using CSV
 using DataFrames
 using DataFramesMeta
+using CairoMakie
 
 export create_3p_model,
     sample_fluxes,
     ufba_all_additive_all_times,
     load_metabolite_bounds,
-    query_metabolite_bounds
+    query_metabolite_bounds,
+    histograms_for_reaction_in_additive
 
 function create_3p_model()
     println("############################################################")
@@ -336,12 +338,8 @@ function ufba_all_additive_all_times(
     pair_results = []
     println("Number of pairs: ", length(pairs))
     for (additive, final_time) in pairs
-        pair_result = ufba_additive_at_final_time(
-            model,
-            metabolite_bounds_df,
-            additive,
-            final_time,
-        )
+        pair_result =
+            ufba_additive_at_final_time(model, metabolite_bounds_df, additive, final_time)
         if isnothing(pair_result)
             status = (additive = additive, final_time = final_time, status = "fail")
             push!(status_rows, status)
@@ -386,6 +384,27 @@ function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
         s_dict[reaction_id] = s[reaction_id]
     end
     DataFrame(s_dict)
+end
+
+function histograms_for_reaction_in_additive(sampling_df, additive, reaction_id)
+    plt_df = @chain sampling_df begin
+        @rsubset(:additive == additive)
+        select(Not(:additive))
+        stack(Not(:final_time), variable_name = :reaction_id, value_name = :flux)
+        @rsubset(:reaction_id == reaction_id)
+        select(:final_time, :flux)
+    end
+    display(first(plt_df, 10))
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = reaction_id)
+    final_times = [2, 3, 4, 5, 6]
+    colors = [:dodgerblue, :orange, :blueviolet, :crimson, :deeppink]
+    for (final_time, color) in zip(final_times, colors)
+        hist_df = @rsubset(plt_df, :final_time == final_time)
+        hist!(ax, hist_df.flux; bins = 50, color = (color, 0.5), label = string(final_time))
+    end
+    axislegend(ax)
+    return fig
 end
 
 end
