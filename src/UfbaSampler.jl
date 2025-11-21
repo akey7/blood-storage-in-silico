@@ -329,8 +329,8 @@ function ufba_all_additive_all_times(
     println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
     println("############################################################")
 
-    additives = unique(metabolite_bounds_df.additive)[1:2]
-    final_times = unique(metabolite_bounds_df.final_time)[1:2]
+    additives = unique(metabolite_bounds_df.additive)
+    final_times = unique(metabolite_bounds_df.final_time)
     pairs = product(additives, final_times)
     status_rows = []
     pair_results = []
