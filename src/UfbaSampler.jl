@@ -3,9 +3,10 @@ module UfbaSampler
 using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
-addprocs(3)
+@info "Distributed.jl nprocs: $(nprocs())"
 @everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 
+using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
 import AbstractFBCModels as A
@@ -15,7 +16,11 @@ using CSV
 using DataFrames
 using DataFramesMeta
 
-export create_3p_model, sample_fluxes, ufba, load_metabolite_bounds, query_metabolite_bounds
+export create_3p_model,
+    sample_fluxes,
+    ufba_all_additive_all_times,
+    load_metabolite_bounds,
+    query_metabolite_bounds
 
 function create_3p_model()
     println("############################################################")
@@ -260,17 +265,14 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
     end
 end
 
-function ufba(
+function ufba_additive_at_final_time(
     model::A.AbstractFBCModel,
-    metabolite_bounds_df::DataFrame;
-    optimizer,
-    objective_bound = relative_tolerance_bound(0.9),
-    reactions = nothing,
-    settings = [],
-    workers = Distributed.workers(),
+    metabolite_bounds_df::DataFrame,
+    additive::AbstractString,
+    final_time::Int64,
 )
     println("\n############################################################")
-    println("# PREPARING MODEL FOR uFBA                                 #")
+    println("# uFBA Sampling $additive, final time: $final_time")
     println("############################################################")
 
     # Place bounds for Sv = b_lb, Sv = b_ub
@@ -279,7 +281,12 @@ function ufba(
     found_metabolites = []
     for k ∈ keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
-        bounds = query_metabolite_bounds(metabolite_bounds_df, "01-Ctrl AS3",short_metabolite_id, 2)
+        bounds = query_metabolite_bounds(
+            metabolite_bounds_df,
+            additive,
+            short_metabolite_id,
+            final_time,
+        )
         if isnothing(bounds)
             push!(unfound_metabolites, short_metabolite_id)
             ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
@@ -293,38 +300,68 @@ function ufba(
     display(found_metabolites)
     println("\n>>>>>>>>> UNFOUND METABOLITES <<<<<<<<<")
     display(unfound_metabolites)
-    println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
-    C.pretty(ct)
+    # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
+    # C.pretty(ct)
     println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
-    objective = ct.objective.value
     objective_flux = optimized_values(
         ct;
         objective = ct.objective.value,
         output = ct.objective,
-        optimizer,
-        settings,
+        optimizer = HiGHS.Optimizer,
+        settings = [],
     )
     if isnothing(objective_flux)
-        println("Optimization failed")
+        println("Simple optimization failed")
         return nothing
     else
-        return constraints_variability(
-            ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
-            isnothing(reactions) ? ct.fluxes :
-            let s = Set(Symbol.(reactions))
-                C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
-            end;
-            optimizer,
-            settings,
-            workers,
-        )
+        println("Simple optimization succeeded!")
+        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        samples_df = sample_fluxes(model)
+        return samples_df
     end
+end
+
+function ufba_all_additive_all_times(
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame,
+)
+    println("\n############################################################")
+    println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
+    println("############################################################")
+
+    additives = unique(metabolite_bounds_df.additive)
+    final_times = unique(metabolite_bounds_df.final_time)
+    pairs = product(additives, final_times)
+    status_rows = []
+    pair_results = []
+    println("Number of pairs: ", length(pairs))
+    for (additive, final_time) in pairs
+        pair_result = ufba_additive_at_final_time(
+            model,
+            metabolite_bounds_df,
+            additive,
+            final_time,
+        )
+        if isnothing(pair_result)
+            status = (additive = additive, final_time = final_time, status = "fail")
+            push!(status_rows, status)
+        else
+            status = (additive = additive, final_time = final_time, status = "ok")
+            push!(status_rows, status)
+            pair_result[!, :additive] .= additive
+            pair_result[!, :final_time] .= final_time
+            push!(pair_results, pair_result)
+        end
+    end
+    sampling_df = vcat(pair_results...)
+    status_df = DataFrame(status_rows)
+    return sampling_df, status_df
 end
 
 """
     sample_fluxes(model; n_chains::Int64, tolerance::Float64)
 
-Sample the allowable flux space of the `model`. Also see the `addprocs()` call above this function in this source file to adjust number of workers for parallel processing.
+Sample the allowable flux space of the `model`. Use the `julia -p X...` -p command line option to set the number of workers for this operation.
 
 # Arguments
 1. `model`: Model to be sampled.
