@@ -262,15 +262,12 @@ end
 
 function ufba(
     model::A.AbstractFBCModel,
-    metabolite_bounds_df::DataFrame;
-    optimizer,
-    objective_bound = relative_tolerance_bound(0.9),
-    reactions = nothing,
-    settings = [],
-    workers = Distributed.workers(),
+    metabolite_bounds_df::DataFrame,
+    additive::String,
+    final_time::Int64
 )
     println("\n############################################################")
-    println("# PREPARING MODEL FOR uFBA                                 #")
+    println("# uFBA Sampling $additive, final time: $final_time")
     println("############################################################")
 
     # Place bounds for Sv = b_lb, Sv = b_ub
@@ -279,7 +276,7 @@ function ufba(
     found_metabolites = []
     for k ∈ keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
-        bounds = query_metabolite_bounds(metabolite_bounds_df, "01-Ctrl AS3",short_metabolite_id, 2)
+        bounds = query_metabolite_bounds(metabolite_bounds_df, additive, short_metabolite_id, final_time)
         if isnothing(bounds)
             push!(unfound_metabolites, short_metabolite_id)
             ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
@@ -296,13 +293,12 @@ function ufba(
     println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
     C.pretty(ct)
     println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
-    objective = ct.objective.value
     objective_flux = optimized_values(
         ct;
         objective = ct.objective.value,
         output = ct.objective,
-        optimizer,
-        settings,
+        optimizer = HiGHS.Optimizer,
+        settings = [],
     )
     if isnothing(objective_flux)
         println("Simple optimization failed")
@@ -318,7 +314,7 @@ end
 """
     sample_fluxes(model; n_chains::Int64, tolerance::Float64)
 
-Sample the allowable flux space of the `model`. Also see the `addprocs()` call above this function in this source file to adjust number of workers for parallel processing.
+Sample the allowable flux space of the `model`. Use the `julia -p X...` -p command line option to set the number of workers for this operation.
 
 # Arguments
 1. `model`: Model to be sampled.
