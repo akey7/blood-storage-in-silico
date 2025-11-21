@@ -268,7 +268,7 @@ end
 function ufba_additive_at_final_time(
     model::A.AbstractFBCModel,
     metabolite_bounds_df::DataFrame,
-    additive::String,
+    additive::AbstractString,
     final_time::Int64,
 )
     println("\n############################################################")
@@ -300,8 +300,8 @@ function ufba_additive_at_final_time(
     display(found_metabolites)
     println("\n>>>>>>>>> UNFOUND METABOLITES <<<<<<<<<")
     display(unfound_metabolites)
-    println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
-    C.pretty(ct)
+    # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
+    # C.pretty(ct)
     println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
     objective_flux = optimized_values(
         ct;
@@ -332,10 +332,30 @@ function ufba_all_additive_all_times(
     additives = unique(metabolite_bounds_df.additive)[1:2]
     final_times = unique(metabolite_bounds_df.final_time)[1:2]
     pairs = product(additives, final_times)
+    status_rows = []
+    pair_results = []
     println("Number of pairs: ", length(pairs))
     for (additive, final_time) in pairs
-        println(additive, " ", final_time)
+        pair_result = ufba_additive_at_final_time(
+            model,
+            metabolite_bounds_df,
+            additive,
+            final_time,
+        )
+        if isnothing(pair_result)
+            status = (additive = additive, final_time = final_time, status = "fail")
+            push!(status_rows, status)
+        else
+            status = (additive = additive, final_time = final_time, status = "ok")
+            push!(status_rows, status)
+            pair_result[!, :additive] .= additive
+            pair_result[!, :final_time] .= final_time
+            push!(pair_results, pair_result)
+        end
     end
+    sampling_df = vcat(pair_results...)
+    status_df = DataFrame(status_rows)
+    return sampling_df, status_df
 end
 
 """
