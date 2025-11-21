@@ -3,7 +3,7 @@ module UfbaSampler
 using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
-addprocs(3)
+addprocs(5)
 @everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 
 import ConstraintTrees as C
@@ -305,19 +305,13 @@ function ufba(
         settings,
     )
     if isnothing(objective_flux)
-        println("Optimization failed")
+        println("Simple optimization failed")
         return nothing
     else
-        return constraints_variability(
-            ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
-            isnothing(reactions) ? ct.fluxes :
-            let s = Set(Symbol.(reactions))
-                C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
-            end;
-            optimizer,
-            settings,
-            workers,
-        )
+        println("Simple optimization succeeded!")
+        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        samples_df = sample_fluxes(model)
+        return samples_df
     end
 end
 
