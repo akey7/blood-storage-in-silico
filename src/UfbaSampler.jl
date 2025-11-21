@@ -3,7 +3,7 @@ module UfbaSampler
 using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
-addprocs(5)
+@info "Distributed.jl nprocs: $(nprocs())"
 @everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 
 import ConstraintTrees as C

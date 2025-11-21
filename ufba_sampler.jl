@@ -1,4 +1,5 @@
 using HiGHS
+using DataFrames
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -11,5 +12,5 @@ metabolites_bounds_df = load_metabolite_bounds()
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "nonexistent_c", 2))
 ufba_result = ufba(model, metabolites_bounds_df; optimizer = HiGHS.Optimizer)
 if !isnothing(ufba_result)
-    display(first(ufba_result, 20))
+    println("Generated $(nrow(ufba_result)) samples")
 end
