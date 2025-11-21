@@ -6,6 +6,7 @@ using Distributed
 @info "Distributed.jl nprocs: $(nprocs())"
 @everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 
+using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
 import AbstractFBCModels as A
@@ -15,7 +16,11 @@ using CSV
 using DataFrames
 using DataFramesMeta
 
-export create_3p_model, sample_fluxes, ufba, load_metabolite_bounds, query_metabolite_bounds
+export create_3p_model,
+    sample_fluxes,
+    ufba_all_additive_all_times,
+    load_metabolite_bounds,
+    query_metabolite_bounds
 
 function create_3p_model()
     println("############################################################")
@@ -260,11 +265,11 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
     end
 end
 
-function ufba(
+function ufba_additive_at_final_time(
     model::A.AbstractFBCModel,
     metabolite_bounds_df::DataFrame,
     additive::String,
-    final_time::Int64
+    final_time::Int64,
 )
     println("\n############################################################")
     println("# uFBA Sampling $additive, final time: $final_time")
@@ -276,7 +281,12 @@ function ufba(
     found_metabolites = []
     for k ∈ keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
-        bounds = query_metabolite_bounds(metabolite_bounds_df, additive, short_metabolite_id, final_time)
+        bounds = query_metabolite_bounds(
+            metabolite_bounds_df,
+            additive,
+            short_metabolite_id,
+            final_time,
+        )
         if isnothing(bounds)
             push!(unfound_metabolites, short_metabolite_id)
             ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
@@ -308,6 +318,23 @@ function ufba(
         println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
         samples_df = sample_fluxes(model)
         return samples_df
+    end
+end
+
+function ufba_all_additive_all_times(
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame,
+)
+    println("\n############################################################")
+    println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
+    println("############################################################")
+
+    additives = unique(metabolite_bounds_df.additive)[1:2]
+    final_times = unique(metabolite_bounds_df.final_time)[1:2]
+    pairs = product(additives, final_times)
+    println("Number of pairs: ", length(pairs))
+    for (additive, final_time) in pairs
+        println(additive, " ", final_time)
     end
 end
 
