@@ -395,16 +395,21 @@ function histograms_for_reaction_in_additive(sampling_df, additive, reaction_id)
         select(:final_time, :flux)
     end
     display(first(plt_df, 10))
+    title = "$additive $reaction_id"
     fig = Figure()
-    ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = reaction_id)
+    ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = title)
     final_times = [2, 3, 4, 5, 6]
     colors = [:dodgerblue, :orange, :blueviolet, :crimson, :deeppink]
     for (final_time, color) in zip(final_times, colors)
         hist_df = @rsubset(plt_df, :final_time == final_time)
-        hist!(ax, hist_df.flux; bins = 50, color = (color, 0.5), label = string(final_time))
+        hist!(ax, hist_df.flux; bins = 50, color = (color, 0.33), label = string(final_time))
     end
     axislegend(ax)
     return fig
 end
+
+# function plot_all_histograms()
+
+# end
 
 end
