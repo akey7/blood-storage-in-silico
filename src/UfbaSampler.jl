@@ -19,7 +19,7 @@ using CairoMakie
 
 export create_3p_model,
     sample_fluxes,
-    ufba_all_additive_all_times,
+    ufba_all_additives_all_times,
     load_metabolite_bounds,
     query_metabolite_bounds,
     histograms_for_reaction_in_additive,
@@ -272,7 +272,8 @@ function ufba_additive_at_final_time(
     model::A.AbstractFBCModel,
     metabolite_bounds_df::DataFrame,
     additive::AbstractString,
-    final_time::Int64,
+    final_time::Int64;
+    n_chains::Int64 = 10,
 )
     println("\n############################################################")
     println("# uFBA Sampling $additive, final time: $final_time")
@@ -319,14 +320,15 @@ function ufba_additive_at_final_time(
     else
         println("Simple optimization succeeded!")
         println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
-        samples_df = sample_fluxes(model)
+        samples_df = sample_fluxes(model; n_chains = 10)
         return samples_df
     end
 end
 
-function ufba_all_additive_all_times(
+function ufba_all_additives_all_times(
     model::A.AbstractFBCModel,
-    metabolite_bounds_df::DataFrame,
+    metabolite_bounds_df::DataFrame;
+    n_chains::Int64 = 10,
 )
     println("\n############################################################")
     println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
@@ -339,8 +341,13 @@ function ufba_all_additive_all_times(
     pair_results = []
     println("Number of pairs: ", length(pairs))
     for (additive, final_time) in pairs
-        pair_result =
-            ufba_additive_at_final_time(model, metabolite_bounds_df, additive, final_time)
+        pair_result = ufba_additive_at_final_time(
+            model,
+            metabolite_bounds_df,
+            additive,
+            final_time;
+            n_chains = n_chains,
+        )
         if isnothing(pair_result)
             status = (additive = additive, final_time = final_time, status = "fail")
             push!(status_rows, status)
@@ -372,6 +379,7 @@ Sample the allowable flux space of the `model`. Use the `julia -p X...` -p comma
 1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
 """
 function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
+    println("N Chains: $n_chains")
     s = flux_sample(
         model,
         optimizer = HiGHS.Optimizer,
