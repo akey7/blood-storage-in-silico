@@ -1,4 +1,5 @@
 using CSV
+using ArgParse
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -8,8 +9,18 @@ metabolites_bounds_df = load_metabolite_bounds()
 
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
 
+s = ArgParseSettings()
+@add_arg_table! s begin
+    "--nchains"
+    help = "Number of chains during sampling"
+    arg_type = Int64
+    default = 10
+end
+n_chains = parse_args(s)["nchains"]
+
 sampling_df, status_df =
-    ufba_result = ufba_all_additive_all_times(model, metabolites_bounds_df)
+    ufba_result =
+        ufba_all_additives_all_times(model, metabolites_bounds_df; n_chains = n_chains)
 println("\n############################################################")
 println("# uFBA: FINAL STATUS                                       #")
 println("############################################################")
