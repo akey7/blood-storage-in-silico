@@ -22,7 +22,8 @@ export create_3p_model,
     ufba_all_additive_all_times,
     load_metabolite_bounds,
     query_metabolite_bounds,
-    histograms_for_reaction_in_additive
+    histograms_for_reaction_in_additive,
+    plot_all_histograms
 
 function create_3p_model()
     println("############################################################")
@@ -386,15 +387,11 @@ function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
     DataFrame(s_dict)
 end
 
-function histograms_for_reaction_in_additive(sampling_df, additive, reaction_id)
-    plt_df = @chain sampling_df begin
-        @rsubset(:additive == additive)
-        select(Not(:additive))
-        stack(Not(:final_time), variable_name = :reaction_id, value_name = :flux)
-        @rsubset(:reaction_id == reaction_id)
+function histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
+    plt_df = @chain long_sampling_df begin
+        @rsubset(:additive == additive, :reaction_id == reaction_id)
         select(:final_time, :flux)
     end
-    display(first(plt_df, 10))
     title = "$additive $reaction_id"
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = title)
@@ -402,14 +399,39 @@ function histograms_for_reaction_in_additive(sampling_df, additive, reaction_id)
     colors = [:dodgerblue, :orange, :blueviolet, :crimson, :deeppink]
     for (final_time, color) in zip(final_times, colors)
         hist_df = @rsubset(plt_df, :final_time == final_time)
-        hist!(ax, hist_df.flux; bins = 50, color = (color, 0.33), label = string(final_time))
+        hist!(
+            ax,
+            hist_df.flux;
+            bins = 50,
+            color = (color, 0.33),
+            label = string(final_time),
+        )
     end
     axislegend(ax)
     return fig
 end
 
-# function plot_all_histograms()
+function plot_all_histograms(sampling_df)
+    println("\n############################################################")
+    println("# uFBA: PLOTTING HISTOGRAMS                                #")
+    println("############################################################")
 
-# end
+    long_sampling_df = stack(
+        sampling_df,
+        Not([:additive, :final_time]),
+        variable_name = :reaction_id,
+        value_name = :flux,
+    )
+    additives = unique(long_sampling_df.additive)
+    reaction_ids = unique(long_sampling_df.reaction_id)
+    pairs = product(additives, reaction_ids)
+    n_pairs = length(pairs)
+    for (i, (additive, reaction_id)) in enumerate(pairs)
+        fig = histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
+        filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
+        save(filename, fig)
+        println("Wrote $i of $n_pairs: $filename")
+    end
+end
 
 end
