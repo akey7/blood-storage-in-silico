@@ -320,7 +320,7 @@ function ufba_additive_at_final_time(
     else
         println("Simple optimization succeeded!")
         println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
-        samples_df = sample_fluxes(model; n_chains = 10)
+        samples_df = sample_fluxes(model; n_chains = n_chains)
         return samples_df
     end
 end
