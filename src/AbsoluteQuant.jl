@@ -393,6 +393,12 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         upper_bound = quantile(slopes, 0.975)
         mean_rate = mean(slopes)
         rate_skew = skewness(slopes)
+        single_model = lm(@formula(absolute_mM ~ Time), regression_df)
+        coefs = coef(single_model)
+        single_rate = coefs[2]
+        ci = confint(single_model)
+        single_lb = ci[2, 1]
+        single_ub = ci[2, 2]
         row = (
             additive = additive,
             metabolite = metabolite,
@@ -401,6 +407,9 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
             skew = rate_skew,
             lower_bound = lower_bound,
             upper_bound = upper_bound,
+            single_rate = single_rate,
+            single_lb = single_lb,
+            single_ub = single_ub,
         )
         push!(rows, row)
     end
