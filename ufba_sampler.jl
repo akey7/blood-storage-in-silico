@@ -1,5 +1,4 @@
 using CSV
-using DataFrames
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
