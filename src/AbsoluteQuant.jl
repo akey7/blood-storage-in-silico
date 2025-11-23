@@ -369,8 +369,57 @@ function pca_timeseries(long_df, additive)
         @groupby(:Time, :Metabolite)
         @combine(:mean_mM = mean(skipmissing(:absolute_mM)))
         unstack(:Time, :Metabolite, :mean_mM, combine = first)
+        @orderby(:Time)
     end
     display(first(wide_df, 100))
+    time_labels = wide_df.Time
+    X = Matrix(select(wide_df, Not(:Time)))
+    colmeans = map(eachcol(X)) do c
+        m = mean(skipmissing(c))
+        return isfinite(m) ? m : missing
+    end
+    for j in axes(X, 2)
+        if ismissing(colmeans[j])
+            continue
+        end
+        @inbounds for i in axes(X, 1)
+            if ismissing(X[i, j])
+                X[i, j] = colmeans[j]
+            end
+        end
+    end
+    Xf = Array{Float64}(undef, size(X))
+    for j in axes(X, 2), i in axes(X, 1)
+        Xf[i, j] = ismissing(X[i, j]) ? NaN : Float64(X[i, j])
+    end
+    good_cols = trues(size(Xf, 2))
+    for j in axes(Xf, 2)
+        col = view(Xf, :, j)
+        if any(!isfinite, col)
+            good_cols[j] = false
+            continue
+        end
+        s = std(col)
+        if !isfinite(s) || s == 0.0
+            good_cols[j] = false
+        end
+    end
+    Xf = Xf[:, good_cols]
+    if size(Xf, 2) == 0
+        error("After filtering, no valid metabolite columns remain for PCA.")
+    end
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
+    Xz = StatsBase.transform(zt, Xf)
+    Xzt = copy(Xz')
+    M = fit(PCA, Xzt; pratio = 0.9, mean = false)
+    scores = MultivariateStats.predict(M, Xzt)
+    display(M)
+    return (
+        model = M,
+        scores = scores,
+        time_labels = time_labels,
+        kept_columns = findall(good_cols),
+    )
 end
 
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)
