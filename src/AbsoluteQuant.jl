@@ -28,7 +28,8 @@ export load_absolute_quant,
     plot_all_mM_timeseries,
     diff_mM,
     pca_timeseries,
-    regress_concentration_dxdt
+    regress_concentration_dxdt,
+    plot_pca_loadings
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -419,7 +420,32 @@ function pca_timeseries(long_df, additive)
         scores = scores,
         time_labels = time_labels,
         kept_columns = findall(good_cols),
+        wide_df = wide_df,
     )
+end
+
+function plot_pca_loadings(pca_result)
+    kept_columns = pca_result.kept_columns
+    wide_df = pca_result.wide_df
+    M = pca_result.model
+    L = loadings(M)
+    pc1 = L[:, 1]
+    pc2 = L[:, 2]
+    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
+    fig = Figure(resolution = (700, 600))
+    ax = Axis(fig[1, 1],
+        xlabel = "PC1 loading",
+        ylabel = "PC2 loading",
+        title = "PCA Loadings (Pattern Matrix)",
+        aspect = DataAspect()
+    )
+    scatter!(ax, pc1, pc2, markersize = 12, color = :dodgerblue)
+    for (x, y, name) in zip(pc1, pc2, metabolite_names)
+        text!(ax, x, y, text = name, offset = (5, 5), align = (:left, :bottom))
+    end
+    hlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
+    vlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
+    return fig
 end
 
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)

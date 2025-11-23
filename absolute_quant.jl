@@ -46,7 +46,9 @@ println("Wrote $relative_absolute_quant_filename")
 # println("Wrote $all_primary_cluster_df_filename")
 
 println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
-pca_timeseries(long_df, "01-Ctrl AS3")
+pca_results = pca_timeseries(long_df, "01-Ctrl AS3")
+fig = plot_pca_loadings(pca_results)
+display(fig)
 
 # println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
 # rate_df = regress_concentration_dxdt(long_df, 1000)
