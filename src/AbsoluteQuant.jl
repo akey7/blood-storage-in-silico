@@ -335,30 +335,42 @@ function diff_mM(long_df)
     return diffed_df
 end
 
+# function pca_timeseries(long_df, additive)
+#     wide_df = @chain long_df begin
+#         @rsubset(:Additive == additive)
+#         @rtransform(:Patient = :Sample[7:8])
+#         @select(:Metabolite, :Patient, :Time, :absolute_mM)
+#         @orderby(:Patient, :Time, :Metabolite)
+#         unstack([:Patient, :Time], :Metabolite, :absolute_mM)
+#         dropmissing()
+#     end
+#     patient_labels = wide_df[!, :Patient]
+#     time_labels = wide_df[!, :Time]
+#     X = Matrix(select(wide_df, Not([:Patient, :Time])))
+#     zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims = 1)
+#     Xzt = StatsBase.transform(zt, X)'
+#     rows_with_nans = vec(any(isnan, Xzt, dims = 2))
+#     display(rows_with_nans)
+#     Xzt_no_nans = Xzt[.!(rows_with_nans), :]
+#     M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)
+#     display(M)
+#     Xzt_transform = MultivariateStats.predict(M, Xzt_no_nans)
+#     println("size(X) ", size(X))
+#     println("size(Xzt) ", size(Xzt))
+#     println("size(Xzt_no_nans) ", size(Xzt_no_nans))
+#     println("size(Xzt_transform) ", size(Xzt_transform))
+# end
+
 function pca_timeseries(long_df, additive)
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
-        @orderby(:Patient, :Time, :Metabolite)
-        unstack([:Patient, :Time], :Metabolite, :absolute_mM)
-        dropmissing()
+        @groupby(:Time, :Metabolite)
+        @combine(:mean_mM = mean(skipmissing(:absolute_mM)))
+        unstack(:Time, :Metabolite, :mean_mM, combine = first)
     end
-    patient_labels = wide_df[!, :Patient]
-    time_labels = wide_df[!, :Time]
-    X = Matrix(select(wide_df, Not([:Patient, :Time])))
-    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims = 1)
-    Xzt = StatsBase.transform(zt, X)'
-    rows_with_nans = vec(any(isnan, Xzt, dims = 2))
-    display(rows_with_nans)
-    Xzt_no_nans = Xzt[.!(rows_with_nans), :]
-    M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)
-    display(M)
-    Xzt_transform = MultivariateStats.predict(M, Xzt_no_nans)
-    println("size(X) ", size(X))
-    println("size(Xzt) ", size(Xzt))
-    println("size(Xzt_no_nans) ", size(Xzt_no_nans))
-    println("size(Xzt_transform) ", size(Xzt_transform))
+    display(first(wide_df, 100))
 end
 
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)
