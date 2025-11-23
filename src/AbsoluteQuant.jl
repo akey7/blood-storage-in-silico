@@ -29,7 +29,8 @@ export load_absolute_quant,
     diff_mM,
     pca_timeseries,
     regress_concentration_dxdt,
-    plot_pca_loadings
+    plot_pca_loadings,
+    plot_pca_scores
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -336,32 +337,6 @@ function diff_mM(long_df)
     return diffed_df
 end
 
-# function pca_timeseries(long_df, additive)
-#     wide_df = @chain long_df begin
-#         @rsubset(:Additive == additive)
-#         @rtransform(:Patient = :Sample[7:8])
-#         @select(:Metabolite, :Patient, :Time, :absolute_mM)
-#         @orderby(:Patient, :Time, :Metabolite)
-#         unstack([:Patient, :Time], :Metabolite, :absolute_mM)
-#         dropmissing()
-#     end
-#     patient_labels = wide_df[!, :Patient]
-#     time_labels = wide_df[!, :Time]
-#     X = Matrix(select(wide_df, Not([:Patient, :Time])))
-#     zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims = 1)
-#     Xzt = StatsBase.transform(zt, X)'
-#     rows_with_nans = vec(any(isnan, Xzt, dims = 2))
-#     display(rows_with_nans)
-#     Xzt_no_nans = Xzt[.!(rows_with_nans), :]
-#     M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)
-#     display(M)
-#     Xzt_transform = MultivariateStats.predict(M, Xzt_no_nans)
-#     println("size(X) ", size(X))
-#     println("size(Xzt) ", size(Xzt))
-#     println("size(Xzt_no_nans) ", size(Xzt_no_nans))
-#     println("size(Xzt_transform) ", size(Xzt_transform))
-# end
-
 function pca_timeseries(long_df, additive)
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
@@ -413,8 +388,8 @@ function pca_timeseries(long_df, additive)
     Xz = StatsBase.transform(zt, Xf)
     Xzt = copy(Xz')
     M = fit(PCA, Xzt; pratio = 0.9, mean = false)
-    scores = MultivariateStats.predict(M, Xzt)
     display(M)
+    scores = MultivariateStats.transform(M, Xzt)
     return (
         model = M,
         scores = scores,
@@ -429,22 +404,43 @@ function plot_pca_loadings(pca_result)
     wide_df = pca_result.wide_df
     M = pca_result.model
     L = loadings(M)
-    pc1 = L[:, 1]
-    pc2 = L[:, 2]
+    pc1_loadings = L[:, 1]
+    pc2_loadings = L[:, 2]
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    fig = Figure(resolution = (700, 600))
-    ax = Axis(fig[1, 1],
+    fig = Figure(; size = (700, 600))
+    ax = Axis(
+        fig[1, 1],
         xlabel = "PC1 loading",
         ylabel = "PC2 loading",
         title = "PCA Loadings (Pattern Matrix)",
-        aspect = DataAspect()
+        aspect = DataAspect(),
     )
-    scatter!(ax, pc1, pc2, markersize = 12, color = :dodgerblue)
-    for (x, y, name) in zip(pc1, pc2, metabolite_names)
+    scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
+    for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
         text!(ax, x, y, text = name, offset = (5, 5), align = (:left, :bottom))
     end
     hlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
     vlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
+    return fig
+end
+
+function plot_pca_scores(pca_result)
+    scores = pca_result.scores
+    pc1 = scores[1, :]
+    pc2 = scores[2, :]
+    time_labels = pca_result.time_labels
+    fig = Figure(; size = (700, 600))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "PC1",
+        ylabel = "PC2",
+        title = "PCA",
+        aspect = DataAspect(),
+    )
+    for (x, y, tl) in zip(pc1, pc2, time_labels)
+        text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
+    end
+    scatter!(ax, pc1, pc2, markersize = 12, color = :crimson)
     return fig
 end
 

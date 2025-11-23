@@ -47,8 +47,10 @@ println("Wrote $relative_absolute_quant_filename")
 
 println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
 pca_results = pca_timeseries(long_df, "01-Ctrl AS3")
-fig = plot_pca_loadings(pca_results)
-display(fig)
+# fig_loadings = plot_pca_loadings(pca_results)
+# display(fig_loadings)
+fig_scores = plot_pca_scores(pca_results)
+display(fig_scores)
 
 # println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
 # rate_df = regress_concentration_dxdt(long_df, 1000)
