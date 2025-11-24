@@ -47,11 +47,7 @@ println("Wrote $relative_absolute_quant_filename")
 # println("Wrote $all_primary_cluster_df_filename")
 
 println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
-pca_result = pca_timeseries(long_df, "01-Ctrl AS3")
-fig_panels = plot_pca_panels(pca_result, "01-Ctrl AS3")
-fig_panels_filename = joinpath("output", "pca_plots", "panels.png")
-save(fig_panels_filename, fig_panels)
-println("Wrote $fig_panels_filename")
+plot_pca_all_additives(long_df)
 
 # println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
 # rate_df = regress_concentration_dxdt(long_df, 1000)

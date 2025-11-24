@@ -29,7 +29,7 @@ export load_absolute_quant,
     diff_mM,
     pca_timeseries,
     regress_concentration_dxdt,
-    plot_pca_panels
+    plot_pca_all_additives
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -386,7 +386,7 @@ function pca_timeseries(long_df, additive)
     Xz = StatsBase.transform(zt, Xf)
     Xzt = copy(Xz')
     M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
-    display(M)
+    # display(M)
     scores = MultivariateStats.transform(M, Xzt)
     return (
         model = M,
@@ -395,6 +395,17 @@ function pca_timeseries(long_df, additive)
         kept_columns = findall(good_cols),
         wide_df = wide_df,
     )
+end
+
+function plot_pca_all_additives(long_df)
+    additives = sort(unique(long_df.Additive))
+    ThreadsX.map(additives) do additive
+        pca_result = pca_timeseries(long_df, additive)
+        fig = plot_pca_panels(pca_result, additive)
+        filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        save(filename, fig)
+        println("Wrote $filename")
+    end
 end
 
 function plot_pca_panels(pca_result, super_title)
