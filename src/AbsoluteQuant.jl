@@ -30,8 +30,7 @@ export load_absolute_quant,
     pca_timeseries,
     regress_concentration_dxdt,
     plot_pca_loadings,
-    plot_pca_panels,
-    plot_pca_scree
+    plot_pca_panels
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -402,6 +401,7 @@ end
 function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
+    plot_pca_scree(pca_result, fig)
     return fig
 end
 
@@ -457,12 +457,12 @@ function plot_pca_scores(pca_result, fig)
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     title = "PCA of Timeseries"
     ax_scatter = Axis(
-        fig[1:3, 1],
+        fig[1:3, 2:3],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
     )
-    ax_hist = Axis(fig[4, 1])
+    ax_hist = Axis(fig[4, 2:3])
     # for (x, y, tl) in zip(pc1, pc2, time_labels)
     #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
     # end
@@ -483,7 +483,7 @@ function plot_pca_scores(pca_result, fig)
     axislegend(ax_scatter; position = :rb)
 end
 
-function plot_pca_scree(pca_result)
+function plot_pca_scree(pca_result, fig)
     M = pca_result.model
     var_explained = principalvars(M) ./ tvar(M)
     ys = cumsum(var_explained) .* 100
@@ -493,9 +493,8 @@ function plot_pca_scree(pca_result)
     xlabel = "Component"
     ylabel = "Percent"
     title = "Cumulative variance explained"
-    fig = Figure(; size = (700, 600))
     ax = Axis(
-        fig[1, 1],
+        fig[1:2, 1],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
@@ -513,7 +512,6 @@ function plot_pca_scree(pca_result)
         offset = (10, -10),
         align = (:left, :bottom),
     )
-    return fig
 end
 
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)
