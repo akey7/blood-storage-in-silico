@@ -30,7 +30,8 @@ export load_absolute_quant,
     pca_timeseries,
     regress_concentration_dxdt,
     plot_pca_loadings,
-    plot_pca_scores
+    plot_pca_scores,
+    plot_pca_scree
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -474,6 +475,27 @@ function plot_pca_scores(pca_result)
         )
     end
     axislegend(ax; position = :rb)
+    return fig
+end
+
+function plot_pca_scree(pca_result)
+    M = pca_result.model
+    var_explained = principalvars(M) ./ tvar(M)
+    ys = cumsum(var_explained) .* 100
+    xs = eachindex(ys)
+    xlabel = "Component"
+    ylabel = "Percent"
+    title = "Cumulative variance explained"
+    fig = Figure(; size = (700, 600))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = xlabel,
+        ylabel = ylabel,
+        title = title,
+        xticks = (xs, string.(xs)),
+        limits = (nothing, nothing, 0.0, 100.0)
+    )
+    lines!(ax, xs, ys)
     return fig
 end
 
