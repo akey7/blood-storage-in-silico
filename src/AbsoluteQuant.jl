@@ -29,7 +29,6 @@ export load_absolute_quant,
     diff_mM,
     pca_timeseries,
     regress_concentration_dxdt,
-    plot_pca_loadings,
     plot_pca_panels
 
 function load_absolute_quant()
@@ -402,10 +401,11 @@ function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
     plot_pca_scree(pca_result, fig)
+    plot_pca_loadings(pca_result, fig)
     return fig
 end
 
-function plot_pca_loadings(pca_result)
+function plot_pca_loadings(pca_result, fig)
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
     M = pca_result.model
@@ -413,13 +413,11 @@ function plot_pca_loadings(pca_result)
     pc1_loadings = L[:, 1]
     pc2_loadings = L[:, 2]
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    fig = Figure(; size = (700, 600))
     ax = Axis(
-        fig[1, 1],
+        fig[3:4, 1],
         xlabel = "PC1 loading",
         ylabel = "PC2 loading",
         title = "PCA Loadings (Pattern Matrix)",
-        aspect = DataAspect(),
     )
     scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
     for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
