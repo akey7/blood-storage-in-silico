@@ -429,6 +429,15 @@ function plot_pca_scores(pca_result)
     pc1 = scores[1, :]
     pc2 = scores[2, :]
     time_labels = pca_result.patient_time_labels.Time
+    time_color_map = Dict(
+        1 => "#006CD1",
+        2 => "#E66100",
+        3 => "#5D3A9B",
+        4 => "#40B0A6",
+        5 => "#AFAF01",
+        6 => "#222222",
+    )
+    time_colors = [time_color_map[t] for t in time_labels]
     fig = Figure(; size = (700, 600))
     ax = Axis(
         fig[1, 1],
@@ -440,7 +449,7 @@ function plot_pca_scores(pca_result)
     for (x, y, tl) in zip(pc1, pc2, time_labels)
         text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
     end
-    scatter!(ax, pc1, pc2, markersize = 12, color = :crimson)
+    scatter!(ax, pc1, pc2, markersize = 12, color = time_colors)
     return fig
 end
 
