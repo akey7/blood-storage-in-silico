@@ -47,7 +47,9 @@ println("Wrote $relative_absolute_quant_filename")
 # println("Wrote $all_primary_cluster_df_filename")
 
 println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
-plot_pca_all_additives(long_df)
+loadings_df = plot_pca_all_additives(long_df)
+loadings_filename = joinpath("output", "pca_loadings.csv")
+CSV.write(loadings_filename, loadings_df)
 
 # println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
 # rate_df = regress_concentration_dxdt(long_df, 1000)
