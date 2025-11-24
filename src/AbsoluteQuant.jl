@@ -29,9 +29,7 @@ export load_absolute_quant,
     diff_mM,
     pca_timeseries,
     regress_concentration_dxdt,
-    plot_pca_loadings,
-    plot_pca_scores,
-    plot_pca_scree
+    plot_pca_all_additives
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -388,7 +386,7 @@ function pca_timeseries(long_df, additive)
     Xz = StatsBase.transform(zt, Xf)
     Xzt = copy(Xz')
     M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
-    display(M)
+    # display(M)
     scores = MultivariateStats.transform(M, Xzt)
     return (
         model = M,
@@ -399,7 +397,27 @@ function pca_timeseries(long_df, additive)
     )
 end
 
-function plot_pca_loadings(pca_result)
+function plot_pca_all_additives(long_df)
+    additives = sort(unique(long_df.Additive))
+    ThreadsX.map(additives) do additive
+        pca_result = pca_timeseries(long_df, additive)
+        fig = plot_pca_panels(pca_result, additive)
+        filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        save(filename, fig)
+        println("Wrote $filename")
+    end
+end
+
+function plot_pca_panels(pca_result, super_title)
+    fig = Figure(; size = (1280, 720))
+    plot_pca_scores(pca_result, fig)
+    plot_pca_scree(pca_result, fig)
+    plot_pca_loadings(pca_result, fig)
+    Label(fig[0, :], text = super_title, fontsize = 50)
+    return fig
+end
+
+function plot_pca_loadings(pca_result, fig)
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
     M = pca_result.model
@@ -407,13 +425,11 @@ function plot_pca_loadings(pca_result)
     pc1_loadings = L[:, 1]
     pc2_loadings = L[:, 2]
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    fig = Figure(; size = (700, 600))
     ax = Axis(
-        fig[1, 1],
-        xlabel = "PC1 loading",
-        ylabel = "PC2 loading",
-        title = "PCA Loadings (Pattern Matrix)",
-        aspect = DataAspect(),
+        fig[3:4, 1],
+        xlabel = "PC1",
+        ylabel = "PC2",
+        title = "Loadings",
     )
     scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
     for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
@@ -424,7 +440,7 @@ function plot_pca_loadings(pca_result)
     return fig
 end
 
-function plot_pca_scores(pca_result)
+function plot_pca_scores(pca_result, fig)
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -449,16 +465,14 @@ function plot_pca_scores(pca_result)
     var_explained = principalvars(M) ./ tvar(M)
     xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
-    title = "Timeseries PCA"
-    fig = Figure(; size = (700, 600))
+    title = "PCA of Timeseries"
     ax_scatter = Axis(
-        fig[1:3, 1],
+        fig[1:3, 2:3],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
-        aspect = DataAspect(),
     )
-    ax_hist = Axis(fig[4, 1])
+    ax_hist = Axis(fig[4, 2:3])
     # for (x, y, tl) in zip(pc1, pc2, time_labels)
     #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
     # end
@@ -471,16 +485,16 @@ function plot_pca_scores(pca_result)
             pc2[idxs],
             color = time_color_map[t],
             marker = time_shape_map[t],
-            markersize = 12,
+            markersize = 20,
             label = string(t),
+            alpha = 0.75,
         )
     end
-    hist!(ax_hist, pc1)
+    hist!(ax_hist, pc1; bins = 6)
     axislegend(ax_scatter; position = :rb)
-    return fig
 end
 
-function plot_pca_scree(pca_result)
+function plot_pca_scree(pca_result, fig)
     M = pca_result.model
     var_explained = principalvars(M) ./ tvar(M)
     ys = cumsum(var_explained) .* 100
@@ -490,9 +504,8 @@ function plot_pca_scree(pca_result)
     xlabel = "Component"
     ylabel = "Percent"
     title = "Cumulative variance explained"
-    fig = Figure(; size = (700, 600))
     ax = Axis(
-        fig[1, 1],
+        fig[1:2, 1],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
@@ -510,7 +523,6 @@ function plot_pca_scree(pca_result)
         offset = (10, -10),
         align = (:left, :bottom),
     )
-    return fig
 end
 
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)
