@@ -437,7 +437,16 @@ function plot_pca_scores(pca_result)
         5 => "#AFAF01",
         6 => "#222222",
     )
+    time_shape_map = Dict(
+        1 => :circle,
+        2 => :rect,
+        3 => :diamond,
+        4 => :cross,
+        5 => :utriangle,
+        6 => :dtriangle,
+    )
     time_colors = [time_color_map[t] for t in time_labels]
+    time_shapes = [time_shape_map[t] for t in time_labels]
     fig = Figure(; size = (700, 600))
     ax = Axis(
         fig[1, 1],
@@ -449,7 +458,7 @@ function plot_pca_scores(pca_result)
     for (x, y, tl) in zip(pc1, pc2, time_labels)
         text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
     end
-    scatter!(ax, pc1, pc2, markersize = 12, color = time_colors)
+    scatter!(ax, pc1, pc2, markersize = 12, marker = time_shapes, color = time_colors)
     return fig
 end
 
