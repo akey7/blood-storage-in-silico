@@ -424,6 +424,7 @@ function plot_pca_loadings(pca_result)
 end
 
 function plot_pca_scores(pca_result)
+    M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
     pc2 = scores[2, :]
@@ -444,12 +445,16 @@ function plot_pca_scores(pca_result)
         5 => :utriangle,
         6 => :dtriangle,
     )
+    var_explained = principalvars(M) ./ tvar(M)
+    xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
+    ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
+    title = "Timeseries PCA"
     fig = Figure(; size = (700, 600))
     ax = Axis(
         fig[1, 1],
-        xlabel = "PC1",
-        ylabel = "PC2",
-        title = "PCA",
+        xlabel = xlabel,
+        ylabel = ylabel,
+        title = title,
         aspect = DataAspect(),
     )
     # for (x, y, tl) in zip(pc1, pc2, time_labels)
