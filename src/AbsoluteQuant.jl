@@ -496,10 +496,18 @@ function plot_pca_scree(pca_result)
         title = title,
         xticks = (xs, string.(xs)),
         yticks = (yticks, ytick_labels),
-        limits = (nothing, nothing, 0.0, 100.0)
+        limits = (nothing, nothing, 0.0, 100.0),
     )
     lines!(ax, xs, ys)
     scatter!(ax, xs[2], ys[2], markersize = 20, color = :crimson)
+    text!(
+        ax,
+        xs[2],
+        ys[2];
+        text = "$(round(ys[2], digits = 2))%",
+        offset = (10, -10),
+        align = (:left, :bottom),
+    )
     return fig
 end
 
