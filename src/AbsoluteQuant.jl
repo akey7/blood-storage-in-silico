@@ -483,6 +483,8 @@ function plot_pca_scree(pca_result)
     var_explained = principalvars(M) ./ tvar(M)
     ys = cumsum(var_explained) .* 100
     xs = eachindex(ys)
+    yticks = range(0.0, 100.0, 5)
+    ytick_labels = string.(round.(yticks))
     xlabel = "Component"
     ylabel = "Percent"
     title = "Cumulative variance explained"
@@ -493,6 +495,7 @@ function plot_pca_scree(pca_result)
         ylabel = ylabel,
         title = title,
         xticks = (xs, string.(xs)),
+        yticks = (yticks, ytick_labels),
         limits = (nothing, nothing, 0.0, 100.0)
     )
     lines!(ax, xs, ys)
