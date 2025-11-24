@@ -451,18 +451,17 @@ function plot_pca_scores(pca_result)
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     title = "Timeseries PCA"
     fig = Figure(; size = (700, 600))
-    ax_hist = Axis(fig[1, 1])
     ax_scatter = Axis(
-        fig[2:4, 1],
+        fig[1:3, 1],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
         aspect = DataAspect(),
     )
+    ax_hist = Axis(fig[4, 1])
     # for (x, y, tl) in zip(pc1, pc2, time_labels)
     #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
     # end
-    hist!(ax_hist, pc1)
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
@@ -476,6 +475,7 @@ function plot_pca_scores(pca_result)
             label = string(t),
         )
     end
+    hist!(ax_hist, pc1)
     axislegend(ax_scatter; position = :rb)
     return fig
 end
