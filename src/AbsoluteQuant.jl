@@ -427,9 +427,9 @@ function plot_pca_loadings(pca_result, fig)
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
     ax = Axis(
         fig[3:4, 1],
-        xlabel = "PC1 loading",
-        ylabel = "PC2 loading",
-        title = "PCA Loadings (Pattern Matrix)",
+        xlabel = "PC1",
+        ylabel = "PC2",
+        title = "Loadings",
     )
     scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
     for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
@@ -485,8 +485,9 @@ function plot_pca_scores(pca_result, fig)
             pc2[idxs],
             color = time_color_map[t],
             marker = time_shape_map[t],
-            markersize = 12,
+            markersize = 20,
             label = string(t),
+            alpha = 0.75,
         )
     end
     hist!(ax_hist, pc1; bins = 6)
