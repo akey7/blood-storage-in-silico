@@ -418,12 +418,13 @@ function extract_pca_loadings(pca_result, additive)
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    return DataFrame(
+    result = DataFrame(
         additive = additive,
         metabolite_names = metabolite_names,
         pc1_loadings = pc1_loadings,
         pc2_loadings = pc2_loadings,
     )
+    return @orderby(result, :pc1_loadings)
 end
 
 function plot_pca_panels(pca_result, super_title)
