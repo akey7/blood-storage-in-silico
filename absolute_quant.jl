@@ -1,5 +1,6 @@
 using CSV
 using Random
+using CairoMakie
 
 include("src/AbsoluteQuant.jl")
 using .AbsoluteQuant
@@ -50,7 +51,8 @@ pca_results = pca_timeseries(long_df, "01-Ctrl AS3")
 # fig_loadings = plot_pca_loadings(pca_results)
 # display(fig_loadings)
 fig_scores = plot_pca_scores(pca_results)
-display(fig_scores)
+fig_scores_filename = joinpath("output", "pca_plots", "pca_scores.png")
+save(fig_scores_filename, fig_scores)
 
 # println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
 # rate_df = regress_concentration_dxdt(long_df, 1000)
