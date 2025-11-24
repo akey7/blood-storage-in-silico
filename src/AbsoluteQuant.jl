@@ -489,7 +489,7 @@ function plot_pca_scores(pca_result, fig)
             label = string(t),
         )
     end
-    hist!(ax_hist, pc1)
+    hist!(ax_hist, pc1; bins = 6)
     axislegend(ax_scatter; position = :rb)
 end
 
