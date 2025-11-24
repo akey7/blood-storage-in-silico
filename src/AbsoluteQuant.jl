@@ -347,7 +347,6 @@ function pca_timeseries(long_df, additive)
         unstack([:Patient, :Time], :Metabolite, :mean_mM, combine = first)
         @orderby(:Patient, :Time)
     end
-    display(first(wide_df, 100))
     patient_time_labels = @select(wide_df, :Patient, :Time)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
     colmeans = map(eachcol(X)) do c
@@ -445,8 +444,6 @@ function plot_pca_scores(pca_result)
         5 => :utriangle,
         6 => :dtriangle,
     )
-    time_colors = [time_color_map[t] for t in time_labels]
-    time_shapes = [time_shape_map[t] for t in time_labels]
     fig = Figure(; size = (700, 600))
     ax = Axis(
         fig[1, 1],
@@ -455,10 +452,23 @@ function plot_pca_scores(pca_result)
         title = "PCA",
         aspect = DataAspect(),
     )
-    for (x, y, tl) in zip(pc1, pc2, time_labels)
-        text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
+    # for (x, y, tl) in zip(pc1, pc2, time_labels)
+    #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
+    # end
+    unique_times = sort(unique(time_labels))
+    for t in unique_times
+        idxs = findall(==(t), time_labels)
+        scatter!(
+            ax,
+            pc1[idxs],
+            pc2[idxs],
+            color = time_color_map[t],
+            marker = time_shape_map[t],
+            markersize = 12,
+            label = string(t),
+        )
     end
-    scatter!(ax, pc1, pc2, markersize = 12, marker = time_shapes, color = time_colors)
+    axislegend(ax; position = :rb)
     return fig
 end
 
