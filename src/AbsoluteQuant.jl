@@ -342,14 +342,14 @@ function pca_timeseries(long_df, additive)
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
-        @groupby(:Time, :Metabolite)
+        @groupby(:Patient, :Time, :Metabolite)
         @combine(:mean_mM = mean(skipmissing(:absolute_mM)))
-        unstack(:Time, :Metabolite, :mean_mM, combine = first)
-        @orderby(:Time)
+        unstack([:Patient, :Time], :Metabolite, :mean_mM, combine = first)
+        @orderby(:Patient, :Time)
     end
     display(first(wide_df, 100))
-    time_labels = wide_df.Time
-    X = Matrix(select(wide_df, Not(:Time)))
+    patient_time_labels = @select(wide_df, :Patient, :Time)
+    X = Matrix(select(wide_df, Not([:Patient, :Time])))
     colmeans = map(eachcol(X)) do c
         m = mean(skipmissing(c))
         return isfinite(m) ? m : missing
@@ -393,7 +393,7 @@ function pca_timeseries(long_df, additive)
     return (
         model = M,
         scores = scores,
-        time_labels = time_labels,
+        patient_time_labels = patient_time_labels,
         kept_columns = findall(good_cols),
         wide_df = wide_df,
     )
@@ -428,7 +428,7 @@ function plot_pca_scores(pca_result)
     scores = pca_result.scores
     pc1 = scores[1, :]
     pc2 = scores[2, :]
-    time_labels = pca_result.time_labels
+    time_labels = pca_result.patient_time_labels.Time
     fig = Figure(; size = (700, 600))
     ax = Axis(
         fig[1, 1],
