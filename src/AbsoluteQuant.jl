@@ -402,6 +402,7 @@ function plot_pca_panels(pca_result, super_title)
     plot_pca_scores(pca_result, fig)
     plot_pca_scree(pca_result, fig)
     plot_pca_loadings(pca_result, fig)
+    Label(fig[0, :], text = super_title, fontsize = 50)
     return fig
 end
 
