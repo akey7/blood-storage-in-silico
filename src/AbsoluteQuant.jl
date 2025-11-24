@@ -30,7 +30,7 @@ export load_absolute_quant,
     pca_timeseries,
     regress_concentration_dxdt,
     plot_pca_loadings,
-    plot_pca_scores,
+    plot_pca_panels,
     plot_pca_scree
 
 function load_absolute_quant()
@@ -399,6 +399,12 @@ function pca_timeseries(long_df, additive)
     )
 end
 
+function plot_pca_panels(pca_result, super_title)
+    fig = Figure(; size = (1280, 720))
+    plot_pca_scores(pca_result, fig)
+    return fig
+end
+
 function plot_pca_loadings(pca_result)
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
@@ -424,7 +430,7 @@ function plot_pca_loadings(pca_result)
     return fig
 end
 
-function plot_pca_scores(pca_result)
+function plot_pca_scores(pca_result, fig)
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -449,14 +455,12 @@ function plot_pca_scores(pca_result)
     var_explained = principalvars(M) ./ tvar(M)
     xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
-    title = "Timeseries PCA"
-    fig = Figure(; size = (700, 600))
+    title = "PCA of Timeseries"
     ax_scatter = Axis(
         fig[1:3, 1],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
-        aspect = DataAspect(),
     )
     ax_hist = Axis(fig[4, 1])
     # for (x, y, tl) in zip(pc1, pc2, time_labels)
@@ -477,7 +481,6 @@ function plot_pca_scores(pca_result)
     end
     hist!(ax_hist, pc1)
     axislegend(ax_scatter; position = :rb)
-    return fig
 end
 
 function plot_pca_scree(pca_result)
