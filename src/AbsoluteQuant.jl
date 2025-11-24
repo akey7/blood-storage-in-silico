@@ -387,7 +387,7 @@ function pca_timeseries(long_df, additive)
     zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
     Xz = StatsBase.transform(zt, Xf)
     Xzt = copy(Xz')
-    M = fit(PCA, Xzt; pratio = 0.9, mean = false)
+    M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
     display(M)
     scores = MultivariateStats.transform(M, Xzt)
     return (
@@ -496,6 +496,7 @@ function plot_pca_scree(pca_result)
         limits = (nothing, nothing, 0.0, 100.0)
     )
     lines!(ax, xs, ys)
+    scatter!(ax, xs[2], ys[2], markersize = 20, color = :crimson)
     return fig
 end
 
