@@ -618,7 +618,11 @@ function plot_regression(long_df, concentration_vs_time_df, additive, metabolite
             metabolite,
             final_time,
         )
-        plot_conc_vs_time_from_plot_data(plot_data, fig_ref)
+        if final_time < 6
+            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
+        else
+            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, true)
+        end
     end
     return fig
 end
@@ -662,18 +666,10 @@ function concentration_vs_time_dfs(
     )
 end
 
-function plot_conc_vs_time_from_plot_data(plot_data, fig_ref)
-    ax = Axis(
-        fig_ref,
-        # limits = (
-        #     nothing,
-        #     nothing,
-        #     minimum(plot_data.scatter_df.absolute_mM) * 0.75,
-        #     maximum(plot_data.scatter_df.absolute_mM) * 1.25,
-        # ),
-        xlabel = "Time",
-        ylabel = "mM",
-    )
+function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
+    ax =
+        time_label ? Axis(fig_ref, ylabel = "mM", xlabel = "Time (week)") :
+        Axis(fig_ref, ylabel = "mM")
     ablines!(
         ax,
         [plot_data.lower_intercept, plot_data.upper_intercept],
