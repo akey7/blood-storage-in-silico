@@ -655,6 +655,11 @@ function concentration_vs_time_dfs(
         )
         @select(:Time, :absolute_mM)
     end
+    ylims_df = @chain long_df begin
+        @rsubset(:Additive == additive, :Metabolite == metabolite)
+        @combine(:ymin = minimum(:absolute_mM), :ymax = maximum(:absolute_mM))
+    end
+    ylims = (ylims_df[1, :ymin], ylims_df[1, :ymax])
     return (
         lower_intercept = lower_intercept,
         lower_slope = lower_slope,
@@ -663,13 +668,34 @@ function concentration_vs_time_dfs(
         mean_intercept = mean_intercept,
         mean_rate = mean_rate,
         scatter_df = scatter_df,
+        ylims = ylims,
     )
 end
 
 function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
     ax =
-        time_label ? Axis(fig_ref, ylabel = "mM", xlabel = "Time (week)") :
-        Axis(fig_ref, ylabel = "mM")
+        time_label ?
+        Axis(
+            fig_ref,
+            ylabel = "mM",
+            xlabel = "Time (week)",
+            limits = (
+                nothing,
+                nothing,
+                plot_data.ylims[1] * 0.75,
+                plot_data.ylims[2] * 1.25,
+            ),
+        ) :
+        Axis(
+            fig_ref,
+            ylabel = "mM",
+            limits = (
+                nothing,
+                nothing,
+                plot_data.ylims[1] * 0.75,
+                plot_data.ylims[2] * 1.25,
+            ),
+        )
     ablines!(
         ax,
         [plot_data.lower_intercept, plot_data.upper_intercept],
