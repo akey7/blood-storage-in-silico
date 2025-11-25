@@ -619,8 +619,16 @@ function plot_concentration_vs_time(
     lower_slope = lines_df[1, :lower_bound]
     upper_intercept = lines_df[1, :upper_bound_intercept]
     upper_slope = lines_df[1, :upper_bound]
+    scatter_df = @chain long_df begin
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time <= 2,
+        )
+        @select(:Time, :absolute_mM)
+    end
     fig = Figure(; size = (1280 / 2, 720 / 2))
-    ax = Axis(fig[1, 1], limits = (1, 2, -1000.0, 1000.0))
+    ax = Axis(fig[1, 1])
     ablines!(
         ax,
         [lower_intercept, upper_intercept],
@@ -629,6 +637,7 @@ function plot_concentration_vs_time(
         linestyle = :dash,
         linewidth = 3,
     )
+    scatter!(ax, scatter_df.Time, scatter_df.absolute_mM, color = "#006CD1", alpha = 0.75)
     return fig
 end
 
