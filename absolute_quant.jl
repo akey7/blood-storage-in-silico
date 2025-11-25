@@ -52,7 +52,10 @@ println("Wrote $relative_absolute_quant_filename")
 # CSV.write(loadings_filename, loadings_df)
 
 println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
-rate_df = regress_concentration_dxdt(long_df, 1000)
+rate_df = regress_concentration_vs_time(long_df, 1000)
 display(first(rate_df, 20))
 rate_filename = joinpath("output", "concentration_rates.csv")
 CSV.write(rate_filename, rate_df)
+fig_conc_vs_time =
+    plot_concentration_vs_time(long_df, rate_df, "01-Ctrl AS3", "5oxpro_c", 2)
+display(fig_conc_vs_time)

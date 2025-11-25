@@ -28,8 +28,9 @@ export load_absolute_quant,
     plot_all_mM_timeseries,
     diff_mM,
     pca_timeseries,
-    regress_concentration_dxdt,
-    plot_pca_all_additives
+    regress_concentration_vs_time,
+    plot_pca_all_additives,
+    plot_concentration_vs_time
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -543,7 +544,7 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     return result_df
 end
 
-function regress_concentration_dxdt(long_df, bootstrap_reps)
+function regress_concentration_vs_time(long_df, bootstrap_reps)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
@@ -599,6 +600,36 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         @orderby(:additive, :metabolite, :final_time)
     end
     return result_df
+end
+
+function plot_concentration_vs_time(
+    long_df,
+    concentration_vs_time_df,
+    additive,
+    metabolite,
+    final_time,
+)
+    lines_df = @rsubset(
+        concentration_vs_time_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    lower_intercept = lines_df[1, :lower_bound_intercept]
+    lower_slope = lines_df[1, :lower_bound]
+    upper_intercept = lines_df[1, :upper_bound_intercept]
+    upper_slope = lines_df[1, :upper_bound]
+    fig = Figure(; size = (1280 / 2, 720 / 2))
+    ax = Axis(fig[1, 1], limits = (1, 2, -1000.0, 1000.0))
+    ablines!(
+        ax,
+        [lower_intercept, upper_intercept],
+        [lower_slope, upper_slope],
+        color = ["#E66100", "#E66100"],
+        linestyle = :dash,
+        linewidth = 3,
+    )
+    return fig
 end
 
 end
