@@ -3,17 +3,27 @@ module UfbaSampler
 using Distributed
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
-addprocs(3)
+@info "Distributed.jl nprocs: $(nprocs())"
 @everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 
+using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using CSV
 using DataFrames
+using DataFramesMeta
+using CairoMakie
 
-export create_3p_model, sample_fluxes, constraints_explorer, convert_to_jump, ufba
+export create_3p_model,
+    sample_fluxes,
+    ufba_all_additives_all_times,
+    load_metabolite_bounds,
+    query_metabolite_bounds,
+    histograms_for_reaction_in_additive,
+    plot_all_histograms
 
 function create_3p_model()
     println("############################################################")
@@ -236,112 +246,128 @@ function create_3p_model()
     return model
 end
 
-function constraints_explorer(model)
-    println("\n############################################################")
-    println("# CONSTRAINT TREES                                         #")
-    println("############################################################")
-    ct = flux_balance_constraints(model)
-    display(ct)
-    # println("\n", ">" ^ 10, " FLUX CONSTRAINTS ", "<" ^ 10)
-    # for k ∈ keys(ct.fluxes)
-    #     println(k, ": ", ct.fluxes[k].bound)
-    # end
-    # println("\n", ">" ^ 10, " STOICHIOMETRY CONSTRAINTS ", "<" ^ 10)
-    # for k ∈ keys(ct.flux_stoichiometry)
-    #     println(k, ": ", ct.flux_stoichiometry[k].value)
-    # end
-    # println("\n", ">" ^ 10, " OBJECTIVE CONSTRAINT ", "<" ^ 10)
-    # println(ct.objective.value)
-    println("\n", ">" ^ 10, " PRETTY TREE ", "<" ^ 10)
-    C.pretty(ct)
+function load_metabolite_bounds()
+    metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
+    metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
+    return metabolite_bounds_df
 end
 
-function ufba(
-    model::A.AbstractFBCModel;
-    optimizer,
-    objective_bound = relative_tolerance_bound(0.9),
-    reactions = nothing,
-    settings = [],
-    workers = Distributed.workers(),
-)
-    # Place bounds for Sv = b_lb, Sv = b_ub
-    ct = deepcopy(flux_balance_constraints(model))
-    for k ∈ keys(ct.flux_stoichiometry)
-        ct.flux_stoichiometry[k].bound = C.Between(-1.0, 1.0)
+function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+    query_df = @rsubset(
+        metabolite_bounds_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    if nrow(query_df) > 0
+        lower_bound = query_df[1, :single_lb]
+        upper_bound = query_df[1, :single_ub]
+        return (lower_bound, upper_bound)
+    else
+        return nothing
     end
-    C.pretty(ct)
+end
 
-    objective = ct.objective.value
+function ufba_additive_at_final_time(
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame,
+    additive::AbstractString,
+    final_time::Int64;
+    n_chains::Int64 = 10,
+)
+    println("\n############################################################")
+    println("# uFBA Sampling $additive, final time: $final_time")
+    println("############################################################")
+
+    # Place bounds for Sv = b_lb, Sv = b_ub
+    ct = flux_balance_constraints(model)
+    unfound_metabolites = []
+    found_metabolites = []
+    for k ∈ keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        bounds = query_metabolite_bounds(
+            metabolite_bounds_df,
+            additive,
+            short_metabolite_id,
+            final_time,
+        )
+        if isnothing(bounds)
+            push!(unfound_metabolites, short_metabolite_id)
+            ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+        else
+            push!(found_metabolites, short_metabolite_id)
+            lb, ub = bounds
+            ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+        end
+    end
+    println("\n>>>>>>>>> FOUND METABOLITES <<<<<<<<<")
+    display(found_metabolites)
+    println("\n>>>>>>>>> UNFOUND METABOLITES <<<<<<<<<")
+    display(unfound_metabolites)
+    # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
+    # C.pretty(ct)
+    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
     objective_flux = optimized_values(
         ct;
         objective = ct.objective.value,
         output = ct.objective,
-        optimizer,
-        settings,
+        optimizer = HiGHS.Optimizer,
+        settings = [],
     )
-
-    isnothing(objective_flux) && return nothing
-
-    return constraints_variability(
-        ct * :objective_bound^C.Constraint(objective, objective_bound(objective_flux)),
-        isnothing(reactions) ? ct.fluxes :
-        let s = Set(Symbol.(reactions))
-            C.ConstraintTree(k => v for (k, v) in ct.fluxes if k in s)
-        end;
-        optimizer,
-        settings,
-        workers,
-    )
+    if isnothing(objective_flux)
+        println("Simple optimization failed")
+        return nothing
+    else
+        println("Simple optimization succeeded!")
+        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        samples_df = sample_fluxes(model; n_chains = n_chains)
+        return samples_df
+    end
 end
 
-function convert_to_jump(model)
+function ufba_all_additives_all_times(
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame;
+    n_chains::Int64 = 10,
+)
     println("\n############################################################")
-    println("# JuMP CONSTRAINTS.                                        #")
+    println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
     println("############################################################")
-    ct = flux_balance_constraints(model)
-    flux_names = collect(keys(ct.fluxes))
-    metabolite_names = collect(keys(ct.flux_stoichiometry))
-    jump_model = optimization_model(ct; optimizer = HiGHS.Optimizer)
-    display(jump_model)
 
-    println("\n", ">" ^ 10, " CONSTRAINT MATRIX A ", "<" ^ 10)
-    data = lp_matrix_data(jump_model)
-    display(data.A)
-    println("\n", ">" ^ 10, " FLUX VECTOR ", "<" ^ 10)
-    for (i, (flux_name, (lb, ub))) in
-        enumerate(zip(flux_names, zip(data.x_lower, data.x_upper)))
-        println("v[$i]: $flux_name ($lb, $ub)")
-    end
-    println("\n", ">" ^ 10, " dx/dt VECTOR ", "<" ^ 10)
-    for (i, (metabolite_name, (lb, ub))) in
-        enumerate(zip(metabolite_names, zip(data.b_lower, data.b_upper)))
-        println("b[$i]: $metabolite_name ($lb, $ub)")
-    end
-
-    # cs = constraints_string(MIME("text/plain"), jump_model)
-
-    println("\n", ">" ^ 10, " JuMP CONSTRAINT TYPES ", "<" ^ 10)
-    for (F, S) in list_of_constraint_types(jump_model)
-        println("\nType: ($F, $S)")
-        if S == MathOptInterface.EqualTo{Float64}
-            for (metabolite_name, con) in
-                zip(metabolite_names, all_constraints(jump_model, F, S))
-                obj = constraint_object(con)
-                println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
-            end
+    additives = unique(metabolite_bounds_df.additive)
+    final_times = unique(metabolite_bounds_df.final_time)
+    pairs = product(additives, final_times)
+    status_rows = []
+    pair_results = []
+    println("Number of pairs: ", length(pairs))
+    for (additive, final_time) in pairs
+        pair_result = ufba_additive_at_final_time(
+            model,
+            metabolite_bounds_df,
+            additive,
+            final_time;
+            n_chains = n_chains,
+        )
+        if isnothing(pair_result)
+            status = (additive = additive, final_time = final_time, status = "fail")
+            push!(status_rows, status)
         else
-            for (flux_name, con) in zip(flux_names, all_constraints(jump_model, F, S))
-                obj = constraint_object(con)
-                println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
-            end
+            status = (additive = additive, final_time = final_time, status = "ok")
+            push!(status_rows, status)
+            pair_result[!, :additive] .= additive
+            pair_result[!, :final_time] .= final_time
+            push!(pair_results, pair_result)
         end
     end
+    sampling_df = vcat(pair_results...)
+    status_df = DataFrame(status_rows)
+    return sampling_df, status_df
 end
 
 """
     sample_fluxes(model; n_chains::Int64, tolerance::Float64)
 
-Sample the allowable flux space of the `model`. Also see the `addprocs()` call above this function in this source file to adjust number of workers for parallel processing.
+Sample the allowable flux space of the `model`. Use the `julia -p X...` -p command line option to set the number of workers for this operation.
 
 # Arguments
 1. `model`: Model to be sampled.
@@ -353,6 +379,7 @@ Sample the allowable flux space of the `model`. Also see the `addprocs()` call a
 1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
 """
 function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
+    println("N Chains: $n_chains")
     s = flux_sample(
         model,
         optimizer = HiGHS.Optimizer,
@@ -366,6 +393,53 @@ function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
         s_dict[reaction_id] = s[reaction_id]
     end
     DataFrame(s_dict)
+end
+
+function histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
+    plt_df = @chain long_sampling_df begin
+        @rsubset(:additive == additive, :reaction_id == reaction_id)
+        select(:final_time, :flux)
+    end
+    title = "$additive $reaction_id"
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = title)
+    final_times = [2, 3, 4, 5, 6]
+    colors = [:dodgerblue, :orange, :blueviolet, :crimson, :deeppink]
+    for (final_time, color) in zip(final_times, colors)
+        hist_df = @rsubset(plt_df, :final_time == final_time)
+        hist!(
+            ax,
+            hist_df.flux;
+            bins = 50,
+            color = (color, 0.33),
+            label = string(final_time),
+        )
+    end
+    axislegend(ax)
+    return fig
+end
+
+function plot_all_histograms(sampling_df)
+    println("\n############################################################")
+    println("# uFBA: PLOTTING HISTOGRAMS                                #")
+    println("############################################################")
+
+    long_sampling_df = stack(
+        sampling_df,
+        Not([:additive, :final_time]),
+        variable_name = :reaction_id,
+        value_name = :flux,
+    )
+    additives = unique(long_sampling_df.additive)
+    reaction_ids = unique(long_sampling_df.reaction_id)
+    pairs = product(additives, reaction_ids)
+    n_pairs = length(pairs)
+    for (i, (additive, reaction_id)) in enumerate(pairs)
+        fig = histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
+        filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
+        save(filename, fig)
+        println("Wrote $i of $n_pairs: $filename")
+    end
 end
 
 end

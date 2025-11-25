@@ -1,5 +1,6 @@
 using CSV
 using Random
+using CairoMakie
 
 include("src/AbsoluteQuant.jl")
 using .AbsoluteQuant
@@ -28,7 +29,7 @@ println("Wrote $relative_absolute_quant_filename")
 # println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
 # plot_all_mM_timeseries(long_df)
 
-# println(">" ^ 10, " RATES ", "<" ^ 10)
+# println(">" ^ 10, " DIFFING ", "<" ^ 10)
 # diffed_df = diff_mM(long_df)
 # diff_filename = joinpath("output", "diff_mM.csv")
 # CSV.write(diff_filename, diffed_df)
@@ -45,5 +46,17 @@ println("Wrote $relative_absolute_quant_filename")
 # CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
 # println("Wrote $all_primary_cluster_df_filename")
 
-println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
-pca_timeseries(long_df, "01-Ctrl AS3")
+# println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
+# loadings_df = plot_pca_all_additives(long_df)
+# loadings_filename = joinpath("output", "pca_loadings.csv")
+# CSV.write(loadings_filename, loadings_df)
+
+println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
+rate_df = regress_concentration_vs_time(long_df, 1000)
+# display(first(rate_df, 20))
+rate_filename = joinpath("output", "concentration_rates.csv")
+CSV.write(rate_filename, rate_df)
+fig_conc_vs_time = plot_regression(long_df, rate_df, "01-Ctrl AS3", "5oxpro_c")
+fig_conc_vs_time_filename = joinpath("output", "regression_plots", "conc_vs_time.png")
+save(fig_conc_vs_time_filename, fig_conc_vs_time)
+println("Wrote $fig_conc_vs_time_filename")

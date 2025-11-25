@@ -1,5 +1,6 @@
 module AbsoluteQuant
 
+using Base.Iterators
 using CSV
 using XLSX
 using DataFrames
@@ -12,6 +13,11 @@ using Clustering
 using Distances
 using ShiftedArrays
 using MultivariateStats
+using GLM
+using StatsModels
+using Statistics
+using Random
+using ThreadsX
 
 export load_absolute_quant,
     load_relative_quant,
@@ -21,7 +27,10 @@ export load_absolute_quant,
     plot_c_means_all_additives,
     plot_all_mM_timeseries,
     diff_mM,
-    pca_timeseries
+    pca_timeseries,
+    regress_concentration_vs_time,
+    plot_pca_all_additives,
+    plot_regression
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -333,25 +342,345 @@ function pca_timeseries(long_df, additive)
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
-        @orderby(:Patient, :Time, :Metabolite)
-        unstack([:Patient, :Time], :Metabolite, :absolute_mM)
-        dropmissing()
+        @groupby(:Patient, :Time, :Metabolite)
+        @combine(:mean_mM = mean(skipmissing(:absolute_mM)))
+        unstack([:Patient, :Time], :Metabolite, :mean_mM, combine = first)
+        @orderby(:Patient, :Time)
     end
-    patient_labels = wide_df[!, :Patient]
-    time_labels = wide_df[!, :Time]
+    patient_time_labels = @select(wide_df, :Patient, :Time)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
-    zt = StatsBase.fit(StatsBase.ZScoreTransform, X, dims = 1)
-    Xzt = StatsBase.transform(zt, X)'
-    rows_with_nans = vec(any(isnan, Xzt, dims = 2))
-    display(rows_with_nans)
-    Xzt_no_nans = Xzt[.!(rows_with_nans), :]
-    M = fit(PCA, Xzt_no_nans; pratio = 0.9, mean = 0)
-    display(M)
-    Xzt_transform = MultivariateStats.predict(M, Xzt_no_nans)
-    println("size(X) ", size(X))
-    println("size(Xzt) ", size(Xzt))
-    println("size(Xzt_no_nans) ", size(Xzt_no_nans))
-    println("size(Xzt_transform) ", size(Xzt_transform))
+    colmeans = map(eachcol(X)) do c
+        m = mean(skipmissing(c))
+        return isfinite(m) ? m : missing
+    end
+    for j in axes(X, 2)
+        if ismissing(colmeans[j])
+            continue
+        end
+        @inbounds for i in axes(X, 1)
+            if ismissing(X[i, j])
+                X[i, j] = colmeans[j]
+            end
+        end
+    end
+    Xf = Array{Float64}(undef, size(X))
+    for j in axes(X, 2), i in axes(X, 1)
+        Xf[i, j] = ismissing(X[i, j]) ? NaN : Float64(X[i, j])
+    end
+    good_cols = trues(size(Xf, 2))
+    for j in axes(Xf, 2)
+        col = view(Xf, :, j)
+        if any(!isfinite, col)
+            good_cols[j] = false
+            continue
+        end
+        s = std(col)
+        if !isfinite(s) || s == 0.0
+            good_cols[j] = false
+        end
+    end
+    Xf = Xf[:, good_cols]
+    if size(Xf, 2) == 0
+        error("After filtering, no valid metabolite columns remain for PCA.")
+    end
+    zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
+    Xz = StatsBase.transform(zt, Xf)
+    Xzt = copy(Xz')
+    M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
+    # display(M)
+    scores = MultivariateStats.transform(M, Xzt)
+    return (
+        model = M,
+        scores = scores,
+        patient_time_labels = patient_time_labels,
+        kept_columns = findall(good_cols),
+        wide_df = wide_df,
+    )
+end
+
+function plot_pca_all_additives(long_df)
+    additives = sort(unique(long_df.Additive))
+    loadings_dfs = ThreadsX.map(additives) do additive
+        pca_result = pca_timeseries(long_df, additive)
+        fig = plot_pca_panels(pca_result, additive)
+        filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        save(filename, fig)
+        println("Wrote $filename")
+        extract_pca_loadings(pca_result, additive)
+    end
+    return vcat(loadings_dfs...)
+end
+
+function extract_pca_loadings(pca_result, additive)
+    M = pca_result.model
+    L = loadings(M)
+    pc1_loadings = L[:, 1]
+    pc2_loadings = L[:, 2]
+    kept_columns = pca_result.kept_columns
+    wide_df = pca_result.wide_df
+    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
+    result = DataFrame(
+        additive = additive,
+        metabolite_names = metabolite_names,
+        pc1_loadings = pc1_loadings,
+        pc2_loadings = pc2_loadings,
+    )
+    return @orderby(result, :pc1_loadings)
+end
+
+function plot_pca_panels(pca_result, super_title)
+    fig = Figure(; size = (1280, 720))
+    plot_pca_scores(pca_result, fig)
+    plot_pca_scree(pca_result, fig)
+    plot_pca_loadings(pca_result, fig)
+    Label(fig[0, :], text = super_title, fontsize = 50)
+    return fig
+end
+
+function plot_pca_loadings(pca_result, fig)
+    kept_columns = pca_result.kept_columns
+    wide_df = pca_result.wide_df
+    M = pca_result.model
+    L = loadings(M)
+    pc1_loadings = L[:, 1]
+    pc2_loadings = L[:, 2]
+    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
+    ax = Axis(fig[3:4, 1], xlabel = "PC1", ylabel = "PC2", title = "Loadings")
+    scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
+    for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
+        text!(ax, x, y, text = name, offset = (5, 5), align = (:left, :bottom))
+    end
+    hlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
+    vlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
+    return fig
+end
+
+function plot_pca_scores(pca_result, fig)
+    M = pca_result.model
+    scores = pca_result.scores
+    pc1 = scores[1, :]
+    pc2 = scores[2, :]
+    time_labels = pca_result.patient_time_labels.Time
+    time_color_map = Dict(
+        1 => "#006CD1",
+        2 => "#E66100",
+        3 => "#5D3A9B",
+        4 => "#40B0A6",
+        5 => "#AFAF01",
+        6 => "#222222",
+    )
+    time_shape_map = Dict(
+        1 => :circle,
+        2 => :rect,
+        3 => :diamond,
+        4 => :cross,
+        5 => :utriangle,
+        6 => :dtriangle,
+    )
+    var_explained = principalvars(M) ./ tvar(M)
+    xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
+    ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
+    title = "PCA of Timeseries"
+    ax_scatter = Axis(fig[1:3, 2:3], xlabel = xlabel, ylabel = ylabel, title = title)
+    ax_hist = Axis(fig[4, 2:3])
+    # for (x, y, tl) in zip(pc1, pc2, time_labels)
+    #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
+    # end
+    unique_times = sort(unique(time_labels))
+    for t in unique_times
+        idxs = findall(==(t), time_labels)
+        scatter!(
+            ax_scatter,
+            pc1[idxs],
+            pc2[idxs],
+            color = time_color_map[t],
+            marker = time_shape_map[t],
+            markersize = 20,
+            label = string(t),
+            alpha = 0.75,
+        )
+    end
+    hist!(ax_hist, pc1; bins = 6)
+    axislegend(ax_scatter; position = :rb)
+end
+
+function plot_pca_scree(pca_result, fig)
+    M = pca_result.model
+    var_explained = principalvars(M) ./ tvar(M)
+    ys = cumsum(var_explained) .* 100
+    xs = eachindex(ys)
+    yticks = range(0.0, 100.0, 5)
+    ytick_labels = string.(round.(yticks))
+    xlabel = "Component"
+    ylabel = "Percent"
+    title = "Cumulative variance explained"
+    ax = Axis(
+        fig[1:2, 1],
+        xlabel = xlabel,
+        ylabel = ylabel,
+        title = title,
+        xticks = (xs, string.(xs)),
+        yticks = (yticks, ytick_labels),
+        limits = (nothing, nothing, 0.0, 100.0),
+    )
+    lines!(ax, xs, ys)
+    scatter!(ax, xs[2], ys[2], markersize = 20, color = :crimson)
+    text!(
+        ax,
+        xs[2],
+        ys[2];
+        text = "$(round(ys[2], digits = 2))%",
+        offset = (10, -10),
+        align = (:left, :bottom),
+    )
+end
+
+function additive_metabolite_time_points(long_df, additive, metabolite, tf)
+    result_df = @chain long_df begin
+        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
+        @select(:Time, :absolute_mM)
+        @orderby(:Time)
+    end
+    return result_df
+end
+
+function regress_concentration_vs_time(long_df, bootstrap_reps)
+    Random.seed!(123)
+    unique_additives = unique(long_df.Additive)
+    unique_metabolites = unique(long_df.Metabolite)
+    final_times = [2, 3, 4, 5, 6]
+    rows = []
+    for (metabolite, additive, final_time) in
+        product(unique_metabolites, unique_additives, final_times)
+        println("Calculating $additive, $metabolite, $final_time")
+        regression_df =
+            additive_metabolite_time_points(long_df, additive, metabolite, final_time)
+        n = nrow(regression_df)
+        slopes_and_intercepts = ThreadsX.map(1:bootstrap_reps) do _
+            sample_idx = rand(1:n, n)
+            boot_df = regression_df[sample_idx, :]
+            boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
+            boot_coefs = coef(boot_model)
+            (boot_coefs[1], boot_coefs[2])
+        end
+        intercepts = [intercept for (intercept, _) in slopes_and_intercepts]
+        slopes = [slope for (_, slope) in slopes_and_intercepts]
+        lower_bound_intercept = quantile(intercepts, 0.025)
+        upper_bound_intercept = quantile(intercepts, 0.975)
+        lower_bound = quantile(slopes, 0.025)
+        upper_bound = quantile(slopes, 0.975)
+        mean_rate = mean(slopes)
+        mean_intercept = mean(intercepts)
+        rate_skew = skewness(slopes)
+        single_model = lm(@formula(absolute_mM ~ Time), regression_df)
+        coefs = coef(single_model)
+        single_intercept = coefs[1]
+        single_rate = coefs[2]
+        ci = confint(single_model)
+        single_lb = ci[2, 1]
+        single_ub = ci[2, 2]
+        row = (
+            additive = additive,
+            metabolite = metabolite,
+            final_time = final_time,
+            mean_intercept = mean_intercept,
+            mean_rate = mean_rate,
+            skew = rate_skew,
+            lower_bound_intercept = lower_bound_intercept,
+            upper_bound_intercept = upper_bound_intercept,
+            lower_bound = lower_bound,
+            upper_bound = upper_bound,
+            single_intercept = single_intercept,
+            single_rate = single_rate,
+            single_lb = single_lb,
+            single_ub = single_ub,
+        )
+        push!(rows, row)
+    end
+    result_df = @chain rows begin
+        DataFrame()
+        @orderby(:additive, :metabolite, :final_time)
+    end
+    return result_df
+end
+
+function plot_regression(long_df, concentration_vs_time_df, additive, metabolite)
+    super_title = "$additive $metabolite"
+    fig = Figure(; size = (360, 720))
+    Label(fig[0, :], text = super_title, fontsize = 25)
+    final_times_to_figure_map =
+        Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
+    for (final_time, fig_ref) in final_times_to_figure_map
+        plot_data = concentration_vs_time_dfs(
+            long_df,
+            concentration_vs_time_df,
+            additive,
+            metabolite,
+            final_time,
+        )
+        if final_time < 6
+            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
+        else
+            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, true)
+        end
+    end
+    return fig
+end
+
+function concentration_vs_time_dfs(
+    long_df,
+    concentration_vs_time_df,
+    additive,
+    metabolite,
+    final_time,
+)
+    lines_df = @rsubset(
+        concentration_vs_time_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    lower_intercept = lines_df[1, :lower_bound_intercept]
+    lower_slope = lines_df[1, :lower_bound]
+    upper_intercept = lines_df[1, :upper_bound_intercept]
+    upper_slope = lines_df[1, :upper_bound]
+    mean_intercept = lines_df[1, :mean_intercept]
+    mean_rate = lines_df[1, :mean_rate]
+    scatter_df = @chain long_df begin
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time <= final_time,
+            :Time >= final_time - 1
+        )
+        @select(:Time, :absolute_mM)
+    end
+    ylims_df = @chain long_df begin
+        @rsubset(:Additive == additive, :Metabolite == metabolite)
+        @combine(:ymin = minimum(:absolute_mM), :ymax = maximum(:absolute_mM))
+    end
+    ylims = (ylims_df[1, :ymin], ylims_df[1, :ymax])
+    return (
+        lower_intercept = lower_intercept,
+        lower_slope = lower_slope,
+        upper_intercept = upper_intercept,
+        upper_slope = upper_slope,
+        mean_intercept = mean_intercept,
+        mean_rate = mean_rate,
+        scatter_df = scatter_df,
+        ylims = ylims,
+    )
+end
+
+function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
+    ax =
+        time_label ? Axis(fig_ref, ylabel = "mM", xlabel = "Time (week)") :
+        Axis(fig_ref, ylabel = "mM")
+    plt =
+        data(plot_data.scatter_df) *
+        mapping(:Time, :absolute_mM) *
+        (visual(Scatter) + linear(level = 0.95))
+    draw!(ax, plt)
 end
 
 end
