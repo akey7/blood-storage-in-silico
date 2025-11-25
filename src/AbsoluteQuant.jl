@@ -628,7 +628,15 @@ function plot_concentration_vs_time(
         @select(:Time, :absolute_mM)
     end
     fig = Figure(; size = (1280 / 2, 720 / 2))
-    ax = Axis(fig[1, 1])
+    ax = Axis(
+        fig[1, 1],
+        limits = (
+            nothing,
+            nothing,
+            minimum(scatter_df.absolute_mM) * 0.75,
+            maximum(scatter_df.absolute_mM) * 1.25,
+        ),
+    )
     ablines!(
         ax,
         [lower_intercept, upper_intercept],
