@@ -399,13 +399,32 @@ end
 
 function plot_pca_all_additives(long_df)
     additives = sort(unique(long_df.Additive))
-    ThreadsX.map(additives) do additive
+    loadings_dfs = ThreadsX.map(additives) do additive
         pca_result = pca_timeseries(long_df, additive)
         fig = plot_pca_panels(pca_result, additive)
         filename = joinpath("output", "pca_plots", "PCA $additive.png")
         save(filename, fig)
         println("Wrote $filename")
+        extract_pca_loadings(pca_result, additive)
     end
+    return vcat(loadings_dfs...)
+end
+
+function extract_pca_loadings(pca_result, additive)
+    M = pca_result.model
+    L = loadings(M)
+    pc1_loadings = L[:, 1]
+    pc2_loadings = L[:, 2]
+    kept_columns = pca_result.kept_columns
+    wide_df = pca_result.wide_df
+    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
+    result = DataFrame(
+        additive = additive,
+        metabolite_names = metabolite_names,
+        pc1_loadings = pc1_loadings,
+        pc2_loadings = pc2_loadings,
+    )
+    return @orderby(result, :pc1_loadings)
 end
 
 function plot_pca_panels(pca_result, super_title)
@@ -425,12 +444,7 @@ function plot_pca_loadings(pca_result, fig)
     pc1_loadings = L[:, 1]
     pc2_loadings = L[:, 2]
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    ax = Axis(
-        fig[3:4, 1],
-        xlabel = "PC1",
-        ylabel = "PC2",
-        title = "Loadings",
-    )
+    ax = Axis(fig[3:4, 1], xlabel = "PC1", ylabel = "PC2", title = "Loadings")
     scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
     for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
         text!(ax, x, y, text = name, offset = (5, 5), align = (:left, :bottom))
@@ -466,12 +480,7 @@ function plot_pca_scores(pca_result, fig)
     xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     title = "PCA of Timeseries"
-    ax_scatter = Axis(
-        fig[1:3, 2:3],
-        xlabel = xlabel,
-        ylabel = ylabel,
-        title = title,
-    )
+    ax_scatter = Axis(fig[1:3, 2:3], xlabel = xlabel, ylabel = ylabel, title = title)
     ax_hist = Axis(fig[4, 2:3])
     # for (x, y, tl) in zip(pc1, pc2, time_labels)
     #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
