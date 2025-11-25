@@ -555,19 +555,24 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
         n = nrow(regression_df)
-        slopes = ThreadsX.map(1:bootstrap_reps) do _
+        slopes_and_intercepts = ThreadsX.map(1:bootstrap_reps) do _
             sample_idx = rand(1:n, n)
             boot_df = regression_df[sample_idx, :]
             boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
             boot_coefs = coef(boot_model)
-            boot_coefs[2]
+            (boot_coefs[1], boot_coefs[2])
         end
+        intercepts = [intercept for (intercept, _) in slopes_and_intercepts]
+        slopes = [slope for (_, slope) in slopes_and_intercepts]
+        lower_bound_intercept = quantile(intercepts, 0.025)
+        upper_bound_intercept = quantile(intercepts, 0.975)
         lower_bound = quantile(slopes, 0.025)
         upper_bound = quantile(slopes, 0.975)
         mean_rate = mean(slopes)
         rate_skew = skewness(slopes)
         single_model = lm(@formula(absolute_mM ~ Time), regression_df)
         coefs = coef(single_model)
+        single_intercept = coefs[1]
         single_rate = coefs[2]
         ci = confint(single_model)
         single_lb = ci[2, 1]
@@ -578,8 +583,11 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
             final_time = final_time,
             mean_rate = mean_rate,
             skew = rate_skew,
+            lower_bound_intercept = lower_bound_intercept,
+            upper_bound_intercept = upper_bound_intercept,
             lower_bound = lower_bound,
             upper_bound = upper_bound,
+            single_intercept = single_intercept,
             single_rate = single_rate,
             single_lb = single_lb,
             single_ub = single_ub,
