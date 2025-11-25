@@ -672,52 +672,63 @@ function concentration_vs_time_dfs(
     )
 end
 
+# function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
+#     ax =
+#         time_label ?
+#         Axis(
+#             fig_ref,
+#             ylabel = "mM",
+#             xlabel = "Time (week)",
+#             limits = (
+#                 nothing,
+#                 nothing,
+#                 plot_data.ylims[1] * 0.5,
+#                 plot_data.ylims[2] * 1.5,
+#             ),
+#         ) :
+#         Axis(
+#             fig_ref,
+#             ylabel = "mM",
+#             limits = (
+#                 nothing,
+#                 nothing,
+#                 plot_data.ylims[1] * 0.5,
+#                 plot_data.ylims[2] * 1.5,
+#             ),
+#         )
+#     ablines!(
+#         ax,
+#         [plot_data.lower_intercept, plot_data.upper_intercept],
+#         [plot_data.lower_slope, plot_data.upper_slope],
+#         color = ["#E66100", "#E66100"],
+#         linestyle = :dash,
+#         linewidth = 2,
+#     )
+#     ablines!(
+#         ax,
+#         plot_data.mean_intercept,
+#         plot_data.mean_rate,
+#         color = "#5D3A9B",
+#         linewidth = 2,
+#     )
+#     scatter!(
+#         ax,
+#         plot_data.scatter_df.Time,
+#         plot_data.scatter_df.absolute_mM,
+#         color = "#006CD1",
+#         alpha = 0.75,
+#     )
+# end
+
 function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
     ax =
-        time_label ?
-        Axis(
-            fig_ref,
-            ylabel = "mM",
-            xlabel = "Time (week)",
-            limits = (
-                nothing,
-                nothing,
-                plot_data.ylims[1] * 0.5,
-                plot_data.ylims[2] * 1.5,
-            ),
-        ) :
-        Axis(
-            fig_ref,
-            ylabel = "mM",
-            limits = (
-                nothing,
-                nothing,
-                plot_data.ylims[1] * 0.5,
-                plot_data.ylims[2] * 1.5,
-            ),
-        )
-    ablines!(
-        ax,
-        [plot_data.lower_intercept, plot_data.upper_intercept],
-        [plot_data.lower_slope, plot_data.upper_slope],
-        color = ["#E66100", "#E66100"],
-        linestyle = :dash,
-        linewidth = 2,
-    )
-    ablines!(
-        ax,
-        plot_data.mean_intercept,
-        plot_data.mean_rate,
-        color = "#5D3A9B",
-        linewidth = 2,
-    )
-    scatter!(
-        ax,
-        plot_data.scatter_df.Time,
-        plot_data.scatter_df.absolute_mM,
-        color = "#006CD1",
-        alpha = 0.75,
-    )
+        time_label ? Axis(fig_ref, ylabel = "mM", xlabel = "Time (week)") :
+        Axis(fig_ref, ylabel = "mM")
+    plt =
+        data(plot_data.scatter_df) *
+        mapping(:Time, :absolute_mM) *
+        (visual(Scatter) + linear(level = 0.95))
+    draw!(ax, plt)
 end
 
 end
