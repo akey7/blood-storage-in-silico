@@ -28,8 +28,9 @@ export load_absolute_quant,
     plot_all_mM_timeseries,
     diff_mM,
     pca_timeseries,
-    regress_concentration_dxdt,
-    plot_pca_all_additives
+    regress_concentration_vs_time,
+    plot_pca_all_additives,
+    plot_regression
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -543,7 +544,7 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     return result_df
 end
 
-function regress_concentration_dxdt(long_df, bootstrap_reps)
+function regress_concentration_vs_time(long_df, bootstrap_reps)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
@@ -555,19 +556,25 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
         n = nrow(regression_df)
-        slopes = ThreadsX.map(1:bootstrap_reps) do _
+        slopes_and_intercepts = ThreadsX.map(1:bootstrap_reps) do _
             sample_idx = rand(1:n, n)
             boot_df = regression_df[sample_idx, :]
             boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
             boot_coefs = coef(boot_model)
-            boot_coefs[2]
+            (boot_coefs[1], boot_coefs[2])
         end
+        intercepts = [intercept for (intercept, _) in slopes_and_intercepts]
+        slopes = [slope for (_, slope) in slopes_and_intercepts]
+        lower_bound_intercept = quantile(intercepts, 0.025)
+        upper_bound_intercept = quantile(intercepts, 0.975)
         lower_bound = quantile(slopes, 0.025)
         upper_bound = quantile(slopes, 0.975)
         mean_rate = mean(slopes)
+        mean_intercept = mean(intercepts)
         rate_skew = skewness(slopes)
         single_model = lm(@formula(absolute_mM ~ Time), regression_df)
         coefs = coef(single_model)
+        single_intercept = coefs[1]
         single_rate = coefs[2]
         ci = confint(single_model)
         single_lb = ci[2, 1]
@@ -576,10 +583,14 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
             additive = additive,
             metabolite = metabolite,
             final_time = final_time,
+            mean_intercept = mean_intercept,
             mean_rate = mean_rate,
             skew = rate_skew,
+            lower_bound_intercept = lower_bound_intercept,
+            upper_bound_intercept = upper_bound_intercept,
             lower_bound = lower_bound,
             upper_bound = upper_bound,
+            single_intercept = single_intercept,
             single_rate = single_rate,
             single_lb = single_lb,
             single_ub = single_ub,
@@ -591,6 +602,122 @@ function regress_concentration_dxdt(long_df, bootstrap_reps)
         @orderby(:additive, :metabolite, :final_time)
     end
     return result_df
+end
+
+function plot_regression(long_df, concentration_vs_time_df, additive, metabolite)
+    super_title = "$additive $metabolite"
+    fig = Figure(; size = (360, 720))
+    Label(fig[0, :], text = super_title, fontsize = 25)
+    final_times_to_figure_map =
+        Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
+    for (final_time, fig_ref) in final_times_to_figure_map
+        plot_data = concentration_vs_time_dfs(
+            long_df,
+            concentration_vs_time_df,
+            additive,
+            metabolite,
+            final_time,
+        )
+        if final_time < 6
+            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
+        else
+            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, true)
+        end
+    end
+    return fig
+end
+
+function concentration_vs_time_dfs(
+    long_df,
+    concentration_vs_time_df,
+    additive,
+    metabolite,
+    final_time,
+)
+    lines_df = @rsubset(
+        concentration_vs_time_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    lower_intercept = lines_df[1, :lower_bound_intercept]
+    lower_slope = lines_df[1, :lower_bound]
+    upper_intercept = lines_df[1, :upper_bound_intercept]
+    upper_slope = lines_df[1, :upper_bound]
+    mean_intercept = lines_df[1, :mean_intercept]
+    mean_rate = lines_df[1, :mean_rate]
+    scatter_df = @chain long_df begin
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time <= final_time,
+            :Time >= final_time - 1
+        )
+        @select(:Time, :absolute_mM)
+    end
+    ylims_df = @chain long_df begin
+        @rsubset(:Additive == additive, :Metabolite == metabolite)
+        @combine(:ymin = minimum(:absolute_mM), :ymax = maximum(:absolute_mM))
+    end
+    ylims = (ylims_df[1, :ymin], ylims_df[1, :ymax])
+    return (
+        lower_intercept = lower_intercept,
+        lower_slope = lower_slope,
+        upper_intercept = upper_intercept,
+        upper_slope = upper_slope,
+        mean_intercept = mean_intercept,
+        mean_rate = mean_rate,
+        scatter_df = scatter_df,
+        ylims = ylims,
+    )
+end
+
+function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
+    ax =
+        time_label ?
+        Axis(
+            fig_ref,
+            ylabel = "mM",
+            xlabel = "Time (week)",
+            limits = (
+                nothing,
+                nothing,
+                plot_data.ylims[1] * 0.5,
+                plot_data.ylims[2] * 1.5,
+            ),
+        ) :
+        Axis(
+            fig_ref,
+            ylabel = "mM",
+            limits = (
+                nothing,
+                nothing,
+                plot_data.ylims[1] * 0.5,
+                plot_data.ylims[2] * 1.5,
+            ),
+        )
+    ablines!(
+        ax,
+        [plot_data.lower_intercept, plot_data.upper_intercept],
+        [plot_data.lower_slope, plot_data.upper_slope],
+        color = ["#E66100", "#E66100"],
+        linestyle = :dash,
+        linewidth = 2,
+    )
+    ablines!(
+        ax,
+        plot_data.mean_intercept,
+        plot_data.mean_rate,
+        color = "#5D3A9B",
+        linewidth = 2,
+    )
+    scatter!(
+        ax,
+        plot_data.scatter_df.Time,
+        plot_data.scatter_df.absolute_mM,
+        color = "#006CD1",
+        alpha = 0.75,
+    )
 end
 
 end
