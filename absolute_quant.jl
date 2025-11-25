@@ -58,4 +58,5 @@ rate_filename = joinpath("output", "concentration_rates.csv")
 CSV.write(rate_filename, rate_df)
 fig_conc_vs_time =
     plot_concentration_vs_time(long_df, rate_df, "01-Ctrl AS3", "5oxpro_c", 2)
-display(fig_conc_vs_time)
+fig_conc_vs_time_filename = joinpath("output", "regression_plots", "conc_vs_time.png")
+save(fig_conc_vs_time_filename, fig_conc_vs_time)
