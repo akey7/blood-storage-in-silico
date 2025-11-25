@@ -260,8 +260,8 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
         :final_time == final_time
     )
     if nrow(query_df) > 0
-        lower_bound = query_df[1, :lower_bound]
-        upper_bound = query_df[1, :upper_bound]
+        lower_bound = query_df[1, :single_lb]
+        upper_bound = query_df[1, :single_ub]
         return (lower_bound, upper_bound)
     else
         return nothing
