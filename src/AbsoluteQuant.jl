@@ -570,6 +570,7 @@ function regress_concentration_vs_time(long_df, bootstrap_reps)
         lower_bound = quantile(slopes, 0.025)
         upper_bound = quantile(slopes, 0.975)
         mean_rate = mean(slopes)
+        mean_intercept = mean(intercepts)
         rate_skew = skewness(slopes)
         single_model = lm(@formula(absolute_mM ~ Time), regression_df)
         coefs = coef(single_model)
@@ -582,6 +583,7 @@ function regress_concentration_vs_time(long_df, bootstrap_reps)
             additive = additive,
             metabolite = metabolite,
             final_time = final_time,
+            mean_intercept = mean_intercept,
             mean_rate = mean_rate,
             skew = rate_skew,
             lower_bound_intercept = lower_bound_intercept,
@@ -619,12 +621,10 @@ function plot_concentration_vs_time(
     lower_slope = lines_df[1, :lower_bound]
     upper_intercept = lines_df[1, :upper_bound_intercept]
     upper_slope = lines_df[1, :upper_bound]
+    mean_intercept = lines_df[1, :mean_intercept]
+    mean_rate = lines_df[1, :mean_rate]
     scatter_df = @chain long_df begin
-        @rsubset(
-            :Additive == additive,
-            :Metabolite == metabolite,
-            :Time <= 2,
-        )
+        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time <= 2)
         @select(:Time, :absolute_mM)
     end
     fig = Figure(; size = (1280 / 2, 720 / 2))
@@ -635,8 +635,9 @@ function plot_concentration_vs_time(
         [lower_slope, upper_slope],
         color = ["#E66100", "#E66100"],
         linestyle = :dash,
-        linewidth = 3,
+        linewidth = 2,
     )
+    ablines!(ax, mean_intercept, mean_rate, color = "#5D3A9B", linewidth = 2)
     scatter!(ax, scatter_df.Time, scatter_df.absolute_mM, color = "#006CD1", alpha = 0.75)
     return fig
 end
