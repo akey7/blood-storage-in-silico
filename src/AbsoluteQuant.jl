@@ -682,8 +682,8 @@ function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
             limits = (
                 nothing,
                 nothing,
-                plot_data.ylims[1] * 0.75,
-                plot_data.ylims[2] * 1.25,
+                plot_data.ylims[1] * 0.5,
+                plot_data.ylims[2] * 1.5,
             ),
         ) :
         Axis(
@@ -692,8 +692,8 @@ function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
             limits = (
                 nothing,
                 nothing,
-                plot_data.ylims[1] * 0.75,
-                plot_data.ylims[2] * 1.25,
+                plot_data.ylims[1] * 0.5,
+                plot_data.ylims[2] * 1.5,
             ),
         )
     ablines!(
