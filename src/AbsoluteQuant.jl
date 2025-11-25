@@ -30,7 +30,7 @@ export load_absolute_quant,
     pca_timeseries,
     regress_concentration_vs_time,
     plot_pca_all_additives,
-    plot_concentration_vs_time
+    plot_regression
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -604,7 +604,26 @@ function regress_concentration_vs_time(long_df, bootstrap_reps)
     return result_df
 end
 
-function plot_concentration_vs_time(
+function plot_regression(long_df, concentration_vs_time_df, additive, metabolite)
+    super_title = "$additive $metabolite"
+    fig = Figure(; size = (1280, 720))
+    Label(fig[0, :], text = super_title, fontsize = 50)
+    final_times_to_figure_map =
+        Dict(2 => fig[1, 1], 3 => fig[1, 2], 4 => fig[1, 3], 5 => fig[2, 1], 6 => fig[2, 2])
+    for (final_time, fig_ref) in final_times_to_figure_map
+        plot_data = concentration_vs_time_dfs(
+            long_df,
+            concentration_vs_time_df,
+            additive,
+            metabolite,
+            final_time,
+        )
+        plot_conc_vs_time_from_plot_data(plot_data, fig_ref)
+    end
+    return fig
+end
+
+function concentration_vs_time_dfs(
     long_df,
     concentration_vs_time_df,
     additive,
@@ -624,33 +643,59 @@ function plot_concentration_vs_time(
     mean_intercept = lines_df[1, :mean_intercept]
     mean_rate = lines_df[1, :mean_rate]
     scatter_df = @chain long_df begin
-        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time <= 2)
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time <= final_time,
+            :Time >= final_time - 1
+        )
         @select(:Time, :absolute_mM)
     end
-    fig = Figure(; size = (1280 / 2, 720 / 2))
+    return (
+        lower_intercept = lower_intercept,
+        lower_slope = lower_slope,
+        upper_intercept = upper_intercept,
+        upper_slope = upper_slope,
+        mean_intercept = mean_intercept,
+        mean_rate = mean_rate,
+        scatter_df = scatter_df,
+    )
+end
+
+function plot_conc_vs_time_from_plot_data(plot_data, fig_ref)
     ax = Axis(
-        fig[1, 1],
+        fig_ref,
         limits = (
             nothing,
             nothing,
-            minimum(scatter_df.absolute_mM) * 0.75,
-            maximum(scatter_df.absolute_mM) * 1.25,
+            minimum(plot_data.scatter_df.absolute_mM) * 0.75,
+            maximum(plot_data.scatter_df.absolute_mM) * 1.25,
         ),
-        title = metabolite,
         xlabel = "Time",
         ylabel = "mM",
     )
     ablines!(
         ax,
-        [lower_intercept, upper_intercept],
-        [lower_slope, upper_slope],
+        [plot_data.lower_intercept, plot_data.upper_intercept],
+        [plot_data.lower_slope, plot_data.upper_slope],
         color = ["#E66100", "#E66100"],
         linestyle = :dash,
         linewidth = 2,
     )
-    ablines!(ax, mean_intercept, mean_rate, color = "#5D3A9B", linewidth = 2)
-    scatter!(ax, scatter_df.Time, scatter_df.absolute_mM, color = "#006CD1", alpha = 0.75)
-    return fig
+    ablines!(
+        ax,
+        plot_data.mean_intercept,
+        plot_data.mean_rate,
+        color = "#5D3A9B",
+        linewidth = 2,
+    )
+    scatter!(
+        ax,
+        plot_data.scatter_df.Time,
+        plot_data.scatter_df.absolute_mM,
+        color = "#006CD1",
+        alpha = 0.75,
+    )
 end
 
 end
