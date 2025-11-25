@@ -538,9 +538,9 @@ function regress_concentration_vs_time(long_df)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
     final_times = [2, 3, 4, 5, 6]
-    rows = []
-    for (metabolite, additive, final_time) in
-        product(unique_metabolites, unique_additives, final_times)
+    tasks = product(unique_metabolites, unique_additives, final_times)
+    rows = ThreadsX.map(tasks) do t 
+        metabolite, additive, final_time = t
         println("Calculating $additive, $metabolite, $final_time")
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
@@ -551,7 +551,7 @@ function regress_concentration_vs_time(long_df)
         ci = confint(single_model)
         lb = ci[2, 1]
         ub = ci[2, 2]
-        row = (
+        (
             additive = additive,
             metabolite = metabolite,
             final_time = final_time,
@@ -560,7 +560,6 @@ function regress_concentration_vs_time(long_df)
             lb = lb,
             ub = ub,
         )
-        push!(rows, row)
     end
     result_df = @chain rows begin
         DataFrame()
@@ -576,12 +575,7 @@ function plot_regression(long_df, additive, metabolite)
     final_times_to_figure_map =
         Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
     for (final_time, fig_ref) in final_times_to_figure_map
-        plot_data = scatter_plot_df(
-            long_df,
-            additive,
-            metabolite,
-            final_time,
-        )
+        plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
         if final_time < 6
             plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
         else
@@ -591,12 +585,7 @@ function plot_regression(long_df, additive, metabolite)
     return fig
 end
 
-function scatter_plot_df(
-    long_df,
-    additive,
-    metabolite,
-    final_time,
-)
+function scatter_plot_df(long_df, additive, metabolite, final_time)
     scatter_df = @chain long_df begin
         @rsubset(
             :Additive == additive,
@@ -611,10 +600,7 @@ function scatter_plot_df(
         @combine(:ymin = minimum(:absolute_mM), :ymax = maximum(:absolute_mM))
     end
     ylims = (ylims_df[1, :ymin], ylims_df[1, :ymax])
-    return (
-        scatter_df = scatter_df,
-        ylims = ylims,
-    )
+    return (scatter_df = scatter_df, ylims = ylims)
 end
 
 function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
