@@ -636,6 +636,9 @@ function plot_concentration_vs_time(
             minimum(scatter_df.absolute_mM) * 0.75,
             maximum(scatter_df.absolute_mM) * 1.25,
         ),
+        title = metabolite,
+        xlabel = "Time",
+        ylabel = "mM",
     )
     ablines!(
         ax,
