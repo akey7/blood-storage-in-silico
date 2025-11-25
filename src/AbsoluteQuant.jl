@@ -606,10 +606,10 @@ end
 
 function plot_regression(long_df, concentration_vs_time_df, additive, metabolite)
     super_title = "$additive $metabolite"
-    fig = Figure(; size = (1280, 720))
-    Label(fig[0, :], text = super_title, fontsize = 50)
+    fig = Figure(; size = (360, 720))
+    Label(fig[0, :], text = super_title, fontsize = 25)
     final_times_to_figure_map =
-        Dict(2 => fig[1, 1], 3 => fig[1, 2], 4 => fig[1, 3], 5 => fig[2, 1], 6 => fig[2, 2])
+        Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
     for (final_time, fig_ref) in final_times_to_figure_map
         plot_data = concentration_vs_time_dfs(
             long_df,
@@ -665,12 +665,12 @@ end
 function plot_conc_vs_time_from_plot_data(plot_data, fig_ref)
     ax = Axis(
         fig_ref,
-        limits = (
-            nothing,
-            nothing,
-            minimum(plot_data.scatter_df.absolute_mM) * 0.75,
-            maximum(plot_data.scatter_df.absolute_mM) * 1.25,
-        ),
+        # limits = (
+        #     nothing,
+        #     nothing,
+        #     minimum(plot_data.scatter_df.absolute_mM) * 0.75,
+        #     maximum(plot_data.scatter_df.absolute_mM) * 1.25,
+        # ),
         xlabel = "Time",
         ylabel = "mM",
     )
