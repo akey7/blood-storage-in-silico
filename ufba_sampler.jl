@@ -18,9 +18,18 @@ s = ArgParseSettings()
 end
 n_chains = parse_args(s)["nchains"]
 
-sampling_df, status_df =
+sampling_df, status_df, all_metabolite_status_df =
     ufba_result =
         ufba_all_additives_all_times(model, metabolites_bounds_df; n_chains = n_chains)
+
+println("\n############################################################")
+println("# uFBA: METABOLITE STATUS                                  #")
+println("############################################################")
+
+display(first(all_metabolite_status_df, 10))
+all_metabolite_status_filename = joinpath("output", "all_metabolite_status.csv")
+CSV.write(all_metabolite_status_filename, all_metabolite_status_df)
+
 println("\n############################################################")
 println("# uFBA: FINAL STATUS                                       #")
 println("############################################################")
