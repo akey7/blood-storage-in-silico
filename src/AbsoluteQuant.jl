@@ -30,7 +30,7 @@ export load_absolute_quant,
     pca_timeseries,
     regress_concentration_vs_time,
     plot_pca_all_additives,
-    plot_regression
+    plot_all_regressions
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -566,6 +566,18 @@ function regress_concentration_vs_time(long_df)
         @orderby(:additive, :metabolite, :final_time)
     end
     return result_df
+end
+
+function plot_all_regressions(long_df)
+    additives = unique(long_df.Additive)
+    metabolites = unique(long_df.Metabolite)
+    pairs = product(additives, metabolites)
+    for (additive, metabolite) in pairs
+        filename = joinpath("output", "regression_plots", "$additive $metabolite.png")
+        fig = plot_regression(long_df, additive, metabolite)
+        save(filename, fig)
+        println("Wrote $filename")
+    end
 end
 
 function plot_regression(long_df, additive, metabolite)
