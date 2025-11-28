@@ -18,6 +18,16 @@ s = ArgParseSettings()
 end
 n_chains = parse_args(s)["nchains"]
 
+standard_sampling_df = fba(model; n_chains = n_chains)
+standard_sampling_filename = joinpath("output", "standard_sampling.csv")
+if !isnothing(standard_sampling_df)
+    CSV.write(standard_sampling_filename, standard_sampling_df)
+    println("Wrote $standard_sampling_filename")
+else
+    println("Sampling failed, could not write")
+    exit(1)
+end
+
 sampling_df, status_df, all_metabolite_status_df =
     ufba_result =
         ufba_all_additives_all_times(model, metabolites_bounds_df; n_chains = n_chains)
