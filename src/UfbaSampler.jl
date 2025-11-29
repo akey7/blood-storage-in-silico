@@ -357,7 +357,16 @@ function add_sinks_for_unmatched_metabolites!(
             upper_bound = 0.0,
         )
         model.reactions[sink_up_name] = sink_up
-        println(sink_up)
+        display(sink_up)
+        sink_down_name = "R_SK_DOWN_$(uppercase(metabolite))"
+        sink_down = Reaction(
+            name = sink_down_name,
+            stoichiometry = Dict("M_$(metabolite)" => 1.0),
+            lower_bound = 0.0,
+            upper_bound = 1000.0,
+        )
+        model.reactions[sink_down_name] = sink_down
+        display(sink_down)
     end
 end
 
