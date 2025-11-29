@@ -24,7 +24,9 @@ export create_3p_model,
     query_metabolite_bounds,
     histograms_for_reaction_in_additive,
     plot_all_histograms,
-    fba
+    fba,
+    add_sinks_for_unmatched_metabolites!,
+    find_metabolite_matches
 
 function create_3p_model()
     println("############################################################")
@@ -285,6 +287,86 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
         println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
         samples_df = sample_fluxes(model; n_chains = n_chains)
         return solution, samples_df
+    end
+end
+
+function find_metabolite_matches(
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame,
+    additive::AbstractString,
+    final_time::Int64,
+)
+    println("\n############################################################")
+    println("# MATCHING METABOLITES FROM $additive, t_f = $final_time")
+    println("############################################################")
+
+    ct = flux_balance_constraints(model)
+    status_rows = []
+    found_count = 0
+    not_found_count = 0
+    for k ∈ keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        bounds = query_metabolite_bounds(
+            metabolite_bounds_df,
+            additive,
+            short_metabolite_id,
+            final_time,
+        )
+        if isnothing(bounds)
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "not found",
+            )
+            push!(status_rows, status_row)
+            not_found_count += 1
+            # ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+        else
+            status_row =
+                (additive = additive, metabolite = short_metabolite_id, status = "found")
+            push!(status_rows, status_row)
+            found_count += 1
+            # lb, ub = bounds
+            # ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+        end
+    end
+    metabolite_status_df = DataFrame(status_rows)
+    println("Found $found_count, not found $not_found_count")
+    return metabolite_status_df
+end
+
+function add_sinks_for_unmatched_metabolites!(
+    model::A.AbstractFBCModel,
+    metabolite_status_df::DataFrame,
+    additive::AbstractString,
+)
+    println("\n############################################################")
+    println("# ADD SINKS FOR UNMATCHED METABOLITES                      #")
+    println("############################################################")
+
+    not_found_df = @chain metabolite_status_df begin
+        @rsubset(:status == "not found", :additive == additive)
+        @select(:metabolite)
+    end
+    for metabolite in sort(unique(not_found_df.metabolite))
+        sink_up_name = "R_SK_UP_$(uppercase(metabolite))"
+        sink_up = Reaction(
+            name = sink_up_name,
+            stoichiometry = Dict("M_$(metabolite)" => -1.0),
+            lower_bound = -1000.0,
+            upper_bound = 0.0,
+        )
+        model.reactions[sink_up_name] = sink_up
+        display(sink_up)
+        sink_down_name = "R_SK_DOWN_$(uppercase(metabolite))"
+        sink_down = Reaction(
+            name = sink_down_name,
+            stoichiometry = Dict("M_$(metabolite)" => 1.0),
+            lower_bound = 0.0,
+            upper_bound = 1000.0,
+        )
+        model.reactions[sink_down_name] = sink_down
+        display(sink_down)
     end
 end
 
