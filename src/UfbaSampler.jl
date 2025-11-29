@@ -26,7 +26,8 @@ export create_3p_model,
     plot_all_histograms,
     fba,
     add_sinks_for_unmatched_metabolites!,
-    find_metabolite_matches
+    find_metabolite_matches,
+    is_metabolite_in_exchange
 
 function create_3p_model()
     println("############################################################")
@@ -290,6 +291,16 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     end
 end
 
+function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
+    exchange_substring = "EX_$(metabolite[1:end-2])"
+    for rxn in keys(model.reactions)
+        if contains(rxn, exchange_substring)
+            return true
+        end
+    end
+    return false
+end
+
 function find_metabolite_matches(
     model::A.AbstractFBCModel,
     metabolite_bounds_df::DataFrame,
@@ -304,6 +315,7 @@ function find_metabolite_matches(
     status_rows = []
     found_count = 0
     not_found_count = 0
+    in_exchange_count = 0
     for k ∈ keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         bounds = query_metabolite_bounds(
@@ -321,6 +333,13 @@ function find_metabolite_matches(
             push!(status_rows, status_row)
             not_found_count += 1
             # ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+        elseif is_metabolite_in_exchange(model, short_metabolite_id)
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "in exchange",
+            )
+            in_exchange_count += 1
         else
             status_row =
                 (additive = additive, metabolite = short_metabolite_id, status = "found")
@@ -331,7 +350,9 @@ function find_metabolite_matches(
         end
     end
     metabolite_status_df = DataFrame(status_rows)
-    println("Found $found_count, not found $not_found_count")
+    println(
+        "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
+    )
     return metabolite_status_df
 end
 
@@ -349,7 +370,7 @@ function add_sinks_for_unmatched_metabolites!(
         @select(:metabolite)
     end
     for metabolite in sort(unique(not_found_df.metabolite))
-        sink_up_name = "R_SK_UP_$(uppercase(metabolite))"
+        sink_up_name = "R_SK_UP_$metabolite"
         sink_up = Reaction(
             name = sink_up_name,
             stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -358,7 +379,7 @@ function add_sinks_for_unmatched_metabolites!(
         )
         model.reactions[sink_up_name] = sink_up
         display(sink_up)
-        sink_down_name = "R_SK_DOWN_$(uppercase(metabolite))"
+        sink_down_name = "R_SK_DOWN_$metabolite"
         sink_down = Reaction(
             name = sink_down_name,
             stoichiometry = Dict("M_$(metabolite)" => 1.0),
