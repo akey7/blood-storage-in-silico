@@ -18,15 +18,19 @@ s = ArgParseSettings()
 end
 n_chains = parse_args(s)["nchains"]
 
-_, standard_sampling_df = fba(model; n_chains = n_chains)
-standard_sampling_filename = joinpath("output", "standard_sampling.csv")
-if !isnothing(standard_sampling_df)
-    CSV.write(standard_sampling_filename, standard_sampling_df)
-    println("Wrote $standard_sampling_filename")
-else
-    println("Sampling failed, could not write")
-    exit(1)
-end
+# _, standard_sampling_df = fba(model; n_chains = n_chains)
+# standard_sampling_filename = joinpath("output", "standard_sampling.csv")
+# if !isnothing(standard_sampling_df)
+#     CSV.write(standard_sampling_filename, standard_sampling_df)
+#     println("Wrote $standard_sampling_filename")
+# else
+#     println("Sampling failed, could not write")
+#     exit(1)
+# end
+
+metabolite_status_df =
+    find_metabolite_matches(model, metabolites_bounds_df, "01-Ctrl AS3", 2)
+add_sinks_for_unmatched_metabolites!(model, metabolite_status_df, "01-Ctrl AS3")
 
 # sampling_df, status_df, all_metabolite_status_df =
 #     ufba_result =
