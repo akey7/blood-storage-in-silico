@@ -370,7 +370,7 @@ function add_sinks_for_unmatched_metabolites!(
         @select(:metabolite)
     end
     for metabolite in sort(unique(not_found_df.metabolite))
-        sink_up_name = "R_SK_UP_$(uppercase(metabolite))"
+        sink_up_name = "R_SK_UP_$metabolite"
         sink_up = Reaction(
             name = sink_up_name,
             stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -379,7 +379,7 @@ function add_sinks_for_unmatched_metabolites!(
         )
         model.reactions[sink_up_name] = sink_up
         display(sink_up)
-        sink_down_name = "R_SK_DOWN_$(uppercase(metabolite))"
+        sink_down_name = "R_SK_DOWN_$metabolite"
         sink_down = Reaction(
             name = sink_down_name,
             stoichiometry = Dict("M_$(metabolite)" => 1.0),
