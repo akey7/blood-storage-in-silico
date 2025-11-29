@@ -28,9 +28,11 @@ n_chains = parse_args(s)["nchains"]
 #     exit(1)
 # end
 
-metabolite_status_df =
-    find_metabolite_matches(model, metabolites_bounds_df, "01-Ctrl AS3", 2)
-add_sinks_for_unmatched_metabolites!(model, metabolite_status_df, "01-Ctrl AS3")
+println(is_metabolite_in_exchange(model, "h2o_c"))
+
+# metabolite_status_df =
+#     find_metabolite_matches(model, metabolites_bounds_df, "01-Ctrl AS3", 2)
+# add_sinks_for_unmatched_metabolites!(model, metabolite_status_df, "01-Ctrl AS3")
 
 # sampling_df, status_df, all_metabolite_status_df =
 #     ufba_result =

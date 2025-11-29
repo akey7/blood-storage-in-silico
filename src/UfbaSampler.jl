@@ -26,7 +26,8 @@ export create_3p_model,
     plot_all_histograms,
     fba,
     add_sinks_for_unmatched_metabolites!,
-    find_metabolite_matches
+    find_metabolite_matches,
+    is_metabolite_in_exchange
 
 function create_3p_model()
     println("############################################################")
@@ -288,6 +289,16 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
         samples_df = sample_fluxes(model; n_chains = n_chains)
         return solution, samples_df
     end
+end
+
+function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
+    exchange_substring = "EX_$(metabolite[1:end-2])"
+    for rxn in keys(model.reactions)
+        if contains(rxn, exchange_substring)
+            return true
+        end
+    end
+    return false
 end
 
 function find_metabolite_matches(
