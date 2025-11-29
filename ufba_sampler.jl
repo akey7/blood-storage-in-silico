@@ -18,26 +18,36 @@ s = ArgParseSettings()
 end
 n_chains = parse_args(s)["nchains"]
 
-sampling_df, status_df, all_metabolite_status_df =
-    ufba_result =
-        ufba_all_additives_all_times(model, metabolites_bounds_df; n_chains = n_chains)
+_, standard_sampling_df = fba(model; n_chains = n_chains)
+standard_sampling_filename = joinpath("output", "standard_sampling.csv")
+if !isnothing(standard_sampling_df)
+    CSV.write(standard_sampling_filename, standard_sampling_df)
+    println("Wrote $standard_sampling_filename")
+else
+    println("Sampling failed, could not write")
+    exit(1)
+end
 
-println("\n############################################################")
-println("# uFBA: METABOLITE STATUS                                  #")
-println("############################################################")
+# sampling_df, status_df, all_metabolite_status_df =
+#     ufba_result =
+#         ufba_all_additives_all_times(model, metabolites_bounds_df; n_chains = n_chains)
 
-display(first(all_metabolite_status_df, 10))
-all_metabolite_status_filename = joinpath("output", "all_metabolite_status.csv")
-CSV.write(all_metabolite_status_filename, all_metabolite_status_df)
+# println("\n############################################################")
+# println("# uFBA: METABOLITE STATUS                                  #")
+# println("############################################################")
 
-println("\n############################################################")
-println("# uFBA: FINAL STATUS                                       #")
-println("############################################################")
-display(status_df)
-status_filename = joinpath("output", "ufba_sampling_status.csv")
-CSV.write(status_filename, status_df)
-println("Wrote $status_filename")
-sampling_filename = joinpath("output", "ufba_sampling.csv")
-CSV.write(sampling_filename, sampling_df)
-println("Wrote $sampling_filename")
-plot_all_histograms(sampling_df)
+# display(first(all_metabolite_status_df, 10))
+# all_metabolite_status_filename = joinpath("output", "all_metabolite_status.csv")
+# CSV.write(all_metabolite_status_filename, all_metabolite_status_df)
+
+# println("\n############################################################")
+# println("# uFBA: FINAL STATUS                                       #")
+# println("############################################################")
+# display(status_df)
+# status_filename = joinpath("output", "ufba_sampling_status.csv")
+# CSV.write(status_filename, status_df)
+# println("Wrote $status_filename")
+# sampling_filename = joinpath("output", "ufba_sampling.csv")
+# CSV.write(sampling_filename, sampling_df)
+# println("Wrote $sampling_filename")
+# plot_all_histograms(sampling_df)

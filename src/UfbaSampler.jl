@@ -23,7 +23,8 @@ export create_3p_model,
     load_metabolite_bounds,
     query_metabolite_bounds,
     histograms_for_reaction_in_additive,
-    plot_all_histograms
+    plot_all_histograms,
+    fba
 
 function create_3p_model()
     println("############################################################")
@@ -265,6 +266,25 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
         return (lower_bound, upper_bound)
     else
         return nothing
+    end
+end
+
+function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
+    println("\n############################################################")
+    println("# STANDARD FBA SAMPLING                                    #")
+    println("############################################################")
+
+    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
+    solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
+    if isnothing(solution)
+        println("Simple optimization failed")
+        return nothing, nothing
+    else
+        println("Simple optimization succeeded!")
+        display(solution.fluxes)
+        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        samples_df = sample_fluxes(model; n_chains = n_chains)
+        return solution, samples_df
     end
 end
 
