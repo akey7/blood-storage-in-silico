@@ -315,6 +315,7 @@ function find_metabolite_matches(
     status_rows = []
     found_count = 0
     not_found_count = 0
+    in_exchange_count = 0
     for k ∈ keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         bounds = query_metabolite_bounds(
@@ -332,6 +333,13 @@ function find_metabolite_matches(
             push!(status_rows, status_row)
             not_found_count += 1
             # ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+        elseif is_metabolite_in_exchange(model, short_metabolite_id)
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "in exchange",
+            )
+            in_exchange_count += 1
         else
             status_row =
                 (additive = additive, metabolite = short_metabolite_id, status = "found")
@@ -342,7 +350,9 @@ function find_metabolite_matches(
         end
     end
     metabolite_status_df = DataFrame(status_rows)
-    println("Found $found_count, not found $not_found_count")
+    println(
+        "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
+    )
     return metabolite_status_df
 end
 
