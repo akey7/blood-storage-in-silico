@@ -273,24 +273,18 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     println("\n############################################################")
     println("# STANDARD FBA SAMPLING                                    #")
     println("############################################################")
-    ct = flux_balance_constraints(model)
 
     println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
-    objective_flux = optimized_values(
-        ct;
-        objective = ct.objective.value,
-        output = ct.objective,
-        optimizer = HiGHS.Optimizer,
-        settings = [],
-    )
-    if isnothing(objective_flux)
+    solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
+    if isnothing(solution)
         println("Simple optimization failed")
-        return nothing
+        return nothing, nothing
     else
         println("Simple optimization succeeded!")
+        display(solution.fluxes)
         println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
         samples_df = sample_fluxes(model; n_chains = n_chains)
-        return samples_df
+        return solution, samples_df
     end
 end
 
