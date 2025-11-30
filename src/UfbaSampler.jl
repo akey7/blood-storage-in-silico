@@ -395,10 +395,11 @@ end
 function add_case_1_constraints!(model::A.AbstractFBCModel)
     rxn_ids = keys(model.reactions)
     relaxation_sinks =
-        [rxn for rxn in rxn_ids if contains(rxn, "R_SK_UP") || contains(rxn, "R_SK_DOWN")]
+        [Symbol(rxn) for rxn in rxn_ids if contains(rxn, "R_SK_UP") || contains(rxn, "R_SK_DOWN")]
+    case_1_ct = :case_1_ct^C.variables(keys = relaxation_sinks, bounds = C.Between(0.0, 1.0))
     ct = flux_balance_constraints(model)
-    ct *= :case_1^C.ConstraintTree()
-    display(ct)
+    ct *= case_1_ct
+    C.pretty(ct)
 end
 
 function ufba_additive_at_final_time(
