@@ -27,7 +27,8 @@ export create_3p_model,
     fba,
     add_sinks_for_unmatched_metabolites!,
     find_metabolite_matches,
-    is_metabolite_in_exchange
+    is_metabolite_in_exchange,
+    add_case_1_constraints!
 
 function create_3p_model()
     println("############################################################")
@@ -389,6 +390,15 @@ function add_sinks_for_unmatched_metabolites!(
         model.reactions[sink_down_name] = sink_down
         display(sink_down)
     end
+end
+
+function add_case_1_constraints!(model::A.AbstractFBCModel)
+    rxn_ids = keys(model.reactions)
+    relaxation_sinks =
+        [rxn for rxn in rxn_ids if contains(rxn, "R_SK_UP") || contains(rxn, "R_SK_DOWN")]
+    ct = flux_balance_constraints(model)
+    ct *= :case_1^C.ConstraintTree()
+    display(ct)
 end
 
 function ufba_additive_at_final_time(
