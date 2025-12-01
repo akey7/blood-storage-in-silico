@@ -31,8 +31,8 @@ n_chains = parse_args(s)["nchains"]
 metabolite_status_df =
     find_metabolite_matches(model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(model, metabolite_status_df, "01-Ctrl AS3")
-cs = add_case_1_constraints(model)
-optimize_case_1(cs, cs.objective.value)
+list_objectives_in_model(model)
+# cs = case_3_constraint_tree(model)
 
 # sampling_df, status_df, all_metabolite_status_df =
 #     ufba_result =

@@ -28,8 +28,8 @@ export create_3p_model,
     add_sinks_for_unmatched_metabolites!,
     find_metabolite_matches,
     is_metabolite_in_exchange,
-    add_case_1_constraints,
-    optimize_case_1
+    case_3_constraint_tree,
+    list_objectives_in_model
 
 function create_3p_model()
     println("############################################################")
@@ -393,54 +393,74 @@ function add_sinks_for_unmatched_metabolites!(
     end
 end
 
-function add_case_1_constraints(model::A.AbstractFBCModel)
+function list_objectives_in_model(model::A.AbstractFBCModel)
+    obj_coeffs = A.AbstractFBCModels.objective(model)
+    rxn_ids = keys(model.reactions)
+    for (id, coeff) in zip(rxn_ids, obj_coeffs)
+        if !isapprox(coeff, 0.0)
+            println("Reaction $id has objective coefficient: $coeff")
+        end
+    end
+end
+
+function case_3_constraint_tree(model::A.AbstractFBCModel)
+    ct = flux_balance_constraints(model)
     rxn_ids = keys(model.reactions)
     relaxation_sinks = [
         Symbol(rxn) for
         rxn in rxn_ids if contains(rxn, "R_SK_UP") || contains(rxn, "R_SK_DOWN")
     ]
-    case_1 =
-        :case_1^C.variables(keys = relaxation_sinks, bounds = C.Between(0.0, 1.0))
-    ct = flux_balance_constraints(model)
-    ct *= case_1
+    # case_1 =
+    #     :case_1^C.variables(keys = relaxation_sinks, bounds = C.Between(0.0, 1.0))
+    # ct *= case_1
+
+    # ct.objective = C.Constraint(
+    #     C.sum(
+    #         ct.fluxes[Symbol(rid)].value * coeff for
+    #         (rid, coeff) in keys(model.reactions) if coeff != 0.0;
+    #         init = 0.0,
+    #     ),
+    # )
+
+    # display(ct.objective)
+
     return ct
 end
 
-function optimize_case_1(cs::C.ConstraintTree, objective::C.LinearValue)
-    model = JuMP.Model(HiGHS.Optimizer)
-    metabolite_names = collect(keys(cs.flux_stoichiometry))
-    flux_names = collect(keys(cs.fluxes))
-    JuMP.@variable(model, x[1:C.variable_count(cs)])
-    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
-    C.traverse(cs) do c
-        C.pretty(c)
-        b = c.bound
-        if b isa C.EqualTo
-            JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
-        elseif b isa C.Between
-            val = C.substitute(c.value, x)
-            isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
-            isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
-        end
-    end
-    for (F, S) in list_of_constraint_types(model)
-        println("\nType: ($F, $S)")
-        if S == MathOptInterface.EqualTo{Float64}
-            for (metabolite_name, con) in
-                zip(metabolite_names, all_constraints(model, F, S))
-                obj = constraint_object(con)
-                println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
-            end
-        else
-            for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
-                obj = constraint_object(con)
-                println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
-            end
-        end
-    end
-    # JuMP.optimize!(model)
-    # display(JuMP.value.(model[:x]))
-end
+# function optimize_case_1(cs::C.ConstraintTree, objective::C.LinearValue)
+#     model = JuMP.Model(HiGHS.Optimizer)
+#     metabolite_names = collect(keys(cs.flux_stoichiometry))
+#     flux_names = collect(keys(cs.fluxes))
+#     JuMP.@variable(model, x[1:C.variable_count(cs)])
+#     JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+#     C.traverse(cs) do c
+#         b = c.bound
+#         if b isa C.EqualTo
+#             JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
+#         elseif b isa C.Between
+#             val = C.substitute(c.value, x)
+#             isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
+#             isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
+#         end
+#     end
+#     for (F, S) in list_of_constraint_types(model)
+#         println("\nType: ($F, $S)")
+#         if S == MathOptInterface.EqualTo{Float64}
+#             for (metabolite_name, con) in
+#                 zip(metabolite_names, all_constraints(model, F, S))
+#                 obj = constraint_object(con)
+#                 println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
+#             end
+#         else
+#             for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
+#                 obj = constraint_object(con)
+#                 println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
+#             end
+#         end
+#     end
+#     # JuMP.optimize!(model)
+#     # display(JuMP.value.(model[:x]))
+# end
 
 function ufba_additive_at_final_time(
     model::A.AbstractFBCModel,
