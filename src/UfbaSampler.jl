@@ -465,6 +465,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
 
     ct_symbols = []
+    branch_symbols = []
     for (branch, _) in ct
         if branch != :objective
             # println(">>>>>>>>>> $branch <<<<<<<<<")
@@ -472,6 +473,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
             for (s, c) in branch_ct
                 # println(s)
                 push!(ct_symbols, s)
+                push!(branch_symbols, branch)
                 b = c.bound
                 if b isa C.EqualTo
                     JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
@@ -501,8 +503,9 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     # end
 
     JuMP.optimize!(model)
-    for (ct_symbol, val) in zip(ct_symbols, JuMP.value.(model[:x]))
-        println(ct_symbol, ": ", val)
+    for (branch_symbol, ct_symbol, val) in
+        zip(branch_symbols, ct_symbols, JuMP.value.(model[:x]))
+        println(branch_symbol, " ", ct_symbol, ": ", val)
     end
 end
 
