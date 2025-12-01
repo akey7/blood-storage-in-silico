@@ -460,19 +460,18 @@ end
 
 function flatten_constraint_tree_dict(ct::C.ConstraintTree)
     result = Dict()
-    branches = keys(C.elems(ct))
+    branches = sort(collect(keys(C.elems(ct))))
     for branch in branches
         if branch != :objective
-            leaves = C.elems(ct[branch])
-            for (leaf, v) in leaves
+            leaves = sort(collect(keys(C.elems(ct[branch]))))
+            for leaf in sort(leaves)
                 k = "$branch.$leaf"
+                v = ct[branch][leaf]
                 result[k] = v
             end
         end
     end
-    for (k, v) in result
-        println("$k $v")
-    end
+    return result
 end
 
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
