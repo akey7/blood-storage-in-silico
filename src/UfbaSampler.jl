@@ -30,7 +30,8 @@ export create_3p_model,
     is_metabolite_in_exchange,
     case_3_constraint_tree,
     list_objectives_in_model,
-    optimize_case_3
+    optimize_case_3,
+    display_jump_results
 
 function create_3p_model()
     println("############################################################")
@@ -503,9 +504,22 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     # end
 
     JuMP.optimize!(model)
-    for (branch_symbol, ct_symbol, val) in
-        zip(branch_symbols, ct_symbols, JuMP.value.(model[:x]))
-        println(branch_symbol, " ", ct_symbol, ": ", val)
+
+    return branch_symbols, ct_symbols, JuMP.value.(model[:x])
+end
+
+function display_jump_results(branch_symbols, ct_symbols, jump_values, non_zeros_only)
+    if non_zeros_only
+        println("Printing non-zeros only")
+        for (branch_symbol, ct_symbol, val) in zip(branch_symbols, ct_symbols, jump_values)
+            if !isapprox(val, 0.0)
+                println(branch_symbol, " ", ct_symbol, ": ", val)
+            end
+        end
+    else
+        for (branch_symbol, ct_symbol, val) in zip(branch_symbols, ct_symbols, jump_values)
+            println(branch_symbol, " ", ct_symbol, ": ", val)
+        end
     end
 end
 
