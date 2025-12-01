@@ -405,24 +405,9 @@ end
 
 function case_3_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
-    rxn_ids = keys(model.reactions)
-    relaxation_sinks = [
-        Symbol(rxn) for
-        rxn in rxn_ids if contains(rxn, "R_SK_UP") || contains(rxn, "R_SK_DOWN")
-    ]
-    non_relaxation_fluxes = [
-        Symbol(rxn) for
-        rxn in rxn_ids if !contains(rxn, "R_SK_UP") && !contains(rxn, "R_SK_DOWN")
-    ]
-    # case_1 =
-    #     :case_1^C.variables(keys = relaxation_sinks, bounds = C.Between(0.0, 1.0))
-    # ct *= case_1
+    flux_ids = collect(keys(ct.fluxes))
 
-    # ct.objective = C.Constraint(
-    #     C.sum(C.abs(ct.fluxes[Symbol(rxn_id)].value) for rxn_id in rxn_ids; init = 0.0),
-    # )
-
-    abs_flux_vars = C.variables(keys = non_relaxation_fluxes, bounds = C.Between(0.0, Inf))
+    abs_flux_vars = C.variables(keys = flux_ids, bounds = C.Between(0.0, Inf))
     ct_flux_pos = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
         C.Constraint(abs_flux_var.value + flux.value, C.Between(0.0, Inf))
     end
