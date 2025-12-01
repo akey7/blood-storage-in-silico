@@ -458,54 +458,70 @@ function case_3_constraint_tree(
     return ct
 end
 
-function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-    model = JuMP.Model(HiGHS.Optimizer)
-    metabolite_names = collect(keys(ct.flux_stoichiometry))
-    flux_names = collect(keys(ct.fluxes))
-    JuMP.@variable(model, x[1:C.variable_count(ct)])
-    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
-
-    ct_symbols = []
-    branch_symbols = []
-    for (branch, _) in ct
+function flatten_constraint_tree_dict(ct::C.ConstraintTree)
+    result = Dict()
+    branches = keys(C.elems(ct))
+    for branch in branches
         if branch != :objective
-            # println(">>>>>>>>>> $branch <<<<<<<<<")
-            branch_ct = ct[branch]
-            for (s, c) in branch_ct
-                # println(s)
-                push!(ct_symbols, s)
-                push!(branch_symbols, branch)
-                b = c.bound
-                if b isa C.EqualTo
-                    JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
-                elseif b isa C.Between
-                    val = C.substitute(c.value, x)
-                    isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
-                    isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
-                end
+            leaves = C.elems(ct[branch])
+            for (leaf, v) in leaves
+                k = "$branch.$leaf"
+                result[k] = v
             end
         end
     end
+    for (k, v) in result
+        println("$k $v")
+    end
+end
 
-    # for (F, S) in list_of_constraint_types(model)
-    #     println("\nType: ($F, $S)")
-    #     if S == MathOptInterface.EqualTo{Float64}
-    #         for (metabolite_name, con) in
-    #             zip(metabolite_names, all_constraints(model, F, S))
-    #             obj = constraint_object(con)
-    #             println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
-    #         end
-    #     else
-    #         for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
-    #             obj = constraint_object(con)
-    #             println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
+function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+    flatten_constraint_tree_dict(ct)
+    # model = JuMP.Model(HiGHS.Optimizer)
+    # JuMP.@variable(model, x[1:C.variable_count(ct)])
+    # JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+
+    # ct_symbols = []
+    # branch_symbols = []
+    # for (branch, _) in ct
+    #     if branch != :objective
+    #         # println(">>>>>>>>>> $branch <<<<<<<<<")
+    #         branch_ct = ct[branch]
+    #         for (s, c) in branch_ct
+    #             # println(s)
+    #             push!(ct_symbols, s)
+    #             push!(branch_symbols, branch)
+    #             b = c.bound
+    #             if b isa C.EqualTo
+    #                 JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
+    #             elseif b isa C.Between
+    #                 val = C.substitute(c.value, x)
+    #                 isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
+    #                 isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
+    #             end
     #         end
     #     end
     # end
 
-    JuMP.optimize!(model)
+    # # for (F, S) in list_of_constraint_types(model)
+    # #     println("\nType: ($F, $S)")
+    # #     if S == MathOptInterface.EqualTo{Float64}
+    # #         for (metabolite_name, con) in
+    # #             zip(metabolite_names, all_constraints(model, F, S))
+    # #             obj = constraint_object(con)
+    # #             println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
+    # #         end
+    # #     else
+    # #         for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
+    # #             obj = constraint_object(con)
+    # #             println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
+    # #         end
+    # #     end
+    # # end
 
-    return branch_symbols, ct_symbols, JuMP.value.(model[:x])
+    # JuMP.optimize!(model)
+
+    # return branch_symbols, ct_symbols, JuMP.value.(model[:x])
 end
 
 function display_jump_results(branch_symbols, ct_symbols, jump_values, non_zeros_only)
