@@ -29,7 +29,8 @@ export create_3p_model,
     find_metabolite_matches,
     is_metabolite_in_exchange,
     case_3_constraint_tree,
-    list_objectives_in_model
+    list_objectives_in_model,
+    optimize_case_3
 
 function create_3p_model()
     println("############################################################")
@@ -456,40 +457,40 @@ function case_3_constraint_tree(
     return ct
 end
 
-# function optimize_case_1(cs::C.ConstraintTree, objective::C.LinearValue)
-#     model = JuMP.Model(HiGHS.Optimizer)
-#     metabolite_names = collect(keys(cs.flux_stoichiometry))
-#     flux_names = collect(keys(cs.fluxes))
-#     JuMP.@variable(model, x[1:C.variable_count(cs)])
-#     JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
-#     C.traverse(cs) do c
-#         b = c.bound
-#         if b isa C.EqualTo
-#             JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
-#         elseif b isa C.Between
-#             val = C.substitute(c.value, x)
-#             isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
-#             isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
-#         end
-#     end
-#     for (F, S) in list_of_constraint_types(model)
-#         println("\nType: ($F, $S)")
-#         if S == MathOptInterface.EqualTo{Float64}
-#             for (metabolite_name, con) in
-#                 zip(metabolite_names, all_constraints(model, F, S))
-#                 obj = constraint_object(con)
-#                 println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
-#             end
-#         else
-#             for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
-#                 obj = constraint_object(con)
-#                 println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
-#             end
-#         end
-#     end
-#     # JuMP.optimize!(model)
-#     # display(JuMP.value.(model[:x]))
-# end
+function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+    model = JuMP.Model(HiGHS.Optimizer)
+    metabolite_names = collect(keys(ct.flux_stoichiometry))
+    flux_names = collect(keys(ct.fluxes))
+    JuMP.@variable(model, x[1:C.variable_count(ct)])
+    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    C.traverse(ct) do c
+        b = c.bound
+        if b isa C.EqualTo
+            JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
+        elseif b isa C.Between
+            val = C.substitute(c.value, x)
+            isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
+            isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
+        end
+    end
+    for (F, S) in list_of_constraint_types(model)
+        println("\nType: ($F, $S)")
+        if S == MathOptInterface.EqualTo{Float64}
+            for (metabolite_name, con) in
+                zip(metabolite_names, all_constraints(model, F, S))
+                obj = constraint_object(con)
+                println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
+            end
+        else
+            for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
+                obj = constraint_object(con)
+                println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
+            end
+        end
+    end
+    JuMP.optimize!(model)
+    display(JuMP.value.(model[:x]))
+end
 
 function ufba_additive_at_final_time(
     model::A.AbstractFBCModel,
