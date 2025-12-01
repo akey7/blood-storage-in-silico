@@ -403,9 +403,16 @@ function list_objectives_in_model(model::A.AbstractFBCModel)
     end
 end
 
-function case_3_constraint_tree(model::A.AbstractFBCModel)
+function case_3_constraint_tree(
+    model::A.AbstractFBCModel,
+    metabolite_status_df::DataFrame,
+    additive::AbstractString,
+)
     ct = flux_balance_constraints(model)
     flux_ids = collect(keys(ct.fluxes))
+    unfound_metabolites =
+        @rsubset(metabolite_status_df, :status == "not found", :additive == additive)
+    unfound_metabolite_ids = Symbol.(unique(unfound_metabolites.metabolite))
 
     abs_flux_vars = C.variables(keys = flux_ids, bounds = C.Between(0.0, Inf))
     ct_flux_pos = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
@@ -414,14 +421,34 @@ function case_3_constraint_tree(model::A.AbstractFBCModel)
     ct_flux_neg = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
         C.Constraint(abs_flux_var.value - flux.value, C.Between(0.0, Inf))
     end
+
+    abs_metabolite_vars =
+        C.variables(keys = unfound_metabolite_ids, bounds = C.Between(0.0, Inf))
+    ct_metabolite_pos =
+        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
+            C.Constraint(abs_metabolite_var.value + stoi.value, C.Between(0.0, Inf))
+        end
+    ct_metabolite_neg =
+        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
+            C.Constraint(abs_metabolite_var.value - stoi.value, C.Between(0.0, Inf))
+        end
+
     ct =
         ct +
         C.ConstraintTree(:abs_flux_vars => abs_flux_vars) +
-        C.ConstraintTree(:abs_flux_pos => ct_flux_pos) +
-        C.ConstraintTree(:abs_flux_neg => ct_flux_neg)
+        C.ConstraintTree(:flux_pos => ct_flux_pos) +
+        C.ConstraintTree(:flux_neg => ct_flux_neg) +
+        C.ConstraintTree(:abs_metabolite_vars => abs_metabolite_vars) +
+        C.ConstraintTree(:metabolite_pos => ct_metabolite_pos) +
+        C.ConstraintTree(:metabolite_neg => ct_metabolite_neg)
+
     ct_new_objective = C.ConstraintTree(
-        :objective =>
-            C.Constraint(C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0)),
+        :objective => C.Constraint(
+            C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0) + C.sum(
+                a.value for (metabolite_id, a) in abs_metabolite_vars;
+                init = 0.0,
+            ),
+        ),
     )
 
     display(ct_new_objective.objective)
