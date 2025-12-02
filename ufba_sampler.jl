@@ -4,7 +4,7 @@ using ArgParse
 include("src/UfbaSampler.jl")
 using .UfbaSampler
 
-model = create_3p_model()
+three_p_model = create_3p_model()
 metabolites_bounds_df = load_metabolite_bounds()
 
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
@@ -29,12 +29,12 @@ n_chains = parse_args(s)["nchains"]
 # end
 
 metabolite_status_df =
-    find_metabolite_matches(model, metabolites_bounds_df, "01-Ctrl AS3", 2)
+    find_metabolite_matches(three_p_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 display(first(metabolite_status_df, 10))
-add_sinks_for_unmatched_metabolites!(model, metabolite_status_df, "01-Ctrl AS3")
-ct = case_3_constraint_tree(model, metabolite_status_df, "01-Ctrl AS3")
-branch_symbols, ct_symbols, jump_values = optimize_case_3(ct, ct.objective.value)
-display_jump_results(branch_symbols, ct_symbols, jump_values, true)
+add_sinks_for_unmatched_metabolites!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
+ct = case_3_constraint_tree!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
+optimize_case_3(ct, ct.objective.value)
+# display_jump_results(branch_symbols, ct_symbols, jump_values, true)
 
 # sampling_df, status_df, all_metabolite_status_df =
 #     ufba_result =

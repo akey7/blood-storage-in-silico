@@ -28,7 +28,7 @@ export create_3p_model,
     add_sinks_for_unmatched_metabolites!,
     find_metabolite_matches,
     is_metabolite_in_exchange,
-    case_3_constraint_tree,
+    case_3_constraint_tree!,
     list_objectives_in_model,
     optimize_case_3,
     display_jump_results
@@ -405,7 +405,7 @@ function list_objectives_in_model(model::A.AbstractFBCModel)
     end
 end
 
-function case_3_constraint_tree(
+function case_3_constraint_tree!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
     additive::AbstractString,
@@ -444,16 +444,10 @@ function case_3_constraint_tree(
         C.ConstraintTree(:metabolite_pos => ct_metabolite_pos) +
         C.ConstraintTree(:metabolite_neg => ct_metabolite_neg)
 
-    ct_new_objective = C.ConstraintTree(
-        :objective => C.Constraint(
-            C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0) + C.sum(
-                a.value for (metabolite_id, a) in abs_metabolite_vars;
-                init = 0.0,
-            ),
-        ),
+    ct.objective = C.Constraint(
+        C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0) +
+        C.sum(a.value for (metabolite_id, a) in abs_metabolite_vars; init = 0.0),
     )
-
-    display(ct_new_objective.objective)
 
     return ct
 end
@@ -475,52 +469,26 @@ function flatten_constraint_tree_dict(ct::C.ConstraintTree)
 end
 
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-    flatten_constraint_tree_dict(ct)
-    # model = JuMP.Model(HiGHS.Optimizer)
-    # JuMP.@variable(model, x[1:C.variable_count(ct)])
-    # JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    num_vars = C.variable_count(ct)
+    model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.@variable(model, x[1:num_vars])
+    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
 
-    # ct_symbols = []
-    # branch_symbols = []
-    # for (branch, _) in ct
-    #     if branch != :objective
-    #         # println(">>>>>>>>>> $branch <<<<<<<<<")
-    #         branch_ct = ct[branch]
-    #         for (s, c) in branch_ct
-    #             # println(s)
-    #             push!(ct_symbols, s)
-    #             push!(branch_symbols, branch)
-    #             b = c.bound
-    #             if b isa C.EqualTo
-    #                 JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
-    #             elseif b isa C.Between
-    #                 val = C.substitute(c.value, x)
-    #                 isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
-    #                 isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
-    #             end
-    #         end
-    #     end
-    # end
+    C.traverse(ct) do c
+        b = c.bound
+        if b isa C.EqualTo
+            JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
+        elseif b isa C.Between
+            val = C.substitute(c.value, x)
+            isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
+            isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
+        end
+    end
 
-    # # for (F, S) in list_of_constraint_types(model)
-    # #     println("\nType: ($F, $S)")
-    # #     if S == MathOptInterface.EqualTo{Float64}
-    # #         for (metabolite_name, con) in
-    # #             zip(metabolite_names, all_constraints(model, F, S))
-    # #             obj = constraint_object(con)
-    # #             println("  ", metabolite_name, ": ", obj.func, " ∈ ", obj.set)
-    # #         end
-    # #     else
-    # #         for (flux_name, con) in zip(flux_names, all_constraints(model, F, S))
-    # #             obj = constraint_object(con)
-    # #             println("  ", flux_name, ": ", obj.func, " ∈ ", obj.set)
-    # #         end
-    # #     end
-    # # end
-
-    # JuMP.optimize!(model)
-
-    # return branch_symbols, ct_symbols, JuMP.value.(model[:x])
+    JuMP.optimize!(model)
+    result_ct = deepcopy(ct)
+    C.substitute_values(result_ct, JuMP.value.(model[:x]))
+    display(result_ct)
 end
 
 function display_jump_results(branch_symbols, ct_symbols, jump_values, non_zeros_only)
