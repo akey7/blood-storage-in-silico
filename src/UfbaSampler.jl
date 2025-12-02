@@ -27,7 +27,12 @@ export create_3p_model,
     fba,
     add_sinks_for_unmatched_metabolites!,
     find_metabolite_matches,
-    is_metabolite_in_exchange
+    is_metabolite_in_exchange,
+    case_3_constraint_tree!,
+    list_objectives_in_model,
+    optimize_case_3,
+    display_jump_results,
+    prune_case_3
 
 function create_3p_model()
     println("############################################################")
@@ -370,7 +375,7 @@ function add_sinks_for_unmatched_metabolites!(
         @select(:metabolite)
     end
     for metabolite in sort(unique(not_found_df.metabolite))
-        sink_up_name = "R_SK_UP_$metabolite"
+        sink_up_name = "R_CASE3_SK_UP_$metabolite"
         sink_up = Reaction(
             name = sink_up_name,
             stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -379,7 +384,7 @@ function add_sinks_for_unmatched_metabolites!(
         )
         model.reactions[sink_up_name] = sink_up
         display(sink_up)
-        sink_down_name = "R_SK_DOWN_$metabolite"
+        sink_down_name = "R_CASE3_SK_DOWN_$metabolite"
         sink_down = Reaction(
             name = sink_down_name,
             stoichiometry = Dict("M_$(metabolite)" => 1.0),
@@ -389,6 +394,99 @@ function add_sinks_for_unmatched_metabolites!(
         model.reactions[sink_down_name] = sink_down
         display(sink_down)
     end
+end
+
+function list_objectives_in_model(model::A.AbstractFBCModel)
+    obj_coeffs = A.AbstractFBCModels.objective(model)
+    rxn_ids = keys(model.reactions)
+    for (id, coeff) in zip(rxn_ids, obj_coeffs)
+        if !isapprox(coeff, 0.0)
+            println("Reaction $id has objective coefficient: $coeff")
+        end
+    end
+end
+
+function case_3_constraint_tree!(
+    model::A.AbstractFBCModel,
+    metabolite_status_df::DataFrame,
+    additive::AbstractString,
+)
+    ct = flux_balance_constraints(model)
+    flux_ids = collect(keys(ct.fluxes))
+    unfound_metabolites =
+        @rsubset(metabolite_status_df, :status == "not found", :additive == additive)
+    unfound_metabolite_ids = Symbol.(unique(unfound_metabolites.metabolite))
+
+    abs_flux_vars = C.variables(keys = flux_ids, bounds = C.Between(0.0, Inf))
+    ct_flux_pos = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
+        C.Constraint(abs_flux_var.value + flux.value, C.Between(0.0, Inf))
+    end
+    ct_flux_neg = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
+        C.Constraint(abs_flux_var.value - flux.value, C.Between(0.0, Inf))
+    end
+
+    abs_metabolite_vars =
+        C.variables(keys = unfound_metabolite_ids, bounds = C.Between(0.0, Inf))
+    ct_metabolite_pos =
+        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
+            C.Constraint(abs_metabolite_var.value + stoi.value, C.Between(0.0, Inf))
+        end
+    ct_metabolite_neg =
+        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
+            C.Constraint(abs_metabolite_var.value - stoi.value, C.Between(0.0, Inf))
+        end
+
+    ct =
+        ct +
+        C.ConstraintTree(:abs_flux_vars => abs_flux_vars) +
+        C.ConstraintTree(:flux_pos => ct_flux_pos) +
+        C.ConstraintTree(:flux_neg => ct_flux_neg) +
+        C.ConstraintTree(:abs_metabolite_vars => abs_metabolite_vars) +
+        C.ConstraintTree(:metabolite_pos => ct_metabolite_pos) +
+        C.ConstraintTree(:metabolite_neg => ct_metabolite_neg)
+
+    ct.objective = C.Constraint(
+        C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0) +
+        C.sum(a.value for (metabolite_id, a) in abs_metabolite_vars; init = 0.0),
+    )
+
+    return ct
+end
+
+function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+    num_vars = C.variable_count(ct)
+    model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.@variable(model, x[1:num_vars])
+    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+
+    C.traverse(ct) do c
+        b = c.bound
+        if b isa C.EqualTo
+            JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
+        elseif b isa C.Between
+            val = C.substitute(c.value, x)
+            isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
+            isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
+        end
+    end
+
+    JuMP.optimize!(model)
+    result_ct = deepcopy(ct)
+    var_values = JuMP.value.(model[:x])
+    solution_tree = C.substitute_values(result_ct, var_values)
+    return solution_tree
+end
+
+function prune_case_3(case_3_optimize_result::C.Tree{Float64})
+    zero_case3_sinks = [
+        k for (k, v) in case_3_optimize_result.fluxes if
+        isapprox(v, 0.0) && contains(string(k), "R_CASE3_SK")
+    ]
+    nonzero_case3_sinks = [
+        k for (k, v) in case_3_optimize_result.fluxes if
+        !isapprox(v, 0.0) && contains(string(k), "R_CASE3_SK")
+    ]
+    return zero_case3_sinks, nonzero_case3_sinks
 end
 
 function ufba_additive_at_final_time(
