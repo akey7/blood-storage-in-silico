@@ -452,22 +452,6 @@ function case_3_constraint_tree!(
     return ct
 end
 
-function flatten_constraint_tree_dict(ct::C.ConstraintTree)
-    result = Dict()
-    branches = sort(collect(keys(C.elems(ct))))
-    for branch in branches
-        if branch != :objective
-            leaves = sort(collect(keys(C.elems(ct[branch]))))
-            for leaf in sort(leaves)
-                k = "$branch.$leaf"
-                v = ct[branch][leaf]
-                result[k] = v
-            end
-        end
-    end
-    return result
-end
-
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     num_vars = C.variable_count(ct)
     model = JuMP.Model(HiGHS.Optimizer)
@@ -488,22 +472,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     JuMP.optimize!(model)
     result_ct = deepcopy(ct)
     C.substitute_values(result_ct, JuMP.value.(model[:x]))
-    display(result_ct)
-end
-
-function display_jump_results(branch_symbols, ct_symbols, jump_values, non_zeros_only)
-    if non_zeros_only
-        println("Printing non-zeros only")
-        for (branch_symbol, ct_symbol, val) in zip(branch_symbols, ct_symbols, jump_values)
-            if !isapprox(val, 0.0)
-                println(branch_symbol, " ", ct_symbol, ": ", val)
-            end
-        end
-    else
-        for (branch_symbol, ct_symbol, val) in zip(branch_symbols, ct_symbols, jump_values)
-            println(branch_symbol, " ", ct_symbol, ": ", val)
-        end
-    end
+    return result_ct
 end
 
 function ufba_additive_at_final_time(

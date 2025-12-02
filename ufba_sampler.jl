@@ -33,8 +33,7 @@ metabolite_status_df =
 display(first(metabolite_status_df, 10))
 add_sinks_for_unmatched_metabolites!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
 ct = case_3_constraint_tree!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
-optimize_case_3(ct, ct.objective.value)
-# display_jump_results(branch_symbols, ct_symbols, jump_values, true)
+case_3_result_ct = optimize_case_3(ct, ct.objective.value)
 
 # sampling_df, status_df, all_metabolite_status_df =
 #     ufba_result =
