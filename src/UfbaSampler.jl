@@ -31,7 +31,8 @@ export create_3p_model,
     case_3_constraint_tree!,
     list_objectives_in_model,
     optimize_case_3,
-    display_jump_results
+    display_jump_results,
+    prune_case_3
 
 function create_3p_model()
     println("############################################################")
@@ -471,8 +472,15 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
 
     JuMP.optimize!(model)
     result_ct = deepcopy(ct)
-    C.substitute_values(result_ct, JuMP.value.(model[:x]))
-    return result_ct
+    var_values = JuMP.value.(model[:x])
+    solution_tree = C.substitute_values(result_ct, var_values)
+    return solution_tree
+end
+
+function prune_case_3(case_3_optimize_result_ct::C.Tree{Float64})
+    for (k, v) in collect(case_3_optimize_result_ct.fluxes)
+        println(k, ": ", v)
+    end
 end
 
 function ufba_additive_at_final_time(
