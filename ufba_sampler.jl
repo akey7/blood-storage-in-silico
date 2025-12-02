@@ -34,7 +34,11 @@ display(first(metabolite_status_df, 10))
 add_sinks_for_unmatched_metabolites!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
 ct = case_3_constraint_tree!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
 case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
-prune_case_3(case_3_optimize_result_ct)
+zero_case3_sinks, nonzero_case3_sinks = prune_case_3(case_3_optimize_result_ct)
+println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
+display(zero_case3_sinks)
+println(">>>>>>>>> NON-ZERO CASE 3 SINKS <<<<<<<<<")
+display(nonzero_case3_sinks)
 
 # sampling_df, status_df, all_metabolite_status_df =
 #     ufba_result =
