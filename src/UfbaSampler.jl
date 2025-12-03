@@ -457,7 +457,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     num_vars = C.variable_count(ct)
     model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(model, x[1:num_vars])
-    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    JuMP.@objective(model, JuMP.MIN_SENSE, C.substitute(objective, x))
 
     C.traverse(ct) do c
         b = c.bound
