@@ -32,9 +32,9 @@ export create_3p_model,
     list_objectives_in_model,
     optimize_case_3,
     display_jump_results,
-    prune_case_3
+    analyze_case_3
 
-function create_3p_model()
+function create_3p_model(add_tranporters_and_exchanges::Bool = true)
     println("############################################################")
     println("# LOAD RBC-GEM                                             #")
     println("############################################################")
@@ -102,63 +102,78 @@ function create_3p_model()
 
     println(purine_metabolism_reaction_ids)
 
-    println("############################################################")
-    println("# TRANSPORTERS                                             #")
-    println("############################################################")
+    if add_tranporters_and_exchanges
+        println("############################################################")
+        println("# TRANSPORTERS                                             #")
+        println("############################################################")
 
-    transporter_reactions_ids = [
-        "R_GLC_Dt",
-        "R_PYRt2",
-        "R_L_LACt2",
-        "R_HYXNt",
-        "R_INSt",
-        "R_ADEt",
-        "R_ADNt",
-        "R_CO2t",
-        "R_NH4c",
-        "R_NH4e",
-        "R_NH3t",
-        "R_PIt",
-        "R_Ht",
-        "R_H2Ot",
-    ]
+        transporter_reactions_ids = [
+            "R_GLC_Dt",
+            "R_PYRt2",
+            "R_L_LACt2",
+            "R_HYXNt",
+            "R_INSt",
+            "R_ADEt",
+            "R_ADNt",
+            "R_CO2t",
+            "R_NH4c",
+            "R_NH4e",
+            "R_NH3t",
+            "R_PIt",
+            "R_Ht",
+            "R_H2Ot",
+        ]
 
-    println(transporter_reactions_ids)
+        println(transporter_reactions_ids)
 
-    println("############################################################")
-    println("# EXCHANGES                                                #")
-    println("############################################################")
+        println("############################################################")
+        println("# EXCHANGES                                                #")
+        println("############################################################")
 
-    exchange_reactions_ids = [
-        "R_EX_glc__D_e",
-        "R_EX_pyr_e",
-        "R_EX_lac__L_e",
-        "R_EX_hxan_e",
-        "R_EX_ins_e",
-        "R_EX_ade_e",
-        "R_EX_adn_e",
-        "R_EX_co2_e",
-        "R_EX_pi_e",
-        "R_EX_nh4_e",
-        "R_EX_nh3_e",
-        "R_EX_h_e",
-        "R_EX_h2o_e",
-    ]
+        exchange_reactions_ids = [
+            "R_EX_glc__D_e",
+            "R_EX_pyr_e",
+            "R_EX_lac__L_e",
+            "R_EX_hxan_e",
+            "R_EX_ins_e",
+            "R_EX_ade_e",
+            "R_EX_adn_e",
+            "R_EX_co2_e",
+            "R_EX_pi_e",
+            "R_EX_nh4_e",
+            "R_EX_nh3_e",
+            "R_EX_h_e",
+            "R_EX_h2o_e",
+        ]
 
-    println(exchange_reactions_ids)
+        println(exchange_reactions_ids)
+    else
+        println("############################################################")
+        println("# TRANSPORTERS AND EXCHANGES SKIPPED                       #")
+        println("############################################################")
+    end
 
     println("############################################################")
     println("# COLLECT REACTIONS IDS                                    #")
     println("############################################################")
 
-    all_reaction_ids = [
-        glycolysis_reaction_ids
-        rl_shunt_reaction_ids
-        ppp_reaction_ids
-        purine_metabolism_reaction_ids
-        transporter_reactions_ids
-        exchange_reactions_ids
-    ]
+    if add_tranporters_and_exchanges
+        all_reaction_ids = [
+            glycolysis_reaction_ids
+            rl_shunt_reaction_ids
+            ppp_reaction_ids
+            purine_metabolism_reaction_ids
+            transporter_reactions_ids
+            exchange_reactions_ids
+        ]
+    else
+        all_reaction_ids = [
+            glycolysis_reaction_ids
+            rl_shunt_reaction_ids
+            ppp_reaction_ids
+            purine_metabolism_reaction_ids
+        ]
+    end
 
     println("############################################################")
     println("# DISCOVER METABOLITES                                     #")
@@ -365,6 +380,7 @@ function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
     additive::AbstractString,
+    prune_zero_sinks::Union{Vector{String},Nothing},
 )
     println("\n############################################################")
     println("# ADD SINKS FOR UNMATCHED METABOLITES                      #")
@@ -375,24 +391,32 @@ function add_sinks_for_unmatched_metabolites!(
         @select(:metabolite)
     end
     for metabolite in sort(unique(not_found_df.metabolite))
-        sink_up_name = "R_CASE3_SK_UP_$metabolite"
-        sink_up = Reaction(
-            name = sink_up_name,
-            stoichiometry = Dict("M_$(metabolite)" => -1.0),
-            lower_bound = -1000.0,
-            upper_bound = 0.0,
-        )
-        model.reactions[sink_up_name] = sink_up
-        display(sink_up)
-        sink_down_name = "R_CASE3_SK_DOWN_$metabolite"
-        sink_down = Reaction(
-            name = sink_down_name,
-            stoichiometry = Dict("M_$(metabolite)" => 1.0),
-            lower_bound = 0.0,
-            upper_bound = 1000.0,
-        )
-        model.reactions[sink_down_name] = sink_down
-        display(sink_down)
+        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
+        if !isnothing(prune_zero_sinks) && sink_up_name in prune_zero_sinks
+            println("Skipping zero flux sink $sink_up_name")
+        else
+            sink_up = Reaction(
+                name = sink_up_name,
+                stoichiometry = Dict("M_$(metabolite)" => -1.0),
+                lower_bound = -1000.0,
+                upper_bound = 0.0,
+            )
+            model.reactions[sink_up_name] = sink_up
+            display(sink_up)
+        end
+        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
+        if !isnothing(prune_zero_sinks) && sink_down_name in prune_zero_sinks
+            println("Skipping zero flux sink $sink_down_name")
+        else
+            sink_down = Reaction(
+                name = sink_down_name,
+                stoichiometry = Dict("M_$(metabolite)" => 1.0),
+                lower_bound = 0.0,
+                upper_bound = 1000.0,
+            )
+            model.reactions[sink_down_name] = sink_down
+            display(sink_down)
+        end
     end
 end
 
@@ -454,10 +478,14 @@ function case_3_constraint_tree!(
 end
 
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+    println("\n############################################################")
+    println("# OPTIMIZING CASE 3                                        #")
+    println("############################################################")
+
     num_vars = C.variable_count(ct)
     model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(model, x[1:num_vars])
-    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    JuMP.@objective(model, JuMP.MIN_SENSE, C.substitute(objective, x))
 
     C.traverse(ct) do c
         b = c.bound
@@ -471,20 +499,27 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 
     JuMP.optimize!(model)
-    result_ct = deepcopy(ct)
-    var_values = JuMP.value.(model[:x])
-    solution_tree = C.substitute_values(result_ct, var_values)
-    return solution_tree
+    println(">>>>>>>>> CASE 3 OPTIMIZATION RESULT <<<<<<<<<")
+    if is_solved_and_feasible(model)
+        println("Case 3 optimization success!")
+        result_ct = deepcopy(ct)
+        var_values = JuMP.value.(model[:x])
+        solution_tree = C.substitute_values(result_ct, var_values)
+        return solution_tree
+    else
+        println("Case 3 optimization failed")
+        return nothing
+    end
 end
 
-function prune_case_3(case_3_optimize_result::C.Tree{Float64})
+function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     zero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
-        isapprox(v, 0.0) && contains(string(k), "R_CASE3_SK")
+        isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
     nonzero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
-        !isapprox(v, 0.0) && contains(string(k), "R_CASE3_SK")
+        !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
     return zero_case3_sinks, nonzero_case3_sinks
 end
@@ -558,7 +593,8 @@ function ufba_all_additives_all_times(
     println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
     println("############################################################")
 
-    additives = unique(metabolite_bounds_df.additive)
+    # additives = unique(metabolite_bounds_df.additive)
+    additives = ["01-Ctrl AS3"]
     final_times = unique(metabolite_bounds_df.final_time)
     pairs = product(additives, final_times)
     status_rows = []
