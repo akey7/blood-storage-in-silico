@@ -38,6 +38,10 @@ add_sinks_for_unmatched_metabolites!(
 )
 ct = case_3_constraint_tree!(three_p_ufba_model, metabolite_status_df, "01-Ctrl AS3")
 case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
+if isnothing(case_3_optimize_result_ct)
+    @info "Failed to optimize case 3, exiting"
+    exit(1)
+end
 zero_case3_sinks, nonzero_case3_sinks = analyze_case_3(case_3_optimize_result_ct)
 println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
 display(zero_case3_sinks)

@@ -553,7 +553,7 @@ function ufba_additive_at_final_time(
                 status = "not found",
             )
             push!(status_rows, status_row)
-            ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+            ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
         else
             status_row =
                 (additive = additive, metabolite = short_metabolite_id, status = "found")
