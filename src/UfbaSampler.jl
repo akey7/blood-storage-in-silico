@@ -380,7 +380,7 @@ function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
     additive::AbstractString,
-    prune_zero_sinks::Vector{String},
+    prune_zero_sinks::Union{Vector{String},Nothing},
 )
     println("\n############################################################")
     println("# ADD SINKS FOR UNMATCHED METABOLITES                      #")
@@ -392,7 +392,7 @@ function add_sinks_for_unmatched_metabolites!(
     end
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
-        if sink_up_name in prune_zero_sinks
+        if !isnothing(prune_zero_sinks) && sink_up_name in prune_zero_sinks
             println("Skipping zero flux sink $sink_up_name")
         else
             sink_up = Reaction(
@@ -405,7 +405,7 @@ function add_sinks_for_unmatched_metabolites!(
             display(sink_up)
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
-        if sink_down_name in prune_zero_sinks
+        if !isnothing(prune_zero_sinks) && sink_down_name in prune_zero_sinks
             println("Skipping zero flux sink $sink_down_name")
         else
             sink_down = Reaction(
