@@ -683,25 +683,31 @@ function histograms_for_reaction_in_additive(long_sampling_df, additive, reactio
 end
 
 function plot_all_histograms(sampling_df)
-    println("\n############################################################")
-    println("# uFBA: PLOTTING HISTOGRAMS                                #")
-    println("############################################################")
+    if length(sampling_df) == 0
+        println("\n############################################################")
+        println("# uFBA: NOTHING TO PLOT                                    #")
+        println("############################################################")
+    else
+        println("\n############################################################")
+        println("# uFBA: PLOTTING HISTOGRAMS                                #")
+        println("############################################################")
 
-    long_sampling_df = stack(
-        sampling_df,
-        Not([:additive, :final_time]),
-        variable_name = :reaction_id,
-        value_name = :flux,
-    )
-    additives = unique(long_sampling_df.additive)
-    reaction_ids = unique(long_sampling_df.reaction_id)
-    pairs = product(additives, reaction_ids)
-    n_pairs = length(pairs)
-    for (i, (additive, reaction_id)) in enumerate(pairs)
-        fig = histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
-        filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
-        save(filename, fig)
-        println("Wrote $i of $n_pairs: $filename")
+        long_sampling_df = stack(
+            sampling_df,
+            Not([:additive, :final_time]),
+            variable_name = :reaction_id,
+            value_name = :flux,
+        )
+        additives = unique(long_sampling_df.additive)
+        reaction_ids = unique(long_sampling_df.reaction_id)
+        pairs = product(additives, reaction_ids)
+        n_pairs = length(pairs)
+        for (i, (additive, reaction_id)) in enumerate(pairs)
+            fig = histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
+            filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
+            save(filename, fig)
+            println("Wrote $i of $n_pairs: $filename")
+        end
     end
 end
 
