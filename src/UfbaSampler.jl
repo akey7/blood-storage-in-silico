@@ -500,7 +500,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
 
     JuMP.optimize!(model)
     println(">>>>>>>>> CASE 3 OPTIMIZATION RESULT <<<<<<<<<")
-    if is_solved(model)
+    if is_solved_and_feasible(model)
         println("Case 3 optimization success!")
         result_ct = deepcopy(ct)
         var_values = JuMP.value.(model[:x])
