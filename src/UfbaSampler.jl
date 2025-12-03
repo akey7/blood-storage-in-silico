@@ -32,7 +32,7 @@ export create_3p_model,
     list_objectives_in_model,
     optimize_case_3,
     display_jump_results,
-    prune_case_3
+    analyze_case_3
 
 function create_3p_model(add_tranporters_and_exchanges::Bool = true)
     println("############################################################")
@@ -380,6 +380,7 @@ function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
     additive::AbstractString,
+    prune_zero_sinks::Vector{String},
 )
     println("\n############################################################")
     println("# ADD SINKS FOR UNMATCHED METABOLITES                      #")
@@ -391,23 +392,31 @@ function add_sinks_for_unmatched_metabolites!(
     end
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
-        sink_up = Reaction(
-            name = sink_up_name,
-            stoichiometry = Dict("M_$(metabolite)" => -1.0),
-            lower_bound = -1000.0,
-            upper_bound = 0.0,
-        )
-        model.reactions[sink_up_name] = sink_up
-        display(sink_up)
+        if sink_up_name in prune_zero_sinks
+            println("Skipping zero flux sink $sink_up_name")
+        else
+            sink_up = Reaction(
+                name = sink_up_name,
+                stoichiometry = Dict("M_$(metabolite)" => -1.0),
+                lower_bound = -1000.0,
+                upper_bound = 0.0,
+            )
+            model.reactions[sink_up_name] = sink_up
+            display(sink_up)
+        end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
-        sink_down = Reaction(
-            name = sink_down_name,
-            stoichiometry = Dict("M_$(metabolite)" => 1.0),
-            lower_bound = 0.0,
-            upper_bound = 1000.0,
-        )
-        model.reactions[sink_down_name] = sink_down
-        display(sink_down)
+        if sink_down_name in prune_zero_sinks
+            println("Skipping zero flux sink $sink_down_name")
+        else
+            sink_down = Reaction(
+                name = sink_down_name,
+                stoichiometry = Dict("M_$(metabolite)" => 1.0),
+                lower_bound = 0.0,
+                upper_bound = 1000.0,
+            )
+            model.reactions[sink_down_name] = sink_down
+            display(sink_down)
+        end
     end
 end
 
@@ -503,7 +512,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 end
 
-function prune_case_3(case_3_optimize_result::C.Tree{Float64})
+function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     zero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
         isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
