@@ -469,6 +469,10 @@ function case_3_constraint_tree!(
 end
 
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+    println("\n############################################################")
+    println("# OPTIMIZING CASE 3                                        #")
+    println("############################################################")
+
     num_vars = C.variable_count(ct)
     model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(model, x[1:num_vars])
@@ -486,10 +490,17 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 
     JuMP.optimize!(model)
-    result_ct = deepcopy(ct)
-    var_values = JuMP.value.(model[:x])
-    solution_tree = C.substitute_values(result_ct, var_values)
-    return solution_tree
+    println(">>>>>>>>> CASE 3 OPTIMIZATION RESULT <<<<<<<<<")
+    if is_solved(model)
+        println("Case 3 optimization success!")
+        result_ct = deepcopy(ct)
+        var_values = JuMP.value.(model[:x])
+        solution_tree = C.substitute_values(result_ct, var_values)
+        return solution_tree
+    else
+        println("Case 3 optimization failed")
+        return nothing
+    end
 end
 
 function prune_case_3(case_3_optimize_result::C.Tree{Float64})
