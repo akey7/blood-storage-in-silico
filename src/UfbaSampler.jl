@@ -375,7 +375,7 @@ function add_sinks_for_unmatched_metabolites!(
         @select(:metabolite)
     end
     for metabolite in sort(unique(not_found_df.metabolite))
-        sink_up_name = "R_CASE3_SK_UP_$metabolite"
+        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
         sink_up = Reaction(
             name = sink_up_name,
             stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -384,7 +384,7 @@ function add_sinks_for_unmatched_metabolites!(
         )
         model.reactions[sink_up_name] = sink_up
         display(sink_up)
-        sink_down_name = "R_CASE3_SK_DOWN_$metabolite"
+        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
         sink_down = Reaction(
             name = sink_down_name,
             stoichiometry = Dict("M_$(metabolite)" => 1.0),
@@ -480,11 +480,11 @@ end
 function prune_case_3(case_3_optimize_result::C.Tree{Float64})
     zero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
-        isapprox(v, 0.0) && contains(string(k), "R_CASE3_SK")
+        isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
     nonzero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
-        !isapprox(v, 0.0) && contains(string(k), "R_CASE3_SK")
+        !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
     return zero_case3_sinks, nonzero_case3_sinks
 end
