@@ -34,7 +34,7 @@ export create_3p_model,
     display_jump_results,
     prune_case_3
 
-function create_3p_model()
+function create_3p_model(add_tranporters_and_exchanges::Bool = true)
     println("############################################################")
     println("# LOAD RBC-GEM                                             #")
     println("############################################################")
@@ -102,50 +102,56 @@ function create_3p_model()
 
     println(purine_metabolism_reaction_ids)
 
-    println("############################################################")
-    println("# TRANSPORTERS                                             #")
-    println("############################################################")
+    if add_tranporters_and_exchanges
+        println("############################################################")
+        println("# TRANSPORTERS                                             #")
+        println("############################################################")
 
-    transporter_reactions_ids = [
-        "R_GLC_Dt",
-        "R_PYRt2",
-        "R_L_LACt2",
-        "R_HYXNt",
-        "R_INSt",
-        "R_ADEt",
-        "R_ADNt",
-        "R_CO2t",
-        "R_NH4c",
-        "R_NH4e",
-        "R_NH3t",
-        "R_PIt",
-        "R_Ht",
-        "R_H2Ot",
-    ]
+        transporter_reactions_ids = [
+            "R_GLC_Dt",
+            "R_PYRt2",
+            "R_L_LACt2",
+            "R_HYXNt",
+            "R_INSt",
+            "R_ADEt",
+            "R_ADNt",
+            "R_CO2t",
+            "R_NH4c",
+            "R_NH4e",
+            "R_NH3t",
+            "R_PIt",
+            "R_Ht",
+            "R_H2Ot",
+        ]
 
-    println(transporter_reactions_ids)
+        println(transporter_reactions_ids)
 
-    println("############################################################")
-    println("# EXCHANGES                                                #")
-    println("############################################################")
+        println("############################################################")
+        println("# EXCHANGES                                                #")
+        println("############################################################")
 
-    exchange_reactions_ids = [
-        "R_EX_glc__D_e",
-        "R_EX_pyr_e",
-        "R_EX_lac__L_e",
-        "R_EX_hxan_e",
-        "R_EX_ins_e",
-        "R_EX_ade_e",
-        "R_EX_adn_e",
-        "R_EX_co2_e",
-        "R_EX_pi_e",
-        "R_EX_nh4_e",
-        "R_EX_nh3_e",
-        "R_EX_h_e",
-        "R_EX_h2o_e",
-    ]
+        exchange_reactions_ids = [
+            "R_EX_glc__D_e",
+            "R_EX_pyr_e",
+            "R_EX_lac__L_e",
+            "R_EX_hxan_e",
+            "R_EX_ins_e",
+            "R_EX_ade_e",
+            "R_EX_adn_e",
+            "R_EX_co2_e",
+            "R_EX_pi_e",
+            "R_EX_nh4_e",
+            "R_EX_nh3_e",
+            "R_EX_h_e",
+            "R_EX_h2o_e",
+        ]
 
-    println(exchange_reactions_ids)
+        println(exchange_reactions_ids)
+    else
+        println("############################################################")
+        println("# TRANSPORTERS AND EXCHANGES SKIPPED                       #")
+        println("############################################################")
+    end
 
     println("############################################################")
     println("# COLLECT REACTIONS IDS                                    #")
