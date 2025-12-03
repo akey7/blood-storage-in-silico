@@ -157,14 +157,23 @@ function create_3p_model(add_tranporters_and_exchanges::Bool = true)
     println("# COLLECT REACTIONS IDS                                    #")
     println("############################################################")
 
-    all_reaction_ids = [
-        glycolysis_reaction_ids
-        rl_shunt_reaction_ids
-        ppp_reaction_ids
-        purine_metabolism_reaction_ids
-        transporter_reactions_ids
-        exchange_reactions_ids
-    ]
+    if add_tranporters_and_exchanges
+        all_reaction_ids = [
+            glycolysis_reaction_ids
+            rl_shunt_reaction_ids
+            ppp_reaction_ids
+            purine_metabolism_reaction_ids
+            transporter_reactions_ids
+            exchange_reactions_ids
+        ]
+    else
+        all_reaction_ids = [
+            glycolysis_reaction_ids
+            rl_shunt_reaction_ids
+            ppp_reaction_ids
+            purine_metabolism_reaction_ids
+        ]
+    end
 
     println("############################################################")
     println("# DISCOVER METABOLITES                                     #")

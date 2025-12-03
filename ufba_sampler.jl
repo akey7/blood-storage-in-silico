@@ -3,8 +3,6 @@ using ArgParse
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
-
-three_p_model = create_3p_model()
 metabolites_bounds_df = load_metabolite_bounds()
 
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
@@ -28,11 +26,16 @@ n_chains = parse_args(s)["nchains"]
 #     exit(1)
 # end
 
+three_p_ufba_model = create_3p_model(false)
 metabolite_status_df =
-    find_metabolite_matches(three_p_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
+    find_metabolite_matches(three_p_ufba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 display(first(metabolite_status_df, 10))
-add_sinks_for_unmatched_metabolites!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
-ct = case_3_constraint_tree!(three_p_model, metabolite_status_df, "01-Ctrl AS3")
+add_sinks_for_unmatched_metabolites!(
+    three_p_ufba_model,
+    metabolite_status_df,
+    "01-Ctrl AS3",
+)
+ct = case_3_constraint_tree!(three_p_ufba_model, metabolite_status_df, "01-Ctrl AS3")
 case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
 zero_case3_sinks, nonzero_case3_sinks = prune_case_3(case_3_optimize_result_ct)
 println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
