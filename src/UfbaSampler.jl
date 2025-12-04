@@ -34,7 +34,7 @@ export create_3p_model,
     display_jump_results,
     analyze_case_3
 
-function create_3p_model(add_tranporters_and_exchanges::Bool = true)
+function create_3p_model(; add_exchanges::Bool = true)
     println("############################################################")
     println("# LOAD RBC-GEM                                             #")
     println("############################################################")
@@ -102,30 +102,30 @@ function create_3p_model(add_tranporters_and_exchanges::Bool = true)
 
     println(purine_metabolism_reaction_ids)
 
-    if add_tranporters_and_exchanges
-        println("############################################################")
-        println("# TRANSPORTERS                                             #")
-        println("############################################################")
+    println("############################################################")
+    println("# TRANSPORTERS                                             #")
+    println("############################################################")
 
-        transporter_reactions_ids = [
-            "R_GLC_Dt",
-            "R_PYRt2",
-            "R_L_LACt2",
-            "R_HYXNt",
-            "R_INSt",
-            "R_ADEt",
-            "R_ADNt",
-            "R_CO2t",
-            "R_NH4c",
-            "R_NH4e",
-            "R_NH3t",
-            "R_PIt",
-            "R_Ht",
-            "R_H2Ot",
-        ]
+    transporter_reactions_ids = [
+        "R_GLC_Dt",
+        "R_PYRt2",
+        "R_L_LACt2",
+        "R_HYXNt",
+        "R_INSt",
+        "R_ADEt",
+        "R_ADNt",
+        "R_CO2t",
+        "R_NH4c",
+        "R_NH4e",
+        "R_NH3t",
+        "R_PIt",
+        "R_Ht",
+        "R_H2Ot",
+    ]
 
-        println(transporter_reactions_ids)
+    println(transporter_reactions_ids)
 
+    if add_exchanges
         println("############################################################")
         println("# EXCHANGES                                                #")
         println("############################################################")
@@ -149,7 +149,7 @@ function create_3p_model(add_tranporters_and_exchanges::Bool = true)
         println(exchange_reactions_ids)
     else
         println("############################################################")
-        println("# TRANSPORTERS AND EXCHANGES SKIPPED                       #")
+        println("# EXCHANGES SKIPPED                                        #")
         println("############################################################")
     end
 
@@ -157,7 +157,7 @@ function create_3p_model(add_tranporters_and_exchanges::Bool = true)
     println("# COLLECT REACTIONS IDS                                    #")
     println("############################################################")
 
-    if add_tranporters_and_exchanges
+    if add_exchanges
         all_reaction_ids = [
             glycolysis_reaction_ids
             rl_shunt_reaction_ids
@@ -172,6 +172,7 @@ function create_3p_model(add_tranporters_and_exchanges::Bool = true)
             rl_shunt_reaction_ids
             ppp_reaction_ids
             purine_metabolism_reaction_ids
+            transporter_reactions_ids
         ]
     end
 
@@ -402,7 +403,7 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 0.0,
             )
             model.reactions[sink_up_name] = sink_up
-            display(sink_up)
+            # display(sink_up)
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
         if !isnothing(prune_zero_sinks) && sink_down_name in prune_zero_sinks
@@ -410,12 +411,12 @@ function add_sinks_for_unmatched_metabolites!(
         else
             sink_down = Reaction(
                 name = sink_down_name,
-                stoichiometry = Dict("M_$(metabolite)" => 1.0),
+                stoichiometry = Dict("M_$(metabolite)" => -1.0),
                 lower_bound = 0.0,
                 upper_bound = 1000.0,
             )
             model.reactions[sink_down_name] = sink_down
-            display(sink_down)
+            # display(sink_down)
         end
     end
 end
@@ -553,7 +554,7 @@ function ufba_additive_at_final_time(
                 status = "not found",
             )
             push!(status_rows, status_row)
-            ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
+            ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
         else
             status_row =
                 (additive = additive, metabolite = short_metabolite_id, status = "found")
@@ -683,25 +684,32 @@ function histograms_for_reaction_in_additive(long_sampling_df, additive, reactio
 end
 
 function plot_all_histograms(sampling_df)
-    println("\n############################################################")
-    println("# uFBA: PLOTTING HISTOGRAMS                                #")
-    println("############################################################")
+    if length(sampling_df) == 0
+        println("\n############################################################")
+        println("# uFBA: NOTHING TO PLOT                                    #")
+        println("############################################################")
+    else
+        println("\n############################################################")
+        println("# uFBA: PLOTTING HISTOGRAMS                                #")
+        println("############################################################")
 
-    long_sampling_df = stack(
-        sampling_df,
-        Not([:additive, :final_time]),
-        variable_name = :reaction_id,
-        value_name = :flux,
-    )
-    additives = unique(long_sampling_df.additive)
-    reaction_ids = unique(long_sampling_df.reaction_id)
-    pairs = product(additives, reaction_ids)
-    n_pairs = length(pairs)
-    for (i, (additive, reaction_id)) in enumerate(pairs)
-        fig = histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
-        filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
-        save(filename, fig)
-        println("Wrote $i of $n_pairs: $filename")
+        long_sampling_df = stack(
+            sampling_df,
+            Not([:additive, :final_time]),
+            variable_name = :reaction_id,
+            value_name = :flux,
+        )
+        additives = unique(long_sampling_df.additive)
+        reaction_ids = unique(long_sampling_df.reaction_id)
+        pairs = product(additives, reaction_ids)
+        n_pairs = length(pairs)
+        for (i, (additive, reaction_id)) in enumerate(pairs)
+            fig =
+                histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
+            filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
+            save(filename, fig)
+            println("Wrote $i of $n_pairs: $filename")
+        end
     end
 end
 
