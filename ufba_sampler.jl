@@ -26,7 +26,7 @@ n_chains = parse_args(s)["nchains"]
 #     exit(1)
 # end
 
-three_p_ufba_model = create_3p_model(false)
+three_p_ufba_model = create_3p_model(; add_exchanges = false)
 metabolite_status_df =
     find_metabolite_matches(three_p_ufba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 display(first(metabolite_status_df, 10))
@@ -36,24 +36,25 @@ add_sinks_for_unmatched_metabolites!(
     "01-Ctrl AS3",
     nothing,
 )
-ct = case_3_constraint_tree!(three_p_ufba_model, metabolite_status_df, "01-Ctrl AS3")
-case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
-if isnothing(case_3_optimize_result_ct)
-    @info "Failed to optimize case 3, exiting"
-    exit(1)
-end
-zero_case3_sinks, nonzero_case3_sinks = analyze_case_3(case_3_optimize_result_ct)
-println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
-display(zero_case3_sinks)
-println(">>>>>>>>> NON-ZERO CASE 3 SINKS <<<<<<<<<")
-display(nonzero_case3_sinks)
-three_p_ufba_model = create_3p_model(false)
-add_sinks_for_unmatched_metabolites!(
-    three_p_ufba_model,
-    metabolite_status_df,
-    "01-Ctrl AS3",
-    string.(zero_case3_sinks),
-)
+println(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "t")]))
+# ct = case_3_constraint_tree!(three_p_ufba_model, metabolite_status_df, "01-Ctrl AS3")
+# case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
+# if isnothing(case_3_optimize_result_ct)
+#     @info "Failed to optimize case 3, exiting"
+#     exit(1)
+# end
+# zero_case3_sinks, nonzero_case3_sinks = analyze_case_3(case_3_optimize_result_ct)
+# println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
+# display(zero_case3_sinks)
+# println(">>>>>>>>> NON-ZERO CASE 3 SINKS <<<<<<<<<")
+# display(nonzero_case3_sinks)
+# three_p_ufba_model = create_3p_model(false)
+# add_sinks_for_unmatched_metabolites!(
+#     three_p_ufba_model,
+#     metabolite_status_df,
+#     "01-Ctrl AS3",
+#     string.(zero_case3_sinks),
+# )
 
 sampling_df, status_df, all_metabolite_status_df =
     ufba_result = ufba_all_additives_all_times(
@@ -80,4 +81,4 @@ println("Wrote $status_filename")
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
-plot_all_histograms(sampling_df)
+# plot_all_histograms(sampling_df)
