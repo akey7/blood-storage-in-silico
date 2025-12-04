@@ -48,7 +48,8 @@ if isnothing(case_3_optimize_result_ct)
     @info "Failed to optimize case 3, exiting"
     exit(1)
 end
-zero_case3_sinks, nonzero_case3_sinks = analyze_case_3(case_3_optimize_result_ct)
+zero_case3_sinks, nonzero_case3_sinks, sink_status_df =
+    analyze_case_3(case_3_optimize_result_ct)
 println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
 display(zero_case3_sinks)
 println(">>>>>>>>> NON-ZERO CASE 3 SINKS <<<<<<<<<")
