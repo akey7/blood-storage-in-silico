@@ -36,7 +36,12 @@ add_sinks_for_unmatched_metabolites!(
     "01-Ctrl AS3",
     nothing,
 )
-println(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "t")]))
+
+println(">>>>>>>> TRANSPORTERS <<<<<<<<")
+display(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "t")]))
+println(">>>>>>>> SINKS <<<<<<<<")
+display(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "SK")]))
+
 # ct = case_3_constraint_tree!(three_p_ufba_model, metabolite_status_df, "01-Ctrl AS3")
 # case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
 # if isnothing(case_3_optimize_result_ct)
