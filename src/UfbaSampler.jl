@@ -411,7 +411,7 @@ function add_sinks_for_unmatched_metabolites!(
         else
             sink_down = Reaction(
                 name = sink_down_name,
-                stoichiometry = Dict("M_$(metabolite)" => 1.0),
+                stoichiometry = Dict("M_$(metabolite)" => -1.0),
                 lower_bound = 0.0,
                 upper_bound = 1000.0,
             )
