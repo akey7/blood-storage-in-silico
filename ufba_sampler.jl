@@ -48,11 +48,11 @@ if isnothing(case_3_optimize_result_ct)
     @info "Failed to optimize case 3, exiting"
     exit(1)
 end
-zero_case3_sinks, nonzero_case3_sinks = analyze_case_3(case_3_optimize_result_ct)
-println(">>>>>>>>> ZERO CASE 3 SINKS <<<<<<<<<")
-display(zero_case3_sinks)
-println(">>>>>>>>> NON-ZERO CASE 3 SINKS <<<<<<<<<")
-display(nonzero_case3_sinks)
+zero_case3_sinks, nonzero_case3_sinks, sink_status_df =
+    analyze_case_3(case_3_optimize_result_ct)
+sink_status_df[!, :additive] .= "01-Ctrl AS3"
+sink_status_df[!, :final_time] .= 2
+display(first(sink_status_df, 10))
 three_p_ufba_model = create_3p_model(; add_exchanges = false)
 add_sinks_for_unmatched_metabolites!(
     three_p_ufba_model,
@@ -86,4 +86,4 @@ println("Wrote $status_filename")
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
-# plot_all_histograms(sampling_df)
+plot_all_histograms(sampling_df)

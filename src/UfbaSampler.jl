@@ -522,7 +522,17 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
         k for (k, v) in case_3_optimize_result.fluxes if
         !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
-    return zero_case3_sinks, nonzero_case3_sinks
+    sink_status_rows = []
+    for zero_case3_sink in zero_case3_sinks
+        row = (sink = zero_case3_sink, is_non_zero = false)
+        push!(sink_status_rows, row)
+    end
+    for nonzero_case3_sink in nonzero_case3_sinks
+        row = (sink = nonzero_case3_sink, is_non_zero = true)
+        push!(sink_status_rows, row)
+    end
+    sink_status_df = DataFrame(sink_status_rows)
+    return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
 function ufba_additive_at_final_time(
@@ -684,7 +694,7 @@ function histograms_for_reaction_in_additive(long_sampling_df, additive, reactio
 end
 
 function plot_all_histograms(sampling_df)
-    if length(sampling_df) == 0
+    if nrow(sampling_df) == 0
         println("\n############################################################")
         println("# uFBA: NOTHING TO PLOT                                    #")
         println("############################################################")

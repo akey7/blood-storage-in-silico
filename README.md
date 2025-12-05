@@ -59,6 +59,14 @@ Note that in both macOS commands, the `JULIA_NUM_THREADS` environment variable s
 
 The commands to launch the scripts on Windows are similar, but the JULIA_NUM_THREADS environment variable is not specified in the command line. Rather, the environment variable is configured in settings.
 
+### `ufba_sampler.jl`
+
+To execute on windows (adjsut nchains and concurrent worker processes `-p` according to system architecture). Note that `JULIA_NUM_THREADS` must be set to the appropriate number of threads in settings.
+
+```
+julia --project=. -p 7 .\ufba_sampler.jl --nchains 5
+```
+
 ## Works Cited
 
 > Haiman, Z. B., Key, A., D’Alessandro, A. & Palsson, B. O. RBC-GEM: A genome-scale metabolic model for systems biology of the human red blood cell. PLoS Comput Biol 21, e1012109 (2025).
