@@ -16,6 +16,7 @@ using CSV
 using DataFrames
 using DataFramesMeta
 using CairoMakie
+using ThreadsX
 
 export create_3p_model,
     sample_fluxes,
@@ -32,7 +33,8 @@ export create_3p_model,
     list_objectives_in_model,
     optimize_case_3,
     display_jump_results,
-    analyze_case_3
+    analyze_case_3,
+    make_ufba_models_for_additives_and_times
 
 function create_3p_model(; add_exchanges::Bool = true)
     if add_exchanges
@@ -592,6 +594,58 @@ function ufba_all_additives_all_times(
     status_df = DataFrame(status_rows)
     all_metabolite_status_df = vcat(metabolite_status_dfs...)
     return sampling_df, status_df, all_metabolite_status_df
+end
+
+function make_ufba_models_for_additives_and_times(
+    metabolite_bounds_df::DataFrame,
+    n_models::Int64,
+)
+    final_times = sort(unique(metabolite_bounds_df.final_time))
+    additives = sort(unique(metabolite_bounds_df.additive))
+    pairs =
+        n_models == -1 ? collect(product(additives, final_times)) :
+        collect(product(additives, final_times))[1:n_models]
+    n_pairs = length(pairs)
+    result = map(enumerate(pairs)) do p
+        (i, (additive, final_time)) = p
+        @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
+        full_model = create_3p_model(; add_exchanges = false)
+        metabolite_status_df = find_metabolite_matches(
+            full_model,
+            metabolite_bounds_df,
+            additive,
+            final_time,
+        )
+        add_sinks_for_unmatched_metabolites!(
+            full_model,
+            metabolite_status_df,
+            additive,
+            nothing,
+        )
+        ct = case_3_constraint_tree!(full_model, metabolite_status_df, additive)
+        case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
+        if isnothing(case_3_optimize_result_ct)
+            @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
+        end
+        zero_case3_sinks, _, sink_status_df = analyze_case_3(case_3_optimize_result_ct)
+        sink_status_df[!, :additive] .= additive
+        sink_status_df[!, :final_time] .= final_time
+        pruned_model = create_3p_model(; add_exchanges = false)
+        add_sinks_for_unmatched_metabolites!(
+            pruned_model,
+            metabolite_status_df,
+            additive,
+            string.(zero_case3_sinks),
+        )
+        (
+            additive = additive,
+            final_time = final_time,
+            full_model = full_model,
+            pruned_model = pruned_model,
+            sink_status_df = sink_status_df,
+        )
+    end
+    return result
 end
 
 """
