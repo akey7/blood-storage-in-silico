@@ -603,7 +603,7 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
         execute_ufba_job(job, n_chains)
     end
     all_sampling_dfs_2 = [df for df in all_sampling_dfs_1 if !isnothing(df)]
-    status_rows = map(zip(jobs, all_sampling_dfs_1)) do x 
+    status_rows = map(collect(zip(jobs, all_sampling_dfs_1))) do x 
         job, sampling_df = x
         (
             additive = job.additive,
