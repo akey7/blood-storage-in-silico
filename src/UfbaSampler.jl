@@ -35,19 +35,20 @@ export create_3p_model,
     analyze_case_3
 
 function create_3p_model(; add_exchanges::Bool = true)
-    println("############################################################")
-    println("# LOAD RBC-GEM                                             #")
-    println("############################################################")
+    if add_exchanges
+        @info "Building 3P model and adding exchanges"
+    else
+        @info "Building 3P model without exchanges"
+    end
+    println("> Loading RBC-GEM")
 
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
     rbc_gem = load_model(S.SBMLFBCModel, rbc_gem_path, A.CanonicalModel.Model)
 
-    println("Metabolites: $(length(rbc_gem.metabolites))")
-    println("Reactions: $(length(rbc_gem.reactions))")
+    # println("Metabolites: $(length(rbc_gem.metabolites))")
+    # println("Reactions: $(length(rbc_gem.reactions))")
 
-    println("############################################################")
-    println("# GLYCOLYSIS REACTIONS                                     #")
-    println("############################################################")
+    println("> Glycolysis")
 
     glycolysis_reaction_ids = [
         "R_HEX1",
@@ -63,27 +64,21 @@ function create_3p_model(; add_exchanges::Bool = true)
         "R_LDH_L",
     ]
 
-    println(glycolysis_reaction_ids)
+    # println(glycolysis_reaction_ids)
 
-    println("############################################################")
-    println("# RL SHUNT                                                 #")
-    println("############################################################")
+    println("> RL Shunt")
 
     rl_shunt_reaction_ids = ["R_DPGM", "R_DPGase"]
-    println(rl_shunt_reaction_ids)
+    # println(rl_shunt_reaction_ids)
 
-    println("############################################################")
-    println("# PENTOSE PHOSPHATE PATHWAY                                #")
-    println("############################################################")
+    println("> Pentose phosphate pathway")
 
     ppp_reaction_ids =
         ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
 
-    println(ppp_reaction_ids)
+    # println(ppp_reaction_ids)
 
-    println("############################################################")
-    println("# PURINE METABOLISM                                        #")
-    println("############################################################")
+    println("> Purine metabolism")
 
     purine_metabolism_reaction_ids = [
         "R_PRPPS",
@@ -100,11 +95,9 @@ function create_3p_model(; add_exchanges::Bool = true)
         "R_PPA",
     ]
 
-    println(purine_metabolism_reaction_ids)
+    # println(purine_metabolism_reaction_ids)
 
-    println("############################################################")
-    println("# TRANSPORTERS                                             #")
-    println("############################################################")
+    println("> Transporters")
 
     transporter_reactions_ids = [
         "R_GLC_Dt",
@@ -123,12 +116,10 @@ function create_3p_model(; add_exchanges::Bool = true)
         "R_H2Ot",
     ]
 
-    println(transporter_reactions_ids)
+    # println(transporter_reactions_ids)
 
     if add_exchanges
-        println("############################################################")
-        println("# EXCHANGES                                                #")
-        println("############################################################")
+        println("> Exchanges")
 
         exchange_reactions_ids = [
             "R_EX_glc__D_e",
@@ -146,16 +137,12 @@ function create_3p_model(; add_exchanges::Bool = true)
             "R_EX_h2o_e",
         ]
 
-        println(exchange_reactions_ids)
+        # println(exchange_reactions_ids)
     else
-        println("############################################################")
-        println("# EXCHANGES SKIPPED                                        #")
-        println("############################################################")
+        println("> Skipping exchanges")
     end
 
-    println("############################################################")
-    println("# COLLECT REACTIONS IDS                                    #")
-    println("############################################################")
+    println("> Collecting reactions and discovering metabolites")
 
     if add_exchanges
         all_reaction_ids = [
@@ -176,10 +163,6 @@ function create_3p_model(; add_exchanges::Bool = true)
         ]
     end
 
-    println("############################################################")
-    println("# DISCOVER METABOLITES                                     #")
-    println("############################################################")
-
     discovered_metabolite_ids::Vector{String} = []
     for reaction_id ∈ all_reaction_ids
         for metabolite_id ∈ keys(rbc_gem.reactions[reaction_id].stoichiometry)
@@ -189,27 +172,17 @@ function create_3p_model(; add_exchanges::Bool = true)
 
     println("Discovered $(length(discovered_metabolite_ids)) metabolites.")
 
-    println("############################################################")
-    println("# CREATE THREE PATHWAY MODEL                               #")
-    println("############################################################")
-
     model = Model()
 
     println(model)
 
-    println("############################################################")
-    println("# ADD DISCOVERED METABOLITES                               #")
-    println("############################################################")
-
     for discovered_metabolite_id ∈ discovered_metabolite_ids
         model.metabolites[discovered_metabolite_id] =
             deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
-        println("$discovered_metabolite_id")
+        # println("$discovered_metabolite_id")
     end
 
-    println("############################################################")
-    println("# ADD REACTIONS AND EXCHANGES                              #")
-    println("############################################################")
+    println("> Adding reactions and exchanges to model")
 
     for reaction_id ∈ all_reaction_ids
         model.reactions[reaction_id] = deepcopy(rbc_gem.reactions[reaction_id])
@@ -218,9 +191,7 @@ function create_3p_model(; add_exchanges::Bool = true)
         println(reaction_id, " (", lower_bound, ", ", upper_bound, ")")
     end
 
-    println("############################################################")
-    println("# ADD ATP LOAD                                             #")
-    println("############################################################")
+    println("> Add ATP load")
 
     model.reactions["R_LOAD_ATP"] = Reaction(
         name = "LOAD_ATP",
@@ -238,9 +209,7 @@ function create_3p_model(; add_exchanges::Bool = true)
 
     println(model.reactions["R_LOAD_ATP"])
 
-    println("############################################################")
-    println("# ADD NADH LOAD                                            #")
-    println("############################################################")
+    println("> Adding NADH load")
 
     # Load due to methemoglobin reduction via CytB5
     model.reactions["R_LOAD_NADH"] = Reaction(
@@ -253,9 +222,7 @@ function create_3p_model(; add_exchanges::Bool = true)
 
     println(model.reactions["R_LOAD_NADH"])
 
-    println("############################################################")
-    println("# ADD NADPH LOAD                                           #")
-    println("############################################################")
+    println("> Adding NADPH load")
 
     # Load due to glutathione reduction from GSSG to GSH
     model.reactions["R_LOAD_NADPH"] = Reaction(
