@@ -694,7 +694,7 @@ function histograms_for_reaction_in_additive(long_sampling_df, additive, reactio
 end
 
 function plot_all_histograms(sampling_df)
-    if length(sampling_df) == 0
+    if nrow(sampling_df) == 0
         println("\n############################################################")
         println("# uFBA: NOTHING TO PLOT                                    #")
         println("############################################################")
