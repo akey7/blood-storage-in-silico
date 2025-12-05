@@ -34,7 +34,8 @@ export create_3p_model,
     optimize_case_3,
     display_jump_results,
     analyze_case_3,
-    make_ufba_models_for_additives_and_times
+    make_ufba_models_for_additives_and_times,
+    execute_all_ufba_jobs
 
 function create_3p_model(; add_exchanges::Bool = true)
     if add_exchanges
@@ -497,19 +498,14 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
-function ufba_additive_at_final_time(
-    model::A.AbstractFBCModel,
-    metabolite_bounds_df::DataFrame,
-    additive::AbstractString,
-    final_time::Int64;
-    n_chains::Int64 = 10,
-)
-    @info "uFBA Sampling $additive, final time: $final_time"
-
-    # Place bounds for Sv = b_lb, Sv = b_ub
-    ct = flux_balance_constraints(model)
-    status_rows = []
-    for k ∈ keys(ct.flux_stoichiometry)
+function execute_ufba_job(job, n_chains = 10)
+    additive = job.additive
+    final_time = job.final_time
+    pruned_model = job.pruned_model
+    metabolite_bounds_df = job.metabolite_bounds_df
+    @info "execute_ufba_job: additive: $additive, final_time: $final_time"
+    ct = flux_balance_constraints(pruned_model)
+    for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         bounds = query_metabolite_bounds(
             metabolite_bounds_df,
@@ -518,25 +514,12 @@ function ufba_additive_at_final_time(
             final_time,
         )
         if isnothing(bounds)
-            status_row = (
-                additive = additive,
-                metabolite = short_metabolite_id,
-                status = "not found",
-            )
-            push!(status_rows, status_row)
             ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
         else
-            status_row =
-                (additive = additive, metabolite = short_metabolite_id, status = "found")
-            push!(status_rows, status_row)
             lb, ub = bounds
             ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
         end
     end
-    metabolite_status_df = DataFrame(status_rows)
-    # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
-    # C.pretty(ct)
-    println("> Simple optimization attempt")
     objective_flux = optimized_values(
         ct;
         objective = ct.objective.value,
@@ -546,55 +529,132 @@ function ufba_additive_at_final_time(
     )
     if isnothing(objective_flux)
         println("Simple optimization failed")
-        return nothing, metabolite_status_df
+        return nothing
     else
         println("Simple optimization succeeded!")
         println("> Flux sampling")
-        samples_df = sample_fluxes(model; n_chains = n_chains)
-        return samples_df, metabolite_status_df
+        samples_df = sample_fluxes(pruned_model; n_chains = n_chains)
+        samples_df[!, :additive] .= additive
+        samples_df[!, :final_time] .= final_time
+        return samples_df
     end
 end
 
-function ufba_all_additives_all_times(
-    model::A.AbstractFBCModel,
-    metabolite_bounds_df::DataFrame;
-    n_chains::Int64 = 10,
-)
-    @info "uFBA: Queueing additives and final times"
+# function ufba_additive_at_final_time(
+#     model::A.AbstractFBCModel,
+#     metabolite_bounds_df::DataFrame,
+#     additive::AbstractString,
+#     final_time::Int64;
+#     n_chains::Int64 = 10,
+# )
+#     @info "uFBA Sampling $additive, final time: $final_time"
 
-    # additives = unique(metabolite_bounds_df.additive)
-    additives = ["01-Ctrl AS3"]
-    final_times = unique(metabolite_bounds_df.final_time)
-    pairs = product(additives, final_times)
-    status_rows = []
-    pair_results = []
-    metabolite_status_dfs = []
-    println("Number of pairs: ", length(pairs))
-    for (additive, final_time) in pairs
-        pair_result, metabolite_status_df = ufba_additive_at_final_time(
-            model,
-            metabolite_bounds_df,
-            additive,
-            final_time;
-            n_chains = n_chains,
+#     # Place bounds for Sv = b_lb, Sv = b_ub
+#     ct = flux_balance_constraints(model)
+#     status_rows = []
+#     for k ∈ keys(ct.flux_stoichiometry)
+#         short_metabolite_id = string(k)[3:end]
+#         bounds = query_metabolite_bounds(
+#             metabolite_bounds_df,
+#             additive,
+#             short_metabolite_id,
+#             final_time,
+#         )
+#         if isnothing(bounds)
+#             status_row = (
+#                 additive = additive,
+#                 metabolite = short_metabolite_id,
+#                 status = "not found",
+#             )
+#             push!(status_rows, status_row)
+#             ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+#         else
+#             status_row =
+#                 (additive = additive, metabolite = short_metabolite_id, status = "found")
+#             push!(status_rows, status_row)
+#             lb, ub = bounds
+#             ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+#         end
+#     end
+#     metabolite_status_df = DataFrame(status_rows)
+#     # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
+#     # C.pretty(ct)
+#     println("> Simple optimization attempt")
+#     objective_flux = optimized_values(
+#         ct;
+#         objective = ct.objective.value,
+#         output = ct.objective,
+#         optimizer = HiGHS.Optimizer,
+#         settings = [],
+#     )
+#     if isnothing(objective_flux)
+#         println("Simple optimization failed")
+#         return nothing, metabolite_status_df
+#     else
+#         println("Simple optimization succeeded!")
+#         println("> Flux sampling")
+#         samples_df = sample_fluxes(model; n_chains = n_chains)
+#         return samples_df, metabolite_status_df
+#     end
+# end
+
+function execute_all_ufba_jobs(jobs, n_chains = 10)
+    all_sampling_dfs_1 = map(jobs) do job
+        execute_ufba_job(job, n_chains)
+    end
+    all_sampling_dfs_2 = [df for df in all_sampling_dfs_1 if !isnothing(df)]
+    status_rows = map(zip(jobs, all_sampling_dfs_1)) do x 
+        job, sampling_df = x
+        (
+            additive = job.additive,
+            final_time = job.final_time,
+            status = isnothing(sampling_df) ? "fail" : "ok",
         )
-        push!(metabolite_status_dfs, metabolite_status_df)
-        if isnothing(pair_result)
-            status = (additive = additive, final_time = final_time, status = "fail")
-            push!(status_rows, status)
-        else
-            status = (additive = additive, final_time = final_time, status = "ok")
-            push!(status_rows, status)
-            pair_result[!, :additive] .= additive
-            pair_result[!, :final_time] .= final_time
-            push!(pair_results, pair_result)
-        end
     end
-    sampling_df = vcat(pair_results...)
     status_df = DataFrame(status_rows)
-    all_metabolite_status_df = vcat(metabolite_status_dfs...)
-    return sampling_df, status_df, all_metabolite_status_df
+    return vcat(all_sampling_dfs_2...), status_df
 end
+
+# function ufba_all_additives_all_times(
+#     model::A.AbstractFBCModel,
+#     metabolite_bounds_df::DataFrame;
+#     n_chains::Int64 = 10,
+# )
+#     @info "uFBA: Queueing additives and final times"
+
+#     # additives = unique(metabolite_bounds_df.additive)
+#     additives = ["01-Ctrl AS3"]
+#     final_times = unique(metabolite_bounds_df.final_time)
+#     pairs = product(additives, final_times)
+#     status_rows = []
+#     pair_results = []
+#     metabolite_status_dfs = []
+#     println("Number of pairs: ", length(pairs))
+#     for (additive, final_time) in pairs
+#         pair_result, metabolite_status_df = ufba_additive_at_final_time(
+#             model,
+#             metabolite_bounds_df,
+#             additive,
+#             final_time;
+#             n_chains = n_chains,
+#         )
+#         push!(metabolite_status_dfs, metabolite_status_df)
+#         if isnothing(pair_result)
+#             status = (additive = additive, final_time = final_time, status = "fail")
+#             push!(status_rows, status)
+#         else
+#             status = (additive = additive, final_time = final_time, status = "ok")
+#             push!(status_rows, status)
+#             pair_result[!, :additive] .= additive
+#             pair_result[!, :final_time] .= final_time
+#             push!(pair_results, pair_result)
+#         end
+#     end
+#     sampling_df = vcat(pair_results...)
+#     status_df = DataFrame(status_rows)
+#     all_metabolite_status_df = vcat(metabolite_status_dfs...)
+#     return sampling_df, status_df, all_metabolite_status_df
+# end
 
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -640,9 +700,10 @@ function make_ufba_models_for_additives_and_times(
         (
             additive = additive,
             final_time = final_time,
-            full_model = full_model,
-            pruned_model = pruned_model,
+            full_model = deepcopy(full_model),
+            pruned_model = deepcopy(pruned_model),
             sink_status_df = sink_status_df,
+            metabolite_bounds_df = deepcopy(metabolite_bounds_df),
         )
     end
     return result
