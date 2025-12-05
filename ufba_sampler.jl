@@ -29,7 +29,7 @@ n_chains = parse_args(s)["nchains"]
 three_p_ufba_model = create_3p_model(; add_exchanges = false)
 metabolite_status_df =
     find_metabolite_matches(three_p_ufba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
-display(first(metabolite_status_df, 10))
+# display(first(metabolite_status_df, 10))
 add_sinks_for_unmatched_metabolites!(
     three_p_ufba_model,
     metabolite_status_df,
@@ -37,10 +37,10 @@ add_sinks_for_unmatched_metabolites!(
     nothing,
 )
 
-println(">>>>>>>> TRANSPORTERS <<<<<<<<")
-display(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "t")]))
-println(">>>>>>>> SINKS <<<<<<<<")
-display(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "SK")]))
+# println(">>>>>>>> TRANSPORTERS <<<<<<<<")
+# display(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "t")]))
+# println(">>>>>>>> SINKS <<<<<<<<")
+# display(sort([rxn for (rxn, _) in three_p_ufba_model.reactions if contains(rxn, "SK")]))
 
 ct = case_3_constraint_tree!(three_p_ufba_model, metabolite_status_df, "01-Ctrl AS3")
 case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
@@ -68,17 +68,11 @@ sampling_df, status_df, all_metabolite_status_df =
         n_chains = n_chains,
     )
 
-println("\n############################################################")
-println("# uFBA: METABOLITE STATUS                                  #")
-println("############################################################")
-
-display(first(all_metabolite_status_df, 10))
+@info "uFBA: Metabolite status"
+# display(first(all_metabolite_status_df, 10))
 all_metabolite_status_filename = joinpath("output", "all_metabolite_status.csv")
 CSV.write(all_metabolite_status_filename, all_metabolite_status_df)
-
-println("\n############################################################")
-println("# uFBA: FINAL STATUS                                       #")
-println("############################################################")
+@info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
 CSV.write(status_filename, status_df)

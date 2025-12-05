@@ -261,11 +261,8 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
 end
 
 function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-    println("\n############################################################")
-    println("# STANDARD FBA SAMPLING                                    #")
-    println("############################################################")
-
-    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
+    @info "Standard FBA sampling, N chains $n_chains"
+    println("> Simple optimization attempt")
     solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
     if isnothing(solution)
         println("Simple optimization failed")
@@ -273,7 +270,7 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     else
         println("Simple optimization succeeded!")
         display(solution.fluxes)
-        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        println("> Flux sampling")
         samples_df = sample_fluxes(model; n_chains = n_chains)
         return solution, samples_df
     end
@@ -295,10 +292,7 @@ function find_metabolite_matches(
     additive::AbstractString,
     final_time::Int64,
 )
-    println("\n############################################################")
-    println("# MATCHING METABOLITES FROM $additive, t_f = $final_time")
-    println("############################################################")
-
+    @info "Matching metabolites, additive: $additive, final_time: $final_time"
     ct = flux_balance_constraints(model)
     status_rows = []
     found_count = 0
@@ -350,9 +344,11 @@ function add_sinks_for_unmatched_metabolites!(
     additive::AbstractString,
     prune_zero_sinks::Union{Vector{String},Nothing},
 )
-    println("\n############################################################")
-    println("# ADD SINKS FOR UNMATCHED METABOLITES                      #")
-    println("############################################################")
+    if isnothing(prune_zero_sinks)
+        @info "Add sinks for unmatched metabolites, not pruning any sinks"
+    else
+        @info "Add sinks for unmatched metabolites, pruning $(length(prune_zero_sinks))"
+    end
 
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
@@ -446,9 +442,7 @@ function case_3_constraint_tree!(
 end
 
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-    println("\n############################################################")
-    println("# OPTIMIZING CASE 3                                        #")
-    println("############################################################")
+    @info "Optimizing case 3"
 
     num_vars = C.variable_count(ct)
     model = JuMP.Model(HiGHS.Optimizer)
@@ -467,7 +461,6 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 
     JuMP.optimize!(model)
-    println(">>>>>>>>> CASE 3 OPTIMIZATION RESULT <<<<<<<<<")
     if is_solved_and_feasible(model)
         println("Case 3 optimization success!")
         result_ct = deepcopy(ct)
@@ -509,9 +502,7 @@ function ufba_additive_at_final_time(
     final_time::Int64;
     n_chains::Int64 = 10,
 )
-    println("\n############################################################")
-    println("# uFBA Sampling $additive, final time: $final_time")
-    println("############################################################")
+    @info "uFBA Sampling $additive, final time: $final_time"
 
     # Place bounds for Sv = b_lb, Sv = b_ub
     ct = flux_balance_constraints(model)
@@ -543,7 +534,7 @@ function ufba_additive_at_final_time(
     metabolite_status_df = DataFrame(status_rows)
     # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
     # C.pretty(ct)
-    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
+    println("> Simple optimization attempt")
     objective_flux = optimized_values(
         ct;
         objective = ct.objective.value,
@@ -556,7 +547,7 @@ function ufba_additive_at_final_time(
         return nothing, metabolite_status_df
     else
         println("Simple optimization succeeded!")
-        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        println("> Flux sampling")
         samples_df = sample_fluxes(model; n_chains = n_chains)
         return samples_df, metabolite_status_df
     end
@@ -567,9 +558,7 @@ function ufba_all_additives_all_times(
     metabolite_bounds_df::DataFrame;
     n_chains::Int64 = 10,
 )
-    println("\n############################################################")
-    println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
-    println("############################################################")
+    @info "uFBA: Queueing additives and final times"
 
     # additives = unique(metabolite_bounds_df.additive)
     additives = ["01-Ctrl AS3"]
@@ -662,14 +651,9 @@ end
 
 function plot_all_histograms(sampling_df)
     if nrow(sampling_df) == 0
-        println("\n############################################################")
-        println("# uFBA: NOTHING TO PLOT                                    #")
-        println("############################################################")
+        @info "uFBA: Nothing to plot"
     else
-        println("\n############################################################")
-        println("# uFBA: PLOTTING HISTOGRAMS                                #")
-        println("############################################################")
-
+        @info "uFBA: Plotting histograms"
         long_sampling_df = stack(
             sampling_df,
             Not([:additive, :final_time]),
