@@ -35,19 +35,20 @@ export create_3p_model,
     analyze_case_3
 
 function create_3p_model(; add_exchanges::Bool = true)
-    println("############################################################")
-    println("# LOAD RBC-GEM                                             #")
-    println("############################################################")
+    if add_exchanges
+        @info "Building 3P model and adding exchanges"
+    else
+        @info "Building 3P model without exchanges"
+    end
+    println("> Loading RBC-GEM")
 
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
     rbc_gem = load_model(S.SBMLFBCModel, rbc_gem_path, A.CanonicalModel.Model)
 
-    println("Metabolites: $(length(rbc_gem.metabolites))")
-    println("Reactions: $(length(rbc_gem.reactions))")
+    # println("Metabolites: $(length(rbc_gem.metabolites))")
+    # println("Reactions: $(length(rbc_gem.reactions))")
 
-    println("############################################################")
-    println("# GLYCOLYSIS REACTIONS                                     #")
-    println("############################################################")
+    println("> Glycolysis")
 
     glycolysis_reaction_ids = [
         "R_HEX1",
@@ -63,27 +64,21 @@ function create_3p_model(; add_exchanges::Bool = true)
         "R_LDH_L",
     ]
 
-    println(glycolysis_reaction_ids)
+    # println(glycolysis_reaction_ids)
 
-    println("############################################################")
-    println("# RL SHUNT                                                 #")
-    println("############################################################")
+    println("> RL Shunt")
 
     rl_shunt_reaction_ids = ["R_DPGM", "R_DPGase"]
-    println(rl_shunt_reaction_ids)
+    # println(rl_shunt_reaction_ids)
 
-    println("############################################################")
-    println("# PENTOSE PHOSPHATE PATHWAY                                #")
-    println("############################################################")
+    println("> Pentose phosphate pathway")
 
     ppp_reaction_ids =
         ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
 
-    println(ppp_reaction_ids)
+    # println(ppp_reaction_ids)
 
-    println("############################################################")
-    println("# PURINE METABOLISM                                        #")
-    println("############################################################")
+    println("> Purine metabolism")
 
     purine_metabolism_reaction_ids = [
         "R_PRPPS",
@@ -100,11 +95,9 @@ function create_3p_model(; add_exchanges::Bool = true)
         "R_PPA",
     ]
 
-    println(purine_metabolism_reaction_ids)
+    # println(purine_metabolism_reaction_ids)
 
-    println("############################################################")
-    println("# TRANSPORTERS                                             #")
-    println("############################################################")
+    println("> Transporters")
 
     transporter_reactions_ids = [
         "R_GLC_Dt",
@@ -123,12 +116,10 @@ function create_3p_model(; add_exchanges::Bool = true)
         "R_H2Ot",
     ]
 
-    println(transporter_reactions_ids)
+    # println(transporter_reactions_ids)
 
     if add_exchanges
-        println("############################################################")
-        println("# EXCHANGES                                                #")
-        println("############################################################")
+        println("> Exchanges")
 
         exchange_reactions_ids = [
             "R_EX_glc__D_e",
@@ -146,16 +137,12 @@ function create_3p_model(; add_exchanges::Bool = true)
             "R_EX_h2o_e",
         ]
 
-        println(exchange_reactions_ids)
+        # println(exchange_reactions_ids)
     else
-        println("############################################################")
-        println("# EXCHANGES SKIPPED                                        #")
-        println("############################################################")
+        println("> Skipping exchanges")
     end
 
-    println("############################################################")
-    println("# COLLECT REACTIONS IDS                                    #")
-    println("############################################################")
+    println("> Collecting reactions and discovering metabolites")
 
     if add_exchanges
         all_reaction_ids = [
@@ -176,10 +163,6 @@ function create_3p_model(; add_exchanges::Bool = true)
         ]
     end
 
-    println("############################################################")
-    println("# DISCOVER METABOLITES                                     #")
-    println("############################################################")
-
     discovered_metabolite_ids::Vector{String} = []
     for reaction_id ∈ all_reaction_ids
         for metabolite_id ∈ keys(rbc_gem.reactions[reaction_id].stoichiometry)
@@ -189,27 +172,17 @@ function create_3p_model(; add_exchanges::Bool = true)
 
     println("Discovered $(length(discovered_metabolite_ids)) metabolites.")
 
-    println("############################################################")
-    println("# CREATE THREE PATHWAY MODEL                               #")
-    println("############################################################")
-
     model = Model()
 
     println(model)
 
-    println("############################################################")
-    println("# ADD DISCOVERED METABOLITES                               #")
-    println("############################################################")
-
     for discovered_metabolite_id ∈ discovered_metabolite_ids
         model.metabolites[discovered_metabolite_id] =
             deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
-        println("$discovered_metabolite_id")
+        # println("$discovered_metabolite_id")
     end
 
-    println("############################################################")
-    println("# ADD REACTIONS AND EXCHANGES                              #")
-    println("############################################################")
+    println("> Adding reactions and exchanges to model")
 
     for reaction_id ∈ all_reaction_ids
         model.reactions[reaction_id] = deepcopy(rbc_gem.reactions[reaction_id])
@@ -218,9 +191,7 @@ function create_3p_model(; add_exchanges::Bool = true)
         println(reaction_id, " (", lower_bound, ", ", upper_bound, ")")
     end
 
-    println("############################################################")
-    println("# ADD ATP LOAD                                             #")
-    println("############################################################")
+    println("> Add ATP load")
 
     model.reactions["R_LOAD_ATP"] = Reaction(
         name = "LOAD_ATP",
@@ -238,9 +209,7 @@ function create_3p_model(; add_exchanges::Bool = true)
 
     println(model.reactions["R_LOAD_ATP"])
 
-    println("############################################################")
-    println("# ADD NADH LOAD                                            #")
-    println("############################################################")
+    println("> Adding NADH load")
 
     # Load due to methemoglobin reduction via CytB5
     model.reactions["R_LOAD_NADH"] = Reaction(
@@ -253,9 +222,7 @@ function create_3p_model(; add_exchanges::Bool = true)
 
     println(model.reactions["R_LOAD_NADH"])
 
-    println("############################################################")
-    println("# ADD NADPH LOAD                                           #")
-    println("############################################################")
+    println("> Adding NADPH load")
 
     # Load due to glutathione reduction from GSSG to GSH
     model.reactions["R_LOAD_NADPH"] = Reaction(
@@ -294,11 +261,8 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
 end
 
 function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-    println("\n############################################################")
-    println("# STANDARD FBA SAMPLING                                    #")
-    println("############################################################")
-
-    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
+    @info "Standard FBA sampling, N chains $n_chains"
+    println("> Simple optimization attempt")
     solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
     if isnothing(solution)
         println("Simple optimization failed")
@@ -306,7 +270,7 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     else
         println("Simple optimization succeeded!")
         display(solution.fluxes)
-        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        println("> Flux sampling")
         samples_df = sample_fluxes(model; n_chains = n_chains)
         return solution, samples_df
     end
@@ -328,10 +292,7 @@ function find_metabolite_matches(
     additive::AbstractString,
     final_time::Int64,
 )
-    println("\n############################################################")
-    println("# MATCHING METABOLITES FROM $additive, t_f = $final_time")
-    println("############################################################")
-
+    @info "Matching metabolites, additive: $additive, final_time: $final_time"
     ct = flux_balance_constraints(model)
     status_rows = []
     found_count = 0
@@ -383,9 +344,11 @@ function add_sinks_for_unmatched_metabolites!(
     additive::AbstractString,
     prune_zero_sinks::Union{Vector{String},Nothing},
 )
-    println("\n############################################################")
-    println("# ADD SINKS FOR UNMATCHED METABOLITES                      #")
-    println("############################################################")
+    if isnothing(prune_zero_sinks)
+        @info "Add sinks for unmatched metabolites, not pruning any sinks"
+    else
+        @info "Add sinks for unmatched metabolites, pruning $(length(prune_zero_sinks))"
+    end
 
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
@@ -479,9 +442,7 @@ function case_3_constraint_tree!(
 end
 
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-    println("\n############################################################")
-    println("# OPTIMIZING CASE 3                                        #")
-    println("############################################################")
+    @info "Optimizing case 3"
 
     num_vars = C.variable_count(ct)
     model = JuMP.Model(HiGHS.Optimizer)
@@ -500,7 +461,6 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 
     JuMP.optimize!(model)
-    println(">>>>>>>>> CASE 3 OPTIMIZATION RESULT <<<<<<<<<")
     if is_solved_and_feasible(model)
         println("Case 3 optimization success!")
         result_ct = deepcopy(ct)
@@ -542,9 +502,7 @@ function ufba_additive_at_final_time(
     final_time::Int64;
     n_chains::Int64 = 10,
 )
-    println("\n############################################################")
-    println("# uFBA Sampling $additive, final time: $final_time")
-    println("############################################################")
+    @info "uFBA Sampling $additive, final time: $final_time"
 
     # Place bounds for Sv = b_lb, Sv = b_ub
     ct = flux_balance_constraints(model)
@@ -576,7 +534,7 @@ function ufba_additive_at_final_time(
     metabolite_status_df = DataFrame(status_rows)
     # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
     # C.pretty(ct)
-    println("\n>>>>>>>>> SIMPLE OPTIMIZATION ATTEMPT <<<<<<<<<")
+    println("> Simple optimization attempt")
     objective_flux = optimized_values(
         ct;
         objective = ct.objective.value,
@@ -589,7 +547,7 @@ function ufba_additive_at_final_time(
         return nothing, metabolite_status_df
     else
         println("Simple optimization succeeded!")
-        println("\n>>>>>>>>> FLUX SAMPLING <<<<<<<<<")
+        println("> Flux sampling")
         samples_df = sample_fluxes(model; n_chains = n_chains)
         return samples_df, metabolite_status_df
     end
@@ -600,9 +558,7 @@ function ufba_all_additives_all_times(
     metabolite_bounds_df::DataFrame;
     n_chains::Int64 = 10,
 )
-    println("\n############################################################")
-    println("# uFBA: QUEUEING ADDITIVES AND FINAL TIMES                 #")
-    println("############################################################")
+    @info "uFBA: Queueing additives and final times"
 
     # additives = unique(metabolite_bounds_df.additive)
     additives = ["01-Ctrl AS3"]
@@ -695,14 +651,9 @@ end
 
 function plot_all_histograms(sampling_df)
     if nrow(sampling_df) == 0
-        println("\n############################################################")
-        println("# uFBA: NOTHING TO PLOT                                    #")
-        println("############################################################")
+        @info "uFBA: Nothing to plot"
     else
-        println("\n############################################################")
-        println("# uFBA: PLOTTING HISTOGRAMS                                #")
-        println("############################################################")
-
+        @info "uFBA: Plotting histograms"
         long_sampling_df = stack(
             sampling_df,
             Not([:additive, :final_time]),
