@@ -37,19 +37,28 @@ export create_3p_model,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs
 
-function create_3p_model(; add_exchanges::Bool = true)
-    if add_exchanges
-        @info "Building 3P model and adding exchanges"
-    else
-        @info "Building 3P model without exchanges"
-    end
+function load_base_rbc_gem()
     println("> Loading RBC-GEM")
-
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
     rbc_gem = load_model(S.SBMLFBCModel, rbc_gem_path, A.CanonicalModel.Model)
 
     # println("Metabolites: $(length(rbc_gem.metabolites))")
     # println("Reactions: $(length(rbc_gem.reactions))")
+
+    return rbc_gem
+end
+
+function create_3p_model(
+    base_gem::Union{A.CanonicalModel.Model,Nothing};
+    add_exchanges::Bool = true,
+)
+    if add_exchanges
+        @info "Building 3P model and adding exchanges"
+    else
+        @info "Building 3P model without exchanges"
+    end
+
+    rbc_gem = isnothing(base_gem) ? load_base_rbc_gem() : deepcopy(base_gem)
 
     println("> Glycolysis")
 
@@ -562,6 +571,7 @@ function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64,
 )
+    base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
     additives = sort(unique(metabolite_bounds_df.additive))
     pairs =
@@ -571,7 +581,7 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_3p_model(; add_exchanges = false)
+        full_model = create_3p_model(base_rbc_gem; add_exchanges = false)
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -592,7 +602,7 @@ function make_ufba_models_for_additives_and_times(
         zero_case3_sinks, _, sink_status_df = analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_3p_model(; add_exchanges = false)
+        pruned_model = create_3p_model(base_rbc_gem; add_exchanges = false)
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,
