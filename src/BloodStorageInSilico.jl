@@ -6,15 +6,14 @@ include("AbsoluteQuant.jl")
 include("DynamicModel.jl")
 include("MasspyInterface.jl")
 include("UfbaSampler.jl")
+include("UfbaSamplerViz.jl")
 
-export hello_world,
-    MetaboliteTimelines,
+export MetaboliteTimelines,
     TreatmentsAgainstControlMedians,
     AbsoluteQuant,
     DynamicModel,
     MasspyInterface,
-    UfbaSampler
-
-hello_world() = println("Hello world!")
+    UfbaSampler,
+    UfbaSamplerViz
 
 end
