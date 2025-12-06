@@ -16,7 +16,7 @@ function histograms_for_reaction_in_additive(long_sampling_df, additive, reactio
     title = "$additive $reaction_id"
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = title)
-    final_times = [2, 3, 4, 5, 6]
+    final_times = sort(unique(plt_df.final_time))
     colors = [:dodgerblue, :orange, :blueviolet, :crimson, :deeppink]
     for (final_time, color) in zip(final_times, colors)
         hist_df = @rsubset(plt_df, :final_time == final_time)
