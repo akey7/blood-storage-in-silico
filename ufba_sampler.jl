@@ -34,26 +34,17 @@ n_models = parse_args(s)["nmodels"]
 # end
 
 ufba_jobs = make_ufba_models_for_additives_and_times(metabolites_bounds_df, n_models)
-all_sampling_df, status_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
+sampling_df, status_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
+
+@info "uFBA: Final status"
 display(status_df)
+status_filename = joinpath("output", "ufba_sampling_status.csv")
+CSV.write(status_filename, status_df)
+println("Wrote $status_filename")
+@info "Writing sampling results"
+sampling_filename = joinpath("output", "ufba_sampling.csv")
+CSV.write(sampling_filename, sampling_df)
+println("Wrote $sampling_filename")
 
-# sampling_df, status_df, all_metabolite_status_df =
-#     ufba_result = ufba_all_additives_all_times(
-#         three_p_ufba_model,
-#         metabolites_bounds_df;
-#         n_chains = n_chains,
-#     )
-
-# @info "uFBA: Metabolite status"
-# # display(first(all_metabolite_status_df, 10))
-# all_metabolite_status_filename = joinpath("output", "all_metabolite_status.csv")
-# CSV.write(all_metabolite_status_filename, all_metabolite_status_df)
-# @info "uFBA: Final status"
-# display(status_df)
-# status_filename = joinpath("output", "ufba_sampling_status.csv")
-# CSV.write(status_filename, status_df)
-# println("Wrote $status_filename")
-# sampling_filename = joinpath("output", "ufba_sampling.csv")
-# CSV.write(sampling_filename, sampling_df)
-# println("Wrote $sampling_filename")
+# @info "Writing histograms"
 # plot_all_histograms(sampling_df)

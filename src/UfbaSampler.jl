@@ -540,64 +540,6 @@ function execute_ufba_job(job, n_chains = 10)
     end
 end
 
-# function ufba_additive_at_final_time(
-#     model::A.AbstractFBCModel,
-#     metabolite_bounds_df::DataFrame,
-#     additive::AbstractString,
-#     final_time::Int64;
-#     n_chains::Int64 = 10,
-# )
-#     @info "uFBA Sampling $additive, final time: $final_time"
-
-#     # Place bounds for Sv = b_lb, Sv = b_ub
-#     ct = flux_balance_constraints(model)
-#     status_rows = []
-#     for k ∈ keys(ct.flux_stoichiometry)
-#         short_metabolite_id = string(k)[3:end]
-#         bounds = query_metabolite_bounds(
-#             metabolite_bounds_df,
-#             additive,
-#             short_metabolite_id,
-#             final_time,
-#         )
-#         if isnothing(bounds)
-#             status_row = (
-#                 additive = additive,
-#                 metabolite = short_metabolite_id,
-#                 status = "not found",
-#             )
-#             push!(status_rows, status_row)
-#             ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
-#         else
-#             status_row =
-#                 (additive = additive, metabolite = short_metabolite_id, status = "found")
-#             push!(status_rows, status_row)
-#             lb, ub = bounds
-#             ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
-#         end
-#     end
-#     metabolite_status_df = DataFrame(status_rows)
-#     # println("\n>>>>>>>>> CONSTRAINT TREE <<<<<<<<<")
-#     # C.pretty(ct)
-#     println("> Simple optimization attempt")
-#     objective_flux = optimized_values(
-#         ct;
-#         objective = ct.objective.value,
-#         output = ct.objective,
-#         optimizer = HiGHS.Optimizer,
-#         settings = [],
-#     )
-#     if isnothing(objective_flux)
-#         println("Simple optimization failed")
-#         return nothing, metabolite_status_df
-#     else
-#         println("Simple optimization succeeded!")
-#         println("> Flux sampling")
-#         samples_df = sample_fluxes(model; n_chains = n_chains)
-#         return samples_df, metabolite_status_df
-#     end
-# end
-
 function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
@@ -615,47 +557,6 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
     status_df = DataFrame(status_rows)
     return vcat(all_sampling_dfs_2...), status_df
 end
-
-# function ufba_all_additives_all_times(
-#     model::A.AbstractFBCModel,
-#     metabolite_bounds_df::DataFrame;
-#     n_chains::Int64 = 10,
-# )
-#     @info "uFBA: Queueing additives and final times"
-
-#     # additives = unique(metabolite_bounds_df.additive)
-#     additives = ["01-Ctrl AS3"]
-#     final_times = unique(metabolite_bounds_df.final_time)
-#     pairs = product(additives, final_times)
-#     status_rows = []
-#     pair_results = []
-#     metabolite_status_dfs = []
-#     println("Number of pairs: ", length(pairs))
-#     for (additive, final_time) in pairs
-#         pair_result, metabolite_status_df = ufba_additive_at_final_time(
-#             model,
-#             metabolite_bounds_df,
-#             additive,
-#             final_time;
-#             n_chains = n_chains,
-#         )
-#         push!(metabolite_status_dfs, metabolite_status_df)
-#         if isnothing(pair_result)
-#             status = (additive = additive, final_time = final_time, status = "fail")
-#             push!(status_rows, status)
-#         else
-#             status = (additive = additive, final_time = final_time, status = "ok")
-#             push!(status_rows, status)
-#             pair_result[!, :additive] .= additive
-#             pair_result[!, :final_time] .= final_time
-#             push!(pair_results, pair_result)
-#         end
-#     end
-#     sampling_df = vcat(pair_results...)
-#     status_df = DataFrame(status_rows)
-#     all_metabolite_status_df = vcat(metabolite_status_dfs...)
-#     return sampling_df, status_df, all_metabolite_status_df
-# end
 
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
