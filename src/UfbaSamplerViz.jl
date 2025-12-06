@@ -5,6 +5,7 @@ using CairoMakie
 using DataFrames
 using DataFramesMeta
 using ThreadsX
+using ProgressMeter
 
 export plot_all_histograms
 
@@ -47,13 +48,15 @@ function plot_all_histograms(sampling_df)
         reaction_ids = unique(long_sampling_df.reaction_id)
         pairs = product(additives, reaction_ids)
         n_pairs = length(pairs)
-        for (i, (additive, reaction_id)) in enumerate(pairs)
+        prog = Progress(n_pairs, desc = "Writing histograms...")
+        for (additive, reaction_id) in pairs
             fig =
                 histograms_for_reaction_in_additive(long_sampling_df, additive, reaction_id)
             filename = joinpath("output", "uFBA_histograms", "$additive $(reaction_id).png")
             save(filename, fig)
-            println("Wrote $i of $n_pairs: $filename")
+            next!(prog)
         end
+        finish!(prog)
     end
 end
 
