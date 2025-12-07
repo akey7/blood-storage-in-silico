@@ -30,7 +30,7 @@ export load_absolute_quant,
     pca_timeseries,
     regress_concentration_vs_time,
     plot_pca_all_additives,
-    plot_regression
+    plot_all_regressions
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -326,17 +326,6 @@ function plot_all_mM_timeseries(long_df)
     end
 end
 
-function diff_mM(long_df)
-    diffed_df = @chain long_df begin
-        @rtransform(:Patient = :Sample[7:8])
-        @orderby(:Additive, :Metabolite, :Patient, :Time)
-        @groupby(:Additive, :Metabolite, :Patient)
-        @transform(:diff_mM = :absolute_mM .- ShiftedArrays.lag(:absolute_mM))
-        @select(:Additive, :Metabolite, :Patient, :Time, :absolute_mM, :diff_mM)
-    end
-    return diffed_df
-end
-
 function pca_timeseries(long_df, additive)
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
@@ -544,58 +533,33 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     return result_df
 end
 
-function regress_concentration_vs_time(long_df, bootstrap_reps)
+function regress_concentration_vs_time(long_df)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
     final_times = [2, 3, 4, 5, 6]
-    rows = []
-    for (metabolite, additive, final_time) in
-        product(unique_metabolites, unique_additives, final_times)
+    tasks = product(unique_metabolites, unique_additives, final_times)
+    rows = ThreadsX.map(tasks) do t
+        metabolite, additive, final_time = t
         println("Calculating $additive, $metabolite, $final_time")
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
-        n = nrow(regression_df)
-        slopes_and_intercepts = ThreadsX.map(1:bootstrap_reps) do _
-            sample_idx = rand(1:n, n)
-            boot_df = regression_df[sample_idx, :]
-            boot_model = lm(@formula(absolute_mM ~ Time), boot_df)
-            boot_coefs = coef(boot_model)
-            (boot_coefs[1], boot_coefs[2])
-        end
-        intercepts = [intercept for (intercept, _) in slopes_and_intercepts]
-        slopes = [slope for (_, slope) in slopes_and_intercepts]
-        lower_bound_intercept = quantile(intercepts, 0.025)
-        upper_bound_intercept = quantile(intercepts, 0.975)
-        lower_bound = quantile(slopes, 0.025)
-        upper_bound = quantile(slopes, 0.975)
-        mean_rate = mean(slopes)
-        mean_intercept = mean(intercepts)
-        rate_skew = skewness(slopes)
         single_model = lm(@formula(absolute_mM ~ Time), regression_df)
         coefs = coef(single_model)
-        single_intercept = coefs[1]
-        single_rate = coefs[2]
+        intercept = coefs[1]
+        rate = coefs[2]
         ci = confint(single_model)
-        single_lb = ci[2, 1]
-        single_ub = ci[2, 2]
-        row = (
+        lb = ci[2, 1]
+        ub = ci[2, 2]
+        (
             additive = additive,
             metabolite = metabolite,
             final_time = final_time,
-            mean_intercept = mean_intercept,
-            mean_rate = mean_rate,
-            skew = rate_skew,
-            lower_bound_intercept = lower_bound_intercept,
-            upper_bound_intercept = upper_bound_intercept,
-            lower_bound = lower_bound,
-            upper_bound = upper_bound,
-            single_intercept = single_intercept,
-            single_rate = single_rate,
-            single_lb = single_lb,
-            single_ub = single_ub,
+            intercept = intercept,
+            rate = rate,
+            lb = lb,
+            ub = ub,
         )
-        push!(rows, row)
     end
     result_df = @chain rows begin
         DataFrame()
@@ -604,20 +568,26 @@ function regress_concentration_vs_time(long_df, bootstrap_reps)
     return result_df
 end
 
-function plot_regression(long_df, concentration_vs_time_df, additive, metabolite)
+function plot_all_regressions(long_df)
+    additives = unique(long_df.Additive)
+    metabolites = unique(long_df.Metabolite)
+    pairs = product(additives, metabolites)
+    for (additive, metabolite) in pairs
+        filename = joinpath("output", "regression_plots", "$additive $metabolite.png")
+        fig = plot_regression(long_df, additive, metabolite)
+        save(filename, fig)
+        println("Wrote $filename")
+    end
+end
+
+function plot_regression(long_df, additive, metabolite)
     super_title = "$additive $metabolite"
     fig = Figure(; size = (360, 720))
     Label(fig[0, :], text = super_title, fontsize = 25)
     final_times_to_figure_map =
         Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
     for (final_time, fig_ref) in final_times_to_figure_map
-        plot_data = concentration_vs_time_dfs(
-            long_df,
-            concentration_vs_time_df,
-            additive,
-            metabolite,
-            final_time,
-        )
+        plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
         if final_time < 6
             plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
         else
@@ -627,25 +597,7 @@ function plot_regression(long_df, concentration_vs_time_df, additive, metabolite
     return fig
 end
 
-function concentration_vs_time_dfs(
-    long_df,
-    concentration_vs_time_df,
-    additive,
-    metabolite,
-    final_time,
-)
-    lines_df = @rsubset(
-        concentration_vs_time_df,
-        :additive == additive,
-        :metabolite == metabolite,
-        :final_time == final_time
-    )
-    lower_intercept = lines_df[1, :lower_bound_intercept]
-    lower_slope = lines_df[1, :lower_bound]
-    upper_intercept = lines_df[1, :upper_bound_intercept]
-    upper_slope = lines_df[1, :upper_bound]
-    mean_intercept = lines_df[1, :mean_intercept]
-    mean_rate = lines_df[1, :mean_rate]
+function scatter_plot_df(long_df, additive, metabolite, final_time)
     scatter_df = @chain long_df begin
         @rsubset(
             :Additive == additive,
@@ -660,16 +612,7 @@ function concentration_vs_time_dfs(
         @combine(:ymin = minimum(:absolute_mM), :ymax = maximum(:absolute_mM))
     end
     ylims = (ylims_df[1, :ymin], ylims_df[1, :ymax])
-    return (
-        lower_intercept = lower_intercept,
-        lower_slope = lower_slope,
-        upper_intercept = upper_intercept,
-        upper_slope = upper_slope,
-        mean_intercept = mean_intercept,
-        mean_rate = mean_rate,
-        scatter_df = scatter_df,
-        ylims = ylims,
-    )
+    return (scatter_df = scatter_df, ylims = ylims)
 end
 
 function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)

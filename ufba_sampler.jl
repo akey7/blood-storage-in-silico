@@ -3,8 +3,6 @@ using ArgParse
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
-
-model = create_3p_model()
 metabolites_bounds_df = load_metabolite_bounds()
 
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
@@ -16,19 +14,37 @@ s = ArgParseSettings()
     arg_type = Int64
     default = 10
 end
+@add_arg_table s begin
+    "--nmodels"
+    help = "Number of uFBA models to analyze (-1 for all possible models)"
+    arg_type = Int64
+    default = -1
+end
 n_chains = parse_args(s)["nchains"]
+n_models = parse_args(s)["nmodels"]
 
-sampling_df, status_df =
-    ufba_result =
-        ufba_all_additives_all_times(model, metabolites_bounds_df; n_chains = n_chains)
-println("\n############################################################")
-println("# uFBA: FINAL STATUS                                       #")
-println("############################################################")
+# _, standard_sampling_df = fba(model; n_chains = n_chains)
+# standard_sampling_filename = joinpath("output", "standard_sampling.csv")
+# if !isnothing(standard_sampling_df)
+#     CSV.write(standard_sampling_filename, standard_sampling_df)
+#     println("Wrote $standard_sampling_filename")
+# else
+#     println("Sampling failed, could not write")
+#     exit(1)
+# end
+
+ufba_jobs = make_ufba_models_for_additives_and_times(metabolites_bounds_df, n_models)
+sampling_df, status_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
+
+@info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
 CSV.write(status_filename, status_df)
 println("Wrote $status_filename")
+@info "Writing sampling results"
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
-plot_all_histograms(sampling_df)
+
+# @info "Writing histograms"
+# plot_all_histograms(sampling_df)
