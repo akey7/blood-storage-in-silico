@@ -266,7 +266,7 @@ function plot_c_means_for_additive_and_n_clusters(
         plt;
         figure = figure_options,
         axis = (; xticks = time_points),
-        facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
+        facet = (; linkxaxes = :all, linkyaxes = :all),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
     fig_filename = joinpath(
