@@ -16,6 +16,7 @@ using CSV
 using DataFrames
 using DataFramesMeta
 using ThreadsX
+using OrderedCollections
 
 export create_3p_model,
     sample_fluxes,
@@ -34,7 +35,9 @@ export create_3p_model,
     display_jump_results,
     analyze_case_3,
     make_ufba_models_for_additives_and_times,
-    execute_all_ufba_jobs
+    execute_all_ufba_jobs,
+    load_base_rbc_gem,
+    map_reaction_ids_to_reaction_strings
 
 function load_base_rbc_gem()
     println("> Loading RBC-GEM")
@@ -247,6 +250,36 @@ function create_3p_model(
     println(model.reactions["R_LOAD_NADPH"])
 
     return model
+end
+
+function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
+    result = OrderedDict()
+    for rxn_id in sort(string.(keys(model.reactions)))
+        stoi = model.reactions[rxn_id].stoichiometry
+        rxn = model.reactions[rxn_id]
+        lhs = replace(
+            join(
+                [!isapprox(v, -1.0) ? "$(abs(v)) $k" : k for (k, v) in stoi if v < 0],
+                " + ",
+            ),
+            "M_" => "",
+        )
+        rhs = replace(
+            join(
+                [!isapprox(v, 1.0) ? "$(abs(v)) $k" : k for (k, v) in stoi if v > 0],
+                " + ",
+            ),
+            "M_" => "",
+        )
+        if rxn.lower_bound < 0.0 && isapprox(rxn.upper_bound, 0.0)
+            result[rxn_id] = "$lhs --> $rhs"
+        elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
+            result[rxn_id] = "$lhs <-- $rhs"
+        else
+            result[rxn_id] = "$lhs <-> $rhs"
+        end
+    end
+    return result
 end
 
 function load_metabolite_bounds()
