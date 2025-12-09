@@ -263,7 +263,15 @@ function plot_c_means_for_additive_and_n_clusters(
         visual(Lines) *
         visual(alpha = 0.3)
     figure_options = (; size = (300, 700), title = additive)
-    cluster_palette = get(ColorSchemes.devon, range(0, 0.6, length = n_clusters))
+    base_palettes = Dict(
+        "01-Ctrl AS3" => ColorSchemes.devon,
+        "02-Adenosine" => ColorSchemes.buda,
+        "03-Glutamine" => ColorSchemes.berlin,
+        "04-Methionine" => ColorSchemes.batlow,
+        "07-NAC" => ColorSchemes.acton,
+        "08-Taurine" => ColorSchemes.bamako,
+    )
+    cluster_palette = get(base_palettes[additive], range(0, 0.6, length = n_clusters))
     fig = draw(
         plt,
         scales(Color = (; legend = false, palette = cluster_palette));
