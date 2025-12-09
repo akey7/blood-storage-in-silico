@@ -3,6 +3,7 @@ module UfbaSamplerViz
 using Base.Iterators
 using CairoMakie
 using AlgebraOfGraphics
+using ColorSchemes
 using DataFrames
 using DataFramesMeta
 using ThreadsX
@@ -43,18 +44,18 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
     plt_df = @rsubset(long_sampling_df, :reaction_id == reaction_id)
     title = "$reaction_id\n$reaction_string"
     additive_palette = [
-        "01-Ctrl AS3" => "#1f77b4",
-        "02-Adenosine" => "#ff7f0e",
-        "03-Glutamine" => "#2ca02c",
-        "04-Methionine" => "#d62728",
-        "07-NAC" => "#9467bd",
-        "08-Taurine" => "#8c564b",
+        "01-Ctrl AS3" => :dodgerblue,
+        "02-Adenosine" => :orange,
+        "03-Glutamine" => :blueviolet,
+        "04-Methionine" => :crimson,
+        "07-NAC" => :deeppink,
+        "08-Taurine" => :magenta,
     ]
     plt =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :final_time => nonnumeric) *
         histogram(bins = 20) *
-        visual(alpha = 0.3)
+        visual(alpha = 0.5)
     return draw(
         plt,
         scales(Color = (; palette = additive_palette));
