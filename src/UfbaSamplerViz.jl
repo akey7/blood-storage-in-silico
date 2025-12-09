@@ -48,7 +48,7 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
         "02-Adenosine" => :orange,
         "03-Glutamine" => :blueviolet,
         "04-Methionine" => :crimson,
-        "07-NAC" => :deeppink,
+        "07-NAC" => :brown,
         "08-Taurine" => :magenta,
     ]
     plt =
@@ -60,7 +60,7 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
         plt,
         scales(Color = (; palette = additive_palette));
         facet = (; linkxaxes = :all, linkyaxes = :all),
-        figure = (; title = title),
+        figure = (; title = title, size = (500, 700)),
     )
 end
 
