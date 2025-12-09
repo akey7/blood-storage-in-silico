@@ -261,7 +261,7 @@ function plot_c_means_for_additive_and_n_clusters(
         ) *
         visual(Lines) *
         visual(alpha = 0.3)
-    figure_options = (; size = (500, 1000), title = additive)
+    figure_options = (; size = (300, 700), title = additive)
     fig = draw(
         plt,
         scales(Color = (; legend = false));
