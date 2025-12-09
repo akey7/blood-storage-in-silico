@@ -45,6 +45,3 @@ println("Wrote $status_filename")
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
-
-# @info "Writing histograms"
-# plot_all_histograms(sampling_df)
