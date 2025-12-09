@@ -14,7 +14,12 @@ rxn_ids_to_strings =
 #     println(k, ": ", v)
 # end
 
-@info "Plotting histograms..."
+@info "Reading sampling file"
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 sampling_df = CSV.read(sampling_filename, DataFrame)
-plot_all_histograms(sampling_df, rxn_ids_to_strings)
+
+# @info "Plotting histograms, version 1..."
+# plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
+
+@info "Plotting histograms, version 2..."
+plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
