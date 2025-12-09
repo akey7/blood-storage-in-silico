@@ -254,7 +254,7 @@ function plot_c_means_for_additive_and_n_clusters(
         data(plt_df) *
         mapping(
             :Time,
-            :standardized_mM => "standardized mmol/L",
+            :standardized_mM => "standardized mM",
             row = :primary_cluster,
             group = :Metabolite,
             color = :primary_cluster,
