@@ -9,6 +9,7 @@ using StatsBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
+using ColorSchemes
 using Clustering
 using Distances
 using ShiftedArrays
@@ -262,9 +263,10 @@ function plot_c_means_for_additive_and_n_clusters(
         visual(Lines) *
         visual(alpha = 0.3)
     figure_options = (; size = (300, 700), title = additive)
+    cluster_palette = get(ColorSchemes.devon, range(0, 0.6, length = n_clusters))
     fig = draw(
         plt,
-        scales(Color = (; legend = false));
+        scales(Color = (; legend = false, palette = cluster_palette));
         figure = figure_options,
         axis = (; xticks = time_points),
         facet = (; linkxaxes = :all, linkyaxes = :all),
