@@ -257,9 +257,10 @@ function plot_c_means_for_additive_and_n_clusters(
             :standardized_mM => "standardized mmol/L",
             row = :primary_cluster,
             group = :Metabolite,
+            color = :primary_cluster,
         ) *
         visual(Lines) *
-        visual(alpha = 0.1)
+        visual(alpha = 0.3)
     figure_options = (; size = (500, 1000), title = additive)
     fig = draw(
         plt;
