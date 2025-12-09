@@ -44,12 +44,12 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
     title = "$reaction_id\n$reaction_string"
     plt =
         data(plt_df) *
-        mapping(:flux, color = :additive) *
+        mapping(:flux; color = :additive, row = :final_time => nonnumeric) *
         histogram(bins = 20)
     return draw(
         plt,
         facet = (; linkxaxes = :all, linkyaxes = :all),
-        axis = (; title = title),
+        figure = (; title = title),
     )
 end
 
