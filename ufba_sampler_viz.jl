@@ -21,5 +21,4 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # @info "Plotting histograms, version 1..."
 # plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
 
-@info "Plotting histograms, version 2..."
 plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
