@@ -193,9 +193,9 @@ function plot_elbows(fuzzy_objectives_df)
             row = :additive,
         ) *
         visual(Lines)
-    figure_options = (; size = (500, 1000), title = "C-Means Objective Elbow Plots")
+    figure_options = (; size = (300, 700), title = "C-Means Objective Elbow Plots")
     axis_options = (; xticks = xticks)
-    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
+    facet_options = (; linkxaxes = :all, linkyaxes = :minimal)
     fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
     fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
     save(fig_filename, fig)
