@@ -9,6 +9,7 @@ using StatsBase
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
+using ColorSchemes
 using Clustering
 using Distances
 using ShiftedArrays
@@ -192,9 +193,9 @@ function plot_elbows(fuzzy_objectives_df)
             row = :additive,
         ) *
         visual(Lines)
-    figure_options = (; size = (500, 1000), title = "C-Means Objective Elbow Plots")
+    figure_options = (; size = (300, 700), title = "C-Means Objective Elbow Plots")
     axis_options = (; xticks = xticks)
-    facet_options = (; linkxaxes = :minimal, linkyaxes = :minimal)
+    facet_options = (; linkxaxes = :all, linkyaxes = :minimal)
     fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
     fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
     save(fig_filename, fig)
@@ -254,18 +255,29 @@ function plot_c_means_for_additive_and_n_clusters(
         data(plt_df) *
         mapping(
             :Time,
-            :standardized_mM => "standardized mmol/L",
+            :standardized_mM => "standardized mM",
             row = :primary_cluster,
             group = :Metabolite,
+            color = :primary_cluster,
         ) *
         visual(Lines) *
-        visual(alpha = 0.1)
-    figure_options = (; size = (500, 1000), title = additive)
+        visual(alpha = 0.3)
+    figure_options = (; size = (300, 700), title = additive)
+    base_palettes = Dict(
+        "01-Ctrl AS3" => ColorSchemes.devon,
+        "02-Adenosine" => ColorSchemes.buda,
+        "03-Glutamine" => ColorSchemes.berlin,
+        "04-Methionine" => ColorSchemes.batlow,
+        "07-NAC" => ColorSchemes.acton,
+        "08-Taurine" => ColorSchemes.bamako,
+    )
+    cluster_palette = get(base_palettes[additive], range(0, 0.6, length = n_clusters))
     fig = draw(
-        plt;
+        plt,
+        scales(Color = (; legend = false, palette = cluster_palette));
         figure = figure_options,
         axis = (; xticks = time_points),
-        facet = (; linkxaxes = :minimal, linkyaxes = :minimal),
+        facet = (; linkxaxes = :all, linkyaxes = :all),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
     fig_filename = joinpath(
