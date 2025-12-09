@@ -263,7 +263,8 @@ function plot_c_means_for_additive_and_n_clusters(
         visual(alpha = 0.3)
     figure_options = (; size = (500, 1000), title = additive)
     fig = draw(
-        plt;
+        plt,
+        scales(Color = (; legend = false));
         figure = figure_options,
         axis = (; xticks = time_points),
         facet = (; linkxaxes = :all, linkyaxes = :all),
