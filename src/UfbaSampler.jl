@@ -257,13 +257,19 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
     for rxn_id in sort(string.(keys(model.reactions)))
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
-        lhs = join(
-            [!isapprox(v, -1.0) ? "$(abs(v)) $k" : k for (k, v) in stoi if v < 0],
-            " + ",
+        lhs = replace(
+            join(
+                [!isapprox(v, -1.0) ? "$(abs(v)) $k" : k for (k, v) in stoi if v < 0],
+                " + ",
+            ),
+            "M_" => "",
         )
-        rhs = join(
-            [!isapprox(v, 1.0) ? "$(abs(v)) $k" : k for (k, v) in stoi if v > 0],
-            " + ",
+        rhs = replace(
+            join(
+                [!isapprox(v, 1.0) ? "$(abs(v)) $k" : k for (k, v) in stoi if v > 0],
+                " + ",
+            ),
+            "M_" => "",
         )
         if rxn.lower_bound < 0.0 && isapprox(rxn.upper_bound, 0.0)
             result[rxn_id] = "$lhs --> $rhs"
