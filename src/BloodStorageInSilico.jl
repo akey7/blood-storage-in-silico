@@ -7,6 +7,7 @@ include("DynamicModel.jl")
 include("MasspyInterface.jl")
 include("UfbaSampler.jl")
 include("UfbaSamplerViz.jl")
+include("RawRelativeIntensities.jl")
 
 export MetaboliteTimelines,
     TreatmentsAgainstControlMedians,
@@ -14,6 +15,7 @@ export MetaboliteTimelines,
     DynamicModel,
     MasspyInterface,
     UfbaSampler,
-    UfbaSamplerViz
+    UfbaSamplerViz,
+    RawRelativeIntensities
 
 end
