@@ -37,7 +37,8 @@ export create_3p_model,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
     load_base_rbc_gem,
-    map_reaction_ids_to_reaction_strings
+    map_reaction_ids_to_reaction_strings,
+    extract_zero_case3_sinks
 
 function load_base_rbc_gem()
     println("> Loading RBC-GEM")
@@ -648,9 +649,25 @@ function make_ufba_models_for_additives_and_times(
             pruned_model = deepcopy(pruned_model),
             sink_status_df = sink_status_df,
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
+            zero_case3_sinks = zero_case3_sinks,
         )
     end
     return result
+end
+
+function extract_zero_case3_sinks(ufba_jobs)
+    rows = []
+    for ufba_job in ufba_jobs
+        for zero_case3_sink in ufba_job.zero_case3_sinks
+            row = (
+                additive = ufba_job.additive,
+                final_time = ufba_job.final_time,
+                zero_case3_sink = zero_case3_sink,
+            )
+            push!(rows, row)
+        end
+    end
+    return DataFrame(rows)
 end
 
 """
