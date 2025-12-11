@@ -32,7 +32,7 @@ export load_absolute_quant,
     regress_concentration_vs_time,
     plot_pca_all_additives,
     plot_all_regressions,
-    qc_fold_changes
+    qc
 
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
@@ -76,14 +76,20 @@ function load_relative_quant()
     return fold_changes_df
 end
 
-function qc_fold_changes(fold_changes_df, patient_count = 6)
-    qc_fold_changes_df = @chain fold_changes_df begin
+function qc(fold_changes_df, patient_count = 6)
+    qc_fold_change_counts_df = @chain fold_changes_df begin
         @groupby(:Time, :Additive, :Metabolite)
         combine(nrow => :Count)
         @rsubset(:Count != patient_count)
         sort(:Count)
     end
-    return qc_fold_changes_df
+    qc_fold_change_zeros_df = @chain fold_changes_df begin
+        @rsubset(isapprox(:FoldChange, 0.0))
+        @groupby(:Time, :Additive, :Metabolite)
+        combine(nrow => :Count)
+        sort(:Count)
+    end
+    return qc_fold_change_counts_df, qc_fold_change_zeros_df
 end
 
 function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
