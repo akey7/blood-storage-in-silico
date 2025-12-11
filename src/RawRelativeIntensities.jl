@@ -203,7 +203,7 @@ function display_pca_scores_3d(pca_result)
     title = "PCA of Timeseries"
     fig = Figure(; size = (720, 720))
     ax_scatter_3d = Axis3(
-        fig[1:3, 2:3],
+        fig[1, 1],
         xlabel = xlabel,
         ylabel = ylabel,
         zlabel = zlabel,
