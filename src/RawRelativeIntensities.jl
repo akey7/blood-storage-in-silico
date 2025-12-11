@@ -173,7 +173,7 @@ function plot_pca_scree(pca_result, fig)
     )
 end
 
-function display_pca_scores_3d(pca_result)
+function display_pca_scores_3d(pca_result, additive)
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -200,15 +200,10 @@ function display_pca_scores_3d(pca_result)
     xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     zlabel = "PC3 $(round(var_explained[3]*100, digits = 2))%"
-    title = "PCA of Timeseries"
-    fig = Figure(; size = (720, 720))
-    ax_scatter_3d = Axis3(
-        fig[1, 1],
-        xlabel = xlabel,
-        ylabel = ylabel,
-        zlabel = zlabel,
-        title = title,
-    )
+    title = "$additive PCA"
+    fig = Figure(; size = (750, 750))
+    ax_scatter_3d =
+        Axis3(fig[1, 1], xlabel = xlabel, ylabel = ylabel, zlabel = zlabel, title = title)
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
@@ -224,7 +219,7 @@ function display_pca_scores_3d(pca_result)
             label = string(t),
         )
     end
-    axislegend(ax_scatter_3d; position = :rb)
+    axislegend(ax_scatter_3d; position = :rb, title = "Week")
     GLMakie.display(fig)
 end
 
