@@ -38,7 +38,7 @@ export create_3p_model,
     execute_all_ufba_jobs,
     load_base_rbc_gem,
     map_reaction_ids_to_reaction_strings,
-    extract_zero_case3_sinks
+    extract_case3_sinks
 
 function load_base_rbc_gem()
     println("> Loading RBC-GEM")
@@ -632,7 +632,8 @@ function make_ufba_models_for_additives_and_times(
         if isnothing(case_3_optimize_result_ct)
             @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
         end
-        zero_case3_sinks, _, sink_status_df = analyze_case_3(case_3_optimize_result_ct)
+        zero_case3_sinks, nonzero_case3_sinks, sink_status_df =
+            analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
         pruned_model = create_3p_model(base_rbc_gem; add_exchanges = false)
@@ -650,19 +651,30 @@ function make_ufba_models_for_additives_and_times(
             sink_status_df = sink_status_df,
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
             zero_case3_sinks = zero_case3_sinks,
+            nonzero_case3_sinks = nonzero_case3_sinks,
         )
     end
     return result
 end
 
-function extract_zero_case3_sinks(ufba_jobs)
+function extract_case3_sinks(ufba_jobs)
     rows = []
     for ufba_job in ufba_jobs
         for zero_case3_sink in ufba_job.zero_case3_sinks
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
-                zero_case3_sink = zero_case3_sink,
+                sink = zero_case3_sink,
+                status = "zero",
+            )
+            push!(rows, row)
+        end
+        for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
+            row = (
+                additive = ufba_job.additive,
+                final_time = ufba_job.final_time,
+                sink = nonzero_case3_sink,
+                status = "nonzero"
             )
             push!(rows, row)
         end

@@ -49,7 +49,7 @@ YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 # end
 
 ufba_jobs = make_ufba_models_for_additives_and_times(metabolites_bounds_df, n_models)
-zero_case3_sinks_df = extract_zero_case3_sinks(ufba_jobs)
+case3_sinks_df = extract_case3_sinks(ufba_jobs)
 sampling_df, status_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
 
 @info "uFBA: Final status"
@@ -61,6 +61,6 @@ println("Wrote $status_filename")
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
-zero_case3_sinks_filename = joinpath("output", "zero_case3_sinks.csv")
-CSV.write(zero_case3_sinks_filename, zero_case3_sinks_df)
-println("Wrote $zero_case3_sinks_filename")
+case3_sinks_filename = joinpath("output", "case3_sinks.csv")
+CSV.write(case3_sinks_filename, case3_sinks_df)
+println("Wrote $case3_sinks_filename")
