@@ -76,10 +76,11 @@ function load_relative_quant()
     return fold_changes_df
 end
 
-function qc_fold_changes(fold_changes_df)
+function qc_fold_changes(fold_changes_df, patient_count = 6)
     qc_fold_changes_df = @chain fold_changes_df begin
         @groupby(:Time, :Additive, :Metabolite)
         combine(nrow => :Count)
+        @rsubset(:Count != patient_count)
         sort(:Count)
     end
     return qc_fold_changes_df

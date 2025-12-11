@@ -18,6 +18,8 @@ println(first(absolute_quant_medians_df, 10))
 fold_changes_df = load_relative_quant()
 qc_fold_changes_df = qc_fold_changes(fold_changes_df)
 display(first(qc_fold_changes_df, 10))
+qc_fold_changes_filename = joinpath("output", "qc_fold_changes.csv")
+CSV.write(qc_fold_changes_filename, qc_fold_changes_df)
 # long_df, wide_df =
 #     combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
 # println(first(long_df, 10))
