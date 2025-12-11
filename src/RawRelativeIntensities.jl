@@ -7,9 +7,11 @@ using MultivariateStats
 using StatsBase
 using StatsModels
 using Statistics
-using CairoMakie
+using Makie
+using GLMakie
 
-export load_relative_intensities, pca_relative_intensities, plot_pca_panels
+export load_relative_intensities,
+    pca_relative_intensities, plot_pca_panels, display_pca_scores_3d
 
 function load_relative_intensities()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
@@ -169,6 +171,61 @@ function plot_pca_scree(pca_result, fig)
         offset = (10, -10),
         align = (:left, :bottom),
     )
+end
+
+function display_pca_scores_3d(pca_result)
+    M = pca_result.model
+    scores = pca_result.scores
+    pc1 = scores[1, :]
+    pc2 = scores[2, :]
+    pc3 = scores[3, :]
+    time_labels = pca_result.patient_time_labels.Time
+    time_color_map = Dict(
+        1 => "#006CD1",
+        2 => "#E66100",
+        3 => "#5D3A9B",
+        4 => "#40B0A6",
+        5 => "#AFAF01",
+        6 => "#222222",
+    )
+    time_shape_map = Dict(
+        1 => :circle,
+        2 => :rect,
+        3 => :diamond,
+        4 => :cross,
+        5 => :utriangle,
+        6 => :dtriangle,
+    )
+    var_explained = principalvars(M) ./ tvar(M)
+    xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
+    ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
+    zlabel = "PC3 $(round(var_explained[3]*100, digits = 2))%"
+    title = "PCA of Timeseries"
+    fig = Figure(; size = (720, 720))
+    ax_scatter_3d = Axis3(
+        fig[1, 1],
+        xlabel = xlabel,
+        ylabel = ylabel,
+        zlabel = zlabel,
+        title = title,
+    )
+    unique_times = sort(unique(time_labels))
+    for t in unique_times
+        idxs = findall(==(t), time_labels)
+        scatter!(
+            ax_scatter_3d,
+            pc1[idxs],
+            pc2[idxs],
+            pc3[idxs],
+            color = time_color_map[t],
+            marker = time_shape_map[t],
+            markersize = 20,
+            alpha = 0.75,
+            label = string(t),
+        )
+    end
+    axislegend(ax_scatter_3d; position = :rb)
+    GLMakie.display(fig)
 end
 
 end
