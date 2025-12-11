@@ -3,6 +3,7 @@ using CairoMakie
 include("src/RawRelativeIntensities.jl")
 using .RawRelativeIntensities
 
+@info "Reading relative intensities"
 relative_intensities_df = load_relative_intensities()
 additives = sort(unique(relative_intensities_df.Additive))
 for additive in additives

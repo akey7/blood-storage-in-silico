@@ -86,26 +86,8 @@ function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
     plot_pca_scree(pca_result, fig)
-    plot_pca_loadings(pca_result, fig)
+    # plot_pca_loadings(pca_result, fig)
     Label(fig[0, :], text = super_title, fontsize = 50)
-    return fig
-end
-
-function plot_pca_loadings(pca_result, fig)
-    kept_columns = pca_result.kept_columns
-    wide_df = pca_result.wide_df
-    M = pca_result.model
-    L = loadings(M)
-    pc1_loadings = L[:, 1]
-    pc2_loadings = L[:, 2]
-    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    ax = Axis(fig[3:4, 1], xlabel = "PC1", ylabel = "PC2", title = "Loadings")
-    scatter!(ax, pc1_loadings, pc2_loadings, markersize = 12, color = :dodgerblue)
-    for (x, y, name) in zip(pc1_loadings, pc2_loadings, metabolite_names)
-        text!(ax, x, y, text = name, offset = (5, 5), align = (:left, :bottom))
-    end
-    hlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
-    vlines!(ax, [0.0], color = (:gray, 0.4), linewidth = 1)
     return fig
 end
 
@@ -169,7 +151,7 @@ function plot_pca_scree(pca_result, fig)
     ylabel = "Percent"
     title = "Cumulative variance explained"
     ax = Axis(
-        fig[1:2, 1],
+        fig[2:3, 1],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
