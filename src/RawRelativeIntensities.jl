@@ -219,7 +219,7 @@ function display_pca_scores_3d(pca_result, additive)
             label = string(t),
         )
     end
-    axislegend(ax_scatter_3d; position = :rb, margin = (-30, -30, -30, -30))
+    axislegend(ax_scatter_3d, "Week"; position = :rb, margin = (-30, -30, -30, -30))
     GLMakie.display(fig)
 end
 
