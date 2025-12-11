@@ -201,7 +201,7 @@ function display_pca_scores_3d(pca_result, additive)
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     zlabel = "PC3 $(round(var_explained[3]*100, digits = 2))%"
     title = "$additive PCA"
-    fig = Figure(; size = (750, 750))
+    fig = Figure(size = (750, 750), figure_padding = 75)
     ax_scatter_3d =
         Axis3(fig[1, 1], xlabel = xlabel, ylabel = ylabel, zlabel = zlabel, title = title)
     unique_times = sort(unique(time_labels))
@@ -219,7 +219,7 @@ function display_pca_scores_3d(pca_result, additive)
             label = string(t),
         )
     end
-    axislegend(ax_scatter_3d; position = :rb, title = "Week")
+    axislegend(ax_scatter_3d; position = :rb, margin = (-30, -30, -30, -30))
     GLMakie.display(fig)
 end
 
