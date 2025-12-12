@@ -332,6 +332,16 @@ function plot_all_mM_timeseries(long_df)
     end
     metabolites = unique(agg_df.Metabolite)
     time_points = unique(agg_df.Time)
+    additives = sort(unique(agg_df.Additive))
+    cluster_palette = Dict(
+        "01-Ctrl AS3" => ColorSchemes.devon10[5],
+        "02-Adenosine" => ColorSchemes.buda10[5],
+        "03-Glutamine" => ColorSchemes.berlin10[5],
+        "04-Methionine" => ColorSchemes.batlow10[5],
+        "07-NAC" => ColorSchemes.acton10[5],
+        "08-Taurine" => ColorSchemes.bamako10[5],
+    )
+    pal_vec = [cluster_palette[a] for a in additives]
     for metabolite in metabolites
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
         filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
@@ -343,11 +353,17 @@ function plot_all_mM_timeseries(long_df)
         scatter_plt_df = @rsubset(long_df, :Metabolite == metabolite)
         scatter_plt =
             data(scatter_plt_df) *
-            mapping(:Time, :absolute_mM, color = :Additive, marker = :Additive) *
+            mapping(
+                :Time => "Time (week)",
+                :absolute_mM => "Concentration (mM)",
+                color = :Additive,
+                marker = :Additive,
+            ) *
             visual(Scatter, markersize = 14, alpha = 0.5)
         plt = line_plt + scatter_plt
         fig = draw(
-            plt;
+            plt,
+            scales(Color = (; palette = pal_vec));
             figure = (; size = (750, 500)),
             axis = (; title = metabolite, xticks = time_points),
         )
