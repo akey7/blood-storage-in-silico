@@ -273,11 +273,11 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
             "M_" => "",
         )
         if rxn.lower_bound < 0.0 && isapprox(rxn.upper_bound, 0.0)
-            result[rxn_id] = "$lhs --> $rhs"
+            result[rxn_id] = "$lhs <-- $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
         elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
-            result[rxn_id] = "$lhs <-- $rhs"
+            result[rxn_id] = "$lhs --> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
         else
-            result[rxn_id] = "$lhs <-> $rhs"
+            result[rxn_id] = "$lhs <-> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
         end
     end
     return result

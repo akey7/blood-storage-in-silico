@@ -60,7 +60,7 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
         plt,
         scales(Color = (; palette = additive_palette));
         facet = (; linkxaxes = :all, linkyaxes = :all),
-        figure = (; title = title, size = (500, 700)),
+        figure = (; title = title, size = (700, 700)),
     )
 end
 
