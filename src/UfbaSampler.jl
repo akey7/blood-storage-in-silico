@@ -674,7 +674,7 @@ function extract_case3_sinks(ufba_jobs)
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 sink = nonzero_case3_sink,
-                status = "nonzero"
+                status = "nonzero",
             )
             push!(rows, row)
         end

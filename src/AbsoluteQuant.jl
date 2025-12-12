@@ -210,7 +210,7 @@ function plot_elbows(fuzzy_objectives_df)
             row = :additive,
         ) *
         visual(Lines)
-    figure_options = (; size = (300, 700), title = "C-Means Objective Elbow Plots")
+    figure_options = (; size = (300, 700), title = "Objective Elbows")
     axis_options = (; xticks = xticks)
     facet_options = (; linkxaxes = :all, linkyaxes = :minimal)
     fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
@@ -261,21 +261,22 @@ function plot_c_means_for_additive_and_n_clusters(
     zt = StatsBase.fit(StatsBase.ZScoreTransform, X2, dims = 1)
     X3 = StatsBase.transform(zt, X2)
     standardization_df[:, Not([:primary_cluster, :Patient, :Time])] = X3
-    plt_df = stack(
+    stacked_df = stack(
         standardization_df,
         Not([:primary_cluster, :Patient, :Time]),
         variable_name = :Metabolite,
         value_name = :standardized_mM,
     )
+    plt_df = @rtransform(stacked_df, :cluster_label = "Cluster $(:primary_cluster)")
     time_points = unique(plt_df.Time)
     plt =
         data(plt_df) *
         mapping(
             :Time,
             :standardized_mM => "standardized mM",
-            row = :primary_cluster,
+            row = :cluster_label,
             group = :Metabolite,
-            color = :primary_cluster,
+            color = :cluster_label,
         ) *
         visual(Lines) *
         visual(alpha = 0.3)

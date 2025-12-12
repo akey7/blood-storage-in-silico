@@ -30,8 +30,8 @@ relative_absolute_quant_filename = joinpath("output", "relative_absolute_quant.c
 CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")
 
-# println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
-# plot_all_mM_timeseries(long_df)
+println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
+plot_all_mM_timeseries(long_df)
 
 println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
 all_memberships_dfs, fuzzy_objectives_df =
