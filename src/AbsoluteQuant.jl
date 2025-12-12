@@ -272,7 +272,7 @@ function plot_c_means_for_additive_and_n_clusters(
     plt =
         data(plt_df) *
         mapping(
-            :Time,
+            :Time => "Time (weeks)",
             :standardized_mM => "standardized mM",
             row = :cluster_label,
             group = :Metabolite,
