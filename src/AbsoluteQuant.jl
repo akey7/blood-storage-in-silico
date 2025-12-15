@@ -294,7 +294,7 @@ function plot_c_means_for_additive_and_n_clusters(
         plt,
         scales(Color = (; legend = false, palette = cluster_palette));
         figure = figure_options,
-        axis = (; xticks = time_points),
+        axis = (; xticks = time_points, limits = (nothing, nothing, -10.0, 10.0)),
         facet = (; linkxaxes = :all, linkyaxes = :all),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
