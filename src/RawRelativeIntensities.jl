@@ -26,6 +26,7 @@ function load_relative_intensities()
 end
 
 function pca_relative_intensities(long_df, additive)
+    @info "Beginning PCA"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = :Sample[7:8])
@@ -33,6 +34,8 @@ function pca_relative_intensities(long_df, additive)
         unstack([:Patient, :Time], :MixedName, :Intensity, combine = first)
         @orderby(:Patient, :Time)
     end
+    metabolite_names = names(wide_df)
+    display(metabolite_names) 
     patient_time_labels = @select(wide_df, :Patient, :Time)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
     colmeans = map(eachcol(X)) do c
