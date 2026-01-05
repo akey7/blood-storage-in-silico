@@ -192,6 +192,7 @@ function plot_pca_scree(pca_result, fig)
 end
 
 function display_pca_scores_3d(pca_result, additive)
+    @info "Display PCA for $additive"
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -225,6 +226,8 @@ function display_pca_scores_3d(pca_result, additive)
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
+        n_points = length(idxs)
+        println("$n_points at time $t")
         scatter!(
             ax_scatter_3d,
             pc1[idxs],
@@ -238,6 +241,7 @@ function display_pca_scores_3d(pca_result, additive)
         )
     end
     axislegend(ax_scatter_3d, "Week"; position = :rb, margin = (-30, -30, -30, -30))
+    @info "Finished preparing PCA plot"
     GLMakie.display(fig)
 end
 
