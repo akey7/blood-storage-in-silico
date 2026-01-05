@@ -34,13 +34,19 @@ function pca_relative_intensities(long_df, additive)
         unstack([:Patient, :Time], :MixedName, :Intensity, combine = first)
         @orderby(:Patient, :Time)
     end
-    metabolite_names = names(wide_df)
-    display(metabolite_names) 
+    metabolite_names = names(wide_df)[3:end]
+    # display(metabolite_names) 
     patient_time_labels = @select(wide_df, :Patient, :Time)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
-    colmeans = map(eachcol(X)) do c
+    colmeans = map(zip(metabolite_names, eachcol(X))) do p
+        metabolite_name, c = p
         m = mean(skipmissing(c))
-        return isfinite(m) ? m : missing
+        if isfinite(m)
+            return m
+        else
+            println("$metabolite_name has non-finite mean")
+            return missing
+        end
     end
     for j in axes(X, 2)
         if ismissing(colmeans[j])
@@ -78,6 +84,7 @@ function pca_relative_intensities(long_df, additive)
     M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
     # display(M)
     scores = MultivariateStats.transform(M, Xzt)
+    @info "Finished PCA"
     return (
         model = M,
         scores = scores,
