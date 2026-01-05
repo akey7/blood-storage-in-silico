@@ -11,7 +11,7 @@ using Makie
 using GLMakie
 
 export load_relative_intensities,
-    pca_relative_intensities, plot_pca_panels, display_pca_scores_3d
+    pca_relative_intensities, plot_pca_panels, display_pca_scores_3d, gather_pca_scores
 
 function load_relative_intensities()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
@@ -29,25 +29,33 @@ function pca_relative_intensities(long_df, additive)
     @info "Beginning PCA"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
-        @rtransform(:Patient = :Sample[7:8])
+        @rtransform(:Patient = split(:Sample, "_")[3][1:2])
         @select(:MixedName, :Patient, :Time, :Intensity)
         unstack([:Patient, :Time], :MixedName, :Intensity, combine = first)
         @orderby(:Patient, :Time)
     end
-    metabolite_names = names(wide_df)
-    display(metabolite_names) 
+    metabolite_names = names(wide_df)[3:end]
+    # display(metabolite_names) 
     patient_time_labels = @select(wide_df, :Patient, :Time)
+    # display(patient_time_labels)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
-    colmeans = map(eachcol(X)) do c
+    colmeans = map(zip(metabolite_names, eachcol(X))) do p
+        metabolite_name, c = p
         m = mean(skipmissing(c))
-        return isfinite(m) ? m : missing
+        if isfinite(m)
+            return m
+        else
+            println("$metabolite_name has non-finite mean")
+            return missing
+        end
     end
-    for j in axes(X, 2)
+    for (metabolite_name, j) in zip(metabolite_names, axes(X, 2))
         if ismissing(colmeans[j])
             continue
         end
-        @inbounds for i in axes(X, 1)
+        for (patient_time_label, i) in zip(eachrow(patient_time_labels), axes(X, 1))
             if ismissing(X[i, j])
+                println("$patient_time_label, $metabolite is missing")
                 X[i, j] = colmeans[j]
             end
         end
@@ -68,21 +76,32 @@ function pca_relative_intensities(long_df, additive)
             good_cols[j] = false
         end
     end
+    # display(good_cols)
     Xf = Xf[:, good_cols]
     if size(Xf, 2) == 0
         error("After filtering, no valid metabolite columns remain for PCA.")
     end
     zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
     Xz = StatsBase.transform(zt, Xf)
+    # Check for NaN and missing
+    for j in axes(X, 2), i in axes(X, 1)
+        if isnan(Xf[i, j]) || ismissing(Xf[i, j])
+            println("Xf[$i, $j] is NaN or missing")
+        end
+    end
     Xzt = copy(Xz')
     M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
     # display(M)
     scores = MultivariateStats.transform(M, Xzt)
+    kept_columns = findall(good_cols)
+    # display(kept_columns)
+    # display(M)
+    @info "Finished PCA"
     return (
         model = M,
         scores = scores,
         patient_time_labels = patient_time_labels,
-        kept_columns = findall(good_cols),
+        kept_columns = kept_columns,
         wide_df = wide_df,
     )
 end
@@ -176,7 +195,25 @@ function plot_pca_scree(pca_result, fig)
     )
 end
 
+function gather_pca_scores(pca_result)
+    scores = pca_result.scores
+    time_labels = pca_result.patient_time_labels.Time
+    patient_labels = pca_result.patient_time_labels.Patient
+    pc1 = scores[1, :]
+    pc2 = scores[2, :]
+    pc3 = scores[3, :]
+    df = DataFrame(
+        patient = patient_labels,
+        time = time_labels,
+        pc1 = pc1,
+        pc2 = pc2,
+        pc3 = pc3,
+    )
+    return df
+end
+
 function display_pca_scores_3d(pca_result, additive)
+    @info "Display PCA for $additive"
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -210,6 +247,8 @@ function display_pca_scores_3d(pca_result, additive)
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
+        n_points = length(idxs)
+        println("$n_points at time $t")
         scatter!(
             ax_scatter_3d,
             pc1[idxs],
@@ -223,6 +262,7 @@ function display_pca_scores_3d(pca_result, additive)
         )
     end
     axislegend(ax_scatter_3d, "Week"; position = :rb, margin = (-30, -30, -30, -30))
+    @info "Finished preparing PCA plot"
     GLMakie.display(fig)
 end
 
