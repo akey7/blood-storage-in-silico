@@ -82,10 +82,10 @@ function pca_relative_intensities(long_df, additive)
     end
     zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
     Xz = StatsBase.transform(zt, Xf)
-    # Check for NaN
+    # Check for NaN and missing
     for j in axes(X, 2), i in axes(X, 1)
-        if isnan(Xf[i, j])
-            println("Xf[$i, $j] is NaN")
+        if isnan(Xf[i, j]) || ismissing(Xf[i, j])
+            println("Xf[$i, $j] is NaN or missing")
         end
     end
     Xzt = copy(Xz')
