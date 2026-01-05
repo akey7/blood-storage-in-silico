@@ -5,7 +5,8 @@ using .RawRelativeIntensities
 
 @info "Reading relative intensities"
 relative_intensities_df = load_relative_intensities()
-additives = sort(unique(relative_intensities_df.Additive))
+# additives = sort(unique(relative_intensities_df.Additive))
+additives = ["01-Ctrl AS3"]
 # for additive in additives
 #     pca_result = pca_relative_intensities(relative_intensities_df, additive)
 #     fig = plot_pca_panels(pca_result, "Raw Intensity PCA $additive")

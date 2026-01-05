@@ -210,7 +210,7 @@ function plot_elbows(fuzzy_objectives_df)
             row = :additive,
         ) *
         visual(Lines)
-    figure_options = (; size = (300, 700), title = "C-Means Objective Elbow Plots")
+    figure_options = (; size = (300, 700), title = "Objective Elbows")
     axis_options = (; xticks = xticks)
     facet_options = (; linkxaxes = :all, linkyaxes = :minimal)
     fig = draw(plt; figure = figure_options, axis = axis_options, facet = facet_options)
@@ -261,21 +261,22 @@ function plot_c_means_for_additive_and_n_clusters(
     zt = StatsBase.fit(StatsBase.ZScoreTransform, X2, dims = 1)
     X3 = StatsBase.transform(zt, X2)
     standardization_df[:, Not([:primary_cluster, :Patient, :Time])] = X3
-    plt_df = stack(
+    stacked_df = stack(
         standardization_df,
         Not([:primary_cluster, :Patient, :Time]),
         variable_name = :Metabolite,
         value_name = :standardized_mM,
     )
+    plt_df = @rtransform(stacked_df, :cluster_label = "Cluster $(:primary_cluster)")
     time_points = unique(plt_df.Time)
     plt =
         data(plt_df) *
         mapping(
-            :Time,
+            :Time => "Time (weeks)",
             :standardized_mM => "standardized mM",
-            row = :primary_cluster,
+            row = :cluster_label,
             group = :Metabolite,
-            color = :primary_cluster,
+            color = :cluster_label,
         ) *
         visual(Lines) *
         visual(alpha = 0.3)
@@ -293,7 +294,7 @@ function plot_c_means_for_additive_and_n_clusters(
         plt,
         scales(Color = (; legend = false, palette = cluster_palette));
         figure = figure_options,
-        axis = (; xticks = time_points),
+        axis = (; xticks = time_points, limits = (nothing, nothing, -10.0, 10.0)),
         facet = (; linkxaxes = :all, linkyaxes = :all),
     )
     clean_additive = replace(additive, r"[^A-Za-z0-9]" => "_")
@@ -331,6 +332,16 @@ function plot_all_mM_timeseries(long_df)
     end
     metabolites = unique(agg_df.Metabolite)
     time_points = unique(agg_df.Time)
+    additives = sort(unique(agg_df.Additive))
+    cluster_palette = Dict(
+        "01-Ctrl AS3" => ColorSchemes.devon10[5],
+        "02-Adenosine" => ColorSchemes.buda10[5],
+        "03-Glutamine" => ColorSchemes.berlin10[5],
+        "04-Methionine" => ColorSchemes.batlow10[5],
+        "07-NAC" => ColorSchemes.acton10[5],
+        "08-Taurine" => ColorSchemes.bamako10[5],
+    )
+    pal_vec = [cluster_palette[a] for a in additives]
     for metabolite in metabolites
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
         filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
@@ -342,11 +353,17 @@ function plot_all_mM_timeseries(long_df)
         scatter_plt_df = @rsubset(long_df, :Metabolite == metabolite)
         scatter_plt =
             data(scatter_plt_df) *
-            mapping(:Time, :absolute_mM, color = :Additive, marker = :Additive) *
+            mapping(
+                :Time => "Time (week)",
+                :absolute_mM => "Concentration (mM)",
+                color = :Additive,
+                marker = :Additive,
+            ) *
             visual(Scatter, markersize = 14, alpha = 0.5)
         plt = line_plt + scatter_plt
         fig = draw(
-            plt;
+            plt,
+            scales(Color = (; palette = pal_vec));
             figure = (; size = (750, 500)),
             axis = (; title = metabolite, xticks = time_points),
         )

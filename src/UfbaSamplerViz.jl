@@ -41,7 +41,10 @@ function histograms_for_reaction_in_additive_v1(
 end
 
 function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
-    plt_df = @rsubset(long_sampling_df, :reaction_id == reaction_id)
+    plt_df = @chain long_sampling_df begin
+        @rsubset(:reaction_id == reaction_id)
+        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
+    end
     title = "$reaction_id\n$reaction_string"
     additive_palette = [
         "01-Ctrl AS3" => :dodgerblue,
@@ -53,14 +56,14 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
     ]
     plt =
         data(plt_df) *
-        mapping(:flux; color = :additive, row = :final_time => nonnumeric) *
+        mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
         histogram(bins = 20) *
         visual(alpha = 0.5)
     return draw(
         plt,
         scales(Color = (; palette = additive_palette));
         facet = (; linkxaxes = :all, linkyaxes = :all),
-        figure = (; title = title, size = (500, 700)),
+        figure = (; title = title, size = (700, 700)),
     )
 end
 
