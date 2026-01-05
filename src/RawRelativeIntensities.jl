@@ -92,12 +92,14 @@ function pca_relative_intensities(long_df, additive)
     M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
     # display(M)
     scores = MultivariateStats.transform(M, Xzt)
+    kept_columns = findall(good_cols)
+    # display(kept_columns)
     @info "Finished PCA"
     return (
         model = M,
         scores = scores,
         patient_time_labels = patient_time_labels,
-        kept_columns = findall(good_cols),
+        kept_columns = kept_columns,
         wide_df = wide_df,
     )
 end
