@@ -75,12 +75,19 @@ function pca_relative_intensities(long_df, additive)
             good_cols[j] = false
         end
     end
+    # display(good_cols)
     Xf = Xf[:, good_cols]
     if size(Xf, 2) == 0
         error("After filtering, no valid metabolite columns remain for PCA.")
     end
     zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
     Xz = StatsBase.transform(zt, Xf)
+    # Check for NaN
+    for j in axes(X, 2), i in axes(X, 1)
+        if isnan(Xf[i, j])
+            println("Xf[$i, $j] is NaN")
+        end
+    end
     Xzt = copy(Xz')
     M = fit(PCA, Xzt; maxoutdim = 6, mean = false)
     # display(M)
