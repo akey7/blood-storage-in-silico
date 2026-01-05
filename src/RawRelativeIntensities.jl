@@ -48,12 +48,13 @@ function pca_relative_intensities(long_df, additive)
             return missing
         end
     end
-    for j in axes(X, 2)
+    for (metabolite_name, j) in zip(metabolite_names, axes(X, 2))
         if ismissing(colmeans[j])
             continue
         end
-        @inbounds for i in axes(X, 1)
+        for (patient_time_label, i) in zip(eachrow(patient_time_labels), axes(X, 1))
             if ismissing(X[i, j])
+                println("$patient_time_label, $metabolite is missing")
                 X[i, j] = colmeans[j]
             end
         end
