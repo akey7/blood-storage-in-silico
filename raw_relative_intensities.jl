@@ -1,4 +1,5 @@
 using CairoMakie
+using CSV
 
 include("src/RawRelativeIntensities.jl")
 using .RawRelativeIntensities
@@ -18,6 +19,10 @@ additives = sort(unique(relative_intensities_df.Additive))
 @info "Displaying 3D"
 for additive in additives
     pca_result_3d = pca_relative_intensities(relative_intensities_df, additive)
+    df_filename = joinpath("output", "pca_plot_dfs", "Scores for $additive.csv")
+    df = gather_pca_scores(pca_result_3d)
+    CSV.write(df_filename, df)
+    println("Wrote $df_filename")
     display_pca_scores_3d(pca_result_3d, additive)
     println("3D for $additive. Press enter to continue")
     readline()

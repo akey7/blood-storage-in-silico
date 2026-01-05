@@ -11,7 +11,7 @@ using Makie
 using GLMakie
 
 export load_relative_intensities,
-    pca_relative_intensities, plot_pca_panels, display_pca_scores_3d
+    pca_relative_intensities, plot_pca_panels, display_pca_scores_3d, gather_pca_scores
 
 function load_relative_intensities()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
@@ -94,6 +94,7 @@ function pca_relative_intensities(long_df, additive)
     scores = MultivariateStats.transform(M, Xzt)
     kept_columns = findall(good_cols)
     # display(kept_columns)
+    # display(M)
     @info "Finished PCA"
     return (
         model = M,
@@ -191,6 +192,23 @@ function plot_pca_scree(pca_result, fig)
         offset = (10, -10),
         align = (:left, :bottom),
     )
+end
+
+function gather_pca_scores(pca_result)
+    scores = pca_result.scores
+    time_labels = pca_result.patient_time_labels.Time
+    patient_labels = pca_result.patient_time_labels.Patient
+    pc1 = scores[1, :]
+    pc2 = scores[2, :]
+    pc3 = scores[3, :]
+    df = DataFrame(
+        patient = patient_labels,
+        time = time_labels,
+        pc1 = pc1,
+        pc2 = pc2,
+        pc3 = pc3,
+    )
+    return df
 end
 
 function display_pca_scores_3d(pca_result, additive)
