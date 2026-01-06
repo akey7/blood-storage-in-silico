@@ -256,7 +256,7 @@ function display_pca_scores_3d(pca_result, additive)
             pc3[idxs],
             color = time_color_map[t],
             marker = time_shape_map[t],
-            markersize = 20,
+            markersize = 15,
             alpha = 0.75,
             label = string(t),
         )
