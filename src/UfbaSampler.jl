@@ -1,10 +1,33 @@
 module UfbaSampler
 
 using Distributed
-@everywhere using Pkg
-@everywhere Pkg.activate(".")
-@info "Distributed.jl nprocs: $(nprocs())"
-@everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
+
+using COBREXA, HiGHS, JuMP, MathOptInterface
+
+"""
+    init_workers!(; project=Base.active_project())
+
+Activate `project` and load required packages on all current workers.
+
+Call this after `addprocs(...)` (or any time you add more workers).
+"""
+function init_workers!(; project::AbstractString = Base.active_project())
+    for p in workers()
+        Distributed.remotecall_eval(Main, p, quote
+            import Pkg
+            Pkg.activate($project)
+            using COBREXA, HiGHS, JuMP, MathOptInterface
+        end)
+    end
+    return nothing
+end
+
+function __init__()
+    if nworkers() > 0
+        init_workers!()
+    end
+    return nothing
+end
 
 using Base.Iterators
 import ConstraintTrees as C
