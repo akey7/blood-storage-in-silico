@@ -1,8 +1,8 @@
 module UfbaSampler
 
 using Distributed
-@everywhere using Pkg
-@everywhere Pkg.activate(".")
+# @everywhere using Pkg
+# @everywhere Pkg.activate(".")
 @info "Distributed.jl nprocs: $(nprocs())"
 @everywhere using COBREXA, HiGHS, JuMP, MathOptInterface
 

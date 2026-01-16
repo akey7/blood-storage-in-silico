@@ -1,3 +1,12 @@
-using Documenter
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
+Pkg.instantiate()
 
-makedocs(sitename="Blood Storage In Silico")
+using Documenter
+using BloodStorageInSilico
+
+makedocs(
+    sitename = "UfbaSampler.jl",
+    modules = [BloodStorageInSilico.UfbaSampler],
+)
