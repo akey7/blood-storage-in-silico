@@ -3,6 +3,9 @@ uuid = "12fa0bc3-1996-4702-b249-fafc788310f3"
 version = "1.0.0"
 authors = ["Alicia M. Key <alicia.m.key@cuanschutz.edu"]
 
+[workspace]
+projects = ["docs"]
+
 [deps]
 AbstractFBCModels = "5a4f3dfa-1789-40f8-8221-69268c29937c"
 AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
