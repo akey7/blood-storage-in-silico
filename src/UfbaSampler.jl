@@ -4,31 +4,6 @@ using Distributed
 
 using COBREXA, HiGHS, JuMP, MathOptInterface
 
-"""
-    init_workers!(; project=Base.active_project())
-
-Activate `project` and load required packages on all current workers.
-
-Call this after `addprocs(...)` (or any time you add more workers).
-"""
-function init_workers!(; project::AbstractString = Base.active_project())
-    for p in workers()
-        Distributed.remotecall_eval(Main, p, quote
-            import Pkg
-            Pkg.activate($project)
-            using COBREXA, HiGHS, JuMP, MathOptInterface
-        end)
-    end
-    return nothing
-end
-
-function __init__()
-    if nworkers() > 0
-        init_workers!()
-    end
-    return nothing
-end
-
 using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
@@ -61,7 +36,35 @@ export create_3p_model,
     execute_all_ufba_jobs,
     load_base_rbc_gem,
     map_reaction_ids_to_reaction_strings,
-    extract_case3_sinks
+    extract_case3_sinks,
+    init_workers!
+
+
+"""
+    init_workers!(; project=Base.active_project())
+
+Activate `project` and load required packages on all current workers.
+
+Call this after `addprocs(...)` (or any time you add more workers).
+"""
+function init_workers!(; project::AbstractString = Base.active_project())
+    for p in workers()
+        Distributed.remotecall_eval(Main, p, quote
+            import Pkg
+            Pkg.activate($project)
+            using COBREXA, HiGHS, JuMP, MathOptInterface
+        end)
+    end
+    return nothing
+end
+
+# function __init__()
+#     if nworkers() > 0 && !haskey(ENV, "JULIA_DOCUMENTER_BUILD")
+#         @info "Setting up UfbaSampler with init_workers!()"
+#         init_workers!()
+#     end
+#     return nothing
+# end
 
 function load_base_rbc_gem()
     println("> Loading RBC-GEM")
