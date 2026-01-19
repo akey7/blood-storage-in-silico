@@ -13,6 +13,26 @@ using GLMakie
 export load_relative_intensities,
     pca_relative_intensities, plot_pca_panels, display_pca_scores_3d, gather_pca_scores
 
+"""
+    load_relative_intensities()
+
+Loads the relative quantification (intensity) and pivots it long.
+
+# Returns
+`DataFrame`
+
+Returns a long DataFrame with the following columns: 
+
+1. `:Sample`, the sample id
+
+2. `:Time` the time point of the measurement (in weeks)
+
+3. `:Additive`: Additive the measurement was taken in.
+
+4. `:MixedName`: The name of either a single compound or group of compounds under the same peak.
+
+5. `:Intensity`: The integrated area of the peak.
+"""
 function load_relative_intensities()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
     wide_df = CSV.read(relative_filename, DataFrame)
