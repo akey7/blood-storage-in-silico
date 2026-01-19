@@ -425,6 +425,21 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     end
 end
 
+"""
+    is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
+
+Determines whether a metabolite is in an exchange by detecting a substring in the id of the reaction in which the metabolite is found.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model with the reactions to check.
+
+2. `metabolite::AbstractString`: Metabolite id to search for.
+
+# Returns
+`Bool`
+
+`true` if the metabolite is in an exchange, `false` otherwise.
+"""
 function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
     exchange_substring = "EX_$(metabolite[1:end-2])"
     for rxn in keys(model.reactions)
