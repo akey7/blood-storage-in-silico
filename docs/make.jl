@@ -6,9 +6,7 @@ Pkg.instantiate()
 using Documenter
 using BloodStorageInSilico
 
-ENV["JULIA_DOCUMENTER_BUILD"] = "true"
-
 makedocs(
-    sitename = "UfbaSampler.jl",
+    sitename = "BloodStorageInSilico.jl",
     modules = [BloodStorageInSilico.UfbaSampler],
 )
