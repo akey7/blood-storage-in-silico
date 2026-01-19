@@ -664,9 +664,9 @@ Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to fi
 2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
 
 # Returns
-`ConstraintTree`
+`C.Tree{Float64}`
 
-`ConstraintTree` with the optimization results substituted in. These results can be used to prune a model.
+`C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
 """
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     @info "Optimizing case 3"
@@ -700,6 +700,19 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 end
 
+"""
+    function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
+
+Analyze the results of the Case 3 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
+
+# Argument
+1. `case_3_optimize_result::C.Tree{Float64}`: Case 3 optimization result.
+
+# Returns
+`Tuple{Vector{String},Vector{String},DataFrame}`
+
+Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
+"""
 function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     zero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
