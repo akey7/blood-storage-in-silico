@@ -37,13 +37,15 @@ export create_3p_model,
     load_base_rbc_gem,
     map_reaction_ids_to_reaction_strings,
     extract_case3_sinks,
-    init_workers!
+    init_workers!,
+    execute_ufba_job
 
 
 """
     init_workers!(; project=Base.active_project())
 
-Activate `project` and load required packages on all current workers.
+Activate `project` and load required packages on all current workers. This is necessary
+for multiprocessing in uFBA sampling.
 
 Call this after `addprocs(...)` (or any time you add more workers).
 """
@@ -58,14 +60,16 @@ function init_workers!(; project::AbstractString = Base.active_project())
     return nothing
 end
 
-# function __init__()
-#     if nworkers() > 0 && !haskey(ENV, "JULIA_DOCUMENTER_BUILD")
-#         @info "Setting up UfbaSampler with init_workers!()"
-#         init_workers!()
-#     end
-#     return nothing
-# end
+"""
+    load_base_rbc_gem()
 
+Load the base RBC-GEM from which the model for uFBA sampling will be made
+
+# Returns
+`A.CanonicalModel.Model`
+
+New model with the entire RBC-GEM.
+"""
 function load_base_rbc_gem()
     println("> Loading RBC-GEM")
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
@@ -77,6 +81,22 @@ function load_base_rbc_gem()
     return rbc_gem
 end
 
+"""
+    create_3p_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; add_exchanges::Bool = true)
+
+Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
+for the uFBA study.
+
+# Arguments
+1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by [`load_base_rbc_gem`](@ref BloodStorageInSilico.UfbaSampler.load_base_rbc_gem). If left as `nothing`, this function will call [`load_base_rbc_gem`](@ref BloodStorageInSilico.UfbaSampler.load_base_rbc_gem) directly.
+
+2. `add_exchanges::Bool = true`: If `true`, this function will add exchanges to the model. `false` will skip adding exchanges.
+
+# Returns
+`A.CanonicalModel.Model`
+
+Returns the newly constructed three pathway model.
+"""
 function create_3p_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
     add_exchanges::Bool = true,
@@ -279,6 +299,19 @@ function create_3p_model(
     return model
 end
 
+"""
+    map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
+
+Maps reaction_ids in the given model to human-readable reaction strings specifying reactants and products with an arrow pointing in the direction specified by the bounds of the reaction.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to create the reaction strings from.
+
+# Returns
+`Dict{String,String}`
+
+Returns a dicitonary mapping reaction ids in the model to a human-readable reaction string.
+"""
 function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
     result = OrderedDict()
     for rxn_id in sort(string.(keys(model.reactions)))
@@ -309,12 +342,43 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
     return result
 end
 
+"""
+    load_metabolite_bounds()
+
+Loads the rates of metabolite oncentration change from the `concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
+
+Downstream handling of this DataFrame expects to find the following columns in the csv: additive, metabolite, final_time, intercept, rate, lb, ub.
+
+# Returns
+`DataFrame`
+
+Returns the loaded DataFrame.
+"""
 function load_metabolite_bounds()
     metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
     metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
     return metabolite_bounds_df
 end
 
+"""
+    query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+
+Find the rate of concentration chage for the metabolite in the given additive at the given final time. Returns `nothing` if not found.
+
+# Arguments
+1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.load_metabolite_bounds).
+
+2. `additive`: String of the additive as specified in the DataFrame.
+
+3. `metabolite`: Metabolite id.
+
+4. `final_time`: The final time point of the interval.
+
+# Returns
+`Tuple{Float64,Float64}`
+
+Using the 95% confidence interval of rate in the original DataFrame, a tuple with the lower and upper bounds of this interval.
+"""
 function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
     query_df = @rsubset(
         metabolite_bounds_df,
@@ -331,6 +395,21 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
     end
 end
 
+"""
+    fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
+
+Standard flux balance analysis of the given `model`. Returns samples of fluxes upon success, `nothing` for infeasible solutions.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to optimize.
+
+2. `n_chains::Int64 = 10`: Number of chains to sample. Must be a keyword and defaults to 10.
+
+# Returns
+`Union{Nothing,DataFrame}`
+
+Returns samples of fluxes upon success, `nothing` for infeasible solutions.
+"""
 function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     @info "Standard FBA sampling, N chains $n_chains"
     println("> Simple optimization attempt")
@@ -347,6 +426,21 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     end
 end
 
+"""
+    is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
+
+Determines whether a metabolite is in an exchange by detecting a substring in the id of the reaction in which the metabolite is found.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model with the reactions to check.
+
+2. `metabolite::AbstractString`: Metabolite id to search for.
+
+# Returns
+`Bool`
+
+`true` if the metabolite is in an exchange, `false` otherwise.
+"""
 function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
     exchange_substring = "EX_$(metabolite[1:end-2])"
     for rxn in keys(model.reactions)
@@ -357,6 +451,25 @@ function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::Abstra
     return false
 end
 
+"""
+    find_metabolite_matches(model::A.AbstractFBCModel, metabolite_bounds_df::DataFrame, additive::AbstractString, final_time::Int64)
+
+Creates a DataFrame of the metabolites found, not found, or in exchange for each additive and time point in the flux balance constratint tree for the given model. This is useful for determining which metabolites have been measured and are available at each time point for each additive. In other words, this is a data quality check function.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to get the `ConstraintTree` from.
+
+2. `metabolite_bounds_df::DataFrame`: The metabolite bounds DataFrame to search.
+
+3. `additive::AbstractString`: Additive being searched.
+
+4. `final_time::Int64`: Final time being searched.
+
+# Returns
+`DataFrame`
+
+Returns a `DataFrame` of metabolite measurement availability.
+"""
 function find_metabolite_matches(
     model::A.AbstractFBCModel,
     metabolite_bounds_df::DataFrame,
@@ -409,6 +522,20 @@ function find_metabolite_matches(
     return metabolite_status_df
 end
 
+"""
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing})
+
+Add sinks for unmeasured (umatched) metabolites in the model. This is part of the uFBA process.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
+
+2. `metabolite_status_df::DataFrame`: Metabolite measurement availability DataFrame.
+
+3. `additive::AbstractString`: Additive for measurement search.
+
+4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
+"""
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
@@ -455,6 +582,14 @@ function add_sinks_for_unmatched_metabolites!(
     end
 end
 
+"""
+    list_objectives_in_model(model::A.AbstractFBCModel)
+
+Lists all objectives in `model` to stdout.
+
+# Argument
+1. `model::A.AbstractFBCModel`: Model in which to search for ojectives.
+"""
 function list_objectives_in_model(model::A.AbstractFBCModel)
     obj_coeffs = A.AbstractFBCModels.objective(model)
     rxn_ids = keys(model.reactions)
@@ -465,6 +600,27 @@ function list_objectives_in_model(model::A.AbstractFBCModel)
     end
 end
 
+@doc raw"""
+    case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
+
+Sets objective in the model's `ConstraintTree` to prune fluxes according to Case 3 in the Bordbar paper.
+
+``\min \sum_{i=1}^{m} \lvert \Delta x_i \rvert + \sum_{j=1}^{n} \lvert v_j \rvert``
+
+Where ``|\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured metabolites and ``|v_j|`` is the magnitude of the reaction fluxes in the network.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model in which **the `ConstraintTree` will be mutated**
+
+2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.find_metabolite_matches) to find unmeasured metabolites.
+
+3. `additive::AbstractString`: Additive to search for metabolite measurement availability.
+
+# Returns
+`ConstraintTree`
+
+The mutated `ConstraintTree` modified with the objective for Case 3.
+"""
 function case_3_constraint_tree!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
@@ -512,6 +668,21 @@ function case_3_constraint_tree!(
     return ct
 end
 
+"""
+    optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+
+Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to find zero flux reactions to prune.
+
+# Arguments
+1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
+
+2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
+
+# Returns
+`C.Tree{Float64}`
+
+`C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
+"""
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     @info "Optimizing case 3"
 
@@ -544,6 +715,19 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 end
 
+"""
+    function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
+
+Analyze the results of the Case 3 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
+
+# Argument
+1. `case_3_optimize_result::C.Tree{Float64}`: Case 3 optimization result.
+
+# Returns
+`Tuple{Vector{String},Vector{String},DataFrame}`
+
+Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
+"""
 function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     zero_case3_sinks = [
         k for (k, v) in case_3_optimize_result.fluxes if
@@ -566,6 +750,21 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
+"""
+    execute_ufba_job(job, n_chains = 10)
+
+Execute a uFBA job specified by the first argument with the given number of chains.
+
+# Arguments
+1. `job`: `NamedTuple` with the following keys: `additive` to specify the additive solution, `final_time` to specify the time point of the simulation, `pruned_model` to specify the model to optimize, `metabolite_bounds_df` rates of chage of metabolites in a DataFrame.
+
+2. `n_chains`: Number of chains to sample. Defaults to 10.
+
+# Returns
+`Union{Nothing,DataFrame}`
+
+Returns a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed.
+"""
 function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
@@ -608,6 +807,21 @@ function execute_ufba_job(job, n_chains = 10)
     end
 end
 
+"""
+    execute_all_ufba_jobs(jobs, n_chains = 10)
+
+Executes and aggregates results from all uFBA jobs specified.
+
+# Arguments
+1. `jobs`: Vector of all jobs to be executed.
+
+2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+A tuple of the following two DataFrames: All sampling results and the statuses of each attempted sampling job.
+"""
 function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
@@ -626,6 +840,37 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
     return vcat(all_sampling_dfs_2...), status_df
 end
 
+"""
+    make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64)
+
+Create all models that represent each combination of additive and final time point.
+
+# Arguments
+1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
+
+2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
+
+# Returns
+`Vector{NamedTuple}`
+
+Returns a vector of `NamedTuple` with specifications for jobs for each model. Each `NamedTuple` has the following properties:
+
+1. `additive`: Additive
+
+2. `final_time`: Final time point
+
+3. `full_model`: The full model created before pruning
+
+4. `pruned_model`: The model after pruning.
+
+5. `sink_status_df`: DataFrame of status of sinks
+
+6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
+
+7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
+
+8. `nonzero_case3_sinks`: Sinks that have non-zero flux
+"""
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64,
@@ -683,6 +928,19 @@ function make_ufba_models_for_additives_and_times(
     return result
 end
 
+"""
+    extract_case3_sinks(ufba_jobs)
+
+Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
+
+# Arguments
+1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame of with the status of unmeasured metabolite sinks for each uFBA job.
+"""
 function extract_case3_sinks(ufba_jobs)
     rows = []
     for ufba_job in ufba_jobs
