@@ -585,6 +585,27 @@ function list_objectives_in_model(model::A.AbstractFBCModel)
     end
 end
 
+@doc raw"""
+    case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
+
+Sets objective in the model's `ConstraintTree` to prune fluxes according to Case 3 in the Bordbar paper.
+
+``\min \sum_{i=1}^{m} \lvert \Delta x_i \rvert + \sum_{j=1}^{n} \lvert v_j \rvert``
+
+Where ``|\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured metabolites and ``|v_j|`` is the magnitude of the reaction fluxes in the network.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model in which **the `ConstraintTree` will be mutated**
+
+2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.find_metabolite_matches) to find unmeasured metabolites.
+
+3. `additive::AbstractString`: Additive to search for metabolite measurement availability.
+
+# Returns
+`ConstraintTree`
+
+The mutated `ConstraintTree` modified with the objective for Case 3.
+"""
 function case_3_constraint_tree!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
