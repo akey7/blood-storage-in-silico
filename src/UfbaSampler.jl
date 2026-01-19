@@ -341,6 +341,18 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
     return result
 end
 
+"""
+    load_metabolite_bounds()
+
+Loads the rates of metabolite oncentration change from the `concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
+
+Downstream handling of this DataFrame expects to find the following columns in the csv: additive, metabolite, final_time, intercept, rate, lb, ub.
+
+# Returns
+`DataFrame`
+
+Returns the loaded DataFrame.
+"""
 function load_metabolite_bounds()
     metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
     metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
