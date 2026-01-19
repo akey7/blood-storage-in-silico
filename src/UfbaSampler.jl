@@ -43,7 +43,8 @@ export create_3p_model,
 """
     init_workers!(; project=Base.active_project())
 
-Activate `project` and load required packages on all current workers.
+Activate `project` and load required packages on all current workers. This is necessary
+for multiprocessing in uFBA sampling.
 
 Call this after `addprocs(...)` (or any time you add more workers).
 """
@@ -58,14 +59,16 @@ function init_workers!(; project::AbstractString = Base.active_project())
     return nothing
 end
 
-# function __init__()
-#     if nworkers() > 0 && !haskey(ENV, "JULIA_DOCUMENTER_BUILD")
-#         @info "Setting up UfbaSampler with init_workers!()"
-#         init_workers!()
-#     end
-#     return nothing
-# end
+"""
+    load_base_rbc_gem()
 
+Load the base RBC-GEM from which the model for uFBA sampling will be made
+
+# Returns
+`A.CanonicalModel.Model`
+
+New model with the entire RBC-GEM.
+"""
 function load_base_rbc_gem()
     println("> Loading RBC-GEM")
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
