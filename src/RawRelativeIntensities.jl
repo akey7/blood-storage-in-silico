@@ -149,6 +149,21 @@ function pca_relative_intensities(long_df, additive)
     )
 end
 
+"""
+    plot_pca_panels(pca_result, super_title)
+
+Using [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores) and [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree), assemble a 2D set of panels for to plot the PCA results.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+2. `super_title`: The super title to put over the top of both panels.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` object to be shown or saved.
+"""
 function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
@@ -158,6 +173,16 @@ function plot_pca_panels(pca_result, super_title)
     return fig
 end
 
+"""
+    plot_pca_scores(pca_result, fig)
+
+Plot a panel of the first two PCs against each other in a scatter plot.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+2. `fig`: A Makie figure to plot onto.
+"""
 function plot_pca_scores(pca_result, fig)
     M = pca_result.model
     scores = pca_result.scores
@@ -207,6 +232,16 @@ function plot_pca_scores(pca_result, fig)
     axislegend(ax_scatter; position = :rb)
 end
 
+"""
+    plot_pca_scree(pca_result, fig)
+
+Plots a PCA scree plot panel onto the given figure.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+2. `fig`: Make `Figure` to plot the panel onto.
+"""
 function plot_pca_scree(pca_result, fig)
     M = pca_result.model
     var_explained = principalvars(M) ./ tvar(M)
