@@ -840,6 +840,37 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
     return vcat(all_sampling_dfs_2...), status_df
 end
 
+"""
+    make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64)
+
+Create all models that represent each combination of additive and final time point.
+
+# Arguments
+1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
+
+2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
+
+# Returns
+`Vector{NamedTuple}`
+
+Returns a vector of `NamedTuple` with specifications for jobs for each model. Each `NamedTuple` has the following properties:
+
+1. `additive`: Additive
+
+2. `final_time`: Final time point
+
+3. `full_model`: The full model created before pruning
+
+4. `pruned_model`: The model after pruning.
+
+5. `sink_status_df`: DataFrame of status of sinks
+
+6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
+
+7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
+
+8. `nonzero_case3_sinks`: Sinks that have non-zero flux
+"""
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64,
