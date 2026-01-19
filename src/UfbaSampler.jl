@@ -522,6 +522,20 @@ function find_metabolite_matches(
     return metabolite_status_df
 end
 
+"""
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing})
+
+Add sinks for unmeasured (umatched) metabolites in the model. This is part of the uFBA process.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
+
+2. `metabolite_status_df::DataFrame`: Metabolite measurement availability DataFrame.
+
+3. `additive::AbstractString`: Additive for measurement search.
+
+4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
+"""
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
