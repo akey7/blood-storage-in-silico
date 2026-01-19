@@ -238,6 +238,25 @@ function plot_pca_scree(pca_result, fig)
     )
 end
 
+"""
+    gather_pca_scores(pca_result)
+
+Using results of the PCA [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities), make a DataFrame that can be saved for manual inspection.
+
+# Arguments
+1. `pca_result`: The PCA result to gather.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+
+1. `patient`: Patient
+
+2. `time`: Time point of observation.
+
+3. `pc1`, `pc2`, `pc3`: Principal components
+"""
 function gather_pca_scores(pca_result)
     scores = pca_result.scores
     time_labels = pca_result.patient_time_labels.Time
