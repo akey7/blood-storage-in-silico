@@ -394,6 +394,21 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
     end
 end
 
+"""
+    fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
+
+Standard flux balance analysis of the given `model`. Returns samples of fluxes upon success, `nothing` for infeasible solutions.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to optimize.
+
+2. `n_chains::Int64 = 10`: Number of chains to sample. Must be a keyword and defaults to 10.
+
+# Returns
+`Union{Nothing,DataFrame}`
+
+Returns samples of fluxes upon success, `nothing` for infeasible solutions.
+"""
 function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
     @info "Standard FBA sampling, N chains $n_chains"
     println("> Simple optimization attempt")
