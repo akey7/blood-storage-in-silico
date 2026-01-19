@@ -567,6 +567,14 @@ function add_sinks_for_unmatched_metabolites!(
     end
 end
 
+"""
+    list_objectives_in_model(model::A.AbstractFBCModel)
+
+Lists all objectives in `model` to stdout.
+
+# Argument
+1. `model::A.AbstractFBCModel`: Model in which to search for ojectives.
+"""
 function list_objectives_in_model(model::A.AbstractFBCModel)
     obj_coeffs = A.AbstractFBCModels.objective(model)
     rxn_ids = keys(model.reactions)
