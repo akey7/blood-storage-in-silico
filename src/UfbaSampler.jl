@@ -359,6 +359,25 @@ function load_metabolite_bounds()
     return metabolite_bounds_df
 end
 
+"""
+    query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+
+Find the rate of concentration chage for the metabolite in the given additive at the given final time. Returns `nothing` if not found.
+
+# Arguments
+1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.load_metabolite_bounds).
+
+2. `additive`: String of the additive as specified in the DataFrame.
+
+3. `metabolite`: Metabolite id.
+
+4. `final_time`: The final time point of the interval.
+
+# Returns
+`Tuple{Float64,Float64}`
+
+Using the 95% confidence interval of rate in the original DataFrame, a tuple with the lower and upper bounds of this interval.
+"""
 function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
     query_df = @rsubset(
         metabolite_bounds_df,
