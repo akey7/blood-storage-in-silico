@@ -298,6 +298,19 @@ function create_3p_model(
     return model
 end
 
+"""
+    map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
+
+Maps reaction_ids in the given model to human-readable reaction strings specifying reactants and products with an arrow pointing in the direction specified by the bounds of the reaction.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to create the reaction strings from.
+
+# Returns
+`Dict{String,String}`
+
+Returns a dicitonary mapping reaction ids in the model to a human-readable reaction string.
+"""
 function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
     result = OrderedDict()
     for rxn_id in sort(string.(keys(model.reactions)))
