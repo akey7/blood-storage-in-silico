@@ -928,6 +928,19 @@ function make_ufba_models_for_additives_and_times(
     return result
 end
 
+"""
+    extract_case3_sinks(ufba_jobs)
+
+Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
+
+# Arguments
+1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame of with the status of unmeasured metabolite sinks for each uFBA job.
+"""
 function extract_case3_sinks(ufba_jobs)
     rows = []
     for ufba_job in ufba_jobs
