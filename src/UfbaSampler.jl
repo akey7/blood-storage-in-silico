@@ -653,6 +653,21 @@ function case_3_constraint_tree!(
     return ct
 end
 
+"""
+    optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
+
+Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to find zero flux reactions to prune.
+
+# Arguments
+1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
+
+2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
+
+# Returns
+`ConstraintTree`
+
+`ConstraintTree` with the optimization results substituted in. These results can be used to prune a model.
+"""
 function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     @info "Optimizing case 3"
 
