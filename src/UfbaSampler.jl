@@ -37,7 +37,8 @@ export create_3p_model,
     load_base_rbc_gem,
     map_reaction_ids_to_reaction_strings,
     extract_case3_sinks,
-    init_workers!
+    init_workers!,
+    execute_ufba_job
 
 
 """
@@ -735,6 +736,21 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
+"""
+    execute_ufba_job(job, n_chains = 10)
+
+Execute a uFBA job specified by the first argument with the given number of chains.
+
+# Arguments
+1. `job`: `NamedTuple` with the following keys: `additive` to specify the additive solution, `final_time` to specify the time point of the simulation, `pruned_model` to specify the model to optimize, `metabolite_bounds_df` rates of chage of metabolites in a DataFrame.
+
+2. `n_chains`: Number of chains to sample. Defaults to 10.
+
+# Returns
+`Union{Nothing,DataFrame}`
+
+Returns a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed.
+"""
 function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
