@@ -450,6 +450,25 @@ function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::Abstra
     return false
 end
 
+"""
+    find_metabolite_matches(model::A.AbstractFBCModel, metabolite_bounds_df::DataFrame, additive::AbstractString, final_time::Int64)
+
+Creates a DataFrame of the metabolites found, not found, or in exchange for each additive and time point in the flux balance constratint tree for the given model. This is useful for determining which metabolites have been measured and are available at each time point for each additive. In other words, this is a data quality check function.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to get the `ConstraintTree` from.
+
+2. `metabolite_bounds_df::DataFrame`: The metabolite bounds DataFrame to search.
+
+3. `additive::AbstractString`: Additive being searched.
+
+4. `final_time::Int64`: Final time being searched.
+
+# Returns
+`DataFrame`
+
+Returns a `DataFrame` of metabolite measurement availability.
+"""
 function find_metabolite_matches(
     model::A.AbstractFBCModel,
     metabolite_bounds_df::DataFrame,
