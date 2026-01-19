@@ -45,6 +45,29 @@ function load_relative_intensities()
     return long_df
 end
 
+"""
+    pca_relative_intensities(long_df, additive)
+
+Perform a robust PCA of the relative intensity data of metabolites within a given additive. Handles NaNs and missing values gracefully. Centers and scales prior to PCA.
+
+# Arguments
+1. `long_df`: The long dataframe as returned by [`load_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.load_relative_intensities)
+
+2. `additive`: The additive for which to perform the PCA
+
+# Returns
+`NamedTuple`
+
+1. `model`: PCA model produced, which enables accessing properties of the PCA model downstream.
+
+2. `scores`: Scores of each observation so that principal component scatter plots can be made.
+
+3. `patient_time_labels`: Labels for each observation of patient and time.
+
+4. `kept_columns`: List of columns that were kept for the PCA after data cleaning
+
+5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
+"""
 function pca_relative_intensities(long_df, additive)
     @info "Beginning PCA"
     wide_df = @chain long_df begin
