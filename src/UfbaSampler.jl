@@ -807,6 +807,21 @@ function execute_ufba_job(job, n_chains = 10)
     end
 end
 
+"""
+    execute_all_ufba_jobs(jobs, n_chains = 10)
+
+Executes and aggregates results from all uFBA jobs specified.
+
+# Arguments
+1. `jobs`: Vector of all jobs to be executed.
+
+2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+A tuple of the following two DataFrames: All sampling results and the statuses of each attempted sampling job.
+"""
 function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
