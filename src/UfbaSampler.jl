@@ -80,6 +80,22 @@ function load_base_rbc_gem()
     return rbc_gem
 end
 
+"""
+    create_3p_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; add_exchanges::Bool = true)
+
+Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
+for the uFBA study.
+
+# Arguments
+1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by [`load_base_rbc_gem`](@ref BloodStorageInSilico.UfbaSampler.load_base_rbc_gem). If left as `nothing`, this function will call [`load_base_rbc_gem`](@ref BloodStorageInSilico.UfbaSampler.load_base_rbc_gem) directly.
+
+2. `add_exchanges::Bool = true`: If `true`, this function will add exchanges to the model. `false` will skip adding exchanges.
+
+# Returns
+`A.CanonicalModel.Model`
+
+Returns the newly constructed three pathway model.
+"""
 function create_3p_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
     add_exchanges::Bool = true,
