@@ -105,6 +105,16 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
     )
 end
 
+"""
+    plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
+
+Plots version 1 histograms for all reactions in all addititves (with separate figures for each additive). This function saves each figure as they are made to the `output/uFBA_histograms_v1` folder. Displays a progress meter as the plots are made.
+
+# Arguments
+1. `sampling_df`: Wide DataFrame of uFBA sampling results.
+
+2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
+"""
 function plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
     if nrow(sampling_df) == 0
         @info "uFBA: Nothing to plot"
@@ -138,6 +148,16 @@ function plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
     end
 end
 
+"""
+    plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+
+Plots version 2 of all histograms (with time points for all additives on the same figure). This function saves each figure as they are made to the `output/uFBA_histograms_v2` folder. Displays a progress meter as the plots are made.
+
+# Arguments
+1. `sampling_df`: Wide DataFrame of uFBA sampling results.
+
+2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
+"""
 function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
     if nrow(sampling_df) == 0
         @info "uFBA: Nothing to plot"
