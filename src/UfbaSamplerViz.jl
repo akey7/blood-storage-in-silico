@@ -61,6 +61,23 @@ function histograms_for_reaction_in_additive_v1(
     return fig
 end
 
+"""
+    histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
+
+Plots histograms for a single reaction, with time points as separate panels and additives layered on top of each other in different colors.
+
+# Arguments
+1. `long_sampling_df`: Sampling DataFrame, pivoted long
+
+2. `reaction_id`: The reaction id for which the samples are being plotted.
+
+3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` to display or save.
+"""
 function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
     plt_df = @chain long_sampling_df begin
         @rsubset(:reaction_id == reaction_id)
