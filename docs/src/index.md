@@ -47,3 +47,12 @@ UfbaSampler creates a three-pathway model and samples it for an unsteady flux ba
 Modules = [BloodStorageInSilico.UfbaSampler]
 Order   = [:function]
 ```
+
+## UfbaSamplerViz
+
+Because the `UfbaSampler.jl` module was becoming huge, I split the visualization functions for `UfbaSampler.jl` into their own module.
+
+```@autodocs
+Modules = [BloodStorageInSilico.UfbaSamplerViz]
+Order   = [:function]
+```
