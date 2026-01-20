@@ -110,6 +110,23 @@ function load_relative_quant()
     return fold_changes_df
 end
 
+"""
+    qc(fold_changes_df, patient_count = 6)
+
+A quality check function. Given the `fold_changes_df` returned by [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant) ensures a consistent count of observations for each time, metabolite, additive combinations by coubnting the number of patients for each.
+
+# Arguments
+1. `fold_chnages_df`: `fold_changes_df` returned by [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant)
+2. `patient_count = 6`: Number of patients that should be represented at each time, metabolite, additive
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns two DataFrames:
+
+1. The first DataFrame contains each time, additive, metabolite that does NOT have the number of patients specified by `patient_count`.
+2. The second DataFrame contains the count of fold changes that are approximately 0.0 for each time, additive, metabolite.
+"""
 function qc(fold_changes_df, patient_count = 6)
     qc_fold_change_counts_df = @chain fold_changes_df begin
         @groupby(:Time, :Additive, :Metabolite)
