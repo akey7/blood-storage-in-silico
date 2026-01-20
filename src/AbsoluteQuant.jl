@@ -37,7 +37,7 @@ export load_absolute_quant,
 """
     load_absolute_quant()
 
-Loads the aboslute quantification data from the Excel sheet at "input/Absolute Quant Data Sheet.xlsx". Loads the proportination file and maps individual peaks in the absolute quant data to proportional concentrations for further analysis. Performs initial mapping of absolute quant data in terms of single metabolite ids.
+Loads the aboslute quantification data from the Excel sheet at "input/Absolute Quant Data Sheet.xlsx". Loads the proportination data from a different sheet in the same workbook and maps individual peaks in the absolute quant data to proportional concentrations for further analysis. Performs initial mapping of absolute quant data in terms of single metabolite ids.
 
 # Returns
 `Tuple{DataFrame,DataFrame}`
@@ -71,6 +71,20 @@ function load_absolute_quant()
     return absolute_quant_df, absolute_quant_medians_df
 end
 
+"""
+    load_relative_quant()
+
+Loads relative quant data from the file "input/Data Sheet 1.CSV" from Nemkov et al (2022). Also loads the proporination sheet from "input/Proportionation Sheet 2.csv" which maps combined human-friendly metabolite names to individual metabolite ids with fractions of abundances assigned to each individual id. Calculates fold changes relative to the median of 01-Ctrl AS3, Week 1 measurement for each metabolite.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame (pivoted from wide to long) with the following columns:
+1. `:Sample`: Sample id that include, among other things, time point and patient.
+2. `:Time`: Time point of measurement in weeks.
+3. `:Metabolite`: Metabolite id of measurement
+4. `:FoldChange`: Fold change over the median control measurement at week 1 for that metabolite.
+"""
 function load_relative_quant()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
     wide_df = CSV.read(relative_filename, DataFrame)
