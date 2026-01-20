@@ -34,6 +34,26 @@ export load_absolute_quant,
     plot_all_regressions,
     qc
 
+"""
+    load_absolute_quant()
+
+Loads the aboslute quantification data from the Excel sheet at "input/Absolute Quant Data Sheet.xlsx". Loads the proportination file and maps individual peaks in the absolute quant data to proportional concentrations for further analysis. Performs initial mapping of absolute quant data in terms of single metabolite ids.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns two dataframes: `absolute_quant_df`, which contains the absolute quant information of each sample, and `absolute_quant_medians_df` which is the median concentration value for each compound aggregated across all samples.
+
+The first DataFrame has the following columns
+1. `:sample_set`: The set of samples the row is from
+2. `:id`: The sample id.
+3. `:Metabolite`: The metabolite id of the compound
+4. `:prop_mM`: The proportionated concentration of the row in mM
+
+The second DataFrame has the following columns
+1. `:Metabolite`: A metabolite id
+2. `:media_prop_mM`: The median concentration for that metabolite id.
+"""
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
     cells_day_1_df = DataFrame(XLSX.readtable(absolute_filename, "cells_day_1"))
