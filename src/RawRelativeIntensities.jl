@@ -13,6 +13,26 @@ using GLMakie
 export load_relative_intensities,
     pca_relative_intensities, plot_pca_panels, display_pca_scores_3d, gather_pca_scores
 
+"""
+    load_relative_intensities()
+
+Loads the relative quantification (intensity) and pivots it long.
+
+# Returns
+`DataFrame`
+
+Returns a long DataFrame with the following columns: 
+
+1. `:Sample`, the sample id
+
+2. `:Time` the time point of the measurement (in weeks)
+
+3. `:Additive`: Additive the measurement was taken in.
+
+4. `:MixedName`: The name of either a single compound or group of compounds under the same peak.
+
+5. `:Intensity`: The integrated area of the peak.
+"""
 function load_relative_intensities()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
     wide_df = CSV.read(relative_filename, DataFrame)
@@ -25,6 +45,29 @@ function load_relative_intensities()
     return long_df
 end
 
+"""
+    pca_relative_intensities(long_df, additive)
+
+Perform a robust PCA of the relative intensity data of metabolites within a given additive. Handles NaNs and missing values gracefully. Centers and scales prior to PCA.
+
+# Arguments
+1. `long_df`: The long dataframe as returned by [`load_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.load_relative_intensities)
+
+2. `additive`: The additive for which to perform the PCA
+
+# Returns
+`NamedTuple`
+
+1. `model`: PCA model produced, which enables accessing properties of the PCA model downstream.
+
+2. `scores`: Scores of each observation so that principal component scatter plots can be made.
+
+3. `patient_time_labels`: Labels for each observation of patient and time.
+
+4. `kept_columns`: List of columns that were kept for the PCA after data cleaning
+
+5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
+"""
 function pca_relative_intensities(long_df, additive)
     @info "Beginning PCA"
     wide_df = @chain long_df begin
@@ -106,6 +149,21 @@ function pca_relative_intensities(long_df, additive)
     )
 end
 
+"""
+    plot_pca_panels(pca_result, super_title)
+
+Using [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores) and [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree), assemble a 2D set of panels for to plot the PCA results.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+2. `super_title`: The super title to put over the top of both panels.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` object to be shown or saved.
+"""
 function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
@@ -115,6 +173,16 @@ function plot_pca_panels(pca_result, super_title)
     return fig
 end
 
+"""
+    plot_pca_scores(pca_result, fig)
+
+Plot a panel of the first two PCs against each other in a scatter plot.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+2. `fig`: A Makie figure to plot onto.
+"""
 function plot_pca_scores(pca_result, fig)
     M = pca_result.model
     scores = pca_result.scores
@@ -164,6 +232,16 @@ function plot_pca_scores(pca_result, fig)
     axislegend(ax_scatter; position = :rb)
 end
 
+"""
+    plot_pca_scree(pca_result, fig)
+
+Plots a PCA scree plot panel onto the given figure.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+2. `fig`: Make `Figure` to plot the panel onto.
+"""
 function plot_pca_scree(pca_result, fig)
     M = pca_result.model
     var_explained = principalvars(M) ./ tvar(M)
@@ -195,6 +273,25 @@ function plot_pca_scree(pca_result, fig)
     )
 end
 
+"""
+    gather_pca_scores(pca_result)
+
+Using results of the PCA [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities), make a DataFrame that can be saved for manual inspection.
+
+# Arguments
+1. `pca_result`: The PCA result to gather.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+
+1. `patient`: Patient
+
+2. `time`: Time point of observation.
+
+3. `pc1`, `pc2`, `pc3`: Principal components
+"""
 function gather_pca_scores(pca_result)
     scores = pca_result.scores
     time_labels = pca_result.patient_time_labels.Time
@@ -212,6 +309,16 @@ function gather_pca_scores(pca_result)
     return df
 end
 
+"""
+    display_pca_scores_3d(pca_result, additive)
+
+Plot **and display** a 3D PCA scatter with GLMakie.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
+
+2. `additive`: Additive to plot the PCA results for.
+"""
 function display_pca_scores_3d(pca_result, additive)
     @info "Display PCA for $additive"
     M = pca_result.model
