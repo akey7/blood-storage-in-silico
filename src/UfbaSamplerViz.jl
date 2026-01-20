@@ -6,7 +6,6 @@ using AlgebraOfGraphics
 using ColorSchemes
 using DataFrames
 using DataFramesMeta
-using ThreadsX
 using ProgressMeter
 
 export plot_all_histograms_v1, plot_all_histograms_for_reactions
