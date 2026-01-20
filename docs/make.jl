@@ -8,5 +8,9 @@ using BloodStorageInSilico
 
 makedocs(
     sitename = "BloodStorageInSilico.jl",
-    modules = [BloodStorageInSilico.UfbaSampler],
+    modules = [
+        BloodStorageInSilico.RawRelativeIntensities,
+        BloodStorageInSilico.UfbaSampler,
+        BloodStorageInSilico.UfbaSamplerViz,
+    ],
 )

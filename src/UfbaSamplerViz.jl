@@ -8,8 +8,30 @@ using DataFrames
 using DataFramesMeta
 using ProgressMeter
 
-export plot_all_histograms_v1, plot_all_histograms_for_reactions
+export histograms_for_reaction_in_additive_v1,
+    histograms_for_reaction_v2,
+    plot_all_histograms_v1, 
+    plot_all_histograms_for_reactions
 
+"""
+    histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
+
+Plots histograms for uFBA results at all time points in a SINGLE additive on one Makie plot.
+
+# Arguments
+1. `long_sampling_df`: Sampling DataFrame, pivoted long
+
+2. `additive`: Additive to make plots for.
+
+3. `reaction_id`: The reaction id for which the samples are being plotted.
+
+4. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` that can be displayed or saved.
+"""
 function histograms_for_reaction_in_additive_v1(
     long_sampling_df,
     additive,
