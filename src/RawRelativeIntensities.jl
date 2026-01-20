@@ -309,6 +309,16 @@ function gather_pca_scores(pca_result)
     return df
 end
 
+"""
+    display_pca_scores_3d(pca_result, additive)
+
+Plot **and display** a 3D PCA scatter with GLMakie.
+
+# Arguments
+1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
+
+2. `additive`: Additive to plot the PCA results for.
+"""
 function display_pca_scores_3d(pca_result, additive)
     @info "Display PCA for $additive"
     M = pca_result.model
