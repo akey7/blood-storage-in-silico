@@ -355,8 +355,17 @@ function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
     return all_memberships_dfs, fuzzy_objectives_df
 end
 
+"""
+    plot_elbows(fuzzy_objectives_df)
+
+Creates and saves the elbow plots for each additive to determine the optimal number of clusters based on fuzzy objective values created by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters).
+    
+The final output is saved to `output/relative_absolute_c_means/elbows.png`
+
+# Arguments
+1. `fuzzy_objectives_df`: DataFrame of objective values
+"""
 function plot_elbows(fuzzy_objectives_df)
-    fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
     xticks = unique(fuzzy_objectives_df.n_clusters)
     plt =
         data(fuzzy_objectives_df) *
