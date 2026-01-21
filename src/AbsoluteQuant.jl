@@ -242,6 +242,30 @@ function calc_fuzzy_objective(result, X, μ)
     return total
 end
 
+"""
+    c_means_metabolite_trajectories(wide_timeseries_df; additive = "01-Ctrl AS3", n_clusters = 5, μ = 5.0)
+
+Calculates the c-means clusters of the metabolite time series in the given wide DataFrame. Cleans the DataFrame before clustering to remove problematic values, such as constant features, NaNs and Infs. Sensible clustering conditions are enforced with `@assert`. Prints diagnostic logging messages durinng operation. Uses CityBlock distances because proved to create more robust results.
+
+# Arguments
+1. `wide_timeseries_df`: DataFrame created by [`prepare_long_df_for_clustering`](@ref BloodStorageInSilico.AbsoluteQuant.prepare_long_df_for_clustering) for timeseries analysis.
+2. `additive`: Additive to use when setting the `:Additive` column of the final output. NOTE: This does not affect `wide_timeseries_df`, which assumed to be filtered before being passed to this function. Rather, this argument just affects the OUTPUT DataFrame so it can be combined with other clustering runs later. Defaults to "01-Ctrl AS3".
+3. `n_clusters`: The number of clusters to split the metabolites into. Defaults to 5
+4. `μ`: The fuzziness factor for the clustering. Defaults to 5.0
+
+# Returns
+`Tuple{DataFrame,Float64,Matrix}`
+
+First, returns a DataFrame with the clustering results that has the following columns:
+1. `:Metabolite`: The metabolite
+2. `:Additive`: The additive the source data is from
+3. `:NClusters`: The number of clusters the data was split into for this run
+4. Other columns: A column with the membership weight in each cluster for that metabolite.
+
+Second, returns the fuzzy objective value for making an elbow plot as calculated by [`calc_fuzzy_objective`](@ref BloodStorageInSilico.AbsoluteQuant.calc_fuzzy_objective).
+
+Third, returns the Matrix used for the clustering.
+"""
 function c_means_metabolite_trajectories(
     wide_timeseries_df;
     additive = "01-Ctrl AS3",
