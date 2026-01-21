@@ -186,6 +186,22 @@ function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_med
     return long_df, wide_df
 end
 
+"""
+    prepare_long_df_for_clustering(long_df, additive)
+
+Prepare the long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) for timeseries analysis by c-means clustering. The original long DataFrame is filtered down to a single additive. If a measurement is duplicated, the first conflicting measurement will be used and zero values are excluded. The result is a wide DataFrame of timeseries, with a column for each timepoint, that can be used for clustering.
+
+# Arguments
+1. `long_df`: The long DataFrame to pivot.
+2. `additive`: The additive to make time series for.
+
+# Returns
+`DataFrame`
+
+Returns a wide DataFrame with the following columns
+1. `:Metabolite`: The metabolite for which the row is a time series.
+2. Subsequent columns: A column for each timepoint measured for that metabolite.
+"""
 function prepare_long_df_for_clustering(long_df, additive)
     long_df_2 = deepcopy(long_df)
     wide_timeseries_df = @chain long_df_2 begin
