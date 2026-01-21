@@ -213,6 +213,23 @@ function prepare_long_df_for_clustering(long_df, additive)
     return wide_timeseries_df
 end
 
+"""
+    calc_fuzzy_objective(result, X, μ)
+
+This function is used to make elbow plots to determine the optimal number of clusters for the clustering results. It is a reproduction of the objective function of c-means clustering.
+
+[This is the objective function](https://juliastats.org/Clustering.jl/stable/fuzzycmeans.html#fuzzy_cmeans_def) calculated here.
+
+# Arguments
+1. `result`: C-means clustering resuly with centers and weights to evaluate.
+2. `X`: The matrix of features that were clustered.
+3. `μ`: The fuzziness factor that was used for clustering
+
+# Returns
+`Float64`
+
+Returns the value of the c-means objective.
+"""
 function calc_fuzzy_objective(result, X, μ)
     c = result.centers
     W = result.weights
