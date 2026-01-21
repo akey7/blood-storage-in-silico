@@ -303,6 +303,25 @@ function c_means_metabolite_trajectories(
     return memberships_df, fuzzy_objective, X
 end
 
+"""
+    cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
+
+To make a complete clustering analysis of this dataset, clustering must be performed for each additive, different numbers of clusters must be attempted, and the results need to be aggregated to make figures. This function iterates through all additives and numbers of clusters to aggregate all of these runs into one place for further analysis.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+2. `max_clusters = 10`: Defaults to 10. For example, if left at 10, clustering into 2, 3, 4, 5, 6, 7, 8, 9, and 10 clusters will be attempted for selection of the optimal number of clusters.
+
+# Returns
+`Tuple{Vector{DataFrame},DataFrame}`
+
+The first element of the tuple is a Vector of DataFrames. The contents are the membership weights DataFrames resulting from calling [`c_means_metabolite_trajectories`](@ref BloodStorageInSilico.AbsoluteQuant.c_means_metabolite_trajectories) and taking the first DataFrame of the resulting Tuple.
+
+The second element of the Tuple is a DataFrame that is the minimized objective value for each number of clusters. The columns of this DataFrame are:
+1. `:additive`: The additive
+2. `:n_clusters`: The number of clusters the data were split into.
+3. `:fuzzy_objective`: The minimized objective value for that number of clusters, suitable for making an elbow plot.
+"""
 function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
     additives = unique(long_df.Additive)
     all_memberships_dfs::Dict{Int64,DataFrame} = Dict()
