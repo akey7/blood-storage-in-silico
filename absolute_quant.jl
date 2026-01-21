@@ -26,6 +26,7 @@ long_df, wide_df =
 println(first(long_df, 10))
 long_df_filename = joinpath("output", "long_df.csv")
 CSV.write(long_df_filename, long_df)
+println("Wrote $long_df_filename")
 relative_absolute_quant_filename = joinpath("output", "relative_absolute_quant.csv")
 CSV.write(relative_absolute_quant_filename, wide_df)
 println("Wrote $relative_absolute_quant_filename")

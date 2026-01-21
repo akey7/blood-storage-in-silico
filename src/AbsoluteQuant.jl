@@ -143,6 +143,35 @@ function qc(fold_changes_df, patient_count = 6)
     return qc_fold_change_counts_df, qc_fold_change_zeros_df
 end
 
+"""
+    combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+
+This is where the magic of this module truly happens. Here, the relative quant and absolute quant data are combined to approximate aboslute quantification to put into models.
+
+# Arguments
+1. `fold_changes_df`: The relative quant data from [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant)
+2. `absolute_quant_medians_df`: The absolute quant data from [`load_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_absolute_quant)
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns a long and wide format of this dataframe.
+
+The long DataFrame contains the following columns and sorted by `:Additive`, `:Time`, and `:Metabolite`:
+1. `:Sample`: Sample id
+2. `:Time`: Measurement time (in weeks)
+3. `:Additive`: Additive
+4. `:Metabolite`: Metabolite
+5. `:FoldChange`: Original fold change from the relative quant data
+6. `:median_prop_mM`: The median approximate mM of that metabolite from the absolute quant data
+7. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+
+The wide DataFrame contains the following columns and is sorted by `:Additive` and `:Time`:
+1. `:Sample`: Sample id of that row
+2. `:Time`: Time in weeks of that observation
+3. `:Additive`: Additive
+4. A subsequent column for each metabolite
+"""
 function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
