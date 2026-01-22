@@ -944,6 +944,22 @@ function plot_pca_scree(pca_result, fig)
     )
 end
 
+"""
+    additive_metabolite_time_points(long_df, additive, metabolite, tf)
+
+Used by [`regress_concentration_vs_time`](@ref BloodStorageInSilico.AbsoluteQuant.regress_concentration_vs_time) to get a time course for a particular metabolite in a specified additive.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive to select.
+3. `metabolite`: Metabolite id to select
+4. `tf`: Final time point (2, 3, 4, 5, 6) to select
+
+# Returns
+`DataFrame`
+
+Each time point with the approximated mM concentration, ordered by time.
+"""
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     result_df = @chain long_df begin
         @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
@@ -953,6 +969,27 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     return result_df
 end
 
+"""
+    regress_concentration_vs_time(long_df)
+
+Regresses the concentration vs time to find the rate of metabolite concentration change (95% confidence interval upper and lower bounds) for all the metabolites and additives in `long_df`. Uses ThreadsX to split this task into multiple threads if multiple threads are available.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the concentration rate regression results. The DataFrame is sorted by additive, metabolite, and final_time. The following columns are available:
+
+1. `:additive`: The additive the data for the regression is from.
+2. `:metabolite`: Metabolite id of the row.
+3. `:final_time`: Final time point of the regression. The timespan of the regression is final_time - 1 to final_time.
+4. `:intercept`: Intercept of the regression
+5. `:rate`: Slope of the regression.
+6. `:lb`: Lower bound of the 95% confidence interval of the slope.
+7. `:ub`: Upper bound of the 95% confidence interval of the slope.
+"""
 function regress_concentration_vs_time(long_df)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
