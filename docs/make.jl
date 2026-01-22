@@ -13,5 +13,6 @@ makedocs(
         BloodStorageInSilico.AbsoluteQuant,
         BloodStorageInSilico.UfbaSampler,
         BloodStorageInSilico.UfbaSamplerViz,
+        BloodStorageInSilico.MetaboliteTimelines,
     ],
 )

@@ -19,6 +19,21 @@ using Makie
 export load_and_clean,
     plot_aggregations_for_all_metabolites, normalized_abundance_correlations
 
+"""
+    load_and_clean()
+
+Loads, cleans, and preprocesses relative quant metabolomics data from `input/Data Sheet 1.CSV`. This prepares the data to be used by other functions in this module.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, pivoted long, with the following columns:
+1. `:Sample`: The sample id
+2. `:Time`: Time of the measurement in weeks.
+3. `:Additive`: The additive the measurement was taken in.
+4. `:Metabolite`: The name of metabolite (from the original sheet). Note that this is different from other modules that translates and proportionates the metabolite names into RBC-GEM identifiers.
+5. `:MedianNormalizedIntensity`: The intensity of the metabolite normalized by the median value for that metabolite at that time point.
+"""
 function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
     df1 = CSV.read(filename, DataFrame)
@@ -50,7 +65,7 @@ function aggregate_metabolite_additive(everything_df, metabolite, additive)
     )
     aggregated_df = @combine(
         groupby(additive_df, :Time),
-        :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
+        :Aggregated = median(skipmissing(:MedianNormalizedIntensity))
     )
     return aggregated_df
 end
@@ -59,7 +74,7 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     aggregated_df = @combine(
         groupby(metabolite_df, [:Additive, :Time]),
-        :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
+        :Aggregated = median(skipmissing(:MedianNormalizedIntensity))
     )
     time_points = unique(everything_df.Time)
     plt =

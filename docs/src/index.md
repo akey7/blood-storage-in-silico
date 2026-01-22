@@ -24,7 +24,13 @@ Metabolites were measured each week of blood storage. In the `AbsoluteQuant.jl` 
 - 5: Weeks 4 to 5
 - 6: Weeks 5 to 6
 
-## RawRelativeIntensities
+## Main Workflow
+
+uFBA simulation is the main workflow for this system. The modules in this section run this workflow. Other modules were written for more exploratory purposes outside of this workflow.
+
+I present the modules in the order they are used in the workflow.
+
+### RawRelativeIntensities
 
 RawRelativeIntensities works with the relative quantification data. This includes exploratory analysis of the relative intensity data and preparation to incorporate with absolute quantification data.
 
@@ -37,7 +43,7 @@ Modules = [BloodStorageInSilico.RawRelativeIntensities]
 Order   = [:function]
 ```
 
-## AbsoluteQuant
+### AbsoluteQuant
 
 The original blood storage study by Nemkov et al (2022) used relative quantification for the study. However, uFBA analyses require absolute quantification. In the absence of absolute quant data, we had to make an approximation of absolute quant values. This approximation is made by combining the relative quant data with absolute quant data of blood initially stored in similar conditions (1 week, AS3 additive solution, just like the control of the realtive quant study). Using the aboslute quant numbers as a baseline, we scaled the fold changes relative quantification study byt the absolute values to approximate an absolute quant study of blood storage metabolites over the time course of the relative quantification study.
 
@@ -50,7 +56,7 @@ Modules = [BloodStorageInSilico.AbsoluteQuant]
 Order   = [:function]
 ```
 
-## UfbaSampler
+### UfbaSampler
 
 UfbaSampler creates a three-pathway model and samples it for an unsteady flux balance analysis (uFBA) study as described by Brodbar et al.
 
@@ -61,11 +67,24 @@ Modules = [BloodStorageInSilico.UfbaSampler]
 Order   = [:function]
 ```
 
-## UfbaSamplerViz
+### UfbaSamplerViz
 
 Because the `UfbaSampler.jl` module was becoming huge, I split the visualization functions for `UfbaSampler.jl` into their own module.
 
 ```@autodocs
 Modules = [BloodStorageInSilico.UfbaSamplerViz]
+Order   = [:function]
+```
+
+## Other Modules
+
+The following modules were written for exploratory data analysis purposes and either (1) aren't part of the main workflow or (2) aren't yet part of the main workflow. I present these modules in the order they were written.
+
+### MetaboliteTimelines
+
+This module contains functionality to visualize the median of relative quant data intensities and find correlations between metabolites. The syntax of the DataFrame manipulations in this module is not as eloquent as it is in other modules, but it gets the job done.
+
+```@autodocs
+Modules = [BloodStorageInSilico.MetaboliteTimelines]
 Order   = [:function]
 ```
