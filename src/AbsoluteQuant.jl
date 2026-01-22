@@ -576,10 +576,39 @@ function plot_all_mM_timeseries(long_df)
     end
 end
 
+"""
+    pca_timeseries(long_df, additive)
+
+Performs a PCA of the metabolite timeseries. Each metabolite is a feature, each timepoint is an observation. This function does basic data integrity checks to ensure the PCA runs.
+
+NOTE: I found that performing PCA on the raw relative intensities works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive for which to perform the PCA.
+
+# Returns
+`NamedTuple`
+
+The following fields are available in the NamedTuple:
+
+1. `model`: The PCA model returned by the PCA function that contains a lot of interesting information about the PCA.
+2. `scores`: The PCA scores.
+3. `patient_time_labels`: Labels that can be applied to the result of the PCA scores to recover the PCA-transformed features for each patient at each time point.
+4. `kept_columns`: The columns that were RETAINED in the PCA.
+5. `wide_df`: The pivoted DataFrame used to construct the feature Matrix for the PCA.
+"""
 function pca_timeseries(long_df, additive)
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
-        @rtransform(:Patient = :Sample[7:8])
+        @rtransform(:Patient = split(:Sample, "_")[3][1:2])
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
         @groupby(:Patient, :Time, :Metabolite)
         @combine(:mean_mM = mean(skipmissing(:absolute_mM)))
