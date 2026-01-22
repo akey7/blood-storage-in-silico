@@ -65,16 +65,30 @@ function aggregate_metabolite_additive(everything_df, metabolite, additive)
     )
     aggregated_df = @combine(
         groupby(additive_df, :Time),
-        :Aggregated = median(skipmissing(:MedianNormalizedIntensity))
+        :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
     )
     return aggregated_df
 end
 
+"""
+    plot_aggregations_for_metabolite(everything_df, metabolite)
+
+Plot the mean `:MedianNormalizedIntensity` for the given metabolite.
+
+# Arguments
+1. `everything_df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite)
+2. `metabolite`: Name of the metabolite to plot.
+
+# Returns
+`Figure`
+
+Returns a Makie figure that can be displayed or saved.
+"""
 function plot_aggregations_for_metabolite(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     aggregated_df = @combine(
         groupby(metabolite_df, [:Additive, :Time]),
-        :Aggregated = median(skipmissing(:MedianNormalizedIntensity))
+        :Aggregated = mean(skipmissing(:MedianNormalizedIntensity))
     )
     time_points = unique(everything_df.Time)
     plt =
