@@ -384,6 +384,22 @@ function plot_elbows(fuzzy_objectives_df)
     println("Wrote $fig_filename")
 end
 
+"""
+    plot_c_means_for_additive_and_n_clusters(long_df, all_memberships_dfs, additive, n_clusters)
+
+Clusters metabolite timeline trajectories in the given additive into the given number of clusters, standardizes the concentrations, saves a plot to the `output/relative_absolute_c_means` folder, and returns the memberships DataFrame that made the plot. The requested number of clusters and additive must be in the data passed.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
+3. `additive`: Additive for the cllustering and plotting.
+4. `n_clusters`: Number of clusters to plot the trajectories into.
+
+# Returns
+`DataFrame`
+
+Returns the cluster membership DataFrame that was plotted. This is useful for manual inspection if needed.
+"""
 function plot_c_means_for_additive_and_n_clusters(
     long_df,
     all_memberships_dfs,
