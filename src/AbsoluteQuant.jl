@@ -696,6 +696,34 @@ function plot_pca_all_additives(long_df)
     return vcat(loadings_dfs...)
 end
 
+"""
+    extract_pca_loadings(pca_result, additive)
+
+Extracts the loadings of the metabolite features on each of the PCs. 
+
+NOTE: I found that performing PCA on the raw relative intensities works rahter than absolute quan approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `additive`: The additive of that the PCA results are from. NOTE: This parameter does not affect the PCA results; rather, it controls the column of the DataFrame returned by this function.
+
+# Returns
+`DataFrame`
+
+Returns a DatFrame, ordered by the column `:pc1_loadings`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_names`: Names of the metabolites.
+3. `pc1_loadings`: Loadings on the first PC.
+3. `pc2_loadings`: Loadings on the second PC.
+"""
 function extract_pca_loadings(pca_result, additive)
     M = pca_result.model
     L = loadings(M)
