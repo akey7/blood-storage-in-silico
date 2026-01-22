@@ -1025,6 +1025,14 @@ function regress_concentration_vs_time(long_df)
     return result_df
 end
 
+"""
+    plot_all_regressions(long_df)
+
+Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression) for all metabolites in all additives to plot regression results. Saves plots to `output/regression_plots`
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+"""
 function plot_all_regressions(long_df)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
@@ -1037,6 +1045,19 @@ function plot_all_regressions(long_df)
     end
 end
 
+"""
+    plot_regression(long_df, additive, metabolite)
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive
+3. `metabolite`: Metabolite id
+
+# Returns
+`Figure`
+
+Returns a Makie figure that can be displayed or saved.
+"""
 function plot_regression(long_df, additive, metabolite)
     super_title = "$additive $metabolite"
     fig = Figure(; size = (360, 720))
