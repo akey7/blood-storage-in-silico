@@ -520,6 +520,14 @@ function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     return primary_cluster_df
 end
 
+"""
+    plot_all_mM_timeseries(long_df)
+
+Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant). The source of the data that will be plotted.
+"""
 function plot_all_mM_timeseries(long_df)
     agg_df = @chain long_df begin
         @groupby(:Additive, :Metabolite, :Time)
