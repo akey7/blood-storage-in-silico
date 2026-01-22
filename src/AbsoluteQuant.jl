@@ -392,7 +392,7 @@ Clusters metabolite timeline trajectories in the given additive into the given n
 # Arguments
 1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
 2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
-3. `additive`: Additive for the cllustering and plotting.
+3. `additive`: Additive for the clustering and plotting.
 4. `n_clusters`: Number of clusters to plot the trajectories into.
 
 # Returns
@@ -489,6 +489,21 @@ function plot_c_means_for_additive_and_n_clusters(
     return membership_df
 end
 
+"""
+    plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
+
+Iterates through all additives and calls [`plot_c_means_for_additive_and_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.plot_c_means_for_additive_and_n_clusters) to make a plot for each additive with the given number of clusters.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
+3. `n_clusters`: Number of clusters to plot the trajectories into.
+
+# Returns
+`DataFrame`
+
+Consolidated DataFrame of all primary cluster assignments for all metabolites in all additives.
+"""
 function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     additives = unique(long_df.Additive)
     primary_cluster_dfs = []
