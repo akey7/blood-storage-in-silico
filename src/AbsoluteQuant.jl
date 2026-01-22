@@ -1075,6 +1075,24 @@ function plot_regression(long_df, additive, metabolite)
     return fig
 end
 
+"""
+    scatter_plot_df(long_df, additive, metabolite, final_time)
+
+Returns data for the scatter layers for [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression).
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive
+3. `metabolite`: Metabolite id
+
+# Returns
+`NamedTuple`
+
+NamedTuple with the following fields:
+
+1. `scatter_df`: The DataFrame for the scatter points
+2. `ylims`: The y limits for the scatter plot.
+"""
 function scatter_plot_df(long_df, additive, metabolite, final_time)
     scatter_df = @chain long_df begin
         @rsubset(
