@@ -581,7 +581,7 @@ end
 
 Performs a PCA of the metabolite timeseries. Each metabolite is a feature, each timepoint is an observation. This function does basic data integrity checks to ensure the PCA runs.
 
-NOTE: I found that performing PCA on the raw relative intensities works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+NOTE: I found that performing PCA on the raw relative intensities works rahter than absolute quan approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
 
 1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
 2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
@@ -666,6 +666,23 @@ function pca_timeseries(long_df, additive)
     )
 end
 
+"""
+    plot_pca_all_additives(long_df)
+
+Iterates through all additives and make PCA plots for each one. Saves plots to `output/pca_plots`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rahter than absolute quan approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+"""
 function plot_pca_all_additives(long_df)
     additives = sort(unique(long_df.Additive))
     loadings_dfs = ThreadsX.map(additives) do additive
