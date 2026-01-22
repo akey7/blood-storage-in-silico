@@ -581,7 +581,7 @@ end
 
 Performs a PCA of the metabolite timeseries. Each metabolite is a feature, each timepoint is an observation. This function does basic data integrity checks to ensure the PCA runs.
 
-NOTE: I found that performing PCA on the raw relative intensities works rahter than absolute quan approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
 
 1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
 2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
@@ -671,7 +671,7 @@ end
 
 Iterates through all additives and make PCA plots for each one. Saves plots to `output/pca_plots`.
 
-NOTE: I found that performing PCA on the raw relative intensities works rahter than absolute quan approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
 
 1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
 2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
@@ -701,7 +701,7 @@ end
 
 Extracts the loadings of the metabolite features on each of the PCs. 
 
-NOTE: I found that performing PCA on the raw relative intensities works rahter than absolute quan approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
 
 1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
 2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
@@ -741,6 +741,33 @@ function extract_pca_loadings(pca_result, additive)
     return @orderby(result, :pc1_loadings)
 end
 
+"""
+    plot_pca_panels(pca_result, super_title)
+
+Assemble full PCA analysis plot with the following panels:
+
+1. [`plot_pca_loadings`](@ref BloodStorageInSilico.AbsoluteQuant.plot_pca_loadings): Loadings
+2. [`plot_pca_scores`](@ref BloodStorageInSilico.AbsoluteQuant.plot_pca_scores): Scores
+3. [`plot_pca_scree`](@ref BloodStorageInSilico.AbsoluteQuant.plot_pca_scree): Scree
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments:
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `super_title`: A string with a title to put over all the panels.
+
+# Returns
+`Figure`
+
+Returns a Makie figure that can be saved or displayed.
+"""
 function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
@@ -750,6 +777,29 @@ function plot_pca_panels(pca_result, super_title)
     return fig
 end
 
+"""
+    plot_pca_loadings(pca_result, fig)
+
+Plots a panel of PCA loadings onto a provided Makie `Figure`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `fig`: Make figure upon which the panel should be plotted.
+
+# Returns
+`Figure`
+
+Returns the Makie figure that was plotted on.
+"""
 function plot_pca_loadings(pca_result, fig)
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
@@ -768,6 +818,29 @@ function plot_pca_loadings(pca_result, fig)
     return fig
 end
 
+"""
+    plot_pca_scores(pca_result, fig)
+
+Plots a panel of PCA scores onto a provided Makie `Figure`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `fig`: Make figure upon which the panel should be plotted.
+
+# Returns
+`Figure`
+
+Returns the Makie figure that was plotted on.
+"""
 function plot_pca_scores(pca_result, fig)
     M = pca_result.model
     scores = pca_result.scores
@@ -817,6 +890,29 @@ function plot_pca_scores(pca_result, fig)
     axislegend(ax_scatter; position = :rb)
 end
 
+"""
+    plot_pca_scree(pca_result, fig)
+
+Plots a panel of PCA scree plot onto a provided Makie `Figure`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `fig`: Make figure upon which the panel should be plotted.
+
+# Returns
+`Figure`
+
+Returns the Makie figure that was plotted on.
+"""
 function plot_pca_scree(pca_result, fig)
     M = pca_result.model
     var_explained = principalvars(M) ./ tvar(M)
