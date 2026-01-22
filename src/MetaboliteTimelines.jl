@@ -108,6 +108,14 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
     return fig
 end
 
+"""
+    plot_aggregations_for_all_metabolites(df)
+
+Plots aggregations for all metabolites with [`plot_aggregations_for_metabolite`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite). Saves each file to `output/plots`, with the metabolite name "cleaned" to make a well-behaved filename.
+
+# Arguments
+1. `df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite).
+"""
 function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
     for metabolite in metabolites
