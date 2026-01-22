@@ -1067,9 +1067,9 @@ function plot_regression(long_df, additive, metabolite)
     for (final_time, fig_ref) in final_times_to_figure_map
         plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
         if final_time < 6
-            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
+            plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, false)
         else
-            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, true)
+            plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, true)
         end
     end
     return fig
@@ -1111,7 +1111,22 @@ function scatter_plot_df(long_df, additive, metabolite, final_time)
     return (scatter_df = scatter_df, ylims = ylims)
 end
 
-function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
+"""
+    plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, time_label)
+
+Used by [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression). Draw the scatter and line layers onto a regression plot using the given data onto the specified section of the figure, optionally with time axis label. This function mutates the `Axis` object, so its return value isn't necessary.
+
+# Arguments
+1. `plot_data`: DataFrame with `:Time` and `:absolute_mM` columns to draw onto the plot
+2. `fig_ref`: A Vector with the indices of the section of the figure to draw the plot onto (see calling function). Such as [1, 1], [2, 1], etc.
+3. `time_label`: `true` will write the time axis label. `false` will suppress the time axis label.
+
+# Returns
+`GridLayout`
+
+The `GridLayout` object upon which the drawing was made.
+"""
+function plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, time_label)
     ax =
         time_label ? Axis(fig_ref, ylabel = "mM", xlabel = "Time (week)") :
         Axis(fig_ref, ylabel = "mM")
