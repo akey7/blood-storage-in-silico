@@ -10,6 +10,7 @@ makedocs(
     sitename = "BloodStorageInSilico.jl",
     modules = [
         BloodStorageInSilico.RawRelativeIntensities,
+        BloodStorageInSilico.AbsoluteQuant,
         BloodStorageInSilico.UfbaSampler,
         BloodStorageInSilico.UfbaSamplerViz,
     ],

@@ -34,6 +34,26 @@ export load_absolute_quant,
     plot_all_regressions,
     qc
 
+"""
+    load_absolute_quant()
+
+Loads the aboslute quantification data from the Excel sheet at "input/Absolute Quant Data Sheet.xlsx". Loads the proportination data from a different sheet in the same workbook and maps individual peaks in the absolute quant data to proportional concentrations for further analysis. Performs initial mapping of absolute quant data in terms of single metabolite ids.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns two dataframes: `absolute_quant_df`, which contains the absolute quant information of each sample, and `absolute_quant_medians_df` which is the median concentration value for each compound aggregated across all samples.
+
+The first DataFrame has the following columns
+1. `:sample_set`: The set of samples the row is from
+2. `:id`: The sample id.
+3. `:Metabolite`: The metabolite id of the compound
+4. `:prop_mM`: The proportionated concentration of the row in mM
+
+The second DataFrame has the following columns
+1. `:Metabolite`: A metabolite id
+2. `:media_prop_mM`: The median concentration for that metabolite id.
+"""
 function load_absolute_quant()
     absolute_filename = joinpath("input", "Absolute Quant Data Sheet.xlsx")
     cells_day_1_df = DataFrame(XLSX.readtable(absolute_filename, "cells_day_1"))
@@ -51,6 +71,20 @@ function load_absolute_quant()
     return absolute_quant_df, absolute_quant_medians_df
 end
 
+"""
+    load_relative_quant()
+
+Loads relative quant data from the file "input/Data Sheet 1.CSV" from Nemkov et al (2022). Also loads the proporination sheet from "input/Proportionation Sheet 2.csv" which maps combined human-friendly metabolite names to individual metabolite ids with fractions of abundances assigned to each individual id. Calculates fold changes relative to the median of 01-Ctrl AS3, Week 1 measurement for each metabolite.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame (pivoted from wide to long) with the following columns:
+1. `:Sample`: Sample id that include, among other things, time point and patient.
+2. `:Time`: Time point of measurement in weeks.
+3. `:Metabolite`: Metabolite id of measurement
+4. `:FoldChange`: Fold change over the median control measurement at week 1 for that metabolite.
+"""
 function load_relative_quant()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
     wide_df = CSV.read(relative_filename, DataFrame)
@@ -76,6 +110,23 @@ function load_relative_quant()
     return fold_changes_df
 end
 
+"""
+    qc(fold_changes_df, patient_count = 6)
+
+A quality check function. Given the `fold_changes_df` returned by [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant) ensures a consistent count of observations for each time, metabolite, additive combinations by coubnting the number of patients for each.
+
+# Arguments
+1. `fold_chnages_df`: `fold_changes_df` returned by [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant)
+2. `patient_count = 6`: Number of patients that should be represented at each time, metabolite, additive
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns two DataFrames:
+
+1. The first DataFrame contains each time, additive, metabolite that does NOT have the number of patients specified by `patient_count`.
+2. The second DataFrame contains the count of fold changes that are approximately 0.0 for each time, additive, metabolite.
+"""
 function qc(fold_changes_df, patient_count = 6)
     qc_fold_change_counts_df = @chain fold_changes_df begin
         @groupby(:Time, :Additive, :Metabolite)
@@ -92,6 +143,35 @@ function qc(fold_changes_df, patient_count = 6)
     return qc_fold_change_counts_df, qc_fold_change_zeros_df
 end
 
+"""
+    combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+
+This is where the magic of this module truly happens. Here, the relative quant and absolute quant data are combined to approximate aboslute quantification to put into models.
+
+# Arguments
+1. `fold_changes_df`: The relative quant data from [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant)
+2. `absolute_quant_medians_df`: The absolute quant data from [`load_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_absolute_quant)
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns a long and wide format of this dataframe.
+
+The long DataFrame contains the following columns and sorted by `:Additive`, `:Time`, and `:Metabolite`:
+1. `:Sample`: Sample id
+2. `:Time`: Measurement time (in weeks)
+3. `:Additive`: Additive
+4. `:Metabolite`: Metabolite
+5. `:FoldChange`: Original fold change from the relative quant data
+6. `:median_prop_mM`: The median approximate mM of that metabolite from the absolute quant data
+7. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+
+The wide DataFrame contains the following columns and is sorted by `:Additive` and `:Time`:
+1. `:Sample`: Sample id of that row
+2. `:Time`: Time in weeks of that observation
+3. `:Additive`: Additive
+4. A subsequent column for each metabolite
+"""
 function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
@@ -106,6 +186,22 @@ function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_med
     return long_df, wide_df
 end
 
+"""
+    prepare_long_df_for_clustering(long_df, additive)
+
+Prepare the long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) for timeseries analysis by c-means clustering. The original long DataFrame is filtered down to a single additive. If a measurement is duplicated, the first conflicting measurement will be used and zero values are excluded. The result is a wide DataFrame of timeseries, with a column for each timepoint, that can be used for clustering.
+
+# Arguments
+1. `long_df`: The long DataFrame to pivot.
+2. `additive`: The additive to make time series for.
+
+# Returns
+`DataFrame`
+
+Returns a wide DataFrame with the following columns
+1. `:Metabolite`: The metabolite for which the row is a time series.
+2. Subsequent columns: A column for each timepoint measured for that metabolite.
+"""
 function prepare_long_df_for_clustering(long_df, additive)
     long_df_2 = deepcopy(long_df)
     wide_timeseries_df = @chain long_df_2 begin
@@ -117,6 +213,23 @@ function prepare_long_df_for_clustering(long_df, additive)
     return wide_timeseries_df
 end
 
+"""
+    calc_fuzzy_objective(result, X, μ)
+
+This function is used to make elbow plots to determine the optimal number of clusters for the clustering results. It is a reproduction of the objective function of c-means clustering.
+
+[This is the objective function](https://juliastats.org/Clustering.jl/stable/fuzzycmeans.html#fuzzy_cmeans_def) calculated here.
+
+# Arguments
+1. `result`: C-means clustering resuly with centers and weights to evaluate.
+2. `X`: The matrix of features that were clustered.
+3. `μ`: The fuzziness factor that was used for clustering
+
+# Returns
+`Float64`
+
+Returns the value of the c-means objective.
+"""
 function calc_fuzzy_objective(result, X, μ)
     c = result.centers
     W = result.weights
@@ -129,6 +242,30 @@ function calc_fuzzy_objective(result, X, μ)
     return total
 end
 
+"""
+    c_means_metabolite_trajectories(wide_timeseries_df; additive = "01-Ctrl AS3", n_clusters = 5, μ = 5.0)
+
+Calculates the c-means clusters of the metabolite time series in the given wide DataFrame. Cleans the DataFrame before clustering to remove problematic values, such as constant features, NaNs and Infs. Sensible clustering conditions are enforced with `@assert`. Prints diagnostic logging messages durinng operation. Uses CityBlock distances because proved to create more robust results.
+
+# Arguments
+1. `wide_timeseries_df`: DataFrame created by [`prepare_long_df_for_clustering`](@ref BloodStorageInSilico.AbsoluteQuant.prepare_long_df_for_clustering) for timeseries analysis.
+2. `additive`: Additive to use when setting the `:Additive` column of the final output. NOTE: This does not affect `wide_timeseries_df`, which assumed to be filtered before being passed to this function. Rather, this argument just affects the OUTPUT DataFrame so it can be combined with other clustering runs later. Defaults to "01-Ctrl AS3".
+3. `n_clusters`: The number of clusters to split the metabolites into. Defaults to 5
+4. `μ`: The fuzziness factor for the clustering. Defaults to 5.0
+
+# Returns
+`Tuple{DataFrame,Float64,Matrix}`
+
+First, returns a DataFrame with the clustering results that has the following columns:
+1. `:Metabolite`: The metabolite
+2. `:Additive`: The additive the source data is from
+3. `:NClusters`: The number of clusters the data was split into for this run
+4. Other columns: A column with the membership weight in each cluster for that metabolite.
+
+Second, returns the fuzzy objective value for making an elbow plot as calculated by [`calc_fuzzy_objective`](@ref BloodStorageInSilico.AbsoluteQuant.calc_fuzzy_objective).
+
+Third, returns the Matrix used for the clustering.
+"""
 function c_means_metabolite_trajectories(
     wide_timeseries_df;
     additive = "01-Ctrl AS3",
@@ -166,6 +303,25 @@ function c_means_metabolite_trajectories(
     return memberships_df, fuzzy_objective, X
 end
 
+"""
+    cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
+
+To make a complete clustering analysis of this dataset, clustering must be performed for each additive, different numbers of clusters must be attempted, and the results need to be aggregated to make figures. This function iterates through all additives and numbers of clusters to aggregate all of these runs into one place for further analysis.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+2. `max_clusters = 10`: Defaults to 10. For example, if left at 10, clustering into 2, 3, 4, 5, 6, 7, 8, 9, and 10 clusters will be attempted for selection of the optimal number of clusters.
+
+# Returns
+`Tuple{Vector{DataFrame},DataFrame}`
+
+The first element of the tuple is a Vector of DataFrames. The contents are the membership weights DataFrames resulting from calling [`c_means_metabolite_trajectories`](@ref BloodStorageInSilico.AbsoluteQuant.c_means_metabolite_trajectories) and taking the first DataFrame of the resulting Tuple.
+
+The second element of the Tuple is a DataFrame that is the minimized objective value for each number of clusters. The columns of this DataFrame are:
+1. `:additive`: The additive
+2. `:n_clusters`: The number of clusters the data were split into.
+3. `:fuzzy_objective`: The minimized objective value for that number of clusters, suitable for making an elbow plot.
+"""
 function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
     additives = unique(long_df.Additive)
     all_memberships_dfs::Dict{Int64,DataFrame} = Dict()
@@ -199,8 +355,17 @@ function cluster_all_additives_all_n_clusters(long_df; max_clusters = 10)
     return all_memberships_dfs, fuzzy_objectives_df
 end
 
+"""
+    plot_elbows(fuzzy_objectives_df)
+
+Creates and saves the elbow plots for each additive to determine the optimal number of clusters based on fuzzy objective values created by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters).
+    
+The final output is saved to `output/relative_absolute_c_means/elbows.png`
+
+# Arguments
+1. `fuzzy_objectives_df`: DataFrame of objective values
+"""
 function plot_elbows(fuzzy_objectives_df)
-    fig_filename = joinpath("output", "relative_absolute_c_means", "elbows.png")
     xticks = unique(fuzzy_objectives_df.n_clusters)
     plt =
         data(fuzzy_objectives_df) *
@@ -219,6 +384,22 @@ function plot_elbows(fuzzy_objectives_df)
     println("Wrote $fig_filename")
 end
 
+"""
+    plot_c_means_for_additive_and_n_clusters(long_df, all_memberships_dfs, additive, n_clusters)
+
+Clusters metabolite timeline trajectories in the given additive into the given number of clusters, standardizes the concentrations, saves a plot to the `output/relative_absolute_c_means` folder, and returns the memberships DataFrame that made the plot. The requested number of clusters and additive must be in the data passed.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
+3. `additive`: Additive for the clustering and plotting.
+4. `n_clusters`: Number of clusters to plot the trajectories into.
+
+# Returns
+`DataFrame`
+
+Returns the cluster membership DataFrame that was plotted. This is useful for manual inspection if needed.
+"""
 function plot_c_means_for_additive_and_n_clusters(
     long_df,
     all_memberships_dfs,
@@ -308,6 +489,21 @@ function plot_c_means_for_additive_and_n_clusters(
     return membership_df
 end
 
+"""
+    plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
+
+Iterates through all additives and calls [`plot_c_means_for_additive_and_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.plot_c_means_for_additive_and_n_clusters) to make a plot for each additive with the given number of clusters.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
+3. `n_clusters`: Number of clusters to plot the trajectories into.
+
+# Returns
+`DataFrame`
+
+Consolidated DataFrame of all primary cluster assignments for all metabolites in all additives.
+"""
 function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     additives = unique(long_df.Additive)
     primary_cluster_dfs = []
@@ -324,6 +520,14 @@ function plot_c_means_all_additives(long_df, all_memberships_dfs, n_clusters)
     return primary_cluster_df
 end
 
+"""
+    plot_all_mM_timeseries(long_df)
+
+Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant). The source of the data that will be plotted.
+"""
 function plot_all_mM_timeseries(long_df)
     agg_df = @chain long_df begin
         @groupby(:Additive, :Metabolite, :Time)
@@ -372,10 +576,39 @@ function plot_all_mM_timeseries(long_df)
     end
 end
 
+"""
+    pca_timeseries(long_df, additive)
+
+Performs a PCA of the metabolite timeseries. Each metabolite is a feature, each timepoint is an observation. This function does basic data integrity checks to ensure the PCA runs.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive for which to perform the PCA.
+
+# Returns
+`NamedTuple`
+
+The following fields are available in the NamedTuple:
+
+1. `model`: The PCA model returned by the PCA function that contains a lot of interesting information about the PCA.
+2. `scores`: The PCA scores.
+3. `patient_time_labels`: Labels that can be applied to the result of the PCA scores to recover the PCA-transformed features for each patient at each time point.
+4. `kept_columns`: The columns that were RETAINED in the PCA.
+5. `wide_df`: The pivoted DataFrame used to construct the feature Matrix for the PCA.
+"""
 function pca_timeseries(long_df, additive)
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
-        @rtransform(:Patient = :Sample[7:8])
+        @rtransform(:Patient = split(:Sample, "_")[3][1:2])
         @select(:Metabolite, :Patient, :Time, :absolute_mM)
         @groupby(:Patient, :Time, :Metabolite)
         @combine(:mean_mM = mean(skipmissing(:absolute_mM)))
@@ -433,6 +666,23 @@ function pca_timeseries(long_df, additive)
     )
 end
 
+"""
+    plot_pca_all_additives(long_df)
+
+Iterates through all additives and make PCA plots for each one. Saves plots to `output/pca_plots`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+"""
 function plot_pca_all_additives(long_df)
     additives = sort(unique(long_df.Additive))
     loadings_dfs = ThreadsX.map(additives) do additive
@@ -446,6 +696,34 @@ function plot_pca_all_additives(long_df)
     return vcat(loadings_dfs...)
 end
 
+"""
+    extract_pca_loadings(pca_result, additive)
+
+Extracts the loadings of the metabolite features on each of the PCs. 
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `additive`: The additive of that the PCA results are from. NOTE: This parameter does not affect the PCA results; rather, it controls the column of the DataFrame returned by this function.
+
+# Returns
+`DataFrame`
+
+Returns a DatFrame, ordered by the column `:pc1_loadings`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_names`: Names of the metabolites.
+3. `pc1_loadings`: Loadings on the first PC.
+3. `pc2_loadings`: Loadings on the second PC.
+"""
 function extract_pca_loadings(pca_result, additive)
     M = pca_result.model
     L = loadings(M)
@@ -463,6 +741,33 @@ function extract_pca_loadings(pca_result, additive)
     return @orderby(result, :pc1_loadings)
 end
 
+"""
+    plot_pca_panels(pca_result, super_title)
+
+Assemble full PCA analysis plot with the following panels:
+
+1. [`plot_pca_loadings`](@ref BloodStorageInSilico.AbsoluteQuant.plot_pca_loadings): Loadings
+2. [`plot_pca_scores`](@ref BloodStorageInSilico.AbsoluteQuant.plot_pca_scores): Scores
+3. [`plot_pca_scree`](@ref BloodStorageInSilico.AbsoluteQuant.plot_pca_scree): Scree
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments:
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `super_title`: A string with a title to put over all the panels.
+
+# Returns
+`Figure`
+
+Returns a Makie figure that can be saved or displayed.
+"""
 function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
@@ -472,6 +777,29 @@ function plot_pca_panels(pca_result, super_title)
     return fig
 end
 
+"""
+    plot_pca_loadings(pca_result, fig)
+
+Plots a panel of PCA loadings onto a provided Makie `Figure`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `fig`: Make figure upon which the panel should be plotted.
+
+# Returns
+`Figure`
+
+Returns the Makie figure that was plotted on.
+"""
 function plot_pca_loadings(pca_result, fig)
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
@@ -490,6 +818,29 @@ function plot_pca_loadings(pca_result, fig)
     return fig
 end
 
+"""
+    plot_pca_scores(pca_result, fig)
+
+Plots a panel of PCA scores onto a provided Makie `Figure`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `fig`: Make figure upon which the panel should be plotted.
+
+# Returns
+`Figure`
+
+Returns the Makie figure that was plotted on.
+"""
 function plot_pca_scores(pca_result, fig)
     M = pca_result.model
     scores = pca_result.scores
@@ -539,6 +890,29 @@ function plot_pca_scores(pca_result, fig)
     axislegend(ax_scatter; position = :rb)
 end
 
+"""
+    plot_pca_scree(pca_result, fig)
+
+Plots a panel of PCA scree plot onto a provided Makie `Figure`.
+
+NOTE: I found that performing PCA on the raw relative intensities works rather than absolute quant approximations works better so I don't use this function currently. Instead, please see the following functions for the PCA that is used for the RawRelativeIntensities:
+
+1. [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+2. [`plot_pca_panels`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_panels)
+3. [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores)
+4. [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree)
+5. [`gather_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.gather_pca_scores)
+6. [`display_pca_scores_3d`](@ref BloodStorageInSilico.RawRelativeIntensities.display_pca_scores_3d)
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_timeseries`](@ref BloodStorageInSilico.AbsoluteQuant.pca_timeseries).
+2. `fig`: Make figure upon which the panel should be plotted.
+
+# Returns
+`Figure`
+
+Returns the Makie figure that was plotted on.
+"""
 function plot_pca_scree(pca_result, fig)
     M = pca_result.model
     var_explained = principalvars(M) ./ tvar(M)
@@ -570,6 +944,22 @@ function plot_pca_scree(pca_result, fig)
     )
 end
 
+"""
+    additive_metabolite_time_points(long_df, additive, metabolite, tf)
+
+Used by [`regress_concentration_vs_time`](@ref BloodStorageInSilico.AbsoluteQuant.regress_concentration_vs_time) to get a time course for a particular metabolite in a specified additive.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive to select.
+3. `metabolite`: Metabolite id to select
+4. `tf`: Final time point (2, 3, 4, 5, 6) to select
+
+# Returns
+`DataFrame`
+
+Each time point with the approximated mM concentration, ordered by time.
+"""
 function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     result_df = @chain long_df begin
         @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
@@ -579,6 +969,27 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
     return result_df
 end
 
+"""
+    regress_concentration_vs_time(long_df)
+
+Regresses the concentration vs time to find the rate of metabolite concentration change (95% confidence interval upper and lower bounds) for all the metabolites and additives in `long_df`. Uses ThreadsX to split this task into multiple threads if multiple threads are available.
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the concentration rate regression results. The DataFrame is sorted by additive, metabolite, and final_time. The following columns are available:
+
+1. `:additive`: The additive the data for the regression is from.
+2. `:metabolite`: Metabolite id of the row.
+3. `:final_time`: Final time point of the regression. The timespan of the regression is final_time - 1 to final_time.
+4. `:intercept`: Intercept of the regression
+5. `:rate`: Slope of the regression.
+6. `:lb`: Lower bound of the 95% confidence interval of the slope.
+7. `:ub`: Upper bound of the 95% confidence interval of the slope.
+"""
 function regress_concentration_vs_time(long_df)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
@@ -614,6 +1025,14 @@ function regress_concentration_vs_time(long_df)
     return result_df
 end
 
+"""
+    plot_all_regressions(long_df)
+
+Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression) for all metabolites in all additives to plot regression results. Saves plots to `output/regression_plots`
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+"""
 function plot_all_regressions(long_df)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
@@ -626,6 +1045,19 @@ function plot_all_regressions(long_df)
     end
 end
 
+"""
+    plot_regression(long_df, additive, metabolite)
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive
+3. `metabolite`: Metabolite id
+
+# Returns
+`Figure`
+
+Returns a Makie figure that can be displayed or saved.
+"""
 function plot_regression(long_df, additive, metabolite)
     super_title = "$additive $metabolite"
     fig = Figure(; size = (360, 720))
@@ -635,14 +1067,32 @@ function plot_regression(long_df, additive, metabolite)
     for (final_time, fig_ref) in final_times_to_figure_map
         plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
         if final_time < 6
-            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, false)
+            plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, false)
         else
-            plot_conc_vs_time_from_plot_data(plot_data, fig_ref, true)
+            plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, true)
         end
     end
     return fig
 end
 
+"""
+    scatter_plot_df(long_df, additive, metabolite, final_time)
+
+Returns data for the scatter layers for [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression).
+
+# Arguments
+1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+2. `additive`: Additive
+3. `metabolite`: Metabolite id
+
+# Returns
+`NamedTuple`
+
+NamedTuple with the following fields:
+
+1. `scatter_df`: The DataFrame for the scatter points
+2. `ylims`: The y limits for the scatter plot.
+"""
 function scatter_plot_df(long_df, additive, metabolite, final_time)
     scatter_df = @chain long_df begin
         @rsubset(
@@ -661,7 +1111,22 @@ function scatter_plot_df(long_df, additive, metabolite, final_time)
     return (scatter_df = scatter_df, ylims = ylims)
 end
 
-function plot_conc_vs_time_from_plot_data(plot_data, fig_ref, time_label)
+"""
+    plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, time_label)
+
+Used by [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression). Draw the scatter and line layers onto a regression plot using the given data onto the specified section of the figure, optionally with time axis label. This function mutates the `Axis` object, so its return value isn't necessary.
+
+# Arguments
+1. `plot_data`: DataFrame with `:Time` and `:absolute_mM` columns to draw onto the plot
+2. `fig_ref`: A Vector with the indices of the section of the figure to draw the plot onto (see calling function). Such as [1, 1], [2, 1], etc.
+3. `time_label`: `true` will write the time axis label. `false` will suppress the time axis label.
+
+# Returns
+`GridLayout`
+
+The `GridLayout` object upon which the drawing was made.
+"""
+function plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, time_label)
     ax =
         time_label ? Axis(fig_ref, ylabel = "mM", xlabel = "Time (week)") :
         Axis(fig_ref, ylabel = "mM")
