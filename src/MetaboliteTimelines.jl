@@ -127,6 +127,26 @@ function plot_aggregations_for_all_metabolites(df)
     end
 end
 
+"""
+    normalized_abundance_correlations(df)
+
+Calculates the correlations and adjusted p-values of correlations of abundances for metabolites. FDR threshold 0.05.
+
+# Arguments
+1. `df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite). Uses ThreadsX to compute on multiple threads.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+
+1. `:m1`: The first metabolite name
+2. `:m2`: The second metabolite name
+3. `:rho`: Spearman correlation coefficient
+4. `:p_value`: Unadjusted p-value
+5. `:adj_p_value`: Benjamini-Hochberg adjusted p-value.
+6. `:signifcant`: `true` if the FDR is significant
+"""
 function normalized_abundance_correlations(df)
     println("Calculating MedianNormalizedIntensity correlations")
     metabolites = unique(df.Metabolite)
