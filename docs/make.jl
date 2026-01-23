@@ -15,9 +15,12 @@ makedocs(
         BloodStorageInSilico.UfbaSamplerViz,
         BloodStorageInSilico.MetaboliteTimelines,
     ],
+    format = Documenter.HTML(
+        prettyurls = false,
+    ),
     pages = [
         "Home" => "index.md",
         "uFBA Workflow" => "ufba_workflow.md",
         "Other Modules" => "other.md",
-    ]
+    ],
 )
