@@ -21,3 +21,21 @@ input
 ├── RBC-GEM.xml
 └── Subsystem Category Map.csv
 ```
+
+### Create the `output/` Folders
+
+There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
+
+```
+output
+├── c_means_plots
+├── kinetic_model
+├── masspy_interface
+├── pca_plot_dfs
+├── pca_plots
+├── plots
+├── regression_plots
+├── relative_absolute_c_means
+├── relative_absolute_plots
+├── uFBA_histograms
+```
