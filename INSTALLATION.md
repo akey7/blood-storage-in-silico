@@ -22,6 +22,16 @@ input
 └── Subsystem Category Map.csv
 ```
 
+Incidentally, here are purposes of select input files:
+
+1. `Data Sheet 1.CSV` which is the metabolomics data being analyzed.
+
+2. `RBC-GEM.*` is the GEM onto which the metabolomics data above are mapped.
+
+3. `Proportination Sheet 2.csv` maps columns from the metabolomics data, splits apart columns that contain multiple RBC-GEM metabolites, and proportionates the intensity values among multiple metabolites (if needed), and maps RBC-GEM identifiers to names in the metabolomics data.
+
+4. `Subsystem Category Map.csv`, maps GEM subsystems into categories for better data visualization. This is the first two columns of [`subsystems.tsv` v1.3.0 of the RBC-GEM](https://github.com/z-haiman/RBC-GEM/blob/1.3.0/data/curation/subsystems.tsv)
+
 ### Create the `output/` Folders
 
 There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
