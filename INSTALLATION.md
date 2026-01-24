@@ -39,3 +39,59 @@ output
 ├── relative_absolute_plots
 ├── uFBA_histograms
 ```
+
+### Install Dependencies
+
+To install and precompile the Julia dependencies, open a command line in the root of the repo and type the following commands:
+
+```
+bash-3.2$ julia --project=.
+               _
+   _       _ _(_)_     |  Documentation: https://docs.julialang.org
+  (_)     | (_) (_)    |
+   _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
+  | | | | | | |/ _` |  |
+  | | |_| | | | (_| |  |  Version 1.12.4 (2026-01-06)
+ _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
+|__/                   |
+
+julia> ]
+(BloodStorageInSilico) pkg> instantiate
+```
+
+This will instantiate the environment and download the dependencies. After the packages are installed, type backspace and `exit()`.
+
+Further documentation on executing the scripts are found elsewhere in the documentation.
+
+### Build the Documentation
+
+The docstrings are rendered into serachable html pages with a subproject using [Documenter.jl](https://documenter.juliadocs.org/stable/)
+
+```
+bash-3.2$ julia --project=docs/
+               _
+   _       _ _(_)_     |  Documentation: https://docs.julialang.org
+  (_)     | (_) (_)    |
+   _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
+  | | | | | | |/ _` |  |
+  | | |_| | | | (_| |  |  Version 1.12.4 (2026-01-06)
+ _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
+|__/                   |
+
+(BloodStorageInSilico/docs) pkg> instantiate
+```
+
+After this step is complete build the docs with the following commands from the root of the repo:
+
+```
+cd docs/
+julia --project=. make.jl
+```
+
+When complete, you can open the doucmentation from the following html file relative to the root of the repo:
+
+```
+docs/build/index.html
+```
+
+Which will present you with nicely formatted docstrings for the functions in the modules.
