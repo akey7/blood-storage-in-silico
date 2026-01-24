@@ -12,13 +12,17 @@ Either way, customize the `JULIA_NUM_THREADS` environment variable to match your
 
 Before you execute these scripts, the `input/` and `output/` folder must be configured as described in [INSTALLATION.md](INSTALLATION.md).
 
+## Order of Script Execution
+
+The scripts take input and write output files. Some scripts rely on output files previously written by other scripts. The order of script execution presented here maintains the order of reliance of the scripts on each other if such order is important. Such an arrangment of scripts might not be ideal, but it works for now!
+
 ## Executing Scripts
 
 All commands are issued from the root of the repo.
 
-### `plot_metabolite_timelines.jl`: Plot Timelines of Relative Metabolite Intensities
+### (1) `plot_metabolite_timelines.jl`: Plot Timelines of Relative Metabolite Intensities
 
-1. `plot_metabolite_timelines.jl`: Uses `src/MetaboliteTimelines.jl` to generate plots of timerseries of metabolite timelines.
+Uses `src/MetaboliteTimelines.jl` to generate plots of timerseries of metabolite timelines.
 
 on macOS
 
@@ -34,9 +38,23 @@ julia --project=. plot_metabolite_timelines.jl
 
 Output will be saved to `output/normalized_abundance_correlations.csv` and `output/plots`
 
-### `ufba_sampler.jl`: Run uFBA Sampling Jobs
+### (2) `raw_relative_intensities.jl`: 3D PCA Plots of Relative Quant Data
 
-In addition to multithrading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
+Uses `src/RawRelativeIntensities.jl` to make 3D PCA plots reducing relative metabolite abundances down to fewer features.
+
+This script does not use multiple workers or threads, so executing it is easy.
+
+On macOS or Windows:
+
+```
+julia --project=. raw_relative_intensities.jl
+```
+
+This will display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
+
+### (N) `ufba_sampler.jl`: Run uFBA Sampling Jobs
+
+In addition to multithreading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
 
 The command line arguments to the Julia environment and script are the following:
 
@@ -49,7 +67,7 @@ The command line arguments to the Julia environment and script are the following
 On a macOS or Linux machine with 14 cores, an example command to set the number of workers and threads on the same line would be:
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. -p 7 .\ufba_sampler.jl --nchains 10 --nmodels 5
+JULIA_NUM_THREADS=7 julia --project=. -p 7 .\ufba_sampler.jl --nchains 10 --nmodels -1
 ```
 
 On a Windows machine with 64 cores, an example to work with your previously set `JULIA_NUM_THREADS` environment variable would be:
