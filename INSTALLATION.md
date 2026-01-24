@@ -105,3 +105,13 @@ docs/build/index.html
 ```
 
 Which will present you with nicely formatted docstrings for the functions in the modules.
+
+### Note for Windows
+
+The scripts in this project execute on multiple threads to increase performance. By default, only one thread/core is used. To enable Julia to use all cores in the machine, a reasonable value in the JULIA_NUM_THREADS environment variable must be set. On Windows, you can do this at the user account level in the system settings. For example, on a 64-core machine, you can set JULIA_NUM_THREADS to be the following:
+
+```
+JULIA_NUM_THREADS=64
+```
+
+On macOS and Linux, you can set the number of threads on the command line, eliminating the need for this extra configuration step. 
