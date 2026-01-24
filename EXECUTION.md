@@ -52,6 +52,38 @@ julia --project=. raw_relative_intensities.jl
 
 This will display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
 
+### (3) `absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
+
+Uses `src/AbsoluteQuant.jl` to perform the following tasks:
+
+1. Loads data relative and absolute quant data files.
+
+2. Writes quality checks to `output/qc_fold_changes.csv` and `output/qc_fold_change_zeros.csv`.
+
+3. Map and proportinoate (see documentation built in [INSTALLATION.md](INSTALLATION.md)) combined metaboilite names to single metabolite ids from the RBC-GEM. Approximate absolute concentrations for the relative quant data using accompanying absolute quant data. Write result to `output/relative_absolute_quant.csv`.
+
+4. Plots the approximated absolute concentrations over time to plots in the `output/relative_absolute_plots/[cleaned metabolite name].png`
+
+5. Perform c-means clustering on the metabolite trajectories. Create plots of c-means clusters and an accompanying elbow plot for each additive to `output/relative_absolute_c_means/`. Write cluster memberships to `output/c_means_primary_clusters.csv`.
+
+6. Performs PCA analysis on the approximate absolute quant values **NOTE: This functionality is deprecated in preference of the PCA in `raw_relative_intensities.jl` file**
+
+7. Performs the regression to determine the rates of metabolite concentration changes and writes the result to `output/concentration_rates.csv`. Plots regression data and stores the plots in `output/regression_plots/`
+
+This script uses multiple threads to calculate all the regression quickly, so it relies on the `JULIA_NUM_THREADS` variable.
+
+On macOS, executethe following (customize the number of threads to your machine):
+
+```
+JULIA_NUM_THREADS=7 julia --project=. absolute_quant.jl
+```
+
+On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
+
+```
+julia --project=. absolute_quant.jl
+```
+
 ### (N) `ufba_sampler.jl`: Run uFBA Sampling Jobs
 
 In addition to multithreading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
