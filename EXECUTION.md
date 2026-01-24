@@ -12,7 +12,7 @@ Either way, customize the `JULIA_NUM_THREADS` environment variable to match your
 
 Before you execute these scripts, the `input/` and `output/` folder must be configured as described in [INSTALLATION.md](INSTALLATION.md).
 
-## Order of Script Execution
+## uFBA Workflow - Order of Script Execution
 
 The scripts take input and write output files. Some scripts rely on output files previously written by other scripts. The order of script execution presented here maintains the order of reliance of the scripts on each other if such order is important. Such an arrangment of scripts might not be ideal, but it works for now!
 
@@ -84,7 +84,7 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 julia --project=. absolute_quant.jl
 ```
 
-### (N) `ufba_sampler.jl`: Run uFBA Sampling Jobs
+### (4) `ufba_sampler.jl`: Run uFBA Sampling Jobs
 
 In addition to multithreading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
 
@@ -111,3 +111,5 @@ julia --project=. -p 32 .\ufba_sampler.jl --nchains 10 --nmodels -1
 Which would sample all models with 10 chains, run all models, and use 32 concurrent workers.
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
+
+### (5) `ufba_sampler_viz.jl`: Visualize the Results of the uFBA Runs
