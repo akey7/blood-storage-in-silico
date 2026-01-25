@@ -8,7 +8,7 @@ This project studies refrigerated blood storage with unsteady flux balance analy
 
 2. [Explanations of an execution instructions](EXECUTION.md) for the scripts.
 
-3. [Works cited that are important to shi project](WORKS_CITED.md)
+3. [Works cited that are important to this project](WORKS_CITED.md)
 
 ## Folder Structure
 
