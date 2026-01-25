@@ -1,6 +1,14 @@
 # blood-storage-in-silico
 Code and data to analyze in silico models of blood storage.
 
+## Documentation
+
+1. [Installation instructions](INSTALLATION.md), covering installing dependencies and formatting docstrings.
+
+2. [Explanations of an execution instructions](EXECUTION.md) for the scripts.
+
+3. [Works cited that are important to shi project](WORKS_CITED.md)
+
 ## Folder Structure
 
 Relative to the root of the repo, the top level folders and groups of files are listed below along with breif explanations of their purpose.
@@ -18,9 +26,3 @@ Relative to the root of the repo, the top level folders and groups of files are 
 6. `*.md`: Documentation files.
 
 7. `Project.toml`: Julia project file that tracks dependencies.
-
-## Works Cited
-
-> Haiman, Z. B., Key, A., D’Alessandro, A. & Palsson, B. O. RBC-GEM: A genome-scale metabolic model for systems biology of the human red blood cell. PLoS Comput Biol 21, e1012109 (2025).
-
-> Nemkov, T., Yoshida, T., Nikulina, M. & D’Alessandro, A. High-Throughput Metabolomics Platform for the Rapid Data-Driven Development of Novel Additive Solutions for Blood Storage. Front. Physiol. 13, 833242 (2022).
