@@ -19,6 +19,21 @@ using Makie
 export load_and_clean,
     plot_aggregations_for_all_metabolites, normalized_abundance_correlations
 
+"""
+    load_and_clean()
+
+Loads, cleans, and preprocesses relative quant metabolomics data from `input/Data Sheet 1.CSV`. This prepares the data to be used by other functions in this module.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, pivoted long, with the following columns:
+1. `:Sample`: The sample id
+2. `:Time`: Time of the measurement in weeks.
+3. `:Additive`: The additive the measurement was taken in.
+4. `:Metabolite`: The name of metabolite (from the original sheet). Note that this is different from other modules that translates and proportionates the metabolite names into RBC-GEM identifiers.
+5. `:MedianNormalizedIntensity`: The intensity of the metabolite normalized by the median value for that metabolite at that time point.
+"""
 function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
     df1 = CSV.read(filename, DataFrame)
@@ -55,6 +70,20 @@ function aggregate_metabolite_additive(everything_df, metabolite, additive)
     return aggregated_df
 end
 
+"""
+    plot_aggregations_for_metabolite(everything_df, metabolite)
+
+Plot the mean `:MedianNormalizedIntensity` for the given metabolite.
+
+# Arguments
+1. `everything_df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite)
+2. `metabolite`: Name of the metabolite to plot.
+
+# Returns
+`Figure`
+
+Returns a Makie figure that can be displayed or saved.
+"""
 function plot_aggregations_for_metabolite(everything_df, metabolite)
     metabolite_df = subset(everything_df, :Metabolite => x -> x .== metabolite)
     aggregated_df = @combine(
@@ -79,6 +108,14 @@ function plot_aggregations_for_metabolite(everything_df, metabolite)
     return fig
 end
 
+"""
+    plot_aggregations_for_all_metabolites(df)
+
+Plots aggregations for all metabolites with [`plot_aggregations_for_metabolite`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite). Saves each file to `output/plots`, with the metabolite name "cleaned" to make a well-behaved filename.
+
+# Arguments
+1. `df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite).
+"""
 function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
     for metabolite in metabolites
@@ -90,6 +127,26 @@ function plot_aggregations_for_all_metabolites(df)
     end
 end
 
+"""
+    normalized_abundance_correlations(df)
+
+Calculates the correlations and adjusted p-values of correlations of abundances for metabolites. FDR threshold 0.05.
+
+# Arguments
+1. `df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite). Uses ThreadsX to compute on multiple threads.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+
+1. `:m1`: The first metabolite name
+2. `:m2`: The second metabolite name
+3. `:rho`: Spearman correlation coefficient
+4. `:p_value`: Unadjusted p-value
+5. `:adj_p_value`: Benjamini-Hochberg adjusted p-value.
+6. `:signifcant`: `true` if the FDR is significant
+"""
 function normalized_abundance_correlations(df)
     println("Calculating MedianNormalizedIntensity correlations")
     metabolites = unique(df.Metabolite)
