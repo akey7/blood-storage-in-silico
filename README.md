@@ -1,5 +1,6 @@
-# blood-storage-in-silico
-Code and data to analyze in silico models of blood storage.
+# Blood Storage *In Silico*
+
+This project studies refrigerated blood storage with unsteady flux balance analysis (uFBA).
 
 ## Documentation
 
