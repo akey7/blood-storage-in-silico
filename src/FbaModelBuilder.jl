@@ -105,6 +105,18 @@ function create_fba_model(
 
     # println(purine_metabolism_reaction_ids)
 
+    println("> Methionine Salvage")
+
+    met_salvage_reaction_ids = [
+        "R_UNK3"
+    ]
+
+    println("> Citric Acid Cycle")
+
+    citric_reaction_ids = [
+        "R_ACITL"
+    ]
+
     println("> Transporters")
 
     transporter_reactions_ids = [
@@ -159,6 +171,8 @@ function create_fba_model(
             ppp_reaction_ids
             purine_metabolism_reaction_ids
             transporter_reactions_ids
+            met_salvage_reaction_ids
+            citric_reaction_ids
             exchange_reactions_ids
         ]
     else
@@ -167,6 +181,8 @@ function create_fba_model(
             rl_shunt_reaction_ids
             ppp_reaction_ids
             purine_metabolism_reaction_ids
+            met_salvage_reaction_ids
+            citric_reaction_ids
             transporter_reactions_ids
         ]
     end
