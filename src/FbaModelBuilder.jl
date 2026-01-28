@@ -82,7 +82,8 @@ function create_fba_model(
     println("> Pentose phosphate pathway")
 
     ppp_reaction_ids =
-        ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
+        # TODO: Two G6PD reactions here. Investigate more.
+        ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2", "R_G6PDH2r"]
 
     # println(ppp_reaction_ids)
 
@@ -115,7 +116,8 @@ function create_fba_model(
     println("> Citric Acid Cycle")
 
     citric_reaction_ids = [
-        "R_ACITL"
+        "R_ACITL",
+        "R_FUM"
     ]
 
     println("> Arginine and Proline Metabolism")
@@ -139,13 +141,27 @@ function create_fba_model(
     println("> Glutathione Metabolism")
 
     glutathione_reaction_ids = [
-        "R_AMPTASECG"
+        "R_AMPTASECG",
+        "R_GGLUCTC"
     ]
 
     println("> Urea cycle/amino group metabolism")
 
     urea_reaction_ids = [
         "R_ARGN"
+    ]
+
+    println("> Glycine, Serine, and Threonine Metabolism")
+
+    glycine_serine_threonine_reaction_ids = [
+        "R_GHMT2"
+    ]
+
+    println("> Folate Metabolism")
+
+    folate_reaction_ids = [
+        "R_5FTHFL",
+        "R_FTHFL",
     ]
 
     println("> Transporters")
@@ -172,7 +188,8 @@ function create_fba_model(
         "R_CGMPtec",
         "R_CITt",
         "R_CYStec",
-        "R_FRUt1r"
+        "R_FRUt1r",
+        "R_FUMtr"
     ]
 
     # println(transporter_reactions_ids)
@@ -209,7 +226,6 @@ function create_fba_model(
             rl_shunt_reaction_ids
             ppp_reaction_ids
             purine_metabolism_reaction_ids
-            transporter_reactions_ids
             met_salvage_reaction_ids
             citric_reaction_ids
             arg_pro_reaction_ids
@@ -217,6 +233,9 @@ function create_fba_model(
             glutamate_reaction_ids
             glutathione_reaction_ids
             urea_reaction_ids
+            folate_reaction_ids
+            glycine_serine_threonine_reaction_ids
+            transporter_reactions_ids
             exchange_reactions_ids
         ]
     else
@@ -232,6 +251,8 @@ function create_fba_model(
             glutamate_reaction_ids
             glutathione_reaction_ids
             urea_reaction_ids
+            folate_reaction_ids
+            glycine_serine_threonine_reaction_ids
             transporter_reactions_ids
         ]
     end
