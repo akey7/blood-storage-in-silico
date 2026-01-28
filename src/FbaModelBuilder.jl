@@ -69,7 +69,7 @@ function create_fba_model(
         "R_PGM",
         "R_ENO",
         "R_PYK",
-        "R_LDH_L",
+        "R_LDH_L"
     ]
 
     # println(glycolysis_reaction_ids)
@@ -129,20 +129,28 @@ function create_fba_model(
     println("> Nucleotide Metabolism")
 
     nucleotide_reaction_ids = [
-        "R_ADNCYC"
+        "R_ADNCYC",
+        "R_GMPR",
+        "R_GMPS2",
+        "R_GUACYC"
     ]
 
     println("> Glutamate Metabolism")
 
     glutamate_reaction_ids = [
-        "R_ALATA_L"
+        "R_ALATA_L",
+        "R_GLNS",
+        "R_GLUN"
     ]
 
     println("> Glutathione Metabolism")
 
     glutathione_reaction_ids = [
         "R_AMPTASECG",
-        "R_GGLUCTC"
+        "R_GGLUCTC",
+        "R_GLUCYS",
+        "R_GTHP",
+        "R_GTHS"
     ]
 
     println("> Urea cycle/amino group metabolism")
@@ -162,6 +170,19 @@ function create_fba_model(
     folate_reaction_ids = [
         "R_5FTHFL",
         "R_FTHFL",
+    ]
+
+    println("> Fructose and Mannose Metabolism")
+
+    fructose_mannose_reaction_ids = [
+        "R_HEX4",
+        "R_HEX7"
+    ]
+
+    println("> Other reactions")
+
+    other_reaction_ids = [
+        "R_GUAPRT"
     ]
 
     println("> Transporters")
@@ -189,7 +210,9 @@ function create_fba_model(
         "R_CITt",
         "R_CYStec",
         "R_FRUt1r",
-        "R_FUMtr"
+        "R_FUMtr",
+        "R_GSNt",
+        "R_HCYSte"
     ]
 
     # println(transporter_reactions_ids)
@@ -235,6 +258,8 @@ function create_fba_model(
             urea_reaction_ids
             folate_reaction_ids
             glycine_serine_threonine_reaction_ids
+            fructose_mannose_reaction_ids
+            other_reaction_ids
             transporter_reactions_ids
             exchange_reactions_ids
         ]
@@ -253,6 +278,8 @@ function create_fba_model(
             urea_reaction_ids
             folate_reaction_ids
             glycine_serine_threonine_reaction_ids
+            fructose_mannose_reaction_ids
+            other_reaction_ids
             transporter_reactions_ids
         ]
     end
