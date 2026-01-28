@@ -103,6 +103,9 @@ function create_fba_model(
         "R_ADNK1",
         "R_ADK1",
         "R_PPA",
+        "R_PUNP3",
+        "R_XAO2",
+        "R_XAO"
     ]
 
     # println(purine_metabolism_reaction_ids)
@@ -143,7 +146,8 @@ function create_fba_model(
         "R_NDPK1",
         "R_NDPK2",
         "R_NTDGMP",
-        "R_PDEG"
+        "R_PDEG",
+        "R_UMPK1"
     ]
 
     println("> Glutamate Metabolism")
@@ -168,7 +172,10 @@ function create_fba_model(
 
     urea_reaction_ids = [
         "R_ARGN",
-        "R_ORNDC"
+        "R_ORNDC",
+        "R_SPMS",
+        "R_SPRMS",
+
     ]
 
     println("> Glycine, Serine, and Threonine Metabolism")
@@ -191,7 +198,9 @@ function create_fba_model(
     fructose_mannose_reaction_ids = [
         "R_HEX4",
         "R_HEX7",
-        "R_MAN6PI"
+        "R_MAN6PI",
+        "R_SBTD_D2",
+        "R_SBTRa"
     ]
 
     println("> Pyrimidine Catabolism")
@@ -238,7 +247,15 @@ function create_fba_model(
         "R_HCYSte",
         "R_MALt",
         "R_MANt1r",
-        "R_METtec"
+        "R_METtec",
+        "R_PTRCtex2",
+        "R_SERtec",
+        "R_SPMDtex2",
+        "R_SPRMt2",
+        "R_URATEt",
+        "R_UREAt",
+        "R_URIt",
+        "R_XANt"
     ]
 
     # println(transporter_reactions_ids)
