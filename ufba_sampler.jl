@@ -4,6 +4,9 @@ using YAML
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
+include("src/FbaModelBuilder.jl")
+using .FbaModelBuilder
+
 metabolites_bounds_df = load_metabolite_bounds()
 
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
