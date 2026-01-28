@@ -35,7 +35,7 @@ Order   = [:function]
 FbaModelBuilder has functions for loading the RBC-GEM and creates the models for uFBA analysis.
 
 ```@autodocs
-Modules = [BloodStorageInSilico.FbaModelBuilder]
+Modules = [BloodStorageInSilico.UfbaSampler.FbaModelBuilder]
 Order = [:function]
 ```
 
