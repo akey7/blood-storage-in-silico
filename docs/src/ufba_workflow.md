@@ -30,6 +30,21 @@ Modules = [BloodStorageInSilico.AbsoluteQuant]
 Order   = [:function]
 ```
 
+## FbaModelBuilder
+
+FbaModelBuilder has functions for loading the RBC-GEM and creates the models for uFBA analysis.
+
+```@autodocs
+Modules = [BloodStorageInSilico.FbaModelBuilder]
+Order = [:function]
+```
+
+Many of the reactions in this model are from the following paper:
+
+> Bordbar, A. et al. Identified metabolic signature for assessing red blood cell unit quality is associated with endothelial damage markers and clinical outcomes. Transfusion 56, 852–862 (2016).
+
+Reaction ids have been mapped from that paper, released in 2016, to reaction ids in the RBC-GEM released in 2024.
+
 ## UfbaSampler
 
 UfbaSampler creates a three-pathway model and samples it for an unsteady flux balance analysis (uFBA) study as described by Brodbar et al.

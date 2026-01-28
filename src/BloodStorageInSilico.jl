@@ -14,6 +14,6 @@ export MetaboliteTimelines,
     UfbaSampler,
     UfbaSamplerViz,
     RawRelativeIntensities,
-    FbaModelBuilder,
+    FbaModelBuilder
 
 end
