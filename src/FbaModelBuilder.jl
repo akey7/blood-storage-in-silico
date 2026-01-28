@@ -212,7 +212,8 @@ function create_fba_model(
     println("> Other reactions")
 
     other_reaction_ids = [
-        "R_GUAPRT"
+        "R_GUAPRT",
+        "R_NaKt",
     ]
 
     println("> Transporters")
@@ -400,6 +401,10 @@ function create_fba_model(
     )
 
     println(model.reactions["R_LOAD_NADPH"])
+
+    println("> Setting NaKt load")
+
+    model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     return model
 end
