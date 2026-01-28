@@ -108,13 +108,32 @@ function create_fba_model(
     println("> Methionine Salvage")
 
     met_salvage_reaction_ids = [
-        "R_UNK3"
+        "R_UNK3",
+        "R_AHC",
     ]
 
     println("> Citric Acid Cycle")
 
     citric_reaction_ids = [
         "R_ACITL"
+    ]
+
+    println("> Arginine and Proline Metabolism")
+
+    arg_pro_reaction_ids = [
+        "R_ADMDC"
+    ]
+
+    println("> Nucleotide Metabolism")
+
+    nucleotide_reaction_ids = [
+        "R_ADNCYC"
+    ]
+
+    println("> Glutamate Metabolism")
+
+    glutamate_reaction_ids = [
+        "R_ALATA_L"
     ]
 
     println("> Transporters")
@@ -134,6 +153,7 @@ function create_fba_model(
         "R_PIt",
         "R_Ht",
         "R_H2Ot",
+        "R_AKGtec"
     ]
 
     # println(transporter_reactions_ids)
@@ -173,6 +193,9 @@ function create_fba_model(
             transporter_reactions_ids
             met_salvage_reaction_ids
             citric_reaction_ids
+            arg_pro_reaction_ids
+            nucleotide_reaction_ids
+            glutamate_reaction_ids
             exchange_reactions_ids
         ]
     else
@@ -183,6 +206,9 @@ function create_fba_model(
             purine_metabolism_reaction_ids
             met_salvage_reaction_ids
             citric_reaction_ids
+            arg_pro_reaction_ids
+            nucleotide_reaction_ids
+            glutamate_reaction_ids
             transporter_reactions_ids
         ]
     end
