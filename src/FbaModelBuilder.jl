@@ -69,7 +69,8 @@ function create_fba_model(
         "R_PGM",
         "R_ENO",
         "R_PYK",
-        "R_LDH_L"
+        "R_LDH_L",
+        "R_PEPCK"
     ]
 
     # println(glycolysis_reaction_ids)
@@ -106,24 +107,29 @@ function create_fba_model(
 
     # println(purine_metabolism_reaction_ids)
 
-    println("> Methionine Salvage")
+    println("> Methionine Salvage and Metabolism")
 
     met_salvage_reaction_ids = [
         "R_UNK3",
         "R_AHC",
+        "R_MDRPD",
+        "R_METAT",
+        "R_MTRI"
     ]
 
     println("> Citric Acid Cycle")
 
     citric_reaction_ids = [
         "R_ACITL",
-        "R_FUM"
+        "R_FUM",
+        "R_MDH"
     ]
 
     println("> Arginine and Proline Metabolism")
 
     arg_pro_reaction_ids = [
-        "R_ADMDC"
+        "R_ADMDC",
+        "R_MTAP"
     ]
 
     println("> Nucleotide Metabolism")
@@ -132,7 +138,12 @@ function create_fba_model(
         "R_ADNCYC",
         "R_GMPR",
         "R_GMPS2",
-        "R_GUACYC"
+        "R_GUACYC",
+        "R_IMPD",
+        "R_NDPK1",
+        "R_NDPK2",
+        "R_NTDGMP",
+        "R_PDEG"
     ]
 
     println("> Glutamate Metabolism")
@@ -156,7 +167,8 @@ function create_fba_model(
     println("> Urea cycle/amino group metabolism")
 
     urea_reaction_ids = [
-        "R_ARGN"
+        "R_ARGN",
+        "R_ORNDC"
     ]
 
     println("> Glycine, Serine, and Threonine Metabolism")
@@ -170,13 +182,22 @@ function create_fba_model(
     folate_reaction_ids = [
         "R_5FTHFL",
         "R_FTHFL",
+        "R_MTHFC",
+        "R_MTHFD"
     ]
 
     println("> Fructose and Mannose Metabolism")
 
     fructose_mannose_reaction_ids = [
         "R_HEX4",
-        "R_HEX7"
+        "R_HEX7",
+        "R_MAN6PI"
+    ]
+
+    println("> Pyrimidine Catabolism")
+
+    pyrimdine_reaction_ids = [
+        "R_NTDUMP"
     ]
 
     println("> Other reactions")
@@ -202,6 +223,8 @@ function create_fba_model(
         "R_PIt",
         "R_Ht",
         "R_H2Ot",
+
+        # Expanded transporters
         "R_AKGtec",
         "R_ARGtec",
         "R_CAATPS1",
@@ -212,7 +235,10 @@ function create_fba_model(
         "R_FRUt1r",
         "R_FUMtr",
         "R_GSNt",
-        "R_HCYSte"
+        "R_HCYSte",
+        "R_MALt",
+        "R_MANt1r",
+        "R_METtec"
     ]
 
     # println(transporter_reactions_ids)
@@ -259,6 +285,7 @@ function create_fba_model(
             folate_reaction_ids
             glycine_serine_threonine_reaction_ids
             fructose_mannose_reaction_ids
+            pyrimdine_reaction_ids
             other_reaction_ids
             transporter_reactions_ids
             exchange_reactions_ids
@@ -279,6 +306,7 @@ function create_fba_model(
             folate_reaction_ids
             glycine_serine_threonine_reaction_ids
             fructose_mannose_reaction_ids
+            pyrimdine_reaction_ids
             other_reaction_ids
             transporter_reactions_ids
         ]
