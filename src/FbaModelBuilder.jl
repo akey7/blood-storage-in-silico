@@ -136,6 +136,18 @@ function create_fba_model(
         "R_ALATA_L"
     ]
 
+    println("> Glutathione Metabolism")
+
+    glutathione_reaction_ids = [
+        "R_AMPTASECG"
+    ]
+
+    println("> Urea cycle/amino group metabolism")
+
+    urea_reaction_ids = [
+        "R_ARGN"
+    ]
+
     println("> Transporters")
 
     transporter_reactions_ids = [
@@ -153,7 +165,14 @@ function create_fba_model(
         "R_PIt",
         "R_Ht",
         "R_H2Ot",
-        "R_AKGtec"
+        "R_AKGtec",
+        "R_ARGtec",
+        "R_CAATPS1",
+        "R_CAMPtec",
+        "R_CGMPtec",
+        "R_CITt",
+        "R_CYStec",
+        "R_FRUt1r"
     ]
 
     # println(transporter_reactions_ids)
@@ -196,6 +215,8 @@ function create_fba_model(
             arg_pro_reaction_ids
             nucleotide_reaction_ids
             glutamate_reaction_ids
+            glutathione_reaction_ids
+            urea_reaction_ids
             exchange_reactions_ids
         ]
     else
@@ -209,6 +230,8 @@ function create_fba_model(
             arg_pro_reaction_ids
             nucleotide_reaction_ids
             glutamate_reaction_ids
+            glutathione_reaction_ids
+            urea_reaction_ids
             transporter_reactions_ids
         ]
     end
