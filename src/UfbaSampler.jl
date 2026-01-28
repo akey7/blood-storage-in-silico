@@ -16,7 +16,7 @@ using DataFramesMeta
 using ThreadsX
 using OrderedCollections
 
-export create_3p_model,
+export create_fba_model,
     sample_fluxes,
     ufba_all_additives_all_times,
     load_metabolite_bounds,
@@ -82,7 +82,7 @@ function load_base_rbc_gem()
 end
 
 """
-    create_3p_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; add_exchanges::Bool = true)
+    create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; add_exchanges::Bool = true)
 
 Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
 for the uFBA study.
@@ -97,7 +97,7 @@ for the uFBA study.
 
 Returns the newly constructed three pathway model.
 """
-function create_3p_model(
+function create_fba_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
     add_exchanges::Bool = true,
 )
@@ -885,7 +885,7 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_3p_model(base_rbc_gem; add_exchanges = false)
+        full_model = create_fba_model(base_rbc_gem; add_exchanges = false)
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -907,7 +907,7 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_3p_model(base_rbc_gem; add_exchanges = false)
+        pruned_model = create_fba_model(base_rbc_gem; add_exchanges = false)
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,

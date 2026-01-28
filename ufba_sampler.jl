@@ -26,7 +26,7 @@ n_models = parse_args(s)["nmodels"]
 
 init_workers!()
 
-three_p_model = create_3p_model(load_base_rbc_gem(); add_exchanges = false)
+three_p_model = create_fba_model(load_base_rbc_gem(); add_exchanges = false)
 metabolite_status_df =
     find_metabolite_matches(three_p_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(
