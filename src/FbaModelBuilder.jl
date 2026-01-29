@@ -70,7 +70,7 @@ function create_fba_model(
         "R_ENO",
         "R_PYK",
         "R_LDH_L",
-        "R_PEPCK"
+        "R_PEPCK",
     ]
 
     # println(glycolysis_reaction_ids)
@@ -83,8 +83,18 @@ function create_fba_model(
     println("> Pentose phosphate pathway")
 
     ppp_reaction_ids =
-        # TODO: Two G6PD reactions here. Investigate more.
-        ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2", "R_G6PDH2r"]
+    # TODO: Two G6PD reactions here. Investigate more.
+        [
+            "R_G6PDH2",
+            "R_PGL",
+            "R_GND",
+            "R_RPI",
+            "R_RPE",
+            "R_TKT1",
+            "R_TALA",
+            "R_TKT2",
+            "R_G6PDH2r",
+        ]
 
     # println(ppp_reaction_ids)
 
@@ -105,35 +115,22 @@ function create_fba_model(
         "R_PPA",
         "R_PUNP3",
         "R_XAO2",
-        "R_XAO"
+        "R_XAO",
     ]
 
     # println(purine_metabolism_reaction_ids)
 
     println("> Methionine Salvage and Metabolism")
 
-    met_salvage_reaction_ids = [
-        "R_UNK3",
-        "R_AHC",
-        "R_MDRPD",
-        "R_METAT",
-        "R_MTRI"
-    ]
+    met_salvage_reaction_ids = ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI"]
 
     println("> Citric Acid Cycle")
 
-    citric_reaction_ids = [
-        "R_ACITL",
-        "R_FUM",
-        "R_MDH"
-    ]
+    citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
 
     println("> Arginine and Proline Metabolism")
 
-    arg_pro_reaction_ids = [
-        "R_ADMDC",
-        "R_MTAP"
-    ]
+    arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
 
     println("> Nucleotide Metabolism")
 
@@ -147,26 +144,16 @@ function create_fba_model(
         "R_NDPK2",
         "R_NTDGMP",
         "R_PDEG",
-        "R_UMPK1"
+        "R_UMPK1",
     ]
 
     println("> Glutamate Metabolism")
 
-    glutamate_reaction_ids = [
-        "R_ALATA_L",
-        "R_GLNS",
-        "R_GLUN"
-    ]
+    glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
     println("> Glutathione Metabolism")
 
-    glutathione_reaction_ids = [
-        "R_AMPTASECG",
-        "R_GGLUCTC",
-        "R_GLUCYS",
-        "R_GTHP",
-        "R_GTHS"
-    ]
+    glutathione_reaction_ids = ["R_AMPTASECG", "R_GGLUCTC", "R_GLUCYS", "R_GTHP", "R_GTHS"]
 
     println("> Urea cycle/amino group metabolism")
 
@@ -175,46 +162,27 @@ function create_fba_model(
         "R_ORNDC",
         "R_SPMS",
         "R_SPRMS",
-
     ]
 
     println("> Glycine, Serine, and Threonine Metabolism")
 
-    glycine_serine_threonine_reaction_ids = [
-        "R_GHMT2"
-    ]
+    glycine_serine_threonine_reaction_ids = ["R_GHMT2"]
 
     println("> Folate Metabolism")
 
-    folate_reaction_ids = [
-        "R_5FTHFL",
-        "R_FTHFL",
-        "R_MTHFC",
-        "R_MTHFD"
-    ]
+    folate_reaction_ids = ["R_5FTHFL", "R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
     println("> Fructose and Mannose Metabolism")
 
-    fructose_mannose_reaction_ids = [
-        "R_HEX4",
-        "R_HEX7",
-        "R_MAN6PI",
-        "R_SBTD_D2",
-        "R_SBTRa"
-    ]
+    fructose_mannose_reaction_ids = ["R_HEX4", "R_HEX7", "R_MAN6PI", "R_SBTD_D2", "R_SBTRa"]
 
     println("> Pyrimidine Catabolism")
 
-    pyrimdine_reaction_ids = [
-        "R_NTDUMP"
-    ]
+    pyrimdine_reaction_ids = ["R_NTDUMP"]
 
     println("> Other reactions")
 
-    other_reaction_ids = [
-        "R_GUAPRT",
-        "R_NaKt",
-    ]
+    other_reaction_ids = ["R_GUAPRT", "R_NaKt"]
 
     println("> Transporters")
 
@@ -256,7 +224,7 @@ function create_fba_model(
         "R_URATEt",
         "R_UREAt",
         "R_URIt",
-        "R_XANt"
+        "R_XANt",
     ]
 
     # println(transporter_reactions_ids)
