@@ -93,7 +93,7 @@ function create_fba_model(
             "R_TKT1",
             "R_TALA",
             "R_TKT2",
-            "R_G6PDH2r",
+            # "R_G6PDH2r",
         ]
 
     # println(ppp_reaction_ids)
@@ -106,9 +106,9 @@ function create_fba_model(
         "R_HXPRT",
         "R_ADPT",
         "R_PUNP5",
-        "R_NTD11",
+        "R_NTDIMP",
         "R_AMPDA",
-        "R_NTD7",
+        "R_NTDAMP",
         "R_ADA",
         "R_ADNK1",
         "R_ADK1",
@@ -170,7 +170,7 @@ function create_fba_model(
 
     println("> Folate Metabolism")
 
-    folate_reaction_ids = ["R_5FTHFL", "R_FTHFL", "R_MTHFC", "R_MTHFD"]
+    folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
     println("> Fructose and Mannose Metabolism")
 
