@@ -52,11 +52,15 @@ Call this after `addprocs(...)` (or any time you add more workers).
 """
 function init_workers!(; project::AbstractString = Base.active_project())
     for p in workers()
-        Distributed.remotecall_eval(Main, p, quote
-            import Pkg
-            Pkg.activate($project)
-            using COBREXA, HiGHS, JuMP, MathOptInterface
-        end)
+        Distributed.remotecall_eval(
+            Main,
+            p,
+            quote
+                import Pkg
+                Pkg.activate($project)
+                using COBREXA, HiGHS, JuMP, MathOptInterface
+            end,
+        )
     end
     return nothing
 end

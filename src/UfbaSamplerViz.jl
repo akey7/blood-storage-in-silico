@@ -9,9 +9,7 @@ using DataFramesMeta
 using ProgressMeter
 
 export histograms_for_reaction_in_additive_v1,
-    histograms_for_reaction_v2,
-    plot_all_histograms_v1, 
-    plot_all_histograms_for_reactions
+    histograms_for_reaction_v2, plot_all_histograms_v1, plot_all_histograms_for_reactions
 
 """
     histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
