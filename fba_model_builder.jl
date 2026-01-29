@@ -1,3 +1,5 @@
+using ArgParse
+
 include("src/UfbaSampler.jl")
 using .UfbaSampler
 include("src/FbaModelBuilder.jl")
@@ -15,4 +17,5 @@ n_chains = parse_args(s)["nchains"]
 init_workers!()
 
 base_rbc_gem = load_base_rbc_gem()
-three_p_model = create_fba_model(base_rbc_gem; add_exchanges = false)
+fba_model = create_fba_model(base_rbc_gem; add_exchanges = false)
+result = fba(fba_model; n_chains = n_chains)
