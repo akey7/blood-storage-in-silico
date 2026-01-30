@@ -155,7 +155,8 @@ function create_fba_model(
 
     println("> Glutathione Metabolism")
 
-    glutathione_reaction_ids = ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
+    glutathione_reaction_ids =
+        ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]
 
     println("> Urea cycle/amino group metabolism")
 
