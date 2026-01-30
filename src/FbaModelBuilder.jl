@@ -122,7 +122,8 @@ function create_fba_model(
 
     println("> Methionine Salvage and Metabolism")
 
-    met_salvage_reaction_ids = ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI"]
+    met_salvage_reaction_ids =
+        ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
     println("> Citric Acid Cycle")
 
@@ -145,6 +146,7 @@ function create_fba_model(
         "R_NTDGMP",
         "R_PDEG",
         "R_UMPK1",
+        "R_GK1",
     ]
 
     println("> Glutamate Metabolism")
@@ -153,16 +155,11 @@ function create_fba_model(
 
     println("> Glutathione Metabolism")
 
-    glutathione_reaction_ids = ["R_AMPTASECG", "R_GGLUCTC", "R_GLUCYS", "R_GTHP", "R_GTHS"]
+    glutathione_reaction_ids = ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
 
     println("> Urea cycle/amino group metabolism")
 
-    urea_reaction_ids = [
-        "R_ARGN",
-        "R_ORNDC",
-        "R_SPMS",
-        "R_SPRMS",
-    ]
+    urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
 
     println("> Glycine, Serine, and Threonine Metabolism")
 
@@ -209,7 +206,6 @@ function create_fba_model(
         "R_CAMPtec",
         "R_CGMPtec",
         "R_CITt",
-        "R_CYStec",
         "R_FRUt1r",
         "R_FUMtr",
         "R_GSNt",
@@ -218,13 +214,14 @@ function create_fba_model(
         "R_MANt1r",
         "R_METtec",
         "R_PTRCtex2",
-        "R_SERtec",
         "R_SPMDtex2",
         "R_SPRMt2",
         "R_URATEt",
         "R_UREAt",
         "R_URIt",
         "R_XANt",
+        "R_GTHOXABCte",
+        "R_GLY_Cl_2Nat",
     ]
 
     # println(transporter_reactions_ids)
