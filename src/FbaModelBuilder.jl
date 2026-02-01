@@ -181,29 +181,29 @@ function create_fba_model(
         "R_Ht",
         "R_H2Ot",
 
-        # Expanded transporters
-        "R_AKGtec",
-        "R_ARGtec",
-        "R_CAATPS1",
-        "R_CAMPtec",
-        "R_CGMPtec",
-        "R_CITt",
-        "R_FRUt1r",
-        "R_FUMtr",
-        "R_GSNt",
-        "R_HCYSte",
-        "R_MALt",
-        "R_MANt1r",
-        "R_METtec",
-        "R_PTRCtex2",
-        "R_SPMDtex2",
-        "R_SPRMt2",
-        "R_URATEt",
-        "R_UREAt",
-        "R_URIt",
-        "R_XANt",
-        "R_GTHOXABCte",
-        "R_GLY_Cl_2Nat",
+        # # Expanded transporters
+        # "R_AKGtec",
+        # "R_ARGtec",
+        # "R_CAATPS1",
+        # "R_CAMPtec",
+        # "R_CGMPtec",
+        # "R_CITt",
+        # "R_FRUt1r",
+        # "R_FUMtr",
+        # "R_GSNt",
+        # "R_HCYSte",
+        # "R_MALt",
+        # "R_MANt1r",
+        # "R_METtec",
+        # "R_PTRCtex2",
+        # "R_SPMDtex2",
+        # "R_SPRMt2",
+        # "R_URATEt",
+        # "R_UREAt",
+        # "R_URIt",
+        # "R_XANt",
+        # "R_GTHOXABCte",
+        # "R_GLY_Cl_2Nat",
     ]
 
     # println(transporter_reactions_ids)
@@ -241,17 +241,17 @@ function create_fba_model(
             ppp_reaction_ids
             purine_metabolism_reaction_ids
             met_salvage_reaction_ids
-            citric_reaction_ids
-            arg_pro_reaction_ids
-            nucleotide_reaction_ids
-            glutamate_reaction_ids
-            glutathione_reaction_ids
-            urea_reaction_ids
-            folate_reaction_ids
-            glycine_serine_threonine_reaction_ids
-            fructose_mannose_reaction_ids
-            pyrimdine_reaction_ids
-            other_reaction_ids
+            # citric_reaction_ids
+            # arg_pro_reaction_ids
+            # nucleotide_reaction_ids
+            # glutamate_reaction_ids
+            # glutathione_reaction_ids
+            # urea_reaction_ids
+            # folate_reaction_ids
+            # glycine_serine_threonine_reaction_ids
+            # fructose_mannose_reaction_ids
+            # pyrimdine_reaction_ids
+            # other_reaction_ids
             transporter_reactions_ids
             exchange_reactions_ids
         ]
@@ -262,17 +262,17 @@ function create_fba_model(
             ppp_reaction_ids
             purine_metabolism_reaction_ids
             met_salvage_reaction_ids
-            citric_reaction_ids
-            arg_pro_reaction_ids
-            nucleotide_reaction_ids
-            glutamate_reaction_ids
-            glutathione_reaction_ids
-            urea_reaction_ids
-            folate_reaction_ids
-            glycine_serine_threonine_reaction_ids
-            fructose_mannose_reaction_ids
-            pyrimdine_reaction_ids
-            other_reaction_ids
+            # citric_reaction_ids
+            # arg_pro_reaction_ids
+            # nucleotide_reaction_ids
+            # glutamate_reaction_ids
+            # glutathione_reaction_ids
+            # urea_reaction_ids
+            # folate_reaction_ids
+            # glycine_serine_threonine_reaction_ids
+            # fructose_mannose_reaction_ids
+            # pyrimdine_reaction_ids
+            # other_reaction_ids
             transporter_reactions_ids
         ]
     end
@@ -349,9 +349,9 @@ function create_fba_model(
 
     println(model.reactions["R_LOAD_NADPH"])
 
-    println("> Setting NaKt load")
-    model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])
-    model.reactions["R_NaKt"].objective_coefficient = 1.0
+    # println("> Setting NaKt load")
+    # model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])
+    # model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     return model
 end
