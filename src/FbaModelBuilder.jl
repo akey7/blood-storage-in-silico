@@ -57,7 +57,6 @@ function create_fba_model(
     rbc_gem = isnothing(base_gem) ? load_base_rbc_gem() : deepcopy(base_gem)
 
     println("> Glycolysis")
-
     glycolysis_reaction_ids = [
         "R_HEX1",
         "R_PGI",
@@ -76,14 +75,11 @@ function create_fba_model(
     # println(glycolysis_reaction_ids)
 
     println("> RL Shunt")
-
     rl_shunt_reaction_ids = ["R_DPGM", "R_DPGase"]
     # println(rl_shunt_reaction_ids)
 
     println("> Pentose phosphate pathway")
-
     ppp_reaction_ids =
-    # TODO: Two G6PD reactions here. Investigate more.
         [
             "R_G6PDH2",
             "R_PGL",
@@ -93,13 +89,11 @@ function create_fba_model(
             "R_TKT1",
             "R_TALA",
             "R_TKT2",
-            # "R_G6PDH2r",
         ]
 
     # println(ppp_reaction_ids)
 
     println("> Purine metabolism")
-
     purine_metabolism_reaction_ids = [
         "R_PRPPS",
         "R_PPM",
@@ -121,20 +115,16 @@ function create_fba_model(
     # println(purine_metabolism_reaction_ids)
 
     println("> Methionine Salvage and Metabolism")
-
     met_salvage_reaction_ids =
         ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
     println("> Citric Acid Cycle")
-
     citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
 
     println("> Arginine and Proline Metabolism")
-
     arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
 
     println("> Nucleotide Metabolism")
-
     nucleotide_reaction_ids = [
         "R_ADNCYC",
         "R_GMPR",
@@ -150,40 +140,31 @@ function create_fba_model(
     ]
 
     println("> Glutamate Metabolism")
-
     glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
     println("> Glutathione Metabolism")
-
     glutathione_reaction_ids =
         ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]
 
     println("> Urea cycle/amino group metabolism")
-
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
 
     println("> Glycine, Serine, and Threonine Metabolism")
-
     glycine_serine_threonine_reaction_ids = ["R_GHMT2"]
 
     println("> Folate Metabolism")
-
     folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
     println("> Fructose and Mannose Metabolism")
-
     fructose_mannose_reaction_ids = ["R_HEX4", "R_HEX7", "R_MAN6PI", "R_SBTD_D2", "R_SBTRa"]
 
     println("> Pyrimidine Catabolism")
-
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
     println("> Other reactions")
-
     other_reaction_ids = ["R_GUAPRT", "R_NaKt"]
 
     println("> Transporters")
-
     transporter_reactions_ids = [
         "R_GLC_Dt",
         "R_PYRt2",
@@ -369,7 +350,7 @@ function create_fba_model(
     println(model.reactions["R_LOAD_NADPH"])
 
     println("> Setting NaKt load")
-
+    model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])
     model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     return model
