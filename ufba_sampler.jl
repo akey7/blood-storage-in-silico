@@ -55,13 +55,13 @@ YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 
 ufba_jobs = make_ufba_models_for_additives_and_times(metabolites_bounds_df, n_models)
 case3_sinks_df = extract_case3_sinks(ufba_jobs)
-sampling_df, status_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
-
+sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
 @info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
 CSV.write(status_filename, status_df)
 println("Wrote $status_filename")
+display(status_counts_df)
 @info "Writing sampling results"
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)

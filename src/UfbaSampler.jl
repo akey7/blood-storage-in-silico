@@ -584,9 +584,9 @@ Executes and aggregates results from all uFBA jobs specified.
 2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
-`Tuple{DataFrame,DataFrame}`
+`Tuple{DataFrame,DataFrame,DataFrame}`
 
-A tuple of the following two DataFrames: All sampling results and the statuses of each attempted sampling job.
+A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, and counts of statuses across all sampling jobs.
 """
 function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
@@ -603,7 +603,11 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
         ])...,
     )
     status_df = DataFrame(status_rows)
-    return vcat(all_sampling_dfs_2...), status_df
+    status_counts_df = @chain status_df begin
+        @groupby(:status)
+        combine(nrow => :Count)
+    end
+    return vcat(all_sampling_dfs_2...), status_df, status_counts_df
 end
 
 """
