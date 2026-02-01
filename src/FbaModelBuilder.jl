@@ -321,7 +321,7 @@ function create_fba_model(
         model.reactions[reaction_id] = deepcopy(rbc_gem.reactions[reaction_id])
         lower_bound = model.reactions[reaction_id].lower_bound
         upper_bound = model.reactions[reaction_id].upper_bound
-        println(reaction_id, " (", lower_bound, ", ", upper_bound, ")")
+        # println(reaction_id, " (", lower_bound, ", ", upper_bound, ")")
     end
 
     println("> Add ATP load")

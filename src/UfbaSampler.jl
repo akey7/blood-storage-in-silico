@@ -321,7 +321,7 @@ function add_sinks_for_unmatched_metabolites!(
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
         if !isnothing(prune_zero_sinks) && sink_up_name in prune_zero_sinks
-            println("Skipping zero flux sink $sink_up_name")
+            # println("Skipping zero flux sink $sink_up_name")
         else
             sink_up = Reaction(
                 name = sink_up_name,
@@ -334,7 +334,7 @@ function add_sinks_for_unmatched_metabolites!(
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
         if !isnothing(prune_zero_sinks) && sink_down_name in prune_zero_sinks
-            println("Skipping zero flux sink $sink_down_name")
+            # println("Skipping zero flux sink $sink_down_name")
         else
             sink_down = Reaction(
                 name = sink_down_name,
