@@ -118,7 +118,7 @@ function create_fba_model(
     # met_salvage_reaction_ids =
     #     ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
     met_salvage_reaction_ids =
-        ["R_AHC", "R_MDRPD"]
+        ["R_AHC", "R_MDRPD", "R_MTRI", "R_ARDFE2"]  # Excluded R_UNK3, R_METAT
 
     println("> Citric Acid Cycle")
     citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
