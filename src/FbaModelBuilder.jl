@@ -250,7 +250,7 @@ function create_fba_model(
             glutathione_reaction_ids
             # urea_reaction_ids
             folate_reaction_ids
-            # glycine_serine_threonine_reaction_ids
+            glycine_serine_threonine_reaction_ids
             # fructose_mannose_reaction_ids
             # pyrimdine_reaction_ids
             # other_reaction_ids
@@ -271,7 +271,7 @@ function create_fba_model(
             glutathione_reaction_ids
             # urea_reaction_ids
             folate_reaction_ids
-            # glycine_serine_threonine_reaction_ids
+            glycine_serine_threonine_reaction_ids
             # fructose_mannose_reaction_ids
             # pyrimdine_reaction_ids
             # other_reaction_ids
