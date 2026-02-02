@@ -245,7 +245,7 @@ function create_fba_model(
             met_salvage_reaction_ids
             # citric_reaction_ids
             arg_pro_reaction_ids
-            # nucleotide_reaction_ids
+            nucleotide_reaction_ids
             # glutamate_reaction_ids
             # glutathione_reaction_ids
             # urea_reaction_ids
@@ -266,7 +266,7 @@ function create_fba_model(
             met_salvage_reaction_ids
             # citric_reaction_ids
             arg_pro_reaction_ids
-            # nucleotide_reaction_ids
+            nucleotide_reaction_ids
             # glutamate_reaction_ids
             # glutathione_reaction_ids
             # urea_reaction_ids
