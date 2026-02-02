@@ -195,6 +195,7 @@ function create_fba_model(
         "R_GSNt",
         # "R_HCYSte",
         # "R_MALt",
+        
         # "R_MANt1r",
         # "R_METtec",
         # "R_PTRCtex2",
