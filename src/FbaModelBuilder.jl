@@ -253,7 +253,7 @@ function create_fba_model(
             glycine_serine_threonine_reaction_ids
             # fructose_mannose_reaction_ids
             # pyrimdine_reaction_ids
-            # other_reaction_ids
+            other_reaction_ids
             transporter_reactions_ids
             exchange_reactions_ids
         ]
@@ -274,7 +274,7 @@ function create_fba_model(
             glycine_serine_threonine_reaction_ids
             # fructose_mannose_reaction_ids
             # pyrimdine_reaction_ids
-            # other_reaction_ids
+            other_reaction_ids
             transporter_reactions_ids
         ]
     end
