@@ -184,10 +184,10 @@ function create_fba_model(
         "R_H2Ot",
 
         # # Expanded transporters
-        # "R_AKGtec",
-        # "R_ARGtec",
-        # "R_CAATPS1",
-        # "R_CAMPtec",
+        "R_AKGtec",
+        "R_ARGtec",
+        "R_CAATPS1",
+        "R_CAMPtec",
         # "R_CGMPtec",
         # "R_CITt",
         # "R_FRUt1r",
