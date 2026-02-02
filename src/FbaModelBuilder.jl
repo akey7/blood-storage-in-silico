@@ -247,7 +247,7 @@ function create_fba_model(
             arg_pro_reaction_ids
             nucleotide_reaction_ids
             glutamate_reaction_ids
-            # glutathione_reaction_ids
+            glutathione_reaction_ids
             # urea_reaction_ids
             # folate_reaction_ids
             # glycine_serine_threonine_reaction_ids
@@ -268,7 +268,7 @@ function create_fba_model(
             arg_pro_reaction_ids
             nucleotide_reaction_ids
             glutamate_reaction_ids
-            # glutathione_reaction_ids
+            glutathione_reaction_ids
             # urea_reaction_ids
             # folate_reaction_ids
             # glycine_serine_threonine_reaction_ids
