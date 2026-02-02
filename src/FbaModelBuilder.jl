@@ -290,8 +290,6 @@ function create_fba_model(
 
     model = Model()
 
-    println(model)
-
     for discovered_metabolite_id ∈ discovered_metabolite_ids
         model.metabolites[discovered_metabolite_id] =
             deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
@@ -323,7 +321,7 @@ function create_fba_model(
         upper_bound = 1.0,
     )
 
-    println(model.reactions["R_LOAD_ATP"])
+    # println(model.reactions["R_LOAD_ATP"])
 
     println("> Adding NADH load")
 
@@ -336,7 +334,7 @@ function create_fba_model(
         upper_bound = 1.0,
     )
 
-    println(model.reactions["R_LOAD_NADH"])
+    # println(model.reactions["R_LOAD_NADH"])
 
     println("> Adding NADPH load")
 
@@ -349,7 +347,7 @@ function create_fba_model(
         upper_bound = 1.0,
     )
 
-    println(model.reactions["R_LOAD_NADPH"])
+    # println(model.reactions["R_LOAD_NADPH"])
 
     # println("> Setting NaKt load")
     # model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])
