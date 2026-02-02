@@ -192,7 +192,7 @@ function create_fba_model(
         # "R_CITt",
         "R_FRUt1r",
         # "R_FUMtr",
-        # "R_GSNt",
+        "R_GSNt",
         # "R_HCYSte",
         # "R_MALt",
         # "R_MANt1r",
