@@ -4,6 +4,9 @@ using YAML
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
+include("src/FbaModelBuilder.jl")
+using .FbaModelBuilder
+
 metabolites_bounds_df = load_metabolite_bounds()
 
 # println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
@@ -26,7 +29,7 @@ n_models = parse_args(s)["nmodels"]
 
 init_workers!()
 
-three_p_model = create_3p_model(load_base_rbc_gem(); add_exchanges = false)
+three_p_model = create_fba_model(load_base_rbc_gem(); add_exchanges = false)
 metabolite_status_df =
     find_metabolite_matches(three_p_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(
@@ -52,13 +55,13 @@ YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 
 ufba_jobs = make_ufba_models_for_additives_and_times(metabolites_bounds_df, n_models)
 case3_sinks_df = extract_case3_sinks(ufba_jobs)
-sampling_df, status_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
-
+sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
 @info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
 CSV.write(status_filename, status_df)
 println("Wrote $status_filename")
+display(status_counts_df)
 @info "Writing sampling results"
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
