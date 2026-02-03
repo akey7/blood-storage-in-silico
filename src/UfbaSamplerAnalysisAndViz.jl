@@ -1,6 +1,7 @@
 module UfbaSamplerAnalysisAndViz
 
 using Base.Iterators
+using Statistics
 using CairoMakie
 using AlgebraOfGraphics
 using ColorSchemes
@@ -9,7 +10,10 @@ using DataFramesMeta
 using ProgressMeter
 
 export histograms_for_reaction_in_additive_v1,
-    histograms_for_reaction_v2, plot_all_histograms_v1, plot_all_histograms_for_reactions
+    histograms_for_reaction_v2,
+    plot_all_histograms_v1,
+    plot_all_histograms_for_reactions,
+    diagnose_flux_stats
 
 """
     histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
@@ -179,6 +183,25 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
         end
         finish!(prog)
     end
+end
+
+function diagnose_flux_stats(sampling_df)
+    @info "Calculating flux descriptive statistics"
+    long_sampling_df = stack(
+        sampling_df,
+        Not([:additive, :final_time]),
+        variable_name = :reaction_id,
+        value_name = :flux,
+    )
+    descriptions_df = @chain long_sampling_df begin
+        @groupby(:additive, :final_time, :reaction_id)
+        @combine(
+            :mean_is_approx_zero = isapprox(mean(:flux), 0.0),
+            :mean = mean(:flux),
+            :std = std(:flux),
+        )
+    end
+    return descriptions_df
 end
 
 end
