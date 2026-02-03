@@ -3,8 +3,8 @@ using DataFrames
 using OrderedCollections
 using YAML
 
-include("src/UfbaSamplerViz.jl")
-using .UfbaSamplerViz
+include("src/UfbaSamplerAnalysisAndViz.jl")
+using .UfbaSamplerAnalysisAndViz
 
 @info "Loading reaction ids to strings..."
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")

@@ -12,7 +12,7 @@ makedocs(
         BloodStorageInSilico.RawRelativeIntensities,
         BloodStorageInSilico.AbsoluteQuant,
         BloodStorageInSilico.UfbaSampler,
-        BloodStorageInSilico.UfbaSamplerViz,
+        BloodStorageInSilico.UfbaSamplerAnalysisAndViz,
         BloodStorageInSilico.MetaboliteTimelines,
         BloodStorageInSilico.UfbaSampler.FbaModelBuilder,
     ],

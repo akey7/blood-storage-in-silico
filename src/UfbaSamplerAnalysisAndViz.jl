@@ -1,4 +1,4 @@
-module UfbaSamplerViz
+module UfbaSamplerAnalysisAndViz
 
 using Base.Iterators
 using CairoMakie
