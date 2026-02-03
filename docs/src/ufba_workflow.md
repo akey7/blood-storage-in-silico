@@ -32,7 +32,7 @@ Order   = [:function]
 
 ## UfbaSamplerViz
 
-Because the `UfbaSampler.jl` module was becoming huge, I split the visualization functions for `UfbaSampler.jl` into their own module.
+Because the `UfbaSampler.jl` module was becoming huge, I split the visualization and analysis functions for `UfbaSampler.jl` into their own module.
 
 ```@autodocs
 Modules = [BloodStorageInSilico.UfbaSamplerAnalysisAndViz]
