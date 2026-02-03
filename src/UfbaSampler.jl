@@ -575,6 +575,19 @@ function execute_ufba_job(job, n_chains = 10)
     end
 end
 
+"""
+    count_n_all_zero_fluxes(samples_df)
+
+Counts the number of fluxes which have every sample at zero flux. This is to assist in finding potentially broken reactions in uFBA jobs.
+
+# Arguments
+1. `samples_df`: DataFrame result of an apparently successful sampling run.
+
+# Returns
+`Int64`
+
+Returns the count of the fluxes which have all samples at zero.
+"""
 function count_n_all_zero_fluxes(samples_df)
     n_all_zero_fluxes = 0
     for col in eachcol(samples_df)
