@@ -80,16 +80,7 @@ function create_fba_model(
 
     println("> Pentose phosphate pathway")
     ppp_reaction_ids =
-        [
-            "R_G6PDH2",
-            "R_PGL",
-            "R_GND",
-            "R_RPI",
-            "R_RPE",
-            "R_TKT1",
-            "R_TALA",
-            "R_TKT2",
-        ]
+        ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
 
     # println(ppp_reaction_ids)
 
@@ -117,8 +108,7 @@ function create_fba_model(
     println("> Methionine Salvage and Metabolism")
     # met_salvage_reaction_ids =
     #     ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
-    met_salvage_reaction_ids =
-        ["R_AHC", "R_MDRPD", "R_MTRI", "R_ARDFE2"]  # Excluded R_UNK3, R_METAT
+    met_salvage_reaction_ids = ["R_AHC", "R_MDRPD", "R_MTRI", "R_ARDFE2"]  # Excluded R_UNK3, R_METAT
 
     println("> Citric Acid Cycle")
     citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
@@ -184,17 +174,18 @@ function create_fba_model(
         "R_H2Ot",
 
         # # Expanded transporters
-        # "R_AKGtec",
-        # "R_ARGtec",
-        # "R_CAATPS1",
-        # "R_CAMPtec",
+        "R_AKGtec",
+        "R_ARGtec",
+        "R_CAATPS1",
+        "R_CAMPtec",
         # "R_CGMPtec",
         # "R_CITt",
-        # "R_FRUt1r",
+        "R_FRUt1r",
         # "R_FUMtr",
-        # "R_GSNt",
+        "R_GSNt",
         # "R_HCYSte",
         # "R_MALt",
+
         # "R_MANt1r",
         # "R_METtec",
         # "R_PTRCtex2",
@@ -290,8 +281,6 @@ function create_fba_model(
 
     model = Model()
 
-    println(model)
-
     for discovered_metabolite_id ∈ discovered_metabolite_ids
         model.metabolites[discovered_metabolite_id] =
             deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
@@ -323,7 +312,7 @@ function create_fba_model(
         upper_bound = 1.0,
     )
 
-    println(model.reactions["R_LOAD_ATP"])
+    # println(model.reactions["R_LOAD_ATP"])
 
     println("> Adding NADH load")
 
@@ -336,7 +325,7 @@ function create_fba_model(
         upper_bound = 1.0,
     )
 
-    println(model.reactions["R_LOAD_NADH"])
+    # println(model.reactions["R_LOAD_NADH"])
 
     println("> Adding NADPH load")
 
@@ -349,7 +338,7 @@ function create_fba_model(
         upper_bound = 1.0,
     )
 
-    println(model.reactions["R_LOAD_NADPH"])
+    # println(model.reactions["R_LOAD_NADPH"])
 
     # println("> Setting NaKt load")
     # model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])

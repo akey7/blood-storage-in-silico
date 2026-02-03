@@ -39,7 +39,8 @@ export sample_fluxes,
     map_reaction_ids_to_reaction_strings,
     extract_case3_sinks,
     init_workers!,
-    execute_ufba_job
+    execute_ufba_job,
+    count_n_all_zero_fluxes
 
 
 """
@@ -527,9 +528,9 @@ Execute a uFBA job specified by the first argument with the given number of chai
 2. `n_chains`: Number of chains to sample. Defaults to 10.
 
 # Returns
-`Union{Nothing,DataFrame}`
+`Tuple{Union{Nothing,DataFrame},Union{Int64,Missing}}`
 
-Returns a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed.
+Returns a tuple of two items. First, a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed. Second, an Int64 of the number of fluxes that have zeros for all samples or missing if the sampling failed.
 """
 function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
@@ -562,15 +563,40 @@ function execute_ufba_job(job, n_chains = 10)
     )
     if isnothing(objective_flux)
         println("Simple optimization failed")
-        return nothing
+        return nothing, missing
     else
         println("Simple optimization succeeded!")
         println("> Flux sampling")
         samples_df = sample_fluxes(pruned_model; n_chains = n_chains)
+        n_all_zero_fluxes = count_n_all_zero_fluxes(samples_df)
         samples_df[!, :additive] .= additive
         samples_df[!, :final_time] .= final_time
-        return samples_df
+        return samples_df, n_all_zero_fluxes
     end
+end
+
+"""
+    count_n_all_zero_fluxes(samples_df)
+
+Counts the number of fluxes which have every sample at zero flux. This is to assist in finding potentially broken reactions in uFBA jobs.
+
+# Arguments
+1. `samples_df`: DataFrame result of an apparently successful sampling run.
+
+# Returns
+`Int64`
+
+Returns the count of the fluxes which have all samples at zero.
+"""
+function count_n_all_zero_fluxes(samples_df)
+    n_all_zero_fluxes = 0
+    for col in eachcol(samples_df)
+        n_zeros = sum(isapprox.(col, 0.0))
+        if n_zeros == length(col)
+            n_all_zero_fluxes += 1
+        end
+    end
+    return n_all_zero_fluxes
 end
 
 """
@@ -580,7 +606,6 @@ Executes and aggregates results from all uFBA jobs specified.
 
 # Arguments
 1. `jobs`: Vector of all jobs to be executed.
-
 2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
@@ -592,14 +617,16 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
     end
-    all_sampling_dfs_2 = [df for df in all_sampling_dfs_1 if !isnothing(df)]
+    all_results =
+        [(sdf, n_all_zero_fluxes) for (sdf, n_all_zero_fluxes) in all_sampling_dfs_1]
     status_rows = vcat(
         eachrow([
             (
                 additive = job.additive,
                 final_time = job.final_time,
                 status = isnothing(sdf) ? "fail" : "ok",
-            ) for (job, sdf) in zip(jobs, all_sampling_dfs_1)
+                n_all_zero_fluxes = n_all_zero_fluxes,
+            ) for (job, (sdf, n_all_zero_fluxes)) in zip(jobs, all_results)
         ])...,
     )
     status_df = DataFrame(status_rows)
@@ -607,7 +634,9 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
         @groupby(:status)
         combine(nrow => :Count)
     end
-    return vcat(all_sampling_dfs_2...), status_df, status_counts_df
+    return vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...),
+    status_df,
+    status_counts_df
 end
 
 """
@@ -617,7 +646,6 @@ Create all models that represent each combination of additive and final time poi
 
 # Arguments
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
-
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 
 # Returns
@@ -626,19 +654,12 @@ Create all models that represent each combination of additive and final time poi
 Returns a vector of `NamedTuple` with specifications for jobs for each model. Each `NamedTuple` has the following properties:
 
 1. `additive`: Additive
-
 2. `final_time`: Final time point
-
 3. `full_model`: The full model created before pruning
-
 4. `pruned_model`: The model after pruning.
-
 5. `sink_status_df`: DataFrame of status of sinks
-
 6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
-
 7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
-
 8. `nonzero_case3_sinks`: Sinks that have non-zero flux
 """
 function make_ufba_models_for_additives_and_times(
