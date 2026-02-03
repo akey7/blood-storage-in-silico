@@ -1,6 +1,7 @@
-module UfbaSamplerViz
+module UfbaSamplerAnalysisAndViz
 
 using Base.Iterators
+using Statistics
 using CairoMakie
 using AlgebraOfGraphics
 using ColorSchemes
@@ -9,7 +10,10 @@ using DataFramesMeta
 using ProgressMeter
 
 export histograms_for_reaction_in_additive_v1,
-    histograms_for_reaction_v2, plot_all_histograms_v1, plot_all_histograms_for_reactions
+    histograms_for_reaction_v2,
+    plot_all_histograms_v1,
+    plot_all_histograms_for_reactions,
+    diagnose_flux_stats
 
 """
     histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
@@ -179,6 +183,44 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
         end
         finish!(prog)
     end
+end
+
+"""
+    diagnose_flux_stats(sampling_df)
+
+Calculates diagnostic statistics for uFBA models. Expecially useful for finding fluxes that average zero flux.
+
+# Arugments
+1. `sampling_df`: Wide format DataFrame of sampling results.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns
+1. `:additive`: Additive of the model
+2. `:final_time`: Final time of the regression of rates of metabolite concentration change.
+3. `:reaction_id`: Id of the flux.
+4. `:mean_is_approx_zero`: True if the mean is approximately zero, false if the mean is non-zero.
+5. `:mean`: Mean of the flux distribution
+6. `:std`: Sample standard deviation of the flux distribution.
+"""
+function diagnose_flux_stats(sampling_df)
+    @info "Calculating flux descriptive statistics"
+    long_sampling_df = stack(
+        sampling_df,
+        Not([:additive, :final_time]),
+        variable_name = :reaction_id,
+        value_name = :flux,
+    )
+    descriptions_df = @chain long_sampling_df begin
+        @groupby(:additive, :final_time, :reaction_id)
+        @combine(
+            :mean_is_approx_zero = isapprox(mean(:flux), 0.0),
+            :mean = mean(:flux),
+            :std = std(:flux),
+        )
+    end
+    return descriptions_df
 end
 
 end
