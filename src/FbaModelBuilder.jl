@@ -80,16 +80,7 @@ function create_fba_model(
 
     println("> Pentose phosphate pathway")
     ppp_reaction_ids =
-        [
-            "R_G6PDH2",
-            "R_PGL",
-            "R_GND",
-            "R_RPI",
-            "R_RPE",
-            "R_TKT1",
-            "R_TALA",
-            "R_TKT2",
-        ]
+        ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
 
     # println(ppp_reaction_ids)
 
@@ -117,8 +108,7 @@ function create_fba_model(
     println("> Methionine Salvage and Metabolism")
     # met_salvage_reaction_ids =
     #     ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
-    met_salvage_reaction_ids =
-        ["R_AHC", "R_MDRPD", "R_MTRI", "R_ARDFE2"]  # Excluded R_UNK3, R_METAT
+    met_salvage_reaction_ids = ["R_AHC", "R_MDRPD", "R_MTRI", "R_ARDFE2"]  # Excluded R_UNK3, R_METAT
 
     println("> Citric Acid Cycle")
     citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
@@ -195,7 +185,7 @@ function create_fba_model(
         "R_GSNt",
         # "R_HCYSte",
         # "R_MALt",
-        
+
         # "R_MANt1r",
         # "R_METtec",
         # "R_PTRCtex2",
