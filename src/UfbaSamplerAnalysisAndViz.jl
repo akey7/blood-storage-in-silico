@@ -215,7 +215,7 @@ function diagnose_flux_stats(sampling_df)
     descriptions_df = @chain long_sampling_df begin
         @groupby(:additive, :final_time, :reaction_id)
         @combine(
-            :mean_is_approx_zero = isapprox(mean(:flux), 0.0),
+            :mean_is_approx_zero = isapprox(mean(:flux), 0.0, atol=1.0e-10),
             :mean = mean(:flux),
             :std = std(:flux),
         )
