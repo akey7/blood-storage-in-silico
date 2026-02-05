@@ -591,7 +591,7 @@ Returns the count of the fluxes which have all samples at zero.
 function count_n_all_zero_fluxes(samples_df)
     n_all_zero_fluxes = 0
     for col in eachcol(samples_df)
-        n_zeros = sum(isapprox.(col, 0.0, atol=1.0e-10))
+        n_zeros = sum(isapprox.(col, 0.0, atol = 1.0e-10))
         if n_zeros == length(col)
             n_all_zero_fluxes += 1
         end
