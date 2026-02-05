@@ -13,7 +13,8 @@ export histograms_for_reaction_in_additive_v1,
     histograms_for_reaction_v2,
     plot_all_histograms_v1,
     plot_all_histograms_for_reactions,
-    diagnose_flux_stats
+    diagnose_flux_stats,
+    pivot_sampling_df_long
 
 """
     histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
@@ -150,6 +151,16 @@ function plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
     end
 end
 
+function pivot_sampling_df_long(sampling_df)
+    long_sampling_df = stack(
+        sampling_df,
+        Not([:additive, :final_time]),
+        variable_name = :reaction_id,
+        value_name = :flux,
+    )
+    return long_sampling_df
+end
+
 """
     plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
@@ -165,12 +176,7 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
         @info "uFBA: Nothing to plot"
     else
         @info "uFBA: Plotting histograms, version 2"
-        long_sampling_df = stack(
-            sampling_df,
-            Not([:additive, :final_time]),
-            variable_name = :reaction_id,
-            value_name = :flux,
-        )
+        long_sampling_df = pivot_sampling_df_long(sampling_df)
         reaction_ids = unique(long_sampling_df.reaction_id)
         n_reaction_ids = length(reaction_ids)
         prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
@@ -206,12 +212,7 @@ Returns a DataFrame with the following columns
 """
 function diagnose_flux_stats(sampling_df)
     @info "Calculating flux descriptive statistics"
-    long_sampling_df = stack(
-        sampling_df,
-        Not([:additive, :final_time]),
-        variable_name = :reaction_id,
-        value_name = :flux,
-    )
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
     descriptions_df = @chain long_sampling_df begin
         @groupby(:additive, :final_time, :reaction_id)
         @combine(
@@ -221,6 +222,16 @@ function diagnose_flux_stats(sampling_df)
         )
     end
     return descriptions_df
+end
+
+function interesting_reactions_and_times(sampling_df)
+    @info "Finding interesting reactions and time points"
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
+    reaction_ids = sort(unique(long_sampling_df.reaction_id))
+    final_times = sort(unique(long_sampling_df.final_time))
+    pairs = product(reaction_ids, final_times)
+    for (reaction_id, final_time) in pairs
+    end
 end
 
 end
