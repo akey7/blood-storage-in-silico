@@ -224,6 +224,27 @@ function diagnose_flux_stats(sampling_df)
     return descriptions_df
 end
 
+"""
+    interesting_reactions_and_times(sampling_df)
+
+EXPERIMENTAL FUNCTION - Not part of the main workflow. See current problems
+
+Looks at all pairs of reactions and timepoints to determine if there are significant differences among the flux distributions using a k-sample Anderson-Darling test. KNOWN PROBLEMS: Currently, each distribution consists of thousands of Markov Chain samples, so the statisitcal power of the test is so high that all reactions/times look interesting. Thinning the sampling chains may help this, or another approach may need to be tried entirely. Even with a different approach, this function's interface should remain the same.
+
+# Arguments
+1. `sampling_df`: The wide sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+1. `:reaction_id`: The reaction id
+2. `:final_time`: Final time point
+3. `:p_value`: Unadjsuted p-value
+4. `:adj_p_value`: Benjamini-Hochberg adjusted p-value
+
+The resulting DataFrame is sortedin ascending p-value order.
+"""
 function interesting_reactions_and_times(sampling_df)
     @info "Finding interesting reactions and time points"
     long_df = pivot_sampling_df_long(sampling_df)
