@@ -8,12 +8,16 @@ using ColorSchemes
 using DataFrames
 using DataFramesMeta
 using ProgressMeter
+using HypothesisTests
+using MultipleTesting
 
 export histograms_for_reaction_in_additive_v1,
     histograms_for_reaction_v2,
     plot_all_histograms_v1,
     plot_all_histograms_for_reactions,
-    diagnose_flux_stats
+    diagnose_flux_stats,
+    pivot_sampling_df_long,
+    interesting_reactions_and_times
 
 """
     histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
@@ -22,11 +26,8 @@ Plots histograms for uFBA results at all time points in a SINGLE additive on one
 
 # Arguments
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
-
 2. `additive`: Additive to make plots for.
-
 3. `reaction_id`: The reaction id for which the samples are being plotted.
-
 4. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 
 # Returns
@@ -150,6 +151,16 @@ function plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
     end
 end
 
+function pivot_sampling_df_long(sampling_df)
+    long_sampling_df = stack(
+        sampling_df,
+        Not([:additive, :final_time]),
+        variable_name = :reaction_id,
+        value_name = :flux,
+    )
+    return long_sampling_df
+end
+
 """
     plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
@@ -165,12 +176,7 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
         @info "uFBA: Nothing to plot"
     else
         @info "uFBA: Plotting histograms, version 2"
-        long_sampling_df = stack(
-            sampling_df,
-            Not([:additive, :final_time]),
-            variable_name = :reaction_id,
-            value_name = :flux,
-        )
+        long_sampling_df = pivot_sampling_df_long(sampling_df)
         reaction_ids = unique(long_sampling_df.reaction_id)
         n_reaction_ids = length(reaction_ids)
         prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
@@ -206,12 +212,7 @@ Returns a DataFrame with the following columns
 """
 function diagnose_flux_stats(sampling_df)
     @info "Calculating flux descriptive statistics"
-    long_sampling_df = stack(
-        sampling_df,
-        Not([:additive, :final_time]),
-        variable_name = :reaction_id,
-        value_name = :flux,
-    )
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
     descriptions_df = @chain long_sampling_df begin
         @groupby(:additive, :final_time, :reaction_id)
         @combine(
@@ -221,6 +222,57 @@ function diagnose_flux_stats(sampling_df)
         )
     end
     return descriptions_df
+end
+
+"""
+    interesting_reactions_and_times(sampling_df)
+
+EXPERIMENTAL FUNCTION - Not part of the main workflow. See current problems
+
+Looks at all pairs of reactions and timepoints to determine if there are significant differences among the flux distributions using a k-sample Anderson-Darling test. KNOWN PROBLEMS: Currently, each distribution consists of thousands of Markov Chain samples, so the statisitcal power of the test is so high that all reactions/times look interesting. Thinning the sampling chains may help this, or another approach may need to be tried entirely. Even with a different approach, this function's interface should remain the same.
+
+# Arguments
+1. `sampling_df`: The wide sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+1. `:reaction_id`: The reaction id
+2. `:final_time`: Final time point
+3. `:p_value`: Unadjsuted p-value
+4. `:adj_p_value`: Benjamini-Hochberg adjusted p-value
+
+The resulting DataFrame is sortedin ascending p-value order.
+"""
+function interesting_reactions_and_times(sampling_df)
+    @info "Finding interesting reactions and time points"
+    long_df = pivot_sampling_df_long(sampling_df)
+    reaction_ids = sort(unique(long_df.reaction_id))
+    final_times = sort(unique(long_df.final_time))
+    pairs = product(reaction_ids, final_times)
+    n_pairs = length(pairs)
+    pair_results = []
+    prog = Progress(n_pairs, desc = "Evaluating reactions and time points")
+    for (reaction_id, final_time) in pairs
+        df = @chain long_df begin
+            @rsubset(:reaction_id == reaction_id, :final_time == final_time)
+            @groupby(:additive)
+            transform(eachindex => :sample)
+            unstack(:sample, :additive, :flux)
+            select(Not(:sample))
+        end
+        xs = [Float64[coalesce(x, 0.0) for x in col] for col in eachcol(df)]
+        ad_test = KSampleADTest(xs...)
+        pv = pvalue(ad_test)
+        result = (reaction_id = reaction_id, final_time = final_time, p_value = pv)
+        push!(pair_results, result)
+        next!(prog)
+    end
+    pair_results_df = DataFrame(pair_results)
+    pair_results_df.adj_p_value = adjust(pair_results_df.p_value, BenjaminiHochberg())
+    final_df = sort(pair_results_df, :adj_p_value)
+    return final_df
 end
 
 end
