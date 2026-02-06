@@ -8,13 +8,15 @@ using ColorSchemes
 using DataFrames
 using DataFramesMeta
 using ProgressMeter
+using HypothesisTests
 
 export histograms_for_reaction_in_additive_v1,
     histograms_for_reaction_v2,
     plot_all_histograms_v1,
     plot_all_histograms_for_reactions,
     diagnose_flux_stats,
-    pivot_sampling_df_long
+    pivot_sampling_df_long,
+    interesting_reactions_and_times
 
 """
     histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
@@ -23,11 +25,8 @@ Plots histograms for uFBA results at all time points in a SINGLE additive on one
 
 # Arguments
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
-
 2. `additive`: Additive to make plots for.
-
 3. `reaction_id`: The reaction id for which the samples are being plotted.
-
 4. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 
 # Returns
@@ -226,11 +225,21 @@ end
 
 function interesting_reactions_and_times(sampling_df)
     @info "Finding interesting reactions and time points"
-    long_sampling_df = pivot_sampling_df_long(sampling_df)
-    reaction_ids = sort(unique(long_sampling_df.reaction_id))
-    final_times = sort(unique(long_sampling_df.final_time))
-    pairs = product(reaction_ids, final_times)
+    long_df = pivot_sampling_df_long(sampling_df)
+    reaction_ids = sort(unique(long_df.reaction_id))
+    final_times = sort(unique(long_df.final_time))
+    pairs = collect(product(reaction_ids, final_times))[1:2]
+    n_pairs = length(pairs)
+    # prog = Progress(n_pairs, desc = "Evaluating reactions and time points")
     for (reaction_id, final_time) in pairs
+        df = @chain long_df begin
+            @rsubset(:reaction_id == reaction_id, :final_time == final_time)
+            @groupby(:additive)
+            transform(eachindex => :sample)
+            unstack(:sample, :additive, :flux)
+        end
+        display(first(df, 100))
+        # next!(prog)
     end
 end
 
