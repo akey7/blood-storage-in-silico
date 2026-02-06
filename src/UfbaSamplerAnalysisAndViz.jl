@@ -9,6 +9,7 @@ using DataFrames
 using DataFramesMeta
 using ProgressMeter
 using HypothesisTests
+using MultipleTesting
 
 export histograms_for_reaction_in_additive_v1,
     histograms_for_reaction_v2,
@@ -228,9 +229,10 @@ function interesting_reactions_and_times(sampling_df)
     long_df = pivot_sampling_df_long(sampling_df)
     reaction_ids = sort(unique(long_df.reaction_id))
     final_times = sort(unique(long_df.final_time))
-    pairs = collect(product(reaction_ids, final_times))[1:2]
+    pairs = product(reaction_ids, final_times)
     n_pairs = length(pairs)
-    # prog = Progress(n_pairs, desc = "Evaluating reactions and time points")
+    pair_results = []
+    prog = Progress(n_pairs, desc = "Evaluating reactions and time points")
     for (reaction_id, final_time) in pairs
         df = @chain long_df begin
             @rsubset(:reaction_id == reaction_id, :final_time == final_time)
@@ -240,10 +242,16 @@ function interesting_reactions_and_times(sampling_df)
             select(Not(:sample))
         end
         xs = [Float64[coalesce(x, 0.0) for x in col] for col in eachcol(df)]
-        result = KSampleADTest(xs...)
-        display(result)
-        # next!(prog)
+        ad_test = KSampleADTest(xs...)
+        pv = pvalue(ad_test)
+        result = (reaction_id = reaction_id, final_time = final_time, p_value = pv)
+        push!(pair_results, result)
+        next!(prog)
     end
+    pair_results_df = DataFrame(pair_results)
+    pair_results_df.adj_p_value = adjust(pair_results_df.p_value, BenjaminiHochberg())
+    final_df = sort(pair_results_df, :adj_p_value)
+    return final_df
 end
 
 end

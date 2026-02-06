@@ -22,4 +22,5 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
-interesting_reactions_and_times(sampling_df)
+interesting_df = interesting_reactions_and_times(sampling_df)
+display(first(interesting_df, 10))
