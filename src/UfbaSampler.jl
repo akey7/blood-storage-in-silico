@@ -475,6 +475,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
         end
     end
 
+    JuMP.set_silent(model)
     JuMP.optimize!(model)
     if is_solved_and_feasible(model)
         println("Case 3 optimization success!")
