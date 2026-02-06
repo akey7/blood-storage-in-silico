@@ -484,7 +484,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
         solution_tree = C.substitute_values(result_ct, var_values)
         return solution_tree
     else
-        println("Case 3 optimization failed")
+        println("OH NO CASE 3 OPTIMIZATION FAILED!")
         return nothing
     end
 end
