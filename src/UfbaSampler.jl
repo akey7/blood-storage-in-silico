@@ -273,13 +273,19 @@ function find_metabolite_matches(
                 status = "in exchange",
             )
             in_exchange_count += 1
+            lb, ub = bounds
+            if isapprox(lb, 0.0) && isapprox(ub, 0.0)
+                @warn "$additive $short_metabolite_id is fixed at 0.0"
+            end
         else
             status_row =
                 (additive = additive, metabolite = short_metabolite_id, status = "found")
             push!(status_rows, status_row)
             found_count += 1
-            # lb, ub = bounds
-            # ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+            lb, ub = bounds
+            if isapprox(lb, 0.0) && isapprox(ub, 0.0)
+                @warn "$additive $short_metabolite_id is fixed at 0.0"
+            end
         end
     end
     metabolite_status_df = DataFrame(status_rows)
