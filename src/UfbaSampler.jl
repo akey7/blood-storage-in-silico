@@ -569,7 +569,7 @@ function execute_ufba_job(job, n_chains = 10)
         settings = [],
     )
     if isnothing(objective_flux)
-        println("Simple optimization failed")
+        println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
         return nothing, missing
     else
         println("Simple optimization succeeded!")
