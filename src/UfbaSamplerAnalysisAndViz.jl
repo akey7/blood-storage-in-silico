@@ -237,8 +237,11 @@ function interesting_reactions_and_times(sampling_df)
             @groupby(:additive)
             transform(eachindex => :sample)
             unstack(:sample, :additive, :flux)
+            select(Not(:sample))
         end
-        display(first(df, 100))
+        xs = [Float64[coalesce(x, 0.0) for x in col] for col in eachcol(df)]
+        result = KSampleADTest(xs...)
+        display(result)
         # next!(prog)
     end
 end
