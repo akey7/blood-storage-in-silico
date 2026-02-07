@@ -273,13 +273,19 @@ function find_metabolite_matches(
                 status = "in exchange",
             )
             in_exchange_count += 1
+            lb, ub = bounds
+            if isapprox(lb, 0.0) && isapprox(ub, 0.0)
+                @warn "$additive $short_metabolite_id is fixed at 0.0"
+            end
         else
             status_row =
                 (additive = additive, metabolite = short_metabolite_id, status = "found")
             push!(status_rows, status_row)
             found_count += 1
-            # lb, ub = bounds
-            # ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+            lb, ub = bounds
+            if isapprox(lb, 0.0) && isapprox(ub, 0.0)
+                @warn "$additive $short_metabolite_id is fixed at 0.0"
+            end
         end
     end
     metabolite_status_df = DataFrame(status_rows)
@@ -469,6 +475,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
         end
     end
 
+    JuMP.set_silent(model)
     JuMP.optimize!(model)
     if is_solved_and_feasible(model)
         println("Case 3 optimization success!")
@@ -477,7 +484,7 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
         solution_tree = C.substitute_values(result_ct, var_values)
         return solution_tree
     else
-        println("Case 3 optimization failed")
+        println("OH NO CASE 3 OPTIMIZATION FAILED!")
         return nothing
     end
 end
@@ -554,19 +561,12 @@ function execute_ufba_job(job, n_chains = 10)
             ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
         end
     end
-    objective_flux = optimized_values(
-        ct;
-        objective = ct.objective.value,
-        output = ct.objective,
-        optimizer = HiGHS.Optimizer,
-        settings = [],
-    )
+    objective_flux = flux_balance_analysis(pruned_model; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
-        println("Simple optimization failed")
+        println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
         return nothing, missing
     else
-        println("Simple optimization succeeded!")
-        println("> Flux sampling")
+        println("Simple optimization succeeded! Sampling fluxes...")
         samples_df = sample_fluxes(pruned_model; n_chains = n_chains)
         n_all_zero_fluxes = count_n_all_zero_fluxes(samples_df)
         samples_df[!, :additive] .= additive
