@@ -561,13 +561,6 @@ function execute_ufba_job(job, n_chains = 10)
             ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
         end
     end
-    # objective_flux = optimized_values(
-    #     ct;
-    #     objective = ct.objective.value,
-    #     output = ct.objective,
-    #     optimizer = HiGHS.Optimizer,
-    #     settings = [],
-    # )
     objective_flux = flux_balance_analysis(pruned_model; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
         println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
