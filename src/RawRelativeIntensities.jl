@@ -287,9 +287,7 @@ Using results of the PCA [`pca_relative_intensities`](@ref BloodStorageInSilico.
 Returns a DataFrame with the following columns:
 
 1. `patient`: Patient
-
 2. `time`: Time point of observation.
-
 3. `pc1`, `pc2`, `pc3`: Principal components
 """
 function gather_pca_scores(pca_result)
@@ -342,10 +340,9 @@ Plot **and display** a 3D PCA scatter with GLMakie.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
-
 2. `additive`: Additive to plot the PCA results for.
 """
-function display_pca_scores_3d(long_df, pca_result, additive)
+function display_pca_scores_3d(limits, pca_result, additive)
     @info "Display PCA for $additive"
     M = pca_result.model
     scores = pca_result.scores
@@ -353,7 +350,6 @@ function display_pca_scores_3d(long_df, pca_result, additive)
     pc2 = scores[2, :]
     pc3 = scores[3, :]
     time_labels = pca_result.patient_time_labels.Time
-    limits = calc_pca_scores_3d_limits(long_df)
     time_color_map = Dict(
         1 => "#006CD1",
         2 => "#E66100",
