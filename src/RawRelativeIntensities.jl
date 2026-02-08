@@ -307,7 +307,7 @@ function gather_pca_scores(pca_result)
     return df
 end
 
-function calc_pca_scores_3d_limits(long_df)
+function calc_pca_scores_3d_limits(long_df; margin = 1.1)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
         pca_relative_intensities(long_df, additive)
@@ -330,7 +330,11 @@ function calc_pca_scores_3d_limits(long_df)
         pc2_max = pc2_max < maximum(pc2) ? maximum(pc2) : pc2_max
         pc3_max = pc3_max < maximum(pc3) ? maximum(pc3) : pc3_max
     end
-    return ((pc1_min, pc1_max), (pc2_min, pc2_max), (pc3_min, pc3_max))
+    return (
+        (pc1_min*margin, pc1_max*margin),
+        (pc2_min*margin, pc2_max*margin),
+        (pc3_min*margin, pc3_max*margin),
+    )
 end
 
 """
