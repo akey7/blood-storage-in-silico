@@ -9,9 +9,14 @@ using StatsModels
 using Statistics
 using Makie
 using GLMakie
+using ThreadsX
 
 export load_relative_intensities,
-    pca_relative_intensities, plot_pca_panels, display_pca_scores_3d, gather_pca_scores
+    pca_relative_intensities,
+    plot_pca_panels,
+    display_pca_scores_3d,
+    gather_pca_scores,
+    calc_pca_scores_3d_limits
 
 """
     load_relative_intensities()
@@ -52,20 +57,15 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 
 # Arguments
 1. `long_df`: The long dataframe as returned by [`load_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.load_relative_intensities)
-
 2. `additive`: The additive for which to perform the PCA
 
 # Returns
 `NamedTuple`
 
 1. `model`: PCA model produced, which enables accessing properties of the PCA model downstream.
-
 2. `scores`: Scores of each observation so that principal component scatter plots can be made.
-
 3. `patient_time_labels`: Labels for each observation of patient and time.
-
 4. `kept_columns`: List of columns that were kept for the PCA after data cleaning
-
 5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
 """
 function pca_relative_intensities(long_df, additive)
@@ -287,9 +287,7 @@ Using results of the PCA [`pca_relative_intensities`](@ref BloodStorageInSilico.
 Returns a DataFrame with the following columns:
 
 1. `patient`: Patient
-
 2. `time`: Time point of observation.
-
 3. `pc1`, `pc2`, `pc3`: Principal components
 """
 function gather_pca_scores(pca_result)
@@ -309,6 +307,36 @@ function gather_pca_scores(pca_result)
     return df
 end
 
+function calc_pca_scores_3d_limits(long_df; margin = 1.1)
+    additives = sort(unique(long_df.Additive))
+    all_pca_results = ThreadsX.map(additives) do additive
+        pca_relative_intensities(long_df, additive)
+    end
+    pc1_min = Inf
+    pc2_min = Inf
+    pc3_min = Inf
+    pc1_max = -Inf
+    pc2_max = -Inf
+    pc3_max = -Inf
+    for pca_result in all_pca_results
+        scores = pca_result.scores
+        pc1 = scores[1, :]
+        pc2 = scores[2, :]
+        pc3 = scores[3, :]
+        pc1_min = pc1_min > minimum(pc1) ? minimum(pc1) : pc1_min
+        pc2_min = pc2_min > minimum(pc2) ? minimum(pc2) : pc2_min
+        pc3_min = pc3_min > minimum(pc3) ? minimum(pc3) : pc3_min
+        pc1_max = pc1_max < maximum(pc1) ? maximum(pc1) : pc1_max
+        pc2_max = pc2_max < maximum(pc2) ? maximum(pc2) : pc2_max
+        pc3_max = pc3_max < maximum(pc3) ? maximum(pc3) : pc3_max
+    end
+    return (
+        (pc1_min*margin, pc1_max*margin),
+        (pc2_min*margin, pc2_max*margin),
+        (pc3_min*margin, pc3_max*margin),
+    )
+end
+
 """
     display_pca_scores_3d(pca_result, additive)
 
@@ -316,10 +344,9 @@ Plot **and display** a 3D PCA scatter with GLMakie.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
-
 2. `additive`: Additive to plot the PCA results for.
 """
-function display_pca_scores_3d(pca_result, additive)
+function display_pca_scores_3d(limits, pca_result, additive)
     @info "Display PCA for $additive"
     M = pca_result.model
     scores = pca_result.scores
@@ -349,8 +376,14 @@ function display_pca_scores_3d(pca_result, additive)
     zlabel = "PC3 $(round(var_explained[3]*100, digits = 2))%"
     title = "$additive PCA"
     fig = Figure(size = (750, 750), figure_padding = 75)
-    ax_scatter_3d =
-        Axis3(fig[1, 1], xlabel = xlabel, ylabel = ylabel, zlabel = zlabel, title = title)
+    ax_scatter_3d = Axis3(
+        fig[1, 1],
+        xlabel = xlabel,
+        ylabel = ylabel,
+        zlabel = zlabel,
+        title = title,
+        limits = limits,
+    )
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
