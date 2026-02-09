@@ -3,19 +3,17 @@ module BloodStorageInSilico
 include("MetaboliteTimelines.jl")
 include("TreatmentsAgainstControlMedians.jl")
 include("AbsoluteQuant.jl")
-include("DynamicModel.jl")
-include("MasspyInterface.jl")
 include("UfbaSampler.jl")
-include("UfbaSamplerViz.jl")
+include("UfbaSamplerAnalysisAndViz.jl")
 include("RawRelativeIntensities.jl")
+include("FbaModelBuilder.jl")
 
 export MetaboliteTimelines,
     TreatmentsAgainstControlMedians,
     AbsoluteQuant,
-    DynamicModel,
-    MasspyInterface,
     UfbaSampler,
-    UfbaSamplerViz,
-    RawRelativeIntensities
+    UfbaSamplerAnalysisAndViz,
+    RawRelativeIntensities,
+    FbaModelBuilder
 
 end

@@ -5,8 +5,8 @@ include("src/RawRelativeIntensities.jl")
 using .RawRelativeIntensities
 
 @info "Reading relative intensities"
-relative_intensities_df = load_relative_intensities()
-additives = sort(unique(relative_intensities_df.Additive))
+long_df = load_relative_intensities()
+additives = sort(unique(long_df.Additive))
 # additives = ["01-Ctrl AS3"]
 # for additive in additives
 #     pca_result = pca_relative_intensities(relative_intensities_df, additive)
@@ -17,12 +17,13 @@ additives = sort(unique(relative_intensities_df.Additive))
 # end
 
 @info "Displaying 3D"
+limits = calc_pca_scores_3d_limits(long_df)
 for additive in additives
-    pca_result_3d = pca_relative_intensities(relative_intensities_df, additive)
+    pca_result_3d = pca_relative_intensities(long_df, additive)
     df_filename = joinpath("output", "pca_plot_dfs", "Wide df for $additive.csv")
     CSV.write(df_filename, pca_result_3d.wide_df)
     println("Wrote $df_filename")
-    display_pca_scores_3d(pca_result_3d, additive)
+    display_pca_scores_3d(limits, pca_result_3d, additive)
     println("3D for $additive. Press enter to continue")
     readline()
 end

@@ -4,31 +4,20 @@ uFBA simulation is the main workflow for this system. The modules in this sectio
 
 I present the modules in the order they are used in the workflow.
 
-## RawRelativeIntensities
+## FbaModelBuilder
 
-RawRelativeIntensities works with the relative quantification data. This includes exploratory analysis of the relative intensity data and preparation to incorporate with absolute quantification data.
-
-The paper it is designed to work with is from the following paper:
-
-> Nemkov, T., Yoshida, T., Nikulina, M. & D’Alessandro, A. High-Throughput Metabolomics Platform for the Rapid Data-Driven Development of Novel Additive Solutions for Blood Storage. Front. Physiol. 13, 833242 (2022).
+FbaModelBuilder has functions for loading the RBC-GEM and creates the models for uFBA analysis.
 
 ```@autodocs
-Modules = [BloodStorageInSilico.RawRelativeIntensities]
-Order   = [:function]
+Modules = [BloodStorageInSilico.UfbaSampler.FbaModelBuilder]
+Order = [:function]
 ```
 
-## AbsoluteQuant
+Many of the reactions in this model are from the following paper:
 
-The original blood storage study by Nemkov et al (2022) used relative quantification for the study. However, uFBA analyses require absolute quantification. In the absence of absolute quant data, we had to make an approximation of absolute quant values. This approximation is made by combining the relative quant data with absolute quant data of blood initially stored in similar conditions (1 week, AS3 additive solution, just like the control of the realtive quant study). Using the aboslute quant numbers as a baseline, we scaled the fold changes relative quantification study byt the absolute values to approximate an absolute quant study of blood storage metabolites over the time course of the relative quantification study.
+> Bordbar, A. et al. Identified metabolic signature for assessing red blood cell unit quality is associated with endothelial damage markers and clinical outcomes. Transfusion 56, 852–862 (2016).
 
-Also, in mass spec, sometimes multiple compounds appear as a single peak and cannot be resolved. However, as required by the uFBA modeling, these peaks must be seprated into single compounds. This is handled by a "proporination" file that serves two functions: (1) it maps compound names to metabolite_ids as used in the RBC-GEM by Haiman et al and (2) seprates combined peaks into individual compounds, each with a proportional fraction of the absolute concentration.
-
-With all these assumptions taken together, `AbsoluteQuant.jl` performs the calculations to make these approximations to feed into the uFBA study
-
-```@autodocs
-Modules = [BloodStorageInSilico.AbsoluteQuant]
-Order   = [:function]
-```
+Reaction ids have been mapped from that paper, released in 2016, to reaction ids in the RBC-GEM released in 2024.
 
 ## UfbaSampler
 
@@ -41,11 +30,11 @@ Modules = [BloodStorageInSilico.UfbaSampler]
 Order   = [:function]
 ```
 
-## UfbaSamplerViz
+## UfbaSamplerAnalysisAndViz
 
-Because the `UfbaSampler.jl` module was becoming huge, I split the visualization functions for `UfbaSampler.jl` into their own module.
+Because the `UfbaSampler.jl` module was becoming huge, I split the visualization and analysis functions for `UfbaSampler.jl` into their own module.
 
 ```@autodocs
-Modules = [BloodStorageInSilico.UfbaSamplerViz]
+Modules = [BloodStorageInSilico.UfbaSamplerAnalysisAndViz]
 Order   = [:function]
 ```

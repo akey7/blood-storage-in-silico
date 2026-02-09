@@ -38,3 +38,6 @@ output/
 
 # Ignore vscode junk
 .vscode/*
+
+# Ignore log files
+*.log

@@ -12,14 +12,16 @@ makedocs(
         BloodStorageInSilico.RawRelativeIntensities,
         BloodStorageInSilico.AbsoluteQuant,
         BloodStorageInSilico.UfbaSampler,
-        BloodStorageInSilico.UfbaSamplerViz,
+        BloodStorageInSilico.UfbaSamplerAnalysisAndViz,
         BloodStorageInSilico.MetaboliteTimelines,
+        BloodStorageInSilico.UfbaSampler.FbaModelBuilder,
     ],
     format = Documenter.HTML(
         prettyurls = false,
     ),
     pages = [
         "Home" => "index.md",
+        "Quantification Workflow" => "quantification_workflow.md",
         "uFBA Workflow" => "ufba_workflow.md",
         "Other Modules" => "other.md",
     ],

@@ -24,5 +24,6 @@ Metabolites were measured each week of blood storage. In the `AbsoluteQuant.jl` 
 
 ## Contents
 
+- [Quantification Workflow](@ref "Blood Storage in Silico - Quantification Workflow")
 - [uFBA Workflow](@ref "Blood Storage in Silico - uFBA Workflow")
 - [Other Modules](@ref "BloodStorageInSilico - Other Modules")

@@ -112,14 +112,14 @@ Which would sample all models with 10 chains, run all models, and use 32 concurr
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
 
-### (5) `ufba_sampler_viz.jl`: Visualize the Results of the uFBA Runs
+### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
-Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress.
+Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. 
 
 There are no fancy threads or workers here, so execution is simple.
 
 On macOS or Windows:
 
 ```
-julia --project=. ufba_sampler_viz.jl
+julia --project=. ufba_sampler_analysis_and_viz.jl
 ```
