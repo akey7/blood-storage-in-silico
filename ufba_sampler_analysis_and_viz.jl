@@ -22,9 +22,7 @@ println("Wrote $diagnostic_filename")
 
 plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
-# Finding interessting reactions/times diabled until a better method
-# is made (see interesting_reactions_and_times() docstring)
-# interesting_df = interesting_reactions_and_times(sampling_df)
-# interesting_filename = joinpath("output", "interesting_ufba_reactions_times.csv")
-# CSV.write(interesting_filename, interesting_df)
-# println("Wrote $interesting_filename")
+interesting_df = interesting_reactions_and_times(sampling_df)
+interesting_filename = joinpath("output", "interesting_ufba_reactions_times.csv")
+CSV.write(interesting_filename, interesting_df)
+println("Wrote $interesting_filename")
