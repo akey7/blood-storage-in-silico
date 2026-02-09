@@ -2,6 +2,7 @@ module UfbaSamplerAnalysisAndViz
 
 using Base.Iterators
 using Statistics
+using StatsBase
 using CairoMakie
 using AlgebraOfGraphics
 using ColorSchemes
@@ -227,9 +228,7 @@ end
 """
     interesting_reactions_and_times(sampling_df)
 
-EXPERIMENTAL FUNCTION - Not part of the main workflow. See current problems
-
-Looks at all pairs of reactions and timepoints to determine if there are significant differences among the flux distributions using a k-sample Anderson-Darling test. KNOWN PROBLEMS: Currently, each distribution consists of thousands of Markov Chain samples, so the statisitcal power of the test is so high that all reactions/times look interesting. Thinning the sampling chains may help this, or another approach may need to be tried entirely. Even with a different approach, this function's interface should remain the same.
+Looks at all pairs of reactions and timepoints to determine if there are significant differences among the flux distributions using a k-sample Anderson-Darling test.
 
 # Arguments
 1. `sampling_df`: The wide sampling DataFrame.
@@ -245,7 +244,7 @@ Returns a DataFrame with the following columns:
 
 The resulting DataFrame is sortedin ascending p-value order.
 """
-function interesting_reactions_and_times(sampling_df)
+function interesting_reactions_and_times(sampling_df; n_samples = 10)
     @info "Finding interesting reactions and time points"
     long_df = pivot_sampling_df_long(sampling_df)
     reaction_ids = sort(unique(long_df.reaction_id))
@@ -262,7 +261,10 @@ function interesting_reactions_and_times(sampling_df)
             unstack(:sample, :additive, :flux)
             select(Not(:sample))
         end
-        xs = [Float64[coalesce(x, 0.0) for x in col] for col in eachcol(df)]
+        xs = [
+            sample(Float64[coalesce(x, 0.0) for x in col], n_samples; replace = false)
+            for col in eachcol(df)
+        ]
         ad_test = KSampleADTest(xs...)
         pv = pvalue(ad_test)
         result = (reaction_id = reaction_id, final_time = final_time, p_value = pv)
