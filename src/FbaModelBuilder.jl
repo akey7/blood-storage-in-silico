@@ -182,6 +182,7 @@ function create_fba_model(
 
     println("> Transporters")
     transporter_reactions_ids = [
+        # Original transporters
         "R_GLC_Dt",
         "R_PYRt2",
         "R_L_LACt2",
@@ -197,7 +198,7 @@ function create_fba_model(
         "R_Ht",
         "R_H2Ot",
 
-        # # Expanded transporters
+        # # Expanded transporters from Bordbar 2016
         "R_AKGtec",
         # "R_ARGtec",  # Broken
         # "R_CAATPS1",  # Broken
@@ -221,6 +222,9 @@ function create_fba_model(
         # "R_XANt",
         # "R_GTHOXABCte",
         # "R_GLY_Cl_2Nat",
+
+        # Additional transporters for AS-3 not listed above
+        "R_CITt",
     ]
 
     # println(transporter_reactions_ids)
