@@ -40,7 +40,8 @@ export sample_fluxes,
     extract_case3_sinks,
     init_workers!,
     execute_ufba_job,
-    count_n_all_zero_fluxes
+    count_n_all_zero_fluxes,
+    does_manual_prune_list_match_sink_name
 
 
 """
@@ -296,29 +297,64 @@ function find_metabolite_matches(
 end
 
 """
-    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing})
+    does_manual_prune_list_match_sink_name(sink_name::String, sink_opt_outs::Union{Vector{String},Nothing} = nothing)
 
-Add sinks for unmeasured (umatched) metabolites in the model. This is part of the uFBA process.
+Determines if the given sink name contains any of the substrings in the given sink opt-outs list.
+
+# Arguments
+1. `sink_name::String`: The name of the sink.
+2. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If specified, contains a list of substrings that are matched against the given sink name.
+
+# Returns
+`Bool`
+
+Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
+"""
+function does_manual_prune_list_match_sink_name(
+    sink_name::String,
+    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+)
+    if isnothing(sink_opt_outs)
+        return false
+    else
+        for sink_opt_out in sink_opt_outs
+            if contains(sink_name, sink_opt_out)
+                return true
+            end
+        end
+        return false
+    end
+end
+
+"""
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing}; sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+
+Add sinks for unmeasured (umatched) metabolites in the model. This is part of the uFBA process. This method mutates the given model in place.
 
 # Arguments
 1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
-
 2. `metabolite_status_df::DataFrame`: Metabolite measurement availability DataFrame.
-
 3. `additive::AbstractString`: Additive for measurement search.
-
 4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
+5. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If a `Vector{String}`, sinks with specified substrings are ensured to not be added to the model. For example, placing `2pg_c` in this list will ensure that NO sink for `2pg_c` will be added. This parameter provides another way to manually opt-out of sinks, rather than simply relying on the automated zero-flux pruning process. If this parameter is `nothing`, no manual pruning is performed in this way.
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
     additive::AbstractString,
-    prune_zero_sinks::Union{Vector{String},Nothing},
+    prune_zero_sinks::Union{Vector{String},Nothing};
+    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
 )
     if isnothing(prune_zero_sinks)
-        @info "Add sinks for unmatched metabolites, not pruning any sinks"
+        @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
     else
-        @info "Add sinks for unmatched metabolites, pruning $(length(prune_zero_sinks))"
+        @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
+    end
+
+    if isnothing(sink_opt_outs)
+        @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
+    else
+        @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
     end
 
     not_found_df = @chain metabolite_status_df begin
@@ -327,7 +363,9 @@ function add_sinks_for_unmatched_metabolites!(
     end
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
-        if !isnothing(prune_zero_sinks) && sink_up_name in prune_zero_sinks
+        if does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) &&
+           !isnothing(prune_zero_sinks) &&
+           sink_up_name in prune_zero_sinks
             # println("Skipping zero flux sink $sink_up_name")
         else
             sink_up = Reaction(
@@ -340,7 +378,9 @@ function add_sinks_for_unmatched_metabolites!(
             # display(sink_up)
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
-        if !isnothing(prune_zero_sinks) && sink_down_name in prune_zero_sinks
+        if does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) &&
+           !isnothing(prune_zero_sinks) &&
+           sink_down_name in prune_zero_sinks
             # println("Skipping zero flux sink $sink_down_name")
         else
             sink_down = Reaction(
@@ -676,7 +716,7 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(base_rbc_gem; add_exchanges = false)
+        full_model = create_fba_model(base_rbc_gem)
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -698,7 +738,7 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(base_rbc_gem; add_exchanges = false)
+        pruned_model = create_fba_model(base_rbc_gem)
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,
