@@ -30,6 +30,7 @@ end
 
 function default_exchanges()
     exchange_reactions_ids = [
+        # Original exchanges
         "R_EX_glc__D_e",
         "R_EX_pyr_e",
         "R_EX_lac__L_e",
@@ -43,6 +44,12 @@ function default_exchanges()
         "R_EX_nh3_e",
         "R_EX_h_e",
         "R_EX_h2o_e",
+
+        # Exchanges for AS-3
+        "R_EX_pi_e",
+        "R_EX_cit_e",
+        "R_EX_na1_e",
+        "R_EX_cl_e",
     ]
     return exchange_reactions_ids
 end
@@ -194,7 +201,7 @@ function create_fba_model(
         "R_NH4c",
         # "R_NH4e",  # Broken
         "R_NH3t",
-        # "R_PIt",  # Broken
+        "R_PIt",  # Broken
         "R_Ht",
         "R_H2Ot",
 
@@ -225,6 +232,8 @@ function create_fba_model(
 
         # Additional transporters for AS-3 not listed above
         "R_CITt",
+        "R_NAt",
+        "R_Clt",
     ]
 
     # println(transporter_reactions_ids)
