@@ -136,7 +136,8 @@ function create_fba_model(
         ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
     println("> Citric Acid Cycle")
-    citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
+    # citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]  # All citric reactions have zero flux
+    citric_reaction_ids = []
 
     println("> Arginine and Proline Metabolism")
     arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
@@ -160,8 +161,10 @@ function create_fba_model(
     glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
     println("> Glutathione Metabolism")
+    # glutathione_reaction_ids =
+    #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # GGLUCTC has zero flux
     glutathione_reaction_ids =
-        ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # AMPTASECG, GLUCYS, GTHS, GGLUCTC one has zero flux?
+        ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
 
     println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
@@ -214,17 +217,17 @@ function create_fba_model(
         "R_MANt1r",
         "R_METtec",
         "R_PTRCtex2",
-        # "R_SPMDtex2",  # Zero flux
-        # "R_SPRMt2",  # Zero flux
+        "R_SPMDtex2",
+        "R_SPRMt2",
         # "R_URATEt",  # Zero flux
         "R_UREAt",
         "R_URIt",
         # "R_XANt",  # Zero flux
-        "R_GTHOXABCte",  # Potentially zero flux?
+        "R_GTHOXABCte",
         "R_GLY_Cl_2Nat",
 
         # Additional transporters for AS-3 not listed above
-        "R_CITt",
+        # "R_CITt",  # Zero flux
         "R_NAt",
         "R_Clt",
     ]
@@ -247,16 +250,16 @@ function create_fba_model(
         ppp_reaction_ids
         purine_metabolism_reaction_ids
         met_salvage_reaction_ids
-        # citric_reaction_ids
+        citric_reaction_ids
         arg_pro_reaction_ids
         nucleotide_reaction_ids
         glutamate_reaction_ids
         glutathione_reaction_ids
-        # urea_reaction_ids
+        urea_reaction_ids
         folate_reaction_ids
         glycine_serine_threonine_reaction_ids
-        # fructose_mannose_reaction_ids
-        # pyrimdine_reaction_ids
+        fructose_mannose_reaction_ids
+        pyrimdine_reaction_ids
         other_reaction_ids
         transporter_reactions_ids
         exchange_reactions_ids
