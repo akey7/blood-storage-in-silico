@@ -213,7 +213,7 @@ function create_fba_model(
         "R_HCYSte",
         # "R_MALt",  # Zero flux
         "R_MANt1r",
-        # "R_METtec",
+        "R_METtec",
         # "R_PTRCtex2",
         # "R_SPMDtex2",
         # "R_SPRMt2",
