@@ -157,8 +157,7 @@ function create_fba_model(
     ]
 
     println("> Glutamate Metabolism")
-    # glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]  # Broken reaction ALATA_L
-    glutamate_reaction_ids = ["R_GLNS", "R_GLUN"]  # Broken reaction ALATA_L
+    glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
     println("> Glutathione Metabolism")
     # glutathione_reaction_ids =
