@@ -222,7 +222,7 @@ function create_fba_model(
         "R_UREAt",
         "R_URIt",
         # "R_XANt",  # Zero flux
-        "R_GTHOXABCte",  # Potentially zero flux?
+        "R_GTHOXABCte",
         "R_GLY_Cl_2Nat",
 
         # Additional transporters for AS-3 not listed above
