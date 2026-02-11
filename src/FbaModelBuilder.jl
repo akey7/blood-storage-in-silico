@@ -149,7 +149,7 @@ function create_fba_model(
         "R_GUACYC",
         "R_IMPD",
         "R_NDPK1",
-        # "R_NDPK2",  # Broken
+        "R_NDPK2",
         "R_NTDGMP",
         "R_PDEG",
         # "R_UMPK1",  # Broken
