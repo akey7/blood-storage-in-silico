@@ -125,8 +125,8 @@ function create_fba_model(
         "R_ADK1",
         "R_PPA",
         "R_PUNP3",
-        # "R_XAO2",  # Broken
-        # "R_XAO",  # Broken
+        # "R_XAO2",  # Zero flux
+        # "R_XAO",  # Zero flux
     ]
 
     # println(purine_metabolism_reaction_ids)
