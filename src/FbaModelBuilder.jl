@@ -216,7 +216,7 @@ function create_fba_model(
         "R_METtec",
         "R_PTRCtex2",
         # "R_SPMDtex2",  # Zero flux
-        # "R_SPRMt2",
+        # "R_SPRMt2",  # Zero flux
         # "R_URATEt",
         # "R_UREAt",
         # "R_URIt",
