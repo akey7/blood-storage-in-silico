@@ -705,7 +705,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
-    n_models::Int64,
+    n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
