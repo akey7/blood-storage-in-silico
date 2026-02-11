@@ -190,7 +190,7 @@ function create_fba_model(
         "R_PYRt2",
         "R_L_LACt2",
         "R_HYXNt",
-        # "R_INSt",  # Broken
+        "R_INSt",
         "R_ADEt",
         "R_ADNt",
         "R_CO2t",
@@ -207,7 +207,6 @@ function create_fba_model(
         # "R_CAATPS1",  # Broken
         # "R_CAMPtec",  # Broken
         # "R_CGMPtec",
-        # "R_CITt",
         "R_FRUt1r",
         # "R_FUMtr",
         "R_GSNt",
