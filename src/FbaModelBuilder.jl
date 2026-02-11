@@ -139,8 +139,7 @@ function create_fba_model(
     citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
 
     println("> Arginine and Proline Metabolism")
-    # arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]  # Broken reaction
-    arg_pro_reaction_ids = []
+    arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
 
     println("> Nucleotide Metabolism")
     nucleotide_reaction_ids = [
