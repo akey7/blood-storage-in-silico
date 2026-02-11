@@ -208,7 +208,7 @@ function create_fba_model(
         "R_CAMPtec",
         "R_CGMPtec",
         "R_FRUt1r",
-        # "R_FUMtr",
+        # "R_FUMtr",  # Zero flux
         "R_GSNt",
         # "R_HCYSte",
         # "R_MALt",
