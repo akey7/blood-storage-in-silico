@@ -249,16 +249,16 @@ function create_fba_model(
         ppp_reaction_ids
         purine_metabolism_reaction_ids
         met_salvage_reaction_ids
-        # citric_reaction_ids
+        citric_reaction_ids
         arg_pro_reaction_ids
         nucleotide_reaction_ids
         glutamate_reaction_ids
         glutathione_reaction_ids
-        # urea_reaction_ids
+        urea_reaction_ids
         folate_reaction_ids
         glycine_serine_threonine_reaction_ids
-        # fructose_mannose_reaction_ids
-        # pyrimdine_reaction_ids
+        fructose_mannose_reaction_ids
+        pyrimdine_reaction_ids
         other_reaction_ids
         transporter_reactions_ids
         exchange_reactions_ids
