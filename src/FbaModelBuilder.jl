@@ -172,8 +172,7 @@ function create_fba_model(
     glycine_serine_threonine_reaction_ids = []
 
     println("> Folate Metabolism")
-    # folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]  # FTHF, MTHFCL broken
-    folate_reaction_ids = ["R_MTHFD"]
+    folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
     println("> Fructose and Mannose Metabolism")
     fructose_mannose_reaction_ids = ["R_HEX4", "R_HEX7", "R_MAN6PI", "R_SBTD_D2", "R_SBTRa"]
