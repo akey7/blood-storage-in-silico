@@ -203,7 +203,7 @@ function create_fba_model(
 
         # # Expanded transporters from Bordbar 2016
         "R_AKGtec",
-        # "R_ARGtec",  # Broken
+        "R_ARGtec",
         # "R_CAATPS1",  # Broken
         # "R_CAMPtec",  # Broken
         # "R_CGMPtec",
