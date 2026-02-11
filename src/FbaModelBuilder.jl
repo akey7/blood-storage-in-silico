@@ -195,9 +195,9 @@ function create_fba_model(
         "R_ADNt",
         "R_CO2t",
         "R_NH4c",
-        # "R_NH4e",  # Broken
+        "R_NH4e",
         "R_NH3t",
-        "R_PIt",  # Broken
+        "R_PIt",
         "R_Ht",
         "R_H2Ot",
 
