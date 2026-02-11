@@ -219,7 +219,7 @@ function create_fba_model(
         # "R_SPRMt2",  # Zero flux
         # "R_URATEt",  # Zero flux
         "R_UREAt",
-        # "R_URIt",
+        "R_URIt",
         # "R_XANt",
         # "R_GTHOXABCte",
         # "R_GLY_Cl_2Nat",
