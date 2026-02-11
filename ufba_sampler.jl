@@ -56,7 +56,7 @@ YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_bounds_df,
     n_models;
-    # exchanges = default_exchanges(),
+    exchanges = default_exchanges(),
 )
 case3_sinks_df = extract_case3_sinks(ufba_jobs)
 sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)

@@ -47,7 +47,7 @@ function default_exchanges()
 
         # Exchanges for AS-3
         "R_EX_pi_e",
-        "R_EX_cit_e",
+        # "R_EX_cit_e",
         "R_EX_na1_e",
         "R_EX_cl_e",
     ]
