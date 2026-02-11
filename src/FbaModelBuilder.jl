@@ -152,7 +152,7 @@ function create_fba_model(
         "R_NDPK2",
         "R_NTDGMP",
         "R_PDEG",
-        # "R_UMPK1",  # Broken
+        "R_UMPK1",
         "R_GK1",
     ]
 
