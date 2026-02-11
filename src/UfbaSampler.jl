@@ -687,6 +687,7 @@ Create all models that represent each combination of additive and final time poi
 # Arguments
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
+3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
 
 # Returns
 `Vector{NamedTuple}`
@@ -704,7 +705,8 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
-    n_models::Int64,
+    n_models::Int64;
+    exchanges::Union{Nothing,Vector{String}} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -716,7 +718,7 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(base_rbc_gem)
+        full_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -738,7 +740,7 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(base_rbc_gem)
+        pruned_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,

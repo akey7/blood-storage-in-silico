@@ -29,16 +29,16 @@ n_models = parse_args(s)["nmodels"]
 
 init_workers!()
 
-three_p_model = create_fba_model(load_base_rbc_gem(); exchanges = nothing)
+fba_model = create_fba_model(load_base_rbc_gem(); exchanges = default_exchanges())
 metabolite_status_df =
-    find_metabolite_matches(three_p_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
+    find_metabolite_matches(fba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(
-    three_p_model,
+    fba_model,
     metabolite_status_df,
     "01-Ctrl AS3",
     nothing,
 )
-rxn_ids_to_strings = map_reaction_ids_to_reaction_strings(three_p_model)
+rxn_ids_to_strings = map_reaction_ids_to_reaction_strings(fba_model)
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 @info "Wrote $rxn_ids_to_strings_filename"
@@ -53,7 +53,11 @@ YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 #     exit(1)
 # end
 
-ufba_jobs = make_ufba_models_for_additives_and_times(metabolites_bounds_df, n_models)
+ufba_jobs = make_ufba_models_for_additives_and_times(
+    metabolites_bounds_df,
+    n_models;
+    exchanges = default_exchanges(),
+)
 case3_sinks_df = extract_case3_sinks(ufba_jobs)
 sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
 @info "uFBA: Final status"

@@ -5,7 +5,7 @@ import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 
-export load_base_rbc_gem, create_fba_model
+export load_base_rbc_gem, create_fba_model, default_exchanges
 
 """
     load_base_rbc_gem()
@@ -62,7 +62,6 @@ for the uFBA study.
 
 # Arguments
 1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by `load_base_rbc_gem`. If left as `nothing`, this function will call `load_base_rbc_gem` directly.
-
 2. `exchanges::Union{Nothing,Vector{String}} = nothing`: If `nothing`, this function will not add exchanges to the model. If specified, the listed exchanges are added.
 
 # Returns
@@ -163,8 +162,7 @@ function create_fba_model(
     println("> Glutathione Metabolism")
     # glutathione_reaction_ids =
     #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # GGLUCTC has zero flux
-    glutathione_reaction_ids =
-        ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
+    glutathione_reaction_ids = ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
 
     println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
@@ -277,9 +275,11 @@ function create_fba_model(
     model = Model()
 
     for discovered_metabolite_id ∈ discovered_metabolite_ids
-        model.metabolites[discovered_metabolite_id] =
-            deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
-        # println("$discovered_metabolite_id")
+        copied_metabolite = deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
+        model.metabolites[discovered_metabolite_id] = copied_metabolite
+        if contains(discovered_metabolite_id, "cit")
+            println("=== Added? $discovered_metabolite_id $copied_metabolite")
+        end
     end
 
     println("> Adding reactions and exchanges to model")
