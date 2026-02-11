@@ -161,14 +161,14 @@ function create_fba_model(
 
     println("> Glutathione Metabolism")
     # glutathione_reaction_ids =
-    #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # AMPTASECG, GLUCYS, GTHS, GGLUCTC broken
+    #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # AMPTASECG, GLUCYS, GTHS, GGLUCTC zero flux
     glutathione_reaction_ids = ["R_GTHP", "R_GTHOy"]
 
     println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
 
     println("> Glycine, Serine, and Threonine Metabolism")
-    # glycine_serine_threonine_reaction_ids = ["R_GHMT2"]  # GHMT2 broken
+    # glycine_serine_threonine_reaction_ids = ["R_GHMT2"]  # GHMT2 zero flux
     glycine_serine_threonine_reaction_ids = []
 
     println("> Folate Metabolism")
