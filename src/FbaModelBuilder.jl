@@ -47,7 +47,7 @@ function default_exchanges()
 
         # Exchanges for AS-3
         "R_EX_pi_e",
-        # "R_EX_cit_e",
+        "R_EX_cit_e",
         "R_EX_na1_e",
         "R_EX_cl_e",
     ]
@@ -275,9 +275,11 @@ function create_fba_model(
     model = Model()
 
     for discovered_metabolite_id ∈ discovered_metabolite_ids
-        model.metabolites[discovered_metabolite_id] =
-            deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
-        # println("$discovered_metabolite_id")
+        copied_metabolite = deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
+        model.metabolites[discovered_metabolite_id] = copied_metabolite
+        if contains(discovered_metabolite_id, "cit")
+            println("=== Added? $discovered_metabolite_id $copied_metabolite")
+        end
     end
 
     println("> Adding reactions and exchanges to model")
