@@ -132,9 +132,8 @@ function create_fba_model(
     # println(purine_metabolism_reaction_ids)
 
     println("> Methionine Salvage and Metabolism")
-    # met_salvage_reaction_ids =
-    #     ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"] # R_UNK3, R_METAT, ARDFE2, MDRPD broken
-    met_salvage_reaction_ids = ["R_AHC", "R_MTRI"]
+    met_salvage_reaction_ids =
+        ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
     println("> Citric Acid Cycle")
     citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
