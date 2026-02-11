@@ -201,7 +201,7 @@ function create_fba_model(
         "R_Ht",
         "R_H2Ot",
 
-        # # Expanded transporters from Bordbar 2016
+        # Expanded transporters from Bordbar 2016
         "R_AKGtec",
         "R_ARGtec",
         "R_CAATPS1",
@@ -210,7 +210,7 @@ function create_fba_model(
         "R_FRUt1r",
         # "R_FUMtr",  # Zero flux
         "R_GSNt",
-        # "R_HCYSte",
+        "R_HCYSte",
         # "R_MALt",
         # "R_MANt1r",
         # "R_METtec",
