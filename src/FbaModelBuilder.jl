@@ -160,9 +160,8 @@ function create_fba_model(
     glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
     println("> Glutathione Metabolism")
-    # glutathione_reaction_ids =
-    #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # AMPTASECG, GLUCYS, GTHS, GGLUCTC zero flux
-    glutathione_reaction_ids = ["R_GTHP", "R_GTHOy"]
+    glutathione_reaction_ids =
+        ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # AMPTASECG, GLUCYS, GTHS, GGLUCTC one has zero flux?
 
     println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
@@ -221,7 +220,7 @@ function create_fba_model(
         "R_UREAt",
         "R_URIt",
         # "R_XANt",  # Zero flux
-        # "R_GTHOXABCte",
+        "R_GTHOXABCte",  # Potentially zero flux?
         # "R_GLY_Cl_2Nat",
 
         # Additional transporters for AS-3 not listed above
