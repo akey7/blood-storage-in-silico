@@ -136,7 +136,8 @@ function create_fba_model(
         ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
     println("> Citric Acid Cycle")
-    citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
+    # citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]  # All citric reactions have zero flux
+    citric_reaction_ids = []
 
     println("> Arginine and Proline Metabolism")
     arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
@@ -216,8 +217,8 @@ function create_fba_model(
         "R_MANt1r",
         "R_METtec",
         "R_PTRCtex2",
-        # "R_SPMDtex2",  # Zero flux
-        # "R_SPRMt2",  # Zero flux
+        "R_SPMDtex2",
+        "R_SPRMt2",
         # "R_URATEt",  # Zero flux
         "R_UREAt",
         "R_URIt",
