@@ -205,7 +205,7 @@ function create_fba_model(
         "R_AKGtec",
         "R_ARGtec",
         "R_CAATPS1",
-        # "R_CAMPtec",  # Broken
+        "R_CAMPtec",
         # "R_CGMPtec",
         "R_FRUt1r",
         # "R_FUMtr",
