@@ -180,6 +180,12 @@ function create_fba_model(
     println("> Pyrimidine Catabolism")
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
+    println("> Sodium-Potassium Pump")
+    na_k_pump_reaction_ids = [
+        "R_NaKt",
+        "R_NAt",
+    ]
+
     println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
 
@@ -226,7 +232,6 @@ function create_fba_model(
 
         # Additional transporters for AS-3 not listed above
         # "R_CITt",  # Zero flux
-        "R_NAt",
         "R_Clt",
     ]
 
@@ -261,6 +266,7 @@ function create_fba_model(
         other_reaction_ids
         transporter_reactions_ids
         exchange_reactions_ids
+        na_k_pump_reaction_ids
     ]
 
     discovered_metabolite_ids::Vector{String} = []
@@ -335,9 +341,8 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADPH"])
 
-    # println("> Setting NaKt load")  # NaKt broken
-    # model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])
-    # model.reactions["R_NaKt"].objective_coefficient = 1.0
+    println("> Setting NaKt load")
+    model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     return model
 end
