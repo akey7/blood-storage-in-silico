@@ -12,58 +12,11 @@ using ProgressMeter
 using HypothesisTests
 using MultipleTesting
 
-export histograms_for_reaction_in_additive_v1,
-    histograms_for_reaction_v2,
-    plot_all_histograms_v1,
+export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
     interesting_reactions_and_times
-
-"""
-    histograms_for_reaction_in_additive_v1(long_sampling_df, additive, reaction_id, reaction_string)
-
-Plots histograms for uFBA results at all time points in a SINGLE additive on one Makie plot.
-
-# Arguments
-1. `long_sampling_df`: Sampling DataFrame, pivoted long
-2. `additive`: Additive to make plots for.
-3. `reaction_id`: The reaction id for which the samples are being plotted.
-4. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
-
-# Returns
-`Figure`
-
-Returns a Makie `Figure` that can be displayed or saved.
-"""
-function histograms_for_reaction_in_additive_v1(
-    long_sampling_df,
-    additive,
-    reaction_id,
-    reaction_string,
-)
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:additive == additive, :reaction_id == reaction_id)
-        select(:final_time, :flux)
-    end
-    title = "$reaction_id in $additive\n$reaction_string"
-    fig = Figure()
-    ax = Axis(fig[1, 1], xlabel = "Flux (mM/week)", ylabel = "Density", title = title)
-    final_times = sort(unique(plt_df.final_time))
-    colors = [:dodgerblue, :orange, :blueviolet, :crimson, :deeppink]
-    for (final_time, color) in zip(final_times, colors)
-        hist_df = @rsubset(plt_df, :final_time == final_time)
-        hist!(
-            ax,
-            hist_df.flux;
-            bins = 50,
-            color = (color, 0.33),
-            label = string(final_time),
-        )
-    end
-    axislegend(ax)
-    return fig
-end
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -107,49 +60,6 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
     )
-end
-
-"""
-    plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
-
-Plots version 1 histograms for all reactions in all addititves (with separate figures for each additive). This function saves each figure as they are made to the `output/uFBA_histograms_v1` folder. Displays a progress meter as the plots are made.
-
-# Arguments
-1. `sampling_df`: Wide DataFrame of uFBA sampling results.
-
-2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
-"""
-function plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
-    if nrow(sampling_df) == 0
-        @info "uFBA: Nothing to plot"
-    else
-        @info "uFBA: Plotting histograms, version 1"
-        long_sampling_df = stack(
-            sampling_df,
-            Not([:additive, :final_time]),
-            variable_name = :reaction_id,
-            value_name = :flux,
-        )
-        additives = unique(long_sampling_df.additive)
-        reaction_ids = unique(long_sampling_df.reaction_id)
-        pairs = product(additives, reaction_ids)
-        n_pairs = length(pairs)
-        prog = Progress(n_pairs, desc = "Writing histograms, version 1...")
-        for (additive, reaction_id) in pairs
-            reaction_string = rxn_ids_to_strings[reaction_id]
-            fig = histograms_for_reaction_in_additive_v1(
-                long_sampling_df,
-                additive,
-                reaction_id,
-                reaction_string,
-            )
-            filename =
-                joinpath("output", "uFBA_histograms_v1", "$additive $(reaction_id).png")
-            save(filename, fig)
-            next!(prog)
-        end
-        finish!(prog)
-    end
 end
 
 """
