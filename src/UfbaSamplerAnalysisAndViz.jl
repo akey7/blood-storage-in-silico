@@ -21,13 +21,11 @@ export histograms_for_reaction_v2,
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
 
-Plots histograms for a single reaction, with time points as separate panels and additives layered on top of each other in different colors.
+Plots histograms for a single reaction, with time points as separate panels and additives layered on top of each other in different colors. Draws a thick black dashed vertical line at the 0 point on all rows.
 
 # Arguments
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
-
 2. `reaction_id`: The reaction id for which the samples are being plotted.
-
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 
 # Returns
@@ -49,11 +47,16 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
         "07-NAC" => :brown,
         "08-Taurine" => :magenta,
     ]
-    plt =
+    hist_layer =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
         histogram(bins = 20) *
         visual(alpha = 0.5)
+    zero_line_layer =
+        data((flux = [0],)) *
+        mapping(:flux) *
+        visual(VLines; color = :black, linestyle = :dash, linewidth = 3)
+    plt = hist_layer + zero_line_layer
     return draw(
         plt,
         scales(Color = (; palette = additive_palette));
