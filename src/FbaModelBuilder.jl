@@ -181,10 +181,7 @@ function create_fba_model(
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
     println("> Sodium-Potassium Pump")
-    na_k_pump_reaction_ids = [
-        "R_NaKt",
-        "R_NAt",
-    ]
+    na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
 
     println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
