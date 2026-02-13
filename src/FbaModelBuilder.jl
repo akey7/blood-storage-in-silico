@@ -5,7 +5,7 @@ import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 
-export load_base_rbc_gem, create_fba_model
+export load_base_rbc_gem, create_fba_model, default_exchanges
 
 """
     load_base_rbc_gem()
@@ -28,16 +28,41 @@ function load_base_rbc_gem()
     return rbc_gem
 end
 
+function default_exchanges()
+    exchange_reactions_ids = [
+        # Original exchanges
+        "R_EX_glc__D_e",
+        "R_EX_pyr_e",
+        "R_EX_lac__L_e",
+        "R_EX_hxan_e",
+        "R_EX_ins_e",
+        "R_EX_ade_e",
+        "R_EX_adn_e",
+        "R_EX_co2_e",
+        "R_EX_pi_e",
+        "R_EX_nh4_e",
+        "R_EX_nh3_e",
+        "R_EX_h_e",
+        "R_EX_h2o_e",
+
+        # Exchanges for AS-3
+        "R_EX_pi_e",
+        "R_EX_cit_e",
+        "R_EX_na1_e",
+        "R_EX_cl_e",
+    ]
+    return exchange_reactions_ids
+end
+
 """
-    create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; add_exchanges::Bool = true)
+    create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; exchanges::Union{Nothing,Vector{String}} = nothing)
 
 Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
 for the uFBA study.
 
 # Arguments
 1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by `load_base_rbc_gem`. If left as `nothing`, this function will call `load_base_rbc_gem` directly.
-
-2. `add_exchanges::Bool = true`: If `true`, this function will add exchanges to the model. `false` will skip adding exchanges.
+2. `exchanges::Union{Nothing,Vector{String}} = nothing`: If `nothing`, this function will not add exchanges to the model. If specified, the listed exchanges are added.
 
 # Returns
 `A.CanonicalModel.Model`
@@ -46,12 +71,12 @@ Returns the newly constructed three pathway model.
 """
 function create_fba_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
-    add_exchanges::Bool = true,
+    exchanges::Union{Nothing,Vector{String}} = nothing,
 )
-    if add_exchanges
-        @info "Building 3P model and adding exchanges"
+    if !isnothing(exchanges)
+        @info "Building FBA model and adding exchanges"
     else
-        @info "Building 3P model without exchanges"
+        @info "Building FBA model without exchanges"
     end
 
     rbc_gem = isnothing(base_gem) ? load_base_rbc_gem() : deepcopy(base_gem)
@@ -99,23 +124,22 @@ function create_fba_model(
         "R_ADK1",
         "R_PPA",
         "R_PUNP3",
-        # "R_XAO2",  # Broken
-        # "R_XAO",  # Broken
+        # "R_XAO2",  # Zero flux
+        # "R_XAO",  # Zero flux
     ]
 
     # println(purine_metabolism_reaction_ids)
 
     println("> Methionine Salvage and Metabolism")
-    # met_salvage_reaction_ids =
-    #     ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"] # R_UNK3, R_METAT, ARDFE2, MDRPD broken
-    met_salvage_reaction_ids = ["R_AHC", "R_MTRI"]
+    met_salvage_reaction_ids =
+        ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
     println("> Citric Acid Cycle")
-    citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]
+    # citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]  # All citric reactions have zero flux
+    citric_reaction_ids = []
 
     println("> Arginine and Proline Metabolism")
-    # arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]  # Broken reaction
-    arg_pro_reaction_ids = []
+    arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
 
     println("> Nucleotide Metabolism")
     nucleotide_reaction_ids = [
@@ -125,32 +149,30 @@ function create_fba_model(
         "R_GUACYC",
         "R_IMPD",
         "R_NDPK1",
-        # "R_NDPK2",  # Broken
+        "R_NDPK2",
         "R_NTDGMP",
         "R_PDEG",
-        # "R_UMPK1",  # Broken
+        "R_UMPK1",
         "R_GK1",
     ]
 
     println("> Glutamate Metabolism")
-    # glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]  # Broken reaction ALATA_L
-    glutamate_reaction_ids = ["R_GLNS", "R_GLUN"]  # Broken reaction ALATA_L
+    glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
     println("> Glutathione Metabolism")
     # glutathione_reaction_ids =
-    #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # AMPTASECG, GLUCYS, GTHS, GGLUCTC broken
-    glutathione_reaction_ids = ["R_GTHP", "R_GTHOy"]
+    #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # GGLUCTC has zero flux
+    glutathione_reaction_ids = ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
 
     println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
 
     println("> Glycine, Serine, and Threonine Metabolism")
-    # glycine_serine_threonine_reaction_ids = ["R_GHMT2"]  # GHMT2 broken
+    # glycine_serine_threonine_reaction_ids = ["R_GHMT2"]  # GHMT2 zero flux
     glycine_serine_threonine_reaction_ids = []
 
     println("> Folate Metabolism")
-    # folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]  # FTHF, MTHFCL broken
-    folate_reaction_ids = ["R_MTHFD"]
+    folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
     println("> Fructose and Mannose Metabolism")
     fructose_mannose_reaction_ids = ["R_HEX4", "R_HEX7", "R_MAN6PI", "R_SBTD_D2", "R_SBTRa"]
@@ -158,122 +180,91 @@ function create_fba_model(
     println("> Pyrimidine Catabolism")
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
+    println("> Sodium-Potassium Pump")
+    na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
+
     println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
 
     println("> Transporters")
     transporter_reactions_ids = [
+        # Original transporters
         "R_GLC_Dt",
         "R_PYRt2",
         "R_L_LACt2",
         "R_HYXNt",
-        # "R_INSt",  # Broken
+        "R_INSt",
         "R_ADEt",
         "R_ADNt",
         "R_CO2t",
         "R_NH4c",
-        # "R_NH4e",  # Broken
+        "R_NH4e",
         "R_NH3t",
-        # "R_PIt",  # Broken
+        "R_PIt",
         "R_Ht",
         "R_H2Ot",
 
-        # # Expanded transporters
+        # Expanded transporters from Bordbar 2016
         "R_AKGtec",
-        # "R_ARGtec",  # Broken
-        # "R_CAATPS1",  # Broken
-        # "R_CAMPtec",  # Broken
-        # "R_CGMPtec",
-        # "R_CITt",
+        "R_ARGtec",
+        "R_CAATPS1",
+        "R_CAMPtec",
+        "R_CGMPtec",
         "R_FRUt1r",
-        # "R_FUMtr",
+        # "R_FUMtr",  # Zero flux
         "R_GSNt",
-        # "R_HCYSte",
-        # "R_MALt",
+        "R_HCYSte",
+        # "R_MALt",  # Zero flux
+        "R_MANt1r",
+        "R_METtec",
+        "R_PTRCtex2",
+        "R_SPMDtex2",
+        "R_SPRMt2",
+        # "R_URATEt",  # Zero flux
+        "R_UREAt",
+        "R_URIt",
+        # "R_XANt",  # Zero flux
+        "R_GTHOXABCte",
+        "R_GLY_Cl_2Nat",
 
-        # "R_MANt1r",
-        # "R_METtec",
-        # "R_PTRCtex2",
-        # "R_SPMDtex2",
-        # "R_SPRMt2",
-        # "R_URATEt",
-        # "R_UREAt",
-        # "R_URIt",
-        # "R_XANt",
-        # "R_GTHOXABCte",
-        # "R_GLY_Cl_2Nat",
+        # Additional transporters for AS-3 not listed above
+        # "R_CITt",  # Zero flux
+        "R_Clt",
     ]
 
     # println(transporter_reactions_ids)
 
-    if add_exchanges
-        println("> Exchanges")
-
-        exchange_reactions_ids = [
-            "R_EX_glc__D_e",
-            "R_EX_pyr_e",
-            "R_EX_lac__L_e",
-            "R_EX_hxan_e",
-            "R_EX_ins_e",
-            "R_EX_ade_e",
-            "R_EX_adn_e",
-            "R_EX_co2_e",
-            "R_EX_pi_e",
-            "R_EX_nh4_e",
-            "R_EX_nh3_e",
-            "R_EX_h_e",
-            "R_EX_h2o_e",
-        ]
-
-        # println(exchange_reactions_ids)
+    if !isnothing(exchanges)
+        println("> Adding exchanges")
     else
         println("> Skipping exchanges")
     end
 
+    exchange_reactions_ids = isnothing(exchanges) ? [] : exchanges
+
     println("> Collecting reactions and discovering metabolites")
 
-    if add_exchanges
-        all_reaction_ids = [
-            glycolysis_reaction_ids
-            rl_shunt_reaction_ids
-            ppp_reaction_ids
-            purine_metabolism_reaction_ids
-            met_salvage_reaction_ids
-            # citric_reaction_ids
-            arg_pro_reaction_ids
-            nucleotide_reaction_ids
-            glutamate_reaction_ids
-            glutathione_reaction_ids
-            # urea_reaction_ids
-            folate_reaction_ids
-            glycine_serine_threonine_reaction_ids
-            # fructose_mannose_reaction_ids
-            # pyrimdine_reaction_ids
-            other_reaction_ids
-            transporter_reactions_ids
-            exchange_reactions_ids
-        ]
-    else
-        all_reaction_ids = [
-            glycolysis_reaction_ids
-            rl_shunt_reaction_ids
-            ppp_reaction_ids
-            purine_metabolism_reaction_ids
-            met_salvage_reaction_ids
-            # citric_reaction_ids
-            arg_pro_reaction_ids
-            nucleotide_reaction_ids
-            glutamate_reaction_ids
-            glutathione_reaction_ids
-            # urea_reaction_ids
-            folate_reaction_ids
-            glycine_serine_threonine_reaction_ids
-            # fructose_mannose_reaction_ids
-            # pyrimdine_reaction_ids
-            other_reaction_ids
-            transporter_reactions_ids
-        ]
-    end
+    all_reaction_ids = [
+        glycolysis_reaction_ids
+        rl_shunt_reaction_ids
+        ppp_reaction_ids
+        purine_metabolism_reaction_ids
+        met_salvage_reaction_ids
+        citric_reaction_ids
+        arg_pro_reaction_ids
+        nucleotide_reaction_ids
+        glutamate_reaction_ids
+        glutathione_reaction_ids
+        urea_reaction_ids
+        folate_reaction_ids
+        glycine_serine_threonine_reaction_ids
+        fructose_mannose_reaction_ids
+        pyrimdine_reaction_ids
+        other_reaction_ids
+        transporter_reactions_ids
+        exchange_reactions_ids
+        na_k_pump_reaction_ids
+    ]
 
     discovered_metabolite_ids::Vector{String} = []
     for reaction_id ∈ all_reaction_ids
@@ -287,9 +278,11 @@ function create_fba_model(
     model = Model()
 
     for discovered_metabolite_id ∈ discovered_metabolite_ids
-        model.metabolites[discovered_metabolite_id] =
-            deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
-        # println("$discovered_metabolite_id")
+        copied_metabolite = deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
+        model.metabolites[discovered_metabolite_id] = copied_metabolite
+        if contains(discovered_metabolite_id, "cit")
+            println("=== Added? $discovered_metabolite_id $copied_metabolite")
+        end
     end
 
     println("> Adding reactions and exchanges to model")
@@ -345,9 +338,8 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADPH"])
 
-    # println("> Setting NaKt load")  # NaKt broken
-    # model.reactions["R_NaKt"] = deepcopy(rbc_gem.reactions["R_NaKt"])
-    # model.reactions["R_NaKt"].objective_coefficient = 1.0
+    println("> Setting NaKt load")
+    model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     return model
 end
