@@ -58,7 +58,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     n_models;
     exchanges = default_exchanges(),
 )
-case3_sinks_df = extract_case3_sinks(ufba_jobs)
+case3_sinks_df, case3_sinks_aggregated_df = extract_case3_sinks(ufba_jobs)
 sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
 @info "uFBA: Final status"
 display(status_df)
@@ -73,3 +73,6 @@ println("Wrote $sampling_filename")
 case3_sinks_filename = joinpath("output", "case3_sinks.csv")
 CSV.write(case3_sinks_filename, case3_sinks_df)
 println("Wrote $case3_sinks_filename")
+case3_sinks_aggregated_filename = joinpath("output", "case3_sinks_aggregated.csv")
+CSV.write(case3_sinks_aggregated_filename, case3_sinks_aggregated_df)
+println("Wrote $case3_sinks_aggregated_filename")
