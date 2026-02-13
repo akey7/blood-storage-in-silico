@@ -112,6 +112,12 @@ Which would sample all models with 10 chains, run all models, and use 32 concurr
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
 
+Outputs the following files:
+1. `outputs/ufba_sampling_status.csv`: That statuses of each uFBA sampling job (fail or ok)
+2. `outputs/ufba_sampling.csv`: The samplings of the fluxes. Used by next step.
+3. `outputs/case3_sinks.csv`: The unmeasured metabolite sinks from the Case 3 analysis, and whether they had zero or non-zero flux.
+4. `outputs/case3_sinks_aggregated.csv`: Counts of zero and nonzero sinks. 
+
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
 Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. 

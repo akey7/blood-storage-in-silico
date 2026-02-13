@@ -770,12 +770,14 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
 
 # Returns
-`DataFrame`
+`Tuple{DataFrame,DataFrame}`
 
-Returns a DataFrame of with the status of unmeasured metabolite sinks for each uFBA job.
+Returns two DataFrames:
+1. Status of unmeasured metabolite sinks for each uFBA job.
+2. Aggregated status of unmeasured metabolites sinks for each uFBA job.
 """
 function extract_case3_sinks(ufba_jobs)
-    rows = []
+    status_rows = []
     for ufba_job in ufba_jobs
         for zero_case3_sink in ufba_job.zero_case3_sinks
             row = (
@@ -784,7 +786,7 @@ function extract_case3_sinks(ufba_jobs)
                 sink = zero_case3_sink,
                 status = "zero",
             )
-            push!(rows, row)
+            push!(status_rows, row)
         end
         for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
             row = (
@@ -793,10 +795,15 @@ function extract_case3_sinks(ufba_jobs)
                 sink = nonzero_case3_sink,
                 status = "nonzero",
             )
-            push!(rows, row)
+            push!(status_rows, row)
         end
     end
-    return DataFrame(rows)
+    status_df = DataFrame(status_rows)
+    status_aggregated_df = @chain status_df begin
+        @groupby(:additive, :final_time, :status)
+        combine(nrow => :count)
+    end
+    return status_df, status_aggregated_df
 end
 
 """
