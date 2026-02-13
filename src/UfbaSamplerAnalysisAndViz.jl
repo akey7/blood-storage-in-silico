@@ -152,6 +152,23 @@ function plot_all_histograms_v1(sampling_df, rxn_ids_to_strings)
     end
 end
 
+"""
+    pivot_sampling_df_long(sampling_df)
+
+Pivots the sampling_df longer.
+
+# Arguments
+1. `sampling_df`: The sampling DataFrame in long format. The DataFrame should have a column for each reaction sampled, along with `:additive` and `:final_time` columns.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame pivoted to long with the following columns:
+1. `:additive`: The additive
+2. `:final_time`: Final time
+3. `:reaction_id`: The reaction id
+4. `:flux`: THe flux through that reaction at that sample.
+"""
 function pivot_sampling_df_long(sampling_df)
     long_sampling_df = stack(
         sampling_df,
