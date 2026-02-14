@@ -216,7 +216,21 @@ function map_metabolites_to_sinks(sampling_df)
     ]
     sink_metabolite_ids =
         sort(unique([join(split(sink_id, "_")[5:end], "_") for sink_id in sink_ids]))
-    display(first(sink_metabolite_ids, 10))
+    metabolite_id_sink_map::Dict{String,Dict{Symbol,String}} = Dict()
+    for sink_metabolite_id in sink_metabolite_ids
+        sink_up_id = "R_UNKNOWN_SK_UP_$sink_metabolite_id"
+        sink_down_id = "R_UNKNOWN_SK_DOWN_$sink_metabolite_id"
+        metabolite_id_sink_map[sink_metabolite_id] = Dict()
+        if sink_up_id in sink_ids
+            metabolite_id_sink_map[sink_metabolite_id][:up] = sink_up_id
+        end
+        if sink_down_id in sink_ids
+            metabolite_id_sink_map[sink_metabolite_id][:down] = sink_down_id
+        end
+    end
+    for (metabolite_id, sink_ids) in metabolite_id_sink_map
+        println("$metabolite_id $sink_ids")
+    end
 end
 
 end
