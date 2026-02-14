@@ -16,7 +16,8 @@ export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
-    interesting_reactions_and_times
+    interesting_reactions_and_times,
+    map_metabolites_to_sinks
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -80,7 +81,7 @@ Returns a DataFrame pivoted to long with the following columns:
 1. `:additive`: The additive
 2. `:final_time`: Final time
 3. `:reaction_id`: The reaction id
-4. `:flux`: THe flux through that reaction at that sample.
+4. `:flux`: The flux through that reaction at that sample.
 """
 function pivot_sampling_df_long(sampling_df)
     long_sampling_df = stack(
@@ -205,6 +206,15 @@ function interesting_reactions_and_times(sampling_df; n_samples = 10)
     pair_results_df.adj_p_value = adjust(pair_results_df.p_value, BenjaminiHochberg())
     final_df = sort(pair_results_df, :adj_p_value)
     return final_df
+end
+
+function map_metabolites_to_sinks(sampling_df)
+    long_df = pivot_sampling_df_long(sampling_df)
+    reaction_ids = sort(unique(long_df.reaction_id))
+    sink_ids = [
+        reaction_id for reaction_id in reaction_ids if contains(reaction_id, "R_UNKNOWN_SK")
+    ]
+    display(first(sink_ids, 10))
 end
 
 end
