@@ -208,6 +208,19 @@ function interesting_reactions_and_times(sampling_df; n_samples = 10)
     return final_df
 end
 
+"""
+    map_metabolites_to_sinks(sampling_df)
+
+Extracts the sinks (up and down) from the given samples and maps unmeasured metabolite ids to their corresponding up and down sinks.
+
+# Arguments
+1. `sampling_df`: The wide sampling DataFrame.
+
+# Returns
+`Dict{String,Dict{Symbol,String}}`
+
+Returns a dictionary mapping strings (metabolite_ids) to a second level of dictionaries. The second level of dictionaries contain `:up` and/or `:down` keys which in turn map to reaction ids that are the up or and/or down sinks for the metabolite_id key in the top-level dictionary.
+"""
 function map_metabolites_to_sinks(sampling_df)
     long_df = pivot_sampling_df_long(sampling_df)
     reaction_ids = sort(unique(long_df.reaction_id))
@@ -228,9 +241,7 @@ function map_metabolites_to_sinks(sampling_df)
             metabolite_id_sink_map[sink_metabolite_id][:down] = sink_down_id
         end
     end
-    for (metabolite_id, sink_ids) in metabolite_id_sink_map
-        println("$metabolite_id $sink_ids")
-    end
+    return metabolite_id_sink_map
 end
 
 end
