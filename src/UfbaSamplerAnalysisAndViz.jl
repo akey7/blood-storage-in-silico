@@ -214,7 +214,9 @@ function map_metabolites_to_sinks(sampling_df)
     sink_ids = [
         reaction_id for reaction_id in reaction_ids if contains(reaction_id, "R_UNKNOWN_SK")
     ]
-    display(first(sink_ids, 10))
+    sink_metabolite_ids =
+        sort(unique([join(split(sink_id, "_")[5:end], "_") for sink_id in sink_ids]))
+    display(first(sink_metabolite_ids, 10))
 end
 
 end
