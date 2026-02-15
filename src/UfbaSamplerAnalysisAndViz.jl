@@ -245,13 +245,41 @@ function map_metabolites_to_sinks(sampling_df)
     return metabolite_id_sink_map
 end
 
-function calc_net_sink_fluxes(sampling_df)
+function calc_net_sink_fluxes(sampling_df, sink_map)
+    @info "Calculating net sink fluxes"
     long_df = pivot_sampling_df_long(sampling_df)
+    final_times = sort(unique(long_df.final_time))
+    additives = sort(unique(long_df.additive))
+    pairs = product(additives, final_times)
     median_fluxes_df = @chain long_df begin
         @groupby(:additive, :final_time, :reaction_id)
         @combine(:median_flux = median(:flux))
     end
-    display(first(median_fluxes_df, 10))
+    rows = []
+    for (metabolite_id, sinks) in sink_map
+        up_id = sinks[:up]
+        down_id = sinks[:down]
+        for (additive, final_time) in pairs
+            up_df = @rsubset(
+                long_df,
+                :additive == additive,
+                :final_time == final_time,
+                :reaction_id == up_id
+            )
+            down_df = @rsubset(
+                long_df,
+                :additive == additive,
+                :final_time == final_time,
+                :reaction_id == down_id
+            )
+            up_flux = median_fluxes_df[1, :median_flux]
+            down_flux = median_fluxes_df[1, :median_flux]
+            row = (metabolite_id = metabolite_id, up_flux = up_flux, down_flux = down_flux)
+            push!(rows, row)
+        end
+    end
+    net_flux_df = DataFrame(rows)
+    display(first(net_flux_df, 10))
 end
 
 end
