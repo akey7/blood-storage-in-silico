@@ -22,7 +22,8 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
-map_metabolites_to_sinks(sampling_df)
+sink_map = map_metabolites_to_sinks(sampling_df)
+calc_net_sink_fluxes(sampling_df)
 
 # Buggy, disabled for now
 # interesting_df = interesting_reactions_and_times(sampling_df)
