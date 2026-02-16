@@ -307,6 +307,20 @@ function gather_pca_scores(pca_result)
     return df
 end
 
+"""
+    calc_pca_scores_3d_limits(long_df; margin = 1.1)
+
+Computes 3D axis limits for PCA plots across all additives to set the axis limits of all 3D PCA plots so that plots of different additives can be directly compared.
+
+# Arguments
+1. `long_df`: Long dataframe relative intensities.
+2. `margin = 1.1`: Multiplier to create margins around the PCA plots.
+
+# Returns
+`Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Tuple{Float64,Float64}}`
+
+Returns tuple of tuples suitable for passing to GLMakie that define axis limits for each principal component.
+"""
 function calc_pca_scores_3d_limits(long_df; margin = 1.1)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
@@ -405,5 +419,9 @@ function display_pca_scores_3d(limits, pca_result, additive)
     @info "Finished preparing PCA plot"
     GLMakie.display(fig)
 end
+
+# function extract_loadings()
+    
+# end
 
 end
