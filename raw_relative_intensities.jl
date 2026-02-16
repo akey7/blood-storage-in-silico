@@ -9,7 +9,8 @@ long_df = load_relative_intensities()
 additives = sort(unique(long_df.Additive))
 
 @info "Aggregating loadings"
-loadings_report(long_df)
+loadings_df = pca_loadings_report(long_df)
+display(first(loadings_df, 10))
 
 # @info "Displaying 3D"
 # limits = calc_pca_scores_3d_limits(long_df)

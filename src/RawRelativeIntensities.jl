@@ -17,7 +17,7 @@ export load_relative_intensities,
     display_pca_scores_3d,
     gather_pca_scores,
     calc_pca_scores_3d_limits,
-    loadings_report
+    pca_loadings_report
 
 """
     load_relative_intensities()
@@ -425,7 +425,7 @@ end
 """
     extract_pca_loadings(pca_result, additive)
 
-Extracts the loadings of the metabolite features on each of the PCs. Used by [`loadings_report`](@ref BloodStorageInSilico.RawRelativeIntensities.loadings_report).
+Extracts the loadings of the metabolite features on each of the PCs. Used by [`pca_loadings_report`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_loadings_report).
 
 # Arguments
 1. `pca_result`: Result from The long DataFrame from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
@@ -436,7 +436,7 @@ Extracts the loadings of the metabolite features on each of the PCs. Used by [`l
 Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
 
 1. `additive`: Additive the PCA was performed for.
-2. `metabolite_names`: Names of the metabolites.
+2. `metabolite_name`: Names of the metabolites.
 3. `pc1_loading`: Loadings on the first PC.
 4. `pc2_loading`: Loadings on the second PC.
 5. `pc3_loading`: Loadings on the third PC.
@@ -478,13 +478,29 @@ Collect and concatenate all PC loadings in all additives into a DataFrame.
 
 # Arguments
 1. `long_df`: Long DataFrame of relative intensities
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_name`: Names of the metabolites.
+3. `pc1_loading`: Loadings on the first PC.
+4. `pc2_loading`: Loadings on the second PC.
+5. `pc3_loading`: Loadings on the third PC.
+6. `pc4_loading`: Loadings on the fourth PC.
+7. `pc5_loading`: Loadings on the fifth PC.
+8. `pc6_loading`: Loadings on the sixth PC.
 """
-function loadings_report(long_df)
+function pca_loadings_report(long_df)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
-        pca_relative_intensities(long_df, additive)
+        pca_result = pca_relative_intensities(long_df, additive)
+        extract_pca_loadings(pca_result)
     end
-    display(first(extract_pca_loadings(all_pca_results[1]), 10))
+    result_df = vcat(all_pca_results...)
+    return result_df
 end
 
 end
