@@ -161,13 +161,15 @@ function plot_additive_pair_2d_pcas(long_df)
     for (a1, a2) in non_dupes
         super_title = "$a1 and $a2"
         fig = Figure(; size = (1280, 720))
+        pca_result_left = pca_relative_intensities(long_df, a1)
+        pca_result_right = pca_relative_intensities(long_df, a2)
+        plot_pca_scores(pca_result_left, fig; side = :left)
+        plot_pca_scores(pca_result_right, fig; side = :right)
         Label(fig[0, :], text = super_title, fontsize = 50)
+        filename = joinpath("output", "pca_plots", "PCA $a1 and $a2.png")
+        save(filename, fig)
+        next!(prog)
     end
-    # fig = Figure(; size = (1280, 720))
-    # plot_pca_scores(pca_result, fig)
-    # plot_pca_scree(pca_result, fig)
-    # Label(fig[0, :], text = super_title, fontsize = 50)
-    # return fig
 end
 
 """
@@ -214,7 +216,7 @@ function plot_pca_panels(pca_result, super_title)
 end
 
 """
-    plot_pca_scores(pca_result, fig; side = :left)
+    plot_pca_scores(pca_result, fig; side = :right)
 
 Plot a panel of the first two PCs against each other in a scatter plot.
 
