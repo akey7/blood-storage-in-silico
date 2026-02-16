@@ -68,6 +68,7 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 3. `patient_time_labels`: Labels for each observation of patient and time.
 4. `kept_columns`: List of columns that were kept for the PCA after data cleaning
 5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
+6. `additive`: The additive the PCA was performed for.
 """
 function pca_relative_intensities(long_df, additive)
     @info "Beginning PCA for $additive"
@@ -142,6 +143,7 @@ function pca_relative_intensities(long_df, additive)
     # display(M)
     @info "Finished PCA for $additive"
     return (
+        additive = additive,
         model = M,
         scores = scores,
         patient_time_labels = patient_time_labels,
@@ -427,7 +429,6 @@ Extracts the loadings of the metabolite features on each of the PCs. Used by [`l
 
 # Arguments
 1. `pca_result`: Result from The long DataFrame from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
-2. `additive`: The additive of that the PCA results are from. NOTE: This parameter does not affect the PCA results; rather, it controls the column of the DataFrame returned by this function.
 
 # Returns
 `DataFrame`
@@ -443,7 +444,8 @@ Returns a DataFrame, ordered by the column `pc1_loading`, that has the following
 7. `pc5_loading`: Loadings on the fifth PC.
 8. `pc6_loading`: Loadings on the sixth PC.
 """
-function extract_pca_loadings(pca_result, additive)
+function extract_pca_loadings(pca_result)
+    additive = pca_result.additive
     M = pca_result.model
     L = loadings(M)
     pc1_loadings = L[:, 1]
@@ -469,12 +471,20 @@ function extract_pca_loadings(pca_result, additive)
     return result_df
 end
 
+"""
+    loadings_report(long_df)
+
+Collect and concatenate all PC loadings in all additives into a DataFrame.
+
+# Arguments
+1. `long_df`: Long DataFrame of relative intensities
+"""
 function loadings_report(long_df)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
         pca_relative_intensities(long_df, additive)
     end
-    display(first(extract_pca_loadings(all_pca_results[1], "01-Ctrl AS3"), 10))
+    display(first(extract_pca_loadings(all_pca_results[1]), 10))
 end
 
 end
