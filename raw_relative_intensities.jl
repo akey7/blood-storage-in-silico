@@ -18,7 +18,7 @@ CSV.write(loadings_filename, loadings_df)
 println("Wrote $loadings_filename")
 
 @info "Plotting and Saving 2D PCAs"
-plot_all_2d_pcas(long_df)
+plot_single_additive_2d_pcas(long_df)
 
 # @info "Displaying 3D PCAs"
 # limits = calc_pca_scores_3d_limits(long_df)

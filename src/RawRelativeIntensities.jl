@@ -20,7 +20,7 @@ export load_relative_intensities,
     gather_pca_scores,
     calc_pca_scores_3d_limits,
     pca_loadings_report,
-    plot_all_2d_pcas
+    plot_single_additive_2d_pcas
 
 """
     load_relative_intensities()
@@ -163,7 +163,7 @@ Plot the 2D PCA multi panel plots.
 # Arguments
 1. `long_df`: Long DataFrame of relative intensities.
 """
-function plot_all_2d_pcas(long_df)
+function plot_single_additive_2d_pcas(long_df)
     additives = sort(unique(long_df.Additive))
     n_additives = length(additives)
     prog = Progress(n_additives, desc = "Plotting 2D PCAs")
