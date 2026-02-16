@@ -46,11 +46,6 @@ all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.c
 CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
 println("Wrote $all_primary_cluster_df_filename")
 
-println(">" ^ 10, " PCA ANALYSIS ", "<" ^ 10)
-loadings_df = plot_pca_all_additives(long_df)
-loadings_filename = joinpath("output", "pca_loadings.csv")
-CSV.write(loadings_filename, loadings_df)
-
 println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
 rate_df = regress_concentration_vs_time(long_df)
 # display(first(rate_df, 20))
