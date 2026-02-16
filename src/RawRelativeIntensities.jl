@@ -156,7 +156,18 @@ function plot_additive_pair_2d_pcas(long_df)
     additives = sort(unique(long_df.Additive))
     pairs = product(additives, additives)
     non_dupes = [(a1, a2) for (a1, a2) in pairs if a1 != a2]
-    println(non_dupes)
+    n_non_dupes = length(non_dupes)
+    prog = Progress(n_non_dupes, desc = "Plotting 2D Additive Pair PCAs")
+    for (a1, a2) in non_dupes
+        super_title = "$a1 and $a2"
+        fig = Figure(; size = (1280, 720))
+        Label(fig[0, :], text = super_title, fontsize = 50)
+    end
+    # fig = Figure(; size = (1280, 720))
+    # plot_pca_scores(pca_result, fig)
+    # plot_pca_scree(pca_result, fig)
+    # Label(fig[0, :], text = super_title, fontsize = 50)
+    # return fig
 end
 
 """
@@ -170,7 +181,7 @@ Plot the 2D PCA multi panel plots.
 function plot_single_additive_2d_pcas(long_df)
     additives = sort(unique(long_df.Additive))
     n_additives = length(additives)
-    prog = Progress(n_additives, desc = "Plotting 2D PCAs")
+    prog = Progress(n_additives, desc = "Plotting 2D Single-Additive PCAs")
     for additive in additives
         pca_result = pca_relative_intensities(long_df, additive)
         fig = plot_pca_panels(pca_result, additive)
@@ -203,15 +214,16 @@ function plot_pca_panels(pca_result, super_title)
 end
 
 """
-    plot_pca_scores(pca_result, fig)
+    plot_pca_scores(pca_result, fig; side = :left)
 
 Plot a panel of the first two PCs against each other in a scatter plot.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
 2. `fig`: A Makie figure to plot onto.
+3. `side`: Plot the panel on the either `:left` or `:right` side of the provided figure. Defaults to `:right`
 """
-function plot_pca_scores(pca_result, fig)
+function plot_pca_scores(pca_result, fig; side = :right)
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -237,11 +249,10 @@ function plot_pca_scores(pca_result, fig)
     xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     title = "PCA of Timeseries"
-    ax_scatter = Axis(fig[1:3, 2:3], xlabel = xlabel, ylabel = ylabel, title = title)
-    ax_hist = Axis(fig[4, 2:3])
-    # for (x, y, tl) in zip(pc1, pc2, time_labels)
-    #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
-    # end
+    f_scatter = side == :right ? fig[1:3, 3:4] : fig[1:3, 1:2]
+    f_hist = side == :right ? fig[4, 3:4] : fig[4, 1:2]
+    ax_scatter = Axis(f_scatter, xlabel = xlabel, ylabel = ylabel, title = title)
+    ax_hist = Axis(f_hist)
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
