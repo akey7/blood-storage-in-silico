@@ -259,24 +259,29 @@ function calc_net_sink_fluxes(sampling_df, sink_map)
     n_calculations = length(keys(sink_map)) * length(pairs)
     prog = Progress(n_calculations, desc = "Calculating net sink fluxes")
     for (metabolite_id, sinks) in sink_map
-        up_id = sinks[:up]
-        down_id = sinks[:down]
+        up_id = get(sinks, :up, nothing)
+        down_id = get(sinks, :down, nothing)
         for (additive, final_time) in pairs
-            up_df = @rsubset(
-                median_fluxes_df,
-                :additive == additive,
-                :final_time == final_time,
-                :reaction_id == up_id
-            )
-            down_df = @rsubset(
-                median_fluxes_df,
-                :additive == additive,
-                :final_time == final_time,
-                :reaction_id == down_id
-            )
-            up_flux = up_df[1, :median_flux]
-            down_flux = down_df[1, :median_flux]
-            net_flux = up_flux - down_flux
+            up_df =
+                !isnothing(up_id) ?
+                @rsubset(
+                    median_fluxes_df,
+                    :additive == additive,
+                    :final_time == final_time,
+                    :reaction_id == up_id
+                ) : nothing
+            down_df =
+                !isnothing(down_id) ?
+                @rsubset(
+                    median_fluxes_df,
+                    :additive == additive,
+                    :final_time == final_time,
+                    :reaction_id == down_id
+                ) : nothing
+            up_flux = !isnothing(up_df) ? up_df[1, :median_flux] : missing
+            down_flux = !isnothing(down_df) ? down_df[1, :median_flux] : missing
+            net_flux =
+                !ismissing(up_flux) && !ismissing(down_flux) ? up_flux + down_flux : missing
             row = (
                 metabolite_id = metabolite_id,
                 additive = additive,
