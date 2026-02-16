@@ -18,7 +18,7 @@ export histograms_for_reaction_v2,
     pivot_sampling_df_long,
     interesting_reactions_and_times,
     map_metabolites_to_sinks,
-    calc_net_sink_fluxes
+    net_sink_fluxes
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -245,7 +245,7 @@ function map_metabolites_to_sinks(sampling_df)
     return metabolite_id_sink_map
 end
 
-function calc_net_sink_fluxes(sampling_df, sink_map)
+function net_sink_fluxes(sampling_df, sink_map)
     @info "Calculating net sink fluxes"
     long_df = pivot_sampling_df_long(sampling_df)
     final_times = sort(unique(long_df.final_time))

@@ -23,7 +23,7 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
 sink_map = map_metabolites_to_sinks(sampling_df)
-net_flux_df = calc_net_sink_fluxes(sampling_df, sink_map)
+net_flux_df = net_sink_fluxes(sampling_df, sink_map)
 display(first(net_flux_df, 10))
 
 # Buggy, disabled for now
