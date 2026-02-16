@@ -278,17 +278,17 @@ function calc_net_sink_fluxes(sampling_df, sink_map)
                     :final_time == final_time,
                     :reaction_id == down_id
                 ) : nothing
-            up_flux = !isnothing(up_df) ? up_df[1, :median_flux] : missing
-            down_flux = !isnothing(down_df) ? down_df[1, :median_flux] : missing
-            net_flux =
-                !ismissing(up_flux) && !ismissing(down_flux) ? up_flux + down_flux : missing
+            up_median_flux = !isnothing(up_df) ? up_df[1, :median_flux] : missing
+            down_median_flux = !isnothing(down_df) ? down_df[1, :median_flux] : missing
+            net_median_flux =
+                !ismissing(up_median_flux) && !ismissing(down_median_flux) ? up_median_flux + down_median_flux : missing
             row = (
                 metabolite_id = metabolite_id,
                 additive = additive,
                 final_time = final_time,
-                up_flux = up_flux,
-                down_flux = down_flux,
-                net_flux = net_flux,
+                up_median_flux = up_median_flux,
+                down_median_flux = down_median_flux,
+                net_median_flux = net_median_flux,
             )
             push!(rows, row)
             next!(prog)
