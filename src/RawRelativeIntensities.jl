@@ -291,7 +291,7 @@ function plot_pca_scree(pca_result, fig)
     ylabel = "Percent"
     title = "Cumulative variance explained"
     ax = Axis(
-        fig[2:3, 1],
+        fig[2:3, 1:2],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
