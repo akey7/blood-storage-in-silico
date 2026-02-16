@@ -70,7 +70,7 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
 """
 function pca_relative_intensities(long_df, additive)
-    @info "Beginning PCA"
+    @info "Beginning PCA for $additive"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = split(:Sample, "_")[3][1:2])
@@ -140,7 +140,7 @@ function pca_relative_intensities(long_df, additive)
     kept_columns = findall(good_cols)
     # display(kept_columns)
     # display(M)
-    @info "Finished PCA"
+    @info "Finished PCA for $additive"
     return (
         model = M,
         scores = scores,
