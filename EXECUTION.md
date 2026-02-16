@@ -42,9 +42,15 @@ Output will be saved to `output/normalized_abundance_correlations.csv` and `outp
 
 Uses `src/RawRelativeIntensities.jl` to make 3D PCA plots reducing relative metabolite abundances down to fewer features.
 
-This script does not use multiple workers or threads, so executing it is easy.
+Execution is multithreaded, so the number of threads should be specified.
 
-On macOS or Windows:
+On macOS:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. raw_relative_intensities.jl
+```
+
+On Windows, assuming `JULIA_NUM_THREADS` has been set in settings:
 
 ```
 julia --project=. raw_relative_intensities.jl
