@@ -183,7 +183,6 @@ Using [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
-
 2. `super_title`: The super title to put over the top of both panels.
 
 # Returns
@@ -206,7 +205,6 @@ Plot a panel of the first two PCs against each other in a scatter plot.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
-
 2. `fig`: A Makie figure to plot onto.
 """
 function plot_pca_scores(pca_result, fig)
@@ -265,7 +263,6 @@ Plots a PCA scree plot panel onto the given figure.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
-
 2. `fig`: Make `Figure` to plot the panel onto.
 """
 function plot_pca_scree(pca_result, fig)
