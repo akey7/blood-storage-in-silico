@@ -1,5 +1,6 @@
 module RawRelativeIntensities
 
+using Base.Iterators
 using CSV
 using DataFrames
 using DataFramesMeta
@@ -10,6 +11,7 @@ using Statistics
 using Makie
 using GLMakie
 using ThreadsX
+using ProgressMeter
 
 export load_relative_intensities,
     pca_relative_intensities,
@@ -17,7 +19,8 @@ export load_relative_intensities,
     display_pca_scores_3d,
     gather_pca_scores,
     calc_pca_scores_3d_limits,
-    pca_loadings_report
+    pca_loadings_report,
+    plot_all_2d_pcas
 
 """
     load_relative_intensities()
@@ -71,7 +74,7 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 6. `additive`: The additive the PCA was performed for.
 """
 function pca_relative_intensities(long_df, additive)
-    @info "Beginning PCA for $additive"
+    # @info "Beginning PCA for $additive"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = split(:Sample, "_")[3][1:2])
@@ -141,7 +144,7 @@ function pca_relative_intensities(long_df, additive)
     kept_columns = findall(good_cols)
     # display(kept_columns)
     # display(M)
-    @info "Finished PCA for $additive"
+    # @info "Finished PCA for $additive"
     return (
         additive = additive,
         model = M,
@@ -150,6 +153,19 @@ function pca_relative_intensities(long_df, additive)
         kept_columns = kept_columns,
         wide_df = wide_df,
     )
+end
+
+function plot_all_2d_pcas(long_df)
+    additives = sort(unique(long_df.Additive))
+    n_additives = length(additives)
+    prog = Progress(n_additives, desc = "Plotting 2D PCAs")
+    for additive in additives
+        pca_result = pca_relative_intensities(long_df, additive)
+        fig = plot_pca_panels(pca_result, additive)
+        filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        save(filename, fig)
+        next!(prog)
+    end
 end
 
 """
