@@ -20,7 +20,8 @@ export load_relative_intensities,
     gather_pca_scores,
     calc_pca_scores_3d_limits,
     pca_loadings_report,
-    plot_single_additive_2d_pcas
+    plot_single_additive_2d_pcas,
+    plot_additive_pair_2d_pcas
 
 """
     load_relative_intensities()
@@ -33,13 +34,9 @@ Loads the relative quantification (intensity) and pivots it long.
 Returns a long DataFrame with the following columns: 
 
 1. `:Sample`, the sample id
-
 2. `:Time` the time point of the measurement (in weeks)
-
 3. `:Additive`: Additive the measurement was taken in.
-
 4. `:MixedName`: The name of either a single compound or group of compounds under the same peak.
-
 5. `:Intensity`: The integrated area of the peak.
 """
 function load_relative_intensities()
@@ -155,8 +152,15 @@ function pca_relative_intensities(long_df, additive)
     )
 end
 
+function plot_additive_pair_2d_pcas(long_df)
+    additives = sort(unique(long_df.Additive))
+    pairs = product(additives, additives)
+    non_dupes = [(a1, a2) for (a1, a2) in pairs if a1 != a2]
+    println(non_dupes)
+end
+
 """
-    plot_all_2d_pcas(long_df)
+    plot_single_additive_2d_pcas(long_df)
 
 Plot the 2D PCA multi panel plots.
 

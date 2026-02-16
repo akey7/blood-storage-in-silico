@@ -17,8 +17,11 @@ loadings_filename = joinpath("output", "relative_pca_loadings.csv")
 CSV.write(loadings_filename, loadings_df)
 println("Wrote $loadings_filename")
 
-@info "Plotting and Saving 2D PCAs"
-plot_single_additive_2d_pcas(long_df)
+# @info "Plotting and Saving Single-Additive 2D PCAs"
+# plot_single_additive_2d_pcas(long_df)
+
+@info "Plotting and Saving Additive Pair 2D PCAs"
+plot_additive_pair_2d_pcas(long_df)
 
 # @info "Displaying 3D PCAs"
 # limits = calc_pca_scores_3d_limits(long_df)
