@@ -56,7 +56,7 @@ On Windows, assuming `JULIA_NUM_THREADS` has been set in settings:
 julia --project=. raw_relative_intensities.jl
 ```
 
-This will display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
+This script will write the PCA loadings for all additives to `output/relative_pca_loadings.csv`. This script will also display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
 
 ### (3) `absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
 
