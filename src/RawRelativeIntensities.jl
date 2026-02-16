@@ -155,6 +155,14 @@ function pca_relative_intensities(long_df, additive)
     )
 end
 
+"""
+    plot_all_2d_pcas(long_df)
+
+Plot the 2D PCA multi panel plots.
+
+# Arguments
+1. `long_df`: Long DataFrame of relative intensities.
+"""
 function plot_all_2d_pcas(long_df)
     additives = sort(unique(long_df.Additive))
     n_additives = length(additives)
