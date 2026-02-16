@@ -42,15 +42,21 @@ Output will be saved to `output/normalized_abundance_correlations.csv` and `outp
 
 Uses `src/RawRelativeIntensities.jl` to make 3D PCA plots reducing relative metabolite abundances down to fewer features.
 
-This script does not use multiple workers or threads, so executing it is easy.
+Execution is multithreaded, so the number of threads should be specified.
 
-On macOS or Windows:
+On macOS:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. raw_relative_intensities.jl
+```
+
+On Windows, assuming `JULIA_NUM_THREADS` has been set in settings:
 
 ```
 julia --project=. raw_relative_intensities.jl
 ```
 
-This will display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
+This script will write the PCA loadings for all additives to `output/relative_pca_loadings.csv`. This script will also display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
 
 ### (3) `absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
 
@@ -120,7 +126,7 @@ Outputs the following files:
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
-Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. 
+Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
 
 There are no fancy threads or workers here, so execution is simple.
 

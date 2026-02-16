@@ -7,14 +7,12 @@ using .RawRelativeIntensities
 @info "Reading relative intensities"
 long_df = load_relative_intensities()
 additives = sort(unique(long_df.Additive))
-# additives = ["01-Ctrl AS3"]
-# for additive in additives
-#     pca_result = pca_relative_intensities(relative_intensities_df, additive)
-#     fig = plot_pca_panels(pca_result, "Raw Intensity PCA $additive")
-#     fig_filename = joinpath("output", "pca_relative_intensity_plots", "$additive.png")
-#     save(fig_filename, fig)
-#     @info "Wrote $fig_filename"
-# end
+
+@info "Aggregating loadings"
+loadings_df = pca_loadings_report(long_df)
+loadings_filename = joinpath("output", "relative_pca_loadings.csv")
+CSV.write(loadings_filename, loadings_df)
+println("Wrote $loadings_filename")
 
 @info "Displaying 3D"
 limits = calc_pca_scores_3d_limits(long_df)

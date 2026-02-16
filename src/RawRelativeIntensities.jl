@@ -16,7 +16,8 @@ export load_relative_intensities,
     plot_pca_panels,
     display_pca_scores_3d,
     gather_pca_scores,
-    calc_pca_scores_3d_limits
+    calc_pca_scores_3d_limits,
+    pca_loadings_report
 
 """
     load_relative_intensities()
@@ -67,9 +68,10 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 3. `patient_time_labels`: Labels for each observation of patient and time.
 4. `kept_columns`: List of columns that were kept for the PCA after data cleaning
 5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
+6. `additive`: The additive the PCA was performed for.
 """
 function pca_relative_intensities(long_df, additive)
-    @info "Beginning PCA"
+    @info "Beginning PCA for $additive"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = split(:Sample, "_")[3][1:2])
@@ -98,7 +100,7 @@ function pca_relative_intensities(long_df, additive)
         end
         for (patient_time_label, i) in zip(eachrow(patient_time_labels), axes(X, 1))
             if ismissing(X[i, j])
-                println("$patient_time_label, $metabolite is missing")
+                println("$patient_time_label, $metabolite_name is missing")
                 X[i, j] = colmeans[j]
             end
         end
@@ -139,8 +141,9 @@ function pca_relative_intensities(long_df, additive)
     kept_columns = findall(good_cols)
     # display(kept_columns)
     # display(M)
-    @info "Finished PCA"
+    @info "Finished PCA for $additive"
     return (
+        additive = additive,
         model = M,
         scores = scores,
         patient_time_labels = patient_time_labels,
@@ -168,7 +171,6 @@ function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
     plot_pca_scree(pca_result, fig)
-    # plot_pca_loadings(pca_result, fig)
     Label(fig[0, :], text = super_title, fontsize = 50)
     return fig
 end
@@ -307,6 +309,20 @@ function gather_pca_scores(pca_result)
     return df
 end
 
+"""
+    calc_pca_scores_3d_limits(long_df; margin = 1.1)
+
+Computes 3D axis limits for PCA plots across all additives to set the axis limits of all 3D PCA plots so that plots of different additives can be directly compared.
+
+# Arguments
+1. `long_df`: Long dataframe relative intensities.
+2. `margin = 1.1`: Multiplier to create margins around the PCA plots.
+
+# Returns
+`Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Tuple{Float64,Float64}}`
+
+Returns tuple of tuples suitable for passing to GLMakie that define axis limits for each principal component.
+"""
 function calc_pca_scores_3d_limits(long_df; margin = 1.1)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
@@ -404,6 +420,87 @@ function display_pca_scores_3d(limits, pca_result, additive)
     axislegend(ax_scatter_3d, "Week"; position = :rb, margin = (-30, -30, -30, -30))
     @info "Finished preparing PCA plot"
     GLMakie.display(fig)
+end
+
+"""
+    extract_pca_loadings(pca_result, additive)
+
+Extracts the loadings of the metabolite features on each of the PCs. Used by [`pca_loadings_report`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_loadings_report).
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_name`: Names of the metabolites.
+3. `pc1_loading`: Loadings on the first PC.
+4. `pc2_loading`: Loadings on the second PC.
+5. `pc3_loading`: Loadings on the third PC.
+6. `pc4_loading`: Loadings on the fourth PC.
+7. `pc5_loading`: Loadings on the fifth PC.
+8. `pc6_loading`: Loadings on the sixth PC.
+"""
+function extract_pca_loadings(pca_result)
+    additive = pca_result.additive
+    M = pca_result.model
+    L = loadings(M)
+    pc1_loadings = L[:, 1]
+    pc2_loadings = L[:, 2]
+    pc3_loadings = L[:, 3]
+    pc4_loadings = L[:, 4]
+    pc5_loadings = L[:, 5]
+    pc6_loadings = L[:, 6]
+    kept_columns = pca_result.kept_columns
+    wide_df = pca_result.wide_df
+    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
+    loadings_df = DataFrame(
+        additive = additive,
+        metabolite_name = metabolite_names,
+        pc1_loading = pc1_loadings,
+        pc2_loading = pc2_loadings,
+        pc3_loading = pc3_loadings,
+        pc4_loading = pc4_loadings,
+        pc5_loading = pc5_loadings,
+        pc6_loading = pc6_loadings,
+    )
+    result_df = @orderby(loadings_df, :pc1_loading)
+    return result_df
+end
+
+"""
+    loadings_report(long_df)
+
+Collect and concatenate all PC loadings in all additives into a DataFrame.
+
+# Arguments
+1. `long_df`: Long DataFrame of relative intensities
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_name`: Names of the metabolites.
+3. `pc1_loading`: Loadings on the first PC.
+4. `pc2_loading`: Loadings on the second PC.
+5. `pc3_loading`: Loadings on the third PC.
+6. `pc4_loading`: Loadings on the fourth PC.
+7. `pc5_loading`: Loadings on the fifth PC.
+8. `pc6_loading`: Loadings on the sixth PC.
+"""
+function pca_loadings_report(long_df)
+    additives = sort(unique(long_df.Additive))
+    all_pca_results = ThreadsX.map(additives) do additive
+        pca_result = pca_relative_intensities(long_df, additive)
+        extract_pca_loadings(pca_result)
+    end
+    result_df = vcat(all_pca_results...)
+    return result_df
 end
 
 end
