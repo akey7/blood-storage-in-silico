@@ -246,6 +246,20 @@ function map_metabolites_to_sinks(sampling_df)
     return metabolite_id_sink_map
 end
 
+"""
+    net_flux_from_up_and_down(up_flux::Union{Float64,Missing}, down_flux::Union{Float64})
+
+Helper function for [`net_sink_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.net_sink_fluxes). Calculates the net flux of two sink fluxes avoiding missing values.
+
+# Arguments
+1. `up_flux::Union{Float64,Missing}`: Flux of the up sink. If `missing`, this value is ignored when computing the net flux.
+2. `down_flux::Union{Float64}`: Flux of the down sink. If `missing`, this value is ignored when computing the net flux.
+
+# Returns
+`Float64`
+
+Returns the net flux of the sinks, calculated by summing the fluxes together and skipping missing values.
+"""
 function net_flux_from_up_and_down(
     up_flux::Union{Float64,Missing},
     down_flux::Union{Float64},
@@ -259,6 +273,26 @@ function net_flux_from_up_and_down(
     end
 end
 
+"""
+    net_sink_fluxes(sampling_df, sink_map)
+
+Calucates the net fluxes between each pair of sinks by summing their values together (when both sinks are present) or selecting only the up or down flux where just one sink is available.
+
+# Arguments
+1. `sampling_df`: Wide DataFrame of sampling values.
+2. `sink_map`: Dictionary from [`map_metabolites_to_sinks`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.map_metabolites_to_sinks) mapping unmeasured metabolites to sink reaction ids.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns
+1. `metabolite_id`: The metabolite id matching the sinks.
+2. `additive`: The additive.
+3. `final_time`: The final time point of the model/
+4. `up_median_flux`: The median flux of the up sink flux distribution.
+5. `down_median_flux`: The median flux of the down sink flux distribution.
+6. `net_median_flux`: The net flux summed over both sinks.
+"""
 function net_sink_fluxes(sampling_df, sink_map)
     @info "Calculating net sink fluxes"
     long_df = pivot_sampling_df_long(sampling_df)
