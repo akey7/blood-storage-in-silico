@@ -157,16 +157,18 @@ function plot_additive_pair_2d_pcas(long_df)
     pairs = product(additives, additives)
     non_dupes = [(a1, a2) for (a1, a2) in pairs if a1 != a2]
     n_non_dupes = length(non_dupes)
+    limits = calc_pca_scores_limits(long_df)
     prog = Progress(n_non_dupes, desc = "Plotting 2D Additive Pair PCAs")
-    for (a1, a2) in non_dupes
-        super_title = "$a1 and $a2"
+    for (left_additive, right_additive) in non_dupes
+        super_title = "$left_additive and $right_additive"
         fig = Figure(; size = (1280, 720))
-        pca_result_left = pca_relative_intensities(long_df, a1)
-        pca_result_right = pca_relative_intensities(long_df, a2)
+        pca_result_left = pca_relative_intensities(long_df, left_additive)
+        pca_result_right = pca_relative_intensities(long_df, right_additive)
         plot_pca_scores(pca_result_left, fig; side = :left)
         plot_pca_scores(pca_result_right, fig; side = :right)
         Label(fig[0, :], text = super_title, fontsize = 50)
-        filename = joinpath("output", "pca_plots", "PCA $a1 and $a2.png")
+        filename =
+            joinpath("output", "pca_plots", "PCA $left_additive and $right_additive.png")
         save(filename, fig)
         next!(prog)
     end
@@ -224,8 +226,9 @@ Plot a panel of the first two PCs against each other in a scatter plot.
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
 2. `fig`: A Makie figure to plot onto.
 3. `side`: Plot the panel on the either `:left` or `:right` side of the provided figure. Defaults to `:right`
+4. `limits`: If specified, a tuple of tuples from [`calc_pca_scores_limits`](@ref BloodStorageInSilico.RawRelativeIntensities.calc_pca_scores_limits) to specify the axis limits for the plot. If unspecified, limits will be left at the default. Defaults to `nothing`.
 """
-function plot_pca_scores(pca_result, fig; side = :right)
+function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
     M = pca_result.model
     scores = pca_result.scores
     pc1 = scores[1, :]
@@ -268,8 +271,14 @@ function plot_pca_scores(pca_result, fig; side = :right)
             label = string(t),
             alpha = 0.75,
         )
+        if !isnothing(limits)
+            limits!(ax_scatter, limits[1][1], limits[1][2], limits[2][1], limits[2][2])
+        end
     end
     hist!(ax_hist, pc1; bins = 6)
+    if !isnothing(limits)
+        limits!(ax_hist, limits[1][1], limits[1][2])
+    end
     axislegend(ax_scatter; position = :rb)
 end
 
