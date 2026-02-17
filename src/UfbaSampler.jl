@@ -1,9 +1,7 @@
 module UfbaSampler
 
 using Distributed
-
 using COBREXA, HiGHS, JuMP, MathOptInterface
-
 using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
@@ -41,7 +39,8 @@ export sample_fluxes,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
-    does_manual_prune_list_match_sink_name
+    does_manual_prune_list_match_sink_name,
+    load_flux_bounds_overrides
 
 
 """
@@ -113,7 +112,7 @@ end
 """
     load_metabolite_bounds()
 
-Loads the rates of metabolite oncentration change from the `concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
+Loads the rates of metabolite oncentration change from the `output/concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
 
 Downstream handling of this DataFrame expects to find the following columns in the csv: additive, metabolite, final_time, intercept, rate, lb, ub.
 
@@ -126,6 +125,22 @@ function load_metabolite_bounds()
     metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
     metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
     return metabolite_bounds_df
+end
+
+"""
+    load_flux_bounds_overrides()
+
+Loads `input/flux_bounds_overrides.csv`. This file contains rate bounds for fluxes that **override** the specifications in the RBC-GEM.
+
+# Returns
+`DataFrame`
+
+Returns the flux bounds overrides DataFrame.
+"""
+function load_flux_bounds_overrides()
+    flux_bounds_filename = joinpath("input", "flux_bounds_overrides.csv")
+    flux_bounds_df = CSV.read(flux_bounds_filename, DataFrame)
+    return flux_bounds_df
 end
 
 """
@@ -707,6 +722,7 @@ function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
+    flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -718,7 +734,11 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
+        full_model = create_fba_model(
+            base_rbc_gem;
+            exchanges = exchanges,
+            flux_bounds_overrides_df = flux_bounds_overrides_df,
+        )
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -740,7 +760,11 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
+        pruned_model = create_fba_model(
+            base_rbc_gem;
+            exchanges = exchanges,
+            flux_bounds_overrides_df = flux_bounds_overrides_df,
+        )
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,

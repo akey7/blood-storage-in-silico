@@ -29,7 +29,11 @@ n_models = parse_args(s)["nmodels"]
 
 init_workers!()
 
-fba_model = create_fba_model(load_base_rbc_gem(); exchanges = default_exchanges())
+# Load flux bounds overrides
+flux_bounds_overrides_df = load_flux_bounds_overrides()
+
+# Create reaction ids to strings mapping 
+fba_model = create_fba_model(load_base_rbc_gem(); exchanges = default_exchanges(), flux_bounds_overrides_df = flux_bounds_overrides_df)
 metabolite_status_df =
     find_metabolite_matches(fba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(
@@ -43,20 +47,12 @@ rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 @info "Wrote $rxn_ids_to_strings_filename"
 
-# _, standard_sampling_df = fba(model; n_chains = n_chains)
-# standard_sampling_filename = joinpath("output", "standard_sampling.csv")
-# if !isnothing(standard_sampling_df)
-#     CSV.write(standard_sampling_filename, standard_sampling_df)
-#     println("Wrote $standard_sampling_filename")
-# else
-#     println("Sampling failed, could not write")
-#     exit(1)
-# end
-
+# Run uFBA jobs
 ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_bounds_df,
     n_models;
     exchanges = default_exchanges(),
+    flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
 case3_sinks_df, case3_sinks_aggregated_df = extract_case3_sinks(ufba_jobs)
 sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
