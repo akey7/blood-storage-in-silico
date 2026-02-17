@@ -24,7 +24,7 @@ plot_single_additive_2d_pcas(long_df)
 plot_additive_pair_2d_pcas(long_df)
 
 # @info "Displaying 3D PCAs"
-# limits = calc_pca_scores_3d_limits(long_df)
+# limits = calc_pca_scores_limits(long_df)
 # for additive in additives
 #     pca_result_3d = pca_relative_intensities(long_df, additive)
 #     df_filename = joinpath("output", "pca_plot_dfs", "Wide df for $additive.csv")

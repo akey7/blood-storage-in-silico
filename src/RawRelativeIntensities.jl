@@ -18,7 +18,7 @@ export load_relative_intensities,
     plot_pca_panels,
     display_pca_scores_3d,
     gather_pca_scores,
-    calc_pca_scores_3d_limits,
+    calc_pca_scores_limits,
     pca_loadings_report,
     plot_single_additive_2d_pcas,
     plot_additive_pair_2d_pcas
@@ -348,7 +348,7 @@ function gather_pca_scores(pca_result)
 end
 
 """
-    calc_pca_scores_3d_limits(long_df; margin = 1.1)
+    calc_pca_scores_limits(long_df; margin = 1.1)
 
 Computes 3D axis limits for PCA plots across all additives to set the axis limits of all 3D PCA plots so that plots of different additives can be directly compared.
 
@@ -361,7 +361,7 @@ Computes 3D axis limits for PCA plots across all additives to set the axis limit
 
 Returns tuple of tuples suitable for passing to GLMakie that define axis limits for each principal component.
 """
-function calc_pca_scores_3d_limits(long_df; margin = 1.1)
+function calc_pca_scores_limits(long_df; margin = 1.1)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
         pca_relative_intensities(long_df, additive)
