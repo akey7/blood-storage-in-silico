@@ -3,6 +3,7 @@ module FbaModelBuilder
 using COBREXA
 using DataFrames
 using DataFramesMeta
+using Accessors
 import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
@@ -321,13 +322,14 @@ function create_fba_model(
     println("> Adding reactions and exchanges to model")
 
     for reaction_id ∈ all_reaction_ids
-        model.reactions[reaction_id] = deepcopy(rbc_gem.reactions[reaction_id])
         bounds_override = find_flux_bounds_overrides(flux_bounds_overrides_df, reaction_id)
         if !isnothing(bounds_override)
+            rxn = deepcopy(rbc_gem.reactions[reaction_id])
             lower_bound, upper_bound = bounds_override
-            model.reactions[reaction_id].lower_bound = lower_bound
-            model.reactions[reaction_id].upper_bound = upper_bound
-            println("Overriding bounds for $reaction_id to $lower_bound, $upper_bound")
+            rxn = setproperties(rxn; lower_bound = lower_bound, upper_bound = upper_bound)
+            model.reactions[reaction_id] = rxn
+        else
+            model.reactions[reaction_id] = deepcopy(rbc_gem.reactions[reaction_id])
         end
     end
 

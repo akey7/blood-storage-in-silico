@@ -1,9 +1,7 @@
 module UfbaSampler
 
 using Distributed
-
 using COBREXA, HiGHS, JuMP, MathOptInterface
-
 using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
@@ -762,7 +760,11 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
+        pruned_model = create_fba_model(
+            base_rbc_gem;
+            exchanges = exchanges,
+            flux_bounds_overrides_df = flux_bounds_overrides_df,
+        )
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,
