@@ -152,6 +152,12 @@ function pca_relative_intensities(long_df, additive)
     )
 end
 
+"""
+    plot_additive_pair_2d_pcas(long_df)
+
+# Arguments
+1. `long_df`: The long DataFrame of relative abundances.
+"""
 function plot_additive_pair_2d_pcas(long_df)
     additives = sort(unique(long_df.Additive))
     pairs = product(additives, additives)
