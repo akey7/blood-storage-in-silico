@@ -1,6 +1,8 @@
 module FbaModelBuilder
 
 using COBREXA
+using DataFrames
+using DataFramesMeta
 import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
@@ -54,8 +56,26 @@ function default_exchanges()
     return exchange_reactions_ids
 end
 
+function find_flux_bounds_overrides(
+    flux_bounds_overrides_df::Union{Nothing,DataFrame},
+    reaction_id::String,
+)
+    if isnothing(flux_bounds_overrides_df)
+        return nothing
+    else
+        override_df = @rsubset(flux_bounds_overrides_df, :reaction_id == reaction_id)
+        if nrow(override_df) < 1
+            return nothing
+        else
+            lower_bound = override_df[1, :lb]
+            upper_bound = override_df[1, :ub]
+            return (lower_bound, upper_bound)
+        end
+    end
+end
+
 """
-    create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; exchanges::Union{Nothing,Vector{String}} = nothing)
+    create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; exchanges::Union{Nothing,Vector{String}} = nothing, flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing)
 
 Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
 for the uFBA study.
@@ -63,6 +83,7 @@ for the uFBA study.
 # Arguments
 1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by `load_base_rbc_gem`. If left as `nothing`, this function will call `load_base_rbc_gem` directly.
 2. `exchanges::Union{Nothing,Vector{String}} = nothing`: If `nothing`, this function will not add exchanges to the model. If specified, the listed exchanges are added.
+3. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, this DataFrame contains flux bounds for reactions that will override the RBC-GEM's flux bounds.
 
 # Returns
 `A.CanonicalModel.Model`
@@ -72,6 +93,7 @@ Returns the newly constructed three pathway model.
 function create_fba_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
     exchanges::Union{Nothing,Vector{String}} = nothing,
+    flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
     if !isnothing(exchanges)
         @info "Building FBA model and adding exchanges"
@@ -289,9 +311,13 @@ function create_fba_model(
 
     for reaction_id ∈ all_reaction_ids
         model.reactions[reaction_id] = deepcopy(rbc_gem.reactions[reaction_id])
-        lower_bound = model.reactions[reaction_id].lower_bound
-        upper_bound = model.reactions[reaction_id].upper_bound
-        # println(reaction_id, " (", lower_bound, ", ", upper_bound, ")")
+        bounds_override = find_flux_bounds_overrides(flux_bounds_overrides_df, reaction_id)
+        if !isnothing(bounds_override)
+            lower_bound, upper_bound = bounds_override
+            model.reactions[reaction_id].lower_bound = lower_bound
+            model.reactions[reaction_id].upper_bound = upper_bound
+            println("Overriding bounds for $reaction_id to $lower_bound, $upper_bound")
+        end
     end
 
     println("> Add ATP load")

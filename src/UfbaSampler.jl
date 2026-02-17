@@ -41,7 +41,8 @@ export sample_fluxes,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
-    does_manual_prune_list_match_sink_name
+    does_manual_prune_list_match_sink_name,
+    load_flux_bounds_overrides
 
 
 """
@@ -723,6 +724,7 @@ function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
+    flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -734,7 +736,11 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
+        full_model = create_fba_model(
+            base_rbc_gem;
+            exchanges = exchanges,
+            flux_bounds_overrides_df = flux_bounds_overrides_df,
+        )
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
