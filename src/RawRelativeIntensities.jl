@@ -21,7 +21,8 @@ export load_relative_intensities,
     calc_pca_scores_limits,
     pca_loadings_report,
     plot_single_additive_2d_pcas,
-    plot_additive_pair_2d_pcas
+    plot_additive_pair_2d_pcas,
+    detect_week_1_side
 
 """
     load_relative_intensities()
@@ -226,7 +227,7 @@ end
 """
     plot_pca_scores(pca_result, fig; side = :right)
 
-Plot a panel of the first two PCs against each other in a scatter plot.
+Plot a panel of the first two PCs against each other in a scatter plot. Mirrors the PC1 axis if Day 1 would be on the right side without this correction.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
@@ -237,7 +238,8 @@ Plot a panel of the first two PCs against each other in a scatter plot.
 function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
     M = pca_result.model
     scores = pca_result.scores
-    pc1 = scores[1, :]
+    week_1_direction = detect_week_1_side(pca_result)
+    pc1_corrected = week_1_direction == :left ? scores[1, :] : scores[1, :] .* -1
     pc2 = scores[2, :]
     time_labels = pca_result.patient_time_labels.Time
     time_color_map = Dict(
@@ -269,7 +271,7 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
         idxs = findall(==(t), time_labels)
         scatter!(
             ax_scatter,
-            pc1[idxs],
+            pc1_corrected[idxs],
             pc2[idxs],
             color = time_color_map[t],
             marker = time_shape_map[t],
@@ -285,7 +287,7 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
             limits!(ax_scatter, xmin, xmax, ymin, ymax)
         end
     end
-    hist!(ax_hist, pc1; bins = 6)
+    hist!(ax_hist, pc1_corrected; bins = 6)
     if !isnothing(limits)
         xmin = limits[1][1]
         xmax = limits[1][2]
@@ -410,6 +412,26 @@ function calc_pca_scores_limits(long_df; margin = 1.1)
         (pc2_min*margin, pc2_max*margin),
         (pc3_min*margin, pc3_max*margin),
     )
+end
+
+"""
+    detect_week_1_side(pca_result)
+
+Detects the PC1 side of the plot that Week 1 (assuming PC1 is on the x axis) and returns `:left` if it is on the left side and returns `:right` if it is on the right side.
+
+# Arguments
+1. `pca_result`: PCA result as calculated by Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+# Returns
+`Symbol`
+
+Returns `:left` for left side, `:right` for right side.
+"""
+function detect_week_1_side(pca_result)
+    result_df = gather_pca_scores(pca_result)
+    week_1_df = @rsubset(result_df, :time == 1)
+    direction = sign(week_1_df[1, :pc1]) <= 0.0 ? :left : :right
+    return direction
 end
 
 """
