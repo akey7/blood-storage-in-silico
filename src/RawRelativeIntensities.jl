@@ -164,8 +164,8 @@ function plot_additive_pair_2d_pcas(long_df)
         fig = Figure(; size = (1280, 720))
         pca_result_left = pca_relative_intensities(long_df, left_additive)
         pca_result_right = pca_relative_intensities(long_df, right_additive)
-        plot_pca_scores(pca_result_left, fig; side = :left)
-        plot_pca_scores(pca_result_right, fig; side = :right)
+        plot_pca_scores(pca_result_left, fig; side = :left, limits = limits)
+        plot_pca_scores(pca_result_right, fig; side = :right, limits = limits)
         Label(fig[0, :], text = super_title, fontsize = 50)
         filename =
             joinpath("output", "pca_plots", "PCA $left_additive and $right_additive.png")
@@ -272,12 +272,18 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
             alpha = 0.75,
         )
         if !isnothing(limits)
-            limits!(ax_scatter, limits[1][1], limits[1][2], limits[2][1], limits[2][2])
+            xmin = limits[1][1]
+            xmax = limits[1][2]
+            ymin = limits[2][1]
+            ymax = limits[2][2]
+            limits!(ax_scatter, xmin, xmax, ymin, ymax)
         end
     end
     hist!(ax_hist, pc1; bins = 6)
     if !isnothing(limits)
-        limits!(ax_hist, limits[1][1], limits[1][2])
+        xmin = limits[1][1]
+        xmax = limits[1][2]
+        xlims!(ax_hist, xmin, xmax)
     end
     axislegend(ax_scatter; position = :rb)
 end
