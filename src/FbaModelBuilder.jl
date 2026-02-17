@@ -56,6 +56,20 @@ function default_exchanges()
     return exchange_reactions_ids
 end
 
+"""
+   find_flux_bounds_overrides(flux_bounds_overrides_df::Union{Nothing,DataFrame}, reaction_id::String) 
+
+Find flux bounds to override RBC-GEM bounds if such an override exists. If an override exists, return a `Tuple{Float64,Float64}` with reaction bounds override. If the flux overrides DataFrame is `nothing` or the reaction id does not exist in the provided DataFrame, this function returns `nothing`.
+
+# Arguments
+1. `flux_bounds_overrides_df::Union{Nothing,DataFrame}`: DataFrame that contains the flux bounds overrides. If `nothing`, then this function will simply return `nothing`.
+2. `reaction_id::String`: Reaction id to search for an override.
+
+# Returns
+`Union{Nothing,Tuple{Float64,Float64}}`
+
+Returns either `nothing` or flux bounds as described above.
+"""
 function find_flux_bounds_overrides(
     flux_bounds_overrides_df::Union{Nothing,DataFrame},
     reaction_id::String,
