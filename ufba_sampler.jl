@@ -29,8 +29,11 @@ n_models = parse_args(s)["nmodels"]
 
 init_workers!()
 
+# Load flux bounds overrides
+flux_bounds_overrides_df = load_flux_bounds_overrides()
+
 # Create reaction ids to strings mapping 
-fba_model = create_fba_model(load_base_rbc_gem(); exchanges = default_exchanges())
+fba_model = create_fba_model(load_base_rbc_gem(); exchanges = default_exchanges(), flux_bounds_overrides_df = flux_bounds_overrides_df)
 metabolite_status_df =
     find_metabolite_matches(fba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(
@@ -45,7 +48,6 @@ YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
 @info "Wrote $rxn_ids_to_strings_filename"
 
 # Run uFBA jobs
-flux_bounds_overrides_df = load_flux_bounds_overrides()
 ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_bounds_df,
     n_models;

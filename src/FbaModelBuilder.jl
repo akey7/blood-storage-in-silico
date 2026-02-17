@@ -316,9 +316,6 @@ function create_fba_model(
     for discovered_metabolite_id ∈ discovered_metabolite_ids
         copied_metabolite = deepcopy(rbc_gem.metabolites[discovered_metabolite_id])
         model.metabolites[discovered_metabolite_id] = copied_metabolite
-        if contains(discovered_metabolite_id, "cit")
-            println("=== Added? $discovered_metabolite_id $copied_metabolite")
-        end
     end
 
     println("> Adding reactions and exchanges to model")
