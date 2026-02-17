@@ -113,7 +113,7 @@ end
 """
     load_metabolite_bounds()
 
-Loads the rates of metabolite oncentration change from the `concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
+Loads the rates of metabolite oncentration change from the `output/concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
 
 Downstream handling of this DataFrame expects to find the following columns in the csv: additive, metabolite, final_time, intercept, rate, lb, ub.
 
@@ -126,6 +126,22 @@ function load_metabolite_bounds()
     metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
     metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
     return metabolite_bounds_df
+end
+
+"""
+    load_flux_bounds_overrides()
+
+Loads `input/flux_bounds_overrides.csv`. This file contains rate bounds for fluxes that **override** the specifications in the RBC-GEM.
+
+# Returns
+`DataFrame`
+
+Returns the flux bounds overrides DataFrame.
+"""
+function load_flux_bounds_overrides()
+    flux_bounds_filename = joinpath("input", "flux_bounds_overrides.csv")
+    flux_bounds_df = CSV.read(flux_bounds_filename, DataFrame)
+    return flux_bounds_df
 end
 
 """
