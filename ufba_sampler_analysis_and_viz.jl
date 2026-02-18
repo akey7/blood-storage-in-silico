@@ -27,9 +27,3 @@ net_sink_fluxes_df = net_sink_fluxes(sampling_df, sink_map)
 net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
 CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
 println("Wrote $net_sink_flux_filename")
-
-# Buggy, disabled for now
-# interesting_df = interesting_reactions_and_times(sampling_df)
-# interesting_filename = joinpath("output", "interesting_ufba_reactions_times.csv")
-# CSV.write(interesting_filename, interesting_df)
-# println("Wrote $interesting_filename")

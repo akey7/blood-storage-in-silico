@@ -16,7 +16,6 @@ export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
-    interesting_reactions_and_times,
     map_metabolites_to_sinks,
     net_sink_fluxes,
     net_flux_from_up_and_down
@@ -156,58 +155,6 @@ function diagnose_flux_stats(sampling_df)
         )
     end
     return descriptions_df
-end
-
-"""
-    interesting_reactions_and_times(sampling_df)
-
-Looks at all pairs of reactions and timepoints to determine if there are significant differences among the flux distributions using a k-sample Anderson-Darling test.
-
-# Arguments
-1. `sampling_df`: The wide sampling DataFrame.
-
-# Returns
-`DataFrame`
-
-Returns a DataFrame with the following columns:
-1. `:reaction_id`: The reaction id
-2. `:final_time`: Final time point
-3. `:p_value`: Unadjsuted p-value
-4. `:adj_p_value`: Benjamini-Hochberg adjusted p-value
-
-The resulting DataFrame is sortedin ascending p-value order.
-"""
-function interesting_reactions_and_times(sampling_df; n_samples = 10)
-    @info "Finding interesting reactions and time points"
-    long_df = pivot_sampling_df_long(sampling_df)
-    reaction_ids = sort(unique(long_df.reaction_id))
-    final_times = sort(unique(long_df.final_time))
-    pairs = product(reaction_ids, final_times)
-    n_pairs = length(pairs)
-    pair_results = []
-    prog = Progress(n_pairs, desc = "Evaluating reactions and time points")
-    for (reaction_id, final_time) in pairs
-        df = @chain long_df begin
-            @rsubset(:reaction_id == reaction_id, :final_time == final_time)
-            @groupby(:additive)
-            transform(eachindex => :sample)
-            unstack(:sample, :additive, :flux)
-            select(Not(:sample))
-        end
-        xs = [
-            sample(Float64[coalesce(x, 0.0) for x in col], n_samples; replace = false)
-            for col in eachcol(df)
-        ]
-        ad_test = KSampleADTest(xs...)
-        pv = pvalue(ad_test)
-        result = (reaction_id = reaction_id, final_time = final_time, p_value = pv)
-        push!(pair_results, result)
-        next!(prog)
-    end
-    pair_results_df = DataFrame(pair_results)
-    pair_results_df.adj_p_value = adjust(pair_results_df.p_value, BenjaminiHochberg())
-    final_df = sort(pair_results_df, :adj_p_value)
-    return final_df
 end
 
 """
