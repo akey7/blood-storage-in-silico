@@ -7,8 +7,7 @@ using .ModelGraph
 include("src/FbaModelBuilder.jl")
 using .FbaModelBuilder
 
-@info "Performing graph search"
-
+@info "Creating FBA model to search"
 base_gem = load_base_rbc_gem()
 flux_bounds_overrides_filename = joinpath("input", "flux_bounds_overrides.csv")
 flux_bounds_overrides_df = CSV.read(flux_bounds_overrides_filename, DataFrame)
@@ -18,6 +17,7 @@ fba_model = create_fba_model(
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
 
+@info "Placing FBA model into a graph"
 graph_data = make_graph(fba_model; skip_exchanges = true)
 println("metabolite_ids placed into a graph.")
 
@@ -50,6 +50,7 @@ common_metabolite_ids = [
     "M_co2_e",
 ]
 
+@info "Running graph search"
 dfs_plan_filename = joinpath("input", "dfs_plan.csv")
 dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
 println("Read DFS plan from $dfs_plan_filename")
