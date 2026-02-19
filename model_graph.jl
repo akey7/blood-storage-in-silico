@@ -20,6 +20,7 @@ fba_model = create_fba_model(
 @info "Placing FBA model into a graph"
 graph_data = make_graph(fba_model; skip_exchanges = true)
 println("metabolite_ids placed into a graph.")
+println(graph_data[:reaction_ids_to_vertices]["R_HEX1"])
 
 common_metabolite_ids = [
     "M_pi_c",

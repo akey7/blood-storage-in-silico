@@ -211,6 +211,7 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
     metabolite_integer::Int64 = 1
     metabolite_ids_to_ints::Dict{String,Int64} = Dict()
     ints_to_metabolite_ids::Vector{String} = Vector{String}(undef, N)
+    reaction_ids_to_vertices::Dict{String,Tuple{Int64,Int64}} = Dict()
     for metabolite_id ∈ sort(collect(keys(model.metabolites)))
         if haskey(metabolite_ids_to_ints, metabolite_id)
             continue
@@ -243,6 +244,7 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
             adj_matrix[vertex_idx, neighbor_idx] = 1
             add_edge!(mg, vertex_idx, neighbor_idx)
             set_prop!(mg, Edge(vertex_idx, neighbor_idx), :reaction_id, reaction_id)
+            reaction_ids_to_vertices[reaction_id] = (vertex_idx, neighbor_idx)
         end
     end
     Dict(
@@ -253,6 +255,7 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
         :mg => mg,
         :model => model,
         :metabolite_pairs_to_reactions => metabolite_pairs_to_reactions,
+        :reaction_ids_to_vertices => reaction_ids_to_vertices,
     )
 end
 
