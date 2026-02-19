@@ -9,10 +9,15 @@ using Graphs
 import Graphs.Parallel
 using MetaGraphs
 using DataFrames
+using DataFramesMeta
 using Arpack
 using Clustering
 using DataStructures
 using LinearAlgebra
+using ProgressMeter
+
+include("UfbaSamplerAnalysisAndViz.jl")
+using .UfbaSamplerAnalysisAndViz
 
 export model_to_dictionaries,
     metabolite_id_keys_reaction_id_values,
@@ -28,7 +33,8 @@ export model_to_dictionaries,
     spectral_cluster_metabolite_graph,
     remove_metabolite_ids,
     prepare_spectral_clustering_for_yaml,
-    find_isolated_vertices
+    find_isolated_vertices,
+    place_ufba_results_on_graph!
 
 """
     model_to_dictionaries(filename::String)
@@ -257,6 +263,23 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
         :metabolite_pairs_to_reactions => metabolite_pairs_to_reactions,
         :reaction_ids_to_vertices => reaction_ids_to_vertices,
     )
+end
+
+function place_ufba_results_on_graph!(graph_data::Dict{Symbol,Any}, sampling_df::DataFrame)
+    long_df = pivot_sampling_df_long(sampling_df)
+    reaction_ids = keys(graph_data[:reaction_ids_to_vertices])
+    n_reaction_ids = length(reaction_ids)
+    mg = graph_data[:mg]
+    prog = Progress(n_reaction_ids, desc = "Placing uFBA results on available graph edges")
+    for reaction_id ∈ reaction_ids
+        vertices = get(graph_data[:reaction_ids_to_vertices], reaction_id, nothing)
+        if !isnothing(vertices)
+            vertex_id, neighbor_id = vertices
+            samples_df = @rsubset(long_df, :reaction_id == reaction_id)
+            set_prop!(mg, vertex_id, neighbor_id, :samples_df, samples_df)
+        end
+        next!(prog)
+    end
 end
 
 """

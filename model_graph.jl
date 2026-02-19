@@ -7,6 +7,10 @@ using .ModelGraph
 include("src/FbaModelBuilder.jl")
 using .FbaModelBuilder
 
+@info "Loading uFBA results"
+sampling_filename = joinpath("output", "ufba_sampling.csv")
+sampling_df = CSV.read(sampling_filename, DataFrame)
+
 @info "Creating FBA model to search"
 base_gem = load_base_rbc_gem()
 flux_bounds_overrides_filename = joinpath("input", "flux_bounds_overrides.csv")
@@ -17,10 +21,9 @@ fba_model = create_fba_model(
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
 
-@info "Placing FBA model into a graph"
-graph_data = make_graph(fba_model; skip_exchanges = true)
-println("metabolite_ids placed into a graph.")
-println(graph_data[:reaction_ids_to_vertices]["R_HEX1"])
+@info "Placing uFBA results onto graph"
+graph_data = make_graph(fba_model; skip_exchanges = false)
+place_ufba_results_on_graph!(graph_data, sampling_df)
 
 common_metabolite_ids = [
     "M_pi_c",
