@@ -158,7 +158,7 @@ function save_ufba_model_sbml(
     additive::AbstractString,
     final_time::Int64,
 )
-    filename = joinpath("output", "ufba_models", "uFBA $additive $final_time.xml")
+    filename = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).xml")
     A.save(model, filename)
     println("Wrote $filename")
 end

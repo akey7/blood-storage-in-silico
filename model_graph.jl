@@ -45,11 +45,20 @@ sbml_files = filter(
     readdir(ufba_model_folder),
 )
 sbml_paths = joinpath.(ufba_model_folder, sbml_files)
-display(sbml_files)
+n_sbml_paths = length(sbml_paths)
+# prog_sbml_paths = Progress(n_sbml_paths, "Loading uFBA models")
+ufba_models = Dict()
+for sbml_path in sbml_paths
+    bn = replace(basename(sbml_path), ".xml" => "", "uFBA " => "")
+    additive, final_time_str = split(bn, "_")
+    final_time = parse(Int64, final_time_str)
+    println("Additive $additive, final_time $final_time")
+    # next!(prog_sbml_paths)
+end
 
-@info "Loading uFBA results"
-sampling_filename = joinpath("output", "ufba_sampling.csv")
-sampling_df = CSV.read(sampling_filename, DataFrame)
+# @info "Loading uFBA sampling data"
+# sampling_filename = joinpath("output", "ufba_sampling.csv")
+# sampling_df = CSV.read(sampling_filename, DataFrame)
 
 # @info "Placing uFBA results onto graph"
 # graph_data = make_graph(fba_model; skip_exchanges = false)
