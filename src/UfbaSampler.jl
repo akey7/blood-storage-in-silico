@@ -143,6 +143,16 @@ function load_flux_bounds_overrides()
     return flux_bounds_df
 end
 
+function save_ufba_model_sbml(
+    model::A.AbstractFBCModel,
+    additive::AbstractString,
+    final_time::Int64,
+)
+    filename = joinpath("output", "ufba_models", "uFBA $additive $final_time.xml")
+    A.save(model, filename)
+    println("Wrote $filename")
+end
+
 """
     query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
 
@@ -771,6 +781,7 @@ function make_ufba_models_for_additives_and_times(
             additive,
             string.(zero_case3_sinks),
         )
+        save_ufba_model_sbml(pruned_model, additive, final_time)
         (
             additive = additive,
             final_time = final_time,
