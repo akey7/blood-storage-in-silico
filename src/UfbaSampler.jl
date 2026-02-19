@@ -143,6 +143,20 @@ function load_flux_bounds_overrides()
     return flux_bounds_df
 end
 
+function sbml_add_constant_to_selfclosing_parameters!(
+    infile::AbstractString;
+    outfile::AbstractString = infile,
+    default_constant::AbstractString = "true",
+)
+    s = read(infile, String)
+    s2 = replace(
+        s,
+        Regex(raw"<parameter\b(?![^>]*\bconstant=)([^>]*)\s*/>") =>
+            SubstitutionString("<parameter\\1 constant=\"$default_constant\"/>"),
+    )
+    write(outfile, s2)
+end
+
 """
     save_ufba_model_sbml(model::A.AbstractFBCModel, additive::AbstractString, final_time::Int64)
 
@@ -159,7 +173,9 @@ function save_ufba_model_sbml(
     final_time::Int64,
 )
     filename = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).xml")
-    A.save(model, filename)
+    sbml_fbc = convert(S.SBMLFBCModel, model)
+    save_model(sbml_fbc, filename)
+    sbml_add_constant_to_selfclosing_parameters!(filename)
     println("Wrote $filename")
 end
 
