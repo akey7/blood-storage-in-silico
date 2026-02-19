@@ -533,6 +533,45 @@ function summarize_dfs_plan_result(results::Vector{Dict{Symbol,Any}})
     summary
 end
 
+function run_all_dfs_plans(
+    model_graphs::Dict{Tuple{String,Int64},Dict{Symbol,Any}},
+    dfs_plan::DataFrame,
+    metabolite_ids_to_skip::Union{Vector{String},Nothing} = nothing,
+)
+    visited_metabolite_rows = []
+    visited_reaction_rows = []
+    for ((additive, final_time), graph_data) ∈ model_graphs
+        dfs_plan_result = run_dfs_plan(dfs_plan, graph_data, metabolite_ids_to_skip)
+        summarized_dfs_plan_result = summarize_dfs_plan_result(dfs_plan_result)
+        for (start_metabolite_id, summary) ∈ summarized_dfs_plan_result
+            for visited_metabolite ∈ summary[:all_visited]
+                visited_metabolite_row = (
+                    additive = additive,
+                    final_time = final_time,
+                    start_metabolite_id = start_metabolite_id,
+                    visited_metabolite = visited_metabolite,
+                )
+                push!(visited_metabolite_rows, visited_metabolite_row)
+            end
+            for visited_reaction ∈ summary[:all_visited_reactions]
+                visited_reaction_row = (
+                    additive = additive,
+                    final_time = final_time,
+                    start_metabolite_id = start_metabolite_id,
+                    visited_reaction = visited_reaction,
+                )
+                push!(visited_reaction_rows, visited_reaction_row)
+            end
+        end
+    end
+    visited_metabolite_df = DataFrame(visited_metabolite_rows)
+    visited_reaction_df = DataFrame(visited_reaction_rows)
+    return (
+        visited_metabolite_df = visited_metabolite_df,
+        visited_reaction_df = visited_reaction_df,
+    )
+end
+
 """
     find_isolated_vertices(mg::MetaGraph)
 
