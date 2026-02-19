@@ -34,6 +34,16 @@ export model_to_dictionaries,
     find_isolated_vertices,
     load_ufba_models
 
+"""
+    load_ufba_models()
+
+Loads uFBA models written during sampling from the `output/ufba_models` folder. Returns a dictionary with tuples of additive and final_time mapped to uFBA models.
+
+# Returns
+`Dict{Tuple{String,Int64},A.CanonicalModel.Model}`
+
+Returns a dictionary mapping additives and final times to uFBA models.
+"""
 function load_ufba_models()
     ufba_model_folder = joinpath("output", "ufba_models")
     sbml_files = filter(
