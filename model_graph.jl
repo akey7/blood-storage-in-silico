@@ -2,6 +2,9 @@ using CSV
 using DataFrames
 using JSON3
 using ProgressMeter
+import SBMLFBCModels as S
+import AbstractFBCModels as A
+using COBREXA
 
 include("src/ModelGraph.jl")
 using .ModelGraph
@@ -46,14 +49,15 @@ sbml_files = filter(
 )
 sbml_paths = joinpath.(ufba_model_folder, sbml_files)
 n_sbml_paths = length(sbml_paths)
-# prog_sbml_paths = Progress(n_sbml_paths, "Loading uFBA models")
+prog_sbml_paths = Progress(n_sbml_paths, "Loading uFBA models")
 ufba_models = Dict()
 for sbml_path in sbml_paths
     bn = replace(basename(sbml_path), ".xml" => "", "uFBA " => "")
     additive, final_time_str = split(bn, "_")
     final_time = parse(Int64, final_time_str)
-    println("Additive $additive, final_time $final_time")
-    # next!(prog_sbml_paths)
+    ufba_model = load_model(S.SBMLFBCModel, sbml_path, A.CanonicalModel.Model)
+    ufba_models[(additive, final_time)] = ufba_model
+    next!(prog_sbml_paths)
 end
 
 # @info "Loading uFBA sampling data"
