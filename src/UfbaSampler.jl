@@ -143,6 +143,16 @@ function load_flux_bounds_overrides()
     return flux_bounds_df
 end
 
+"""
+    save_ufba_model_sbml(model::A.AbstractFBCModel, additive::AbstractString, final_time::Int64)
+
+Save the given uFBA model to the filesystem for later retrieval. Models are saved in SBML format in the `output/ufba_models` folder.
+
+# Arguments:
+1. `model::A.AbstractFBCModel`: uFBA model to save.
+2. `additive::AbstractString`: Additive the uFBA model is in.
+3. `final_time::Int64`: Final time of the uFBA model.
+"""
 function save_ufba_model_sbml(
     model::A.AbstractFBCModel,
     additive::AbstractString,
