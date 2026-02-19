@@ -1,30 +1,14 @@
 using CSV
 using DataFrames
 using JSON3
+using ProgressMeter
 
 include("src/ModelGraph.jl")
 using .ModelGraph
 include("src/FbaModelBuilder.jl")
 using .FbaModelBuilder
 
-@info "Loading uFBA results"
-sampling_filename = joinpath("output", "ufba_sampling.csv")
-sampling_df = CSV.read(sampling_filename, DataFrame)
-
-@info "Creating FBA model to search"
-base_gem = load_base_rbc_gem()
-flux_bounds_overrides_filename = joinpath("input", "flux_bounds_overrides.csv")
-flux_bounds_overrides_df = CSV.read(flux_bounds_overrides_filename, DataFrame)
-fba_model = create_fba_model(
-    base_gem;
-    exchanges = default_exchanges(),
-    flux_bounds_overrides_df = flux_bounds_overrides_df,
-)
-
-@info "Placing uFBA results onto graph"
-graph_data = make_graph(fba_model; skip_exchanges = false)
-place_ufba_results_on_graph!(graph_data, sampling_df)
-
+# Common metabolites not to be traversed
 common_metabolite_ids = [
     "M_pi_c",
     "M_h_c",
@@ -54,23 +38,39 @@ common_metabolite_ids = [
     "M_co2_e",
 ]
 
-@info "Running graph search"
-dfs_plan_filename = joinpath("input", "dfs_plan.csv")
-dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
-println("Read DFS plan from $dfs_plan_filename")
+@info "Loading uFBA models"
+ufba_model_folder = joinpath("output", "ufba_models")
+sbml_files = filter(
+    f -> endswith(lowercase(f), ".xml") && isfile(joinpath(ufba_model_folder, f)),
+    readdir(ufba_model_folder),
+)
+sbml_paths = joinpath.(ufba_model_folder, sbml_files)
+display(sbml_files)
 
-dfs_plan_result = run_dfs_plan(dfs_plan, graph_data, common_metabolite_ids)
-dfs_plan_result_summary = summarize_dfs_plan_result(dfs_plan_result)
+@info "Loading uFBA results"
+sampling_filename = joinpath("output", "ufba_sampling.csv")
+sampling_df = CSV.read(sampling_filename, DataFrame)
 
-df_plan_result_filename = joinpath("output", "gem_dfs", "dfs_plan_result.json")
-open(df_plan_result_filename, "w") do io
-    JSON3.pretty(io, dfs_plan_result)
-end
+# @info "Placing uFBA results onto graph"
+# graph_data = make_graph(fba_model; skip_exchanges = false)
 
-dfs_plan_result_summary_filename =
-    joinpath("output", "gem_dfs", "dfs_plan_result_summary.json")
-open(dfs_plan_result_summary_filename, "w") do io
-    JSON3.pretty(io, dfs_plan_result_summary)
-end
+# @info "Running graph search"
+# dfs_plan_filename = joinpath("input", "dfs_plan.csv")
+# dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
+# println("Read DFS plan from $dfs_plan_filename")
 
-println("Wrote $df_plan_result_filename and $dfs_plan_result_summary_filename")
+# dfs_plan_result = run_dfs_plan(dfs_plan, graph_data, common_metabolite_ids)
+# dfs_plan_result_summary = summarize_dfs_plan_result(dfs_plan_result)
+
+# df_plan_result_filename = joinpath("output", "gem_dfs", "dfs_plan_result.json")
+# open(df_plan_result_filename, "w") do io
+#     JSON3.pretty(io, dfs_plan_result)
+# end
+
+# dfs_plan_result_summary_filename =
+#     joinpath("output", "gem_dfs", "dfs_plan_result_summary.json")
+# open(dfs_plan_result_summary_filename, "w") do io
+#     JSON3.pretty(io, dfs_plan_result_summary)
+# end
+
+# println("Wrote $df_plan_result_filename and $dfs_plan_result_summary_filename")
