@@ -4,6 +4,7 @@ using COBREXA
 import SBMLFBCModels
 import JSONFBCModels
 import AbstractFBCModels as A
+import SBMLFBCModels as S
 using JSON3
 using Graphs
 import Graphs.Parallel
@@ -31,7 +32,27 @@ export model_to_dictionaries,
     remove_metabolite_ids,
     prepare_spectral_clustering_for_yaml,
     find_isolated_vertices,
-    place_ufba_results_on_graph!
+    load_ufba_models
+
+function load_ufba_models()
+    ufba_model_folder = joinpath("output", "ufba_models")
+    sbml_files = filter(
+        f -> endswith(lowercase(f), ".xml") && isfile(joinpath(ufba_model_folder, f)),
+        readdir(ufba_model_folder),
+    )
+    sbml_paths = joinpath.(ufba_model_folder, sbml_files)
+    n_sbml_paths = length(sbml_paths)
+    prog_sbml_paths = Progress(n_sbml_paths, "Loading uFBA models")
+    ufba_models = Dict()
+    for sbml_path in sbml_paths
+        bn = replace(basename(sbml_path), ".xml" => "", "uFBA " => "")
+        additive, final_time_str = split(bn, "_")
+        final_time = parse(Int64, final_time_str)
+        ufba_model = load_model(S.SBMLFBCModel, sbml_path, A.CanonicalModel.Model)
+        ufba_models[(additive, final_time)] = ufba_model
+        next!(prog_sbml_paths)
+    end
+end
 
 """
     model_to_dictionaries(filename::String)
