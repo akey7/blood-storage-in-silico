@@ -40,7 +40,8 @@ export sample_fluxes,
     execute_ufba_job,
     count_n_all_zero_fluxes,
     does_manual_prune_list_match_sink_name,
-    load_flux_bounds_overrides
+    load_flux_bounds_overrides,
+    sbml_add_constant_to_selfclosing_parameters!
 
 
 """
@@ -143,6 +144,16 @@ function load_flux_bounds_overrides()
     return flux_bounds_df
 end
 
+"""
+    sbml_add_constant_to_selfclosing_parameters!(infile::AbstractString; outfile::AbstractString = infile, default_constant::AbstractString = "true")
+
+This is a patch because COBREXA is writing corrupt SBML files. This opens the file and fixes the problem.
+
+# Arguments
+1. `infile::AbstractString`: Filename to patch.
+2. `outfile::AbstractString = infile`: Out file to write
+3. `default_constant::AbstractString = "true"`: Constant to patch with.
+"""
 function sbml_add_constant_to_selfclosing_parameters!(
     infile::AbstractString;
     outfile::AbstractString = infile,
