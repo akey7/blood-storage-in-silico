@@ -42,9 +42,12 @@ common_metabolite_ids = [
 @info "Loading uFBA models"
 ufba_models = load_ufba_models()
 
-# @info "Loading uFBA sampling data"
-# sampling_filename = joinpath("output", "ufba_sampling.csv")
-# sampling_df = CSV.read(sampling_filename, DataFrame)
+@info "Loading uFBA sampling data"
+sampling_filename = joinpath("output", "ufba_sampling.csv")
+sampling_df = CSV.read(sampling_filename, DataFrame)
+
+@info "Creating uFBA model graphs"
+ufba_model_graphs = make_graphs_for_ufba_models(ufba_models)
 
 # @info "Placing uFBA results onto graph"
 # graph_data = make_graph(fba_model; skip_exchanges = false)

@@ -32,7 +32,8 @@ export model_to_dictionaries,
     remove_metabolite_ids,
     prepare_spectral_clustering_for_yaml,
     find_isolated_vertices,
-    load_ufba_models
+    load_ufba_models,
+    make_graphs_for_ufba_models
 
 """
     load_ufba_models()
@@ -53,7 +54,7 @@ function load_ufba_models()
     sbml_paths = joinpath.(ufba_model_folder, sbml_files)
     n_sbml_paths = length(sbml_paths)
     prog_sbml_paths = Progress(n_sbml_paths, "Loading uFBA models")
-    ufba_models = Dict()
+    ufba_models::Dict{Tuple{String,Int64},A.CanonicalModel.Model} = Dict()
     for sbml_path in sbml_paths
         bn = replace(basename(sbml_path), ".xml" => "", "uFBA " => "")
         additive, final_time_str = split(bn, "_")
@@ -62,6 +63,7 @@ function load_ufba_models()
         ufba_models[(additive, final_time)] = ufba_model
         next!(prog_sbml_paths)
     end
+    return ufba_models
 end
 
 """
@@ -291,6 +293,19 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
         :metabolite_pairs_to_reactions => metabolite_pairs_to_reactions,
         :reaction_ids_to_vertices => reaction_ids_to_vertices,
     )
+end
+
+function make_graphs_for_ufba_models(
+    ufba_models::Dict{Tuple{String,Int64},A.CanonicalModel.Model},
+)
+    result::Dict{Tuple{String,Int64},Dict{Symbol,Any}} = Dict()
+    n_models = length(keys(ufba_models))
+    prog = Progress(n_models, "Creating graphs from uFBA models")
+    for ((additive, final_time), ufba_model) in ufba_models
+        result[(additive, final_time)] = make_graph(ufba_model)
+        next!(prog)
+    end
+    return result
 end
 
 """
