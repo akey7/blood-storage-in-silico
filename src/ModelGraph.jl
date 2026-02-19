@@ -295,6 +295,19 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
     )
 end
 
+"""
+    make_graphs_for_ufba_models(ufba_models::Dict{Tuple{String,Int64},A.CanonicalModel.Model})
+
+Makes graphs for all uFBA models provided as loaded by [`load_ufba_models`](@ref BloodStorageInSilico.ModelGraph.load_ufba_models)
+
+# Arguments
+1. `ufba_models::Dict{Tuple{String,Int64},A.CanonicalModel.Model}`: Loaded models.
+
+# Returns
+`Dict{Tuple{String,Int64},Dict{Symbol,Any}}`
+
+Returns a dictionary mapping tuples of additive and final time to graph data from the [`make_graph`](@ref BloodStorageInSilico.ModelGraph.make_graph)
+"""
 function make_graphs_for_ufba_models(
     ufba_models::Dict{Tuple{String,Int64},A.CanonicalModel.Model},
 )
