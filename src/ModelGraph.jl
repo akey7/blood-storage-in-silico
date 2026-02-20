@@ -564,29 +564,6 @@ function run_all_dfs_plans(
     prog = Progress(n_model_graphs, "Executing DFS plan for uFBA models")
     for ((additive, final_time), graph_data) ∈ model_graphs
         dfs_plan_results = run_dfs_plan(dfs_plan, graph_data, metabolite_ids_to_skip)
-
-        # summarized_dfs_plan_result = summarize_dfs_plan_result(dfs_plan_result)
-        # for (start_metabolite_id, summary) ∈ summarized_dfs_plan_result
-        #     for visited_metabolite ∈ summary[:all_visited]
-        #         visited_metabolite_row = (
-        #             additive = additive,
-        #             final_time = final_time,
-        #             start_metabolite_id = start_metabolite_id,
-        #             visited_metabolite = visited_metabolite,
-        #         )
-        #         push!(visited_metabolite_rows, visited_metabolite_row)
-        #     end
-        #     for visited_reaction ∈ summary[:all_visited_reactions]
-        #         visited_reaction_row = (
-        #             additive = additive,
-        #             final_time = final_time,
-        #             start_metabolite_id = start_metabolite_id,
-        #             reaction_id = visited_reaction,
-        #         )
-        #         push!(visited_reaction_rows, visited_reaction_row)
-        #     end
-        # end
-
         for dfs_plan_result in dfs_plan_results
             start_metabolite_id = dfs_plan_result[:metabolite_id]
             paths_metabolite_ids = dfs_plan_result[:paths_metabolite_ids]
@@ -622,7 +599,6 @@ function run_all_dfs_plans(
                 end
             end
         end
-
         next!(prog)
     end
     visited_metabolite_df = DataFrame(visited_metabolite_rows)
