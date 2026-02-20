@@ -550,8 +550,8 @@ Run DFS plan acorss all uFBA models specified in the arguments with [`dfs_from_m
 `NamedTuple`
 
 Returns a named tuple of two DataFrames.
-1. `visited_metabolite_df`: A DataFrame of metabolites visited in the traversals. This DataFrame contains columns `additive`, `final_time`, `start_metabolite_id`, `hops`, and `visited_metabolite_id`.
-2. `visited_reaction_df`: A DataFrame of reactions visited in the traversals. This DataFrame contains the columns `additive`, `final_time`, `start_metabolite_id`, `hops`, and `reaction_id`.
+1. `visited_metabolite_df`: A DataFrame of metabolites visited in the traversals. This DataFrame contains columns `additive`, `final_time`, `start_metabolite_id`, `path_idx`, `hops`, and `visited_metabolite_id`.
+2. `visited_reaction_df`: A DataFrame of reactions visited in the traversals. This DataFrame contains the columns `additive`, `final_time`, `start_metabolite_id`, `path_idx`, `hops`, and `reaction_id`.
 """
 function run_all_dfs_plans(
     model_graphs::Dict{Tuple{String,Int64},Dict{Symbol,Any}},
@@ -591,7 +591,7 @@ function run_all_dfs_plans(
             start_metabolite_id = dfs_plan_result[:metabolite_id]
             paths_metabolite_ids = dfs_plan_result[:paths_metabolite_ids]
             paths_reaction_ids = dfs_plan_result[:paths_reaction_ids]
-            for path_metabolite_ids in paths_metabolite_ids
+            for (path_idx, path_metabolite_ids) in enumerate(paths_metabolite_ids)
                 visited_metabolite_ids = path_metabolite_ids[2:end]
                 for (idx, visited_metabolite_id) in enumerate(visited_metabolite_ids)
                     hops = idx - 1
@@ -599,13 +599,14 @@ function run_all_dfs_plans(
                         additive = additive,
                         final_time = final_time,
                         start_metabolite_id = start_metabolite_id,
+                        path_idx = path_idx,
                         hops = hops,
                         visited_metabolite_id = visited_metabolite_id,
                     )
                     push!(visited_metabolite_rows, visited_metabolite_row)
                 end
             end
-            for path_reaction_ids in paths_reaction_ids
+            for (path_idx, path_reaction_ids) in enumerate(paths_reaction_ids)
                 visited_reaction_ids = path_reaction_ids[2:end]
                 for (idx, visited_reaction_id) in enumerate(visited_reaction_ids)
                     hops = idx - 1
@@ -613,6 +614,7 @@ function run_all_dfs_plans(
                         additive = additive,
                         final_time = final_time,
                         start_metabolite_id = start_metabolite_id,
+                        path_idx = path_idx,
                         hops = hops,
                         reaction_id = visited_reaction_id,
                     )
@@ -631,6 +633,7 @@ function run_all_dfs_plans(
             :additive,
             :final_time,
             :start_metabolite_id,
+            :path_idx,
             :hops,
         ),
         visited_reaction_df = @orderby(
@@ -638,6 +641,7 @@ function run_all_dfs_plans(
             :additive,
             :final_time,
             :start_metabolite_id,
+            :path_idx,
             :hops,
         ),
     )
