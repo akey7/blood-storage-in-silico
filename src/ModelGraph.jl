@@ -571,8 +571,18 @@ function run_all_dfs_plans(
     visited_metabolite_df = DataFrame(visited_metabolite_rows)
     visited_reaction_df = DataFrame(visited_reaction_rows)
     return (
-        visited_metabolite_df = visited_metabolite_df,
-        visited_reaction_df = visited_reaction_df,
+        visited_metabolite_df = @orderby(
+            visited_metabolite_df,
+            :additive,
+            :final_time,
+            :start_metabolite_id
+        ),
+        visited_reaction_df = @orderby(
+            visited_reaction_df,
+            :additive,
+            :final_time,
+            :start_metabolite_id
+        ),
     )
 end
 
