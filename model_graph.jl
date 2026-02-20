@@ -3,6 +3,8 @@ using DataFrames
 using JSON3
 using ProgressMeter
 using COBREXA
+using OrderedCollections
+using YAML
 
 include("src/ModelGraph.jl")
 using .ModelGraph
@@ -46,17 +48,26 @@ ufba_models = load_ufba_models()
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 sampling_df = CSV.read(sampling_filename, DataFrame)
 
+@info "Loading reaction ids to strings..."
+rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
+rxn_ids_to_strings =
+    YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
+
 @info "Creating uFBA model graphs"
 ufba_model_graphs = make_graphs_for_ufba_models(ufba_models)
 
-@info "Running graph search"
+@info "Running graph search plan on all uFBA models"
 dfs_plan_filename = joinpath("input", "dfs_plan.csv")
 dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
 println("Read DFS plan from $dfs_plan_filename")
+
+@info "Analyzing visited metabolites and reactions"
 visited_metabolite_filename = joinpath("output", "gem_dfs", "visited_metabolite.csv")
 visited_reaction_filename = joinpath("output", "gem_dfs", "visited_reaction.csv")
 plan_results = run_all_dfs_plans(ufba_model_graphs, dfs_plan, common_metabolite_ids)
+enriched_visited_reactions_df =
+    enrich_visited_reactions_df(plan_results.visited_reaction_df, rxn_ids_to_strings)
 CSV.write(visited_metabolite_filename, plan_results.visited_metabolite_df)
 println("Wrote $visited_metabolite_filename")
-CSV.write(visited_reaction_filename, plan_results.visited_reaction_df)
+CSV.write(visited_reaction_filename, enriched_visited_reactions_df)
 println("Wrote $visited_reaction_filename")

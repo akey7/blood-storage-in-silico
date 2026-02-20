@@ -16,6 +16,7 @@ using Clustering
 using DataStructures
 using LinearAlgebra
 using ProgressMeter
+using OrderedCollections
 
 export model_to_dictionaries,
     metabolite_id_keys_reaction_id_values,
@@ -34,7 +35,8 @@ export model_to_dictionaries,
     find_isolated_vertices,
     load_ufba_models,
     make_graphs_for_ufba_models,
-    run_all_dfs_plans
+    run_all_dfs_plans,
+    enrich_visited_reactions_df
 
 """
     load_ufba_models()
@@ -534,6 +536,23 @@ function summarize_dfs_plan_result(results::Vector{Dict{Symbol,Any}})
     summary
 end
 
+"""
+    run_all_dfs_plans(model_graphs::Dict{Tuple{String,Int64},Dict{Symbol,Any}}, dfs_plan::DataFrame, metabolite_ids_to_skip::Union{Vector{String},Nothing} = nothing)
+
+Run DFS plan acorss all uFBA models specified in the arguments with [`dfs_from_metabolite_id`](@ref BloodStorageInSilico.ModelGraph.dfs_from_metabolite_id).
+
+# Arguments
+1. `model_graphs::Dict{Tuple{String,Int64},Dict{Symbol,Any}}`: uFBA model data from [`make_graphs_for_ufba_models`](@ref BloodStorageInSilico.ModelGraph.make_graphs_for_ufba_models).
+2. `dfs_plan::DataFrame`: DataFrame of the DFS plan to execute on each model graph. Should have columns `metabolite_id` (metabolite id to start from) and `max_depth` (max number of hops to traverse).
+3. `metabolite_ids_to_skip::Union{Vector{String},Nothing} = nothing`: Metabolite ids to skip in the traversal. This is used because some metabolites (like water) are highly connected and therefore might not be iteresting to traverse.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple of two DataFrames.
+1. `visited_metabolite_df`: A DataFrame of metabolites visited in the traversals. This DataFrame contains columns `additive`, `final_time`, `start_metabolite_id`, and `visited_metabolite_id`.
+2. `visited_reaction_df`: A DataFrame of reactions visited in the traversals. This DataFrame contains the columns `additive`, `final_time`, `start_metabolite_id`, and `reaction_id`.
+"""
 function run_all_dfs_plans(
     model_graphs::Dict{Tuple{String,Int64},Dict{Symbol,Any}},
     dfs_plan::DataFrame,
@@ -561,7 +580,7 @@ function run_all_dfs_plans(
                     additive = additive,
                     final_time = final_time,
                     start_metabolite_id = start_metabolite_id,
-                    visited_reaction = visited_reaction,
+                    reaction_id = visited_reaction,
                 )
                 push!(visited_reaction_rows, visited_reaction_row)
             end
@@ -584,6 +603,22 @@ function run_all_dfs_plans(
             :start_metabolite_id
         ),
     )
+end
+
+function enrich_visited_reactions_df(
+    visited_reactions_df::DataFrame,
+    rxn_ids_to_strings::OrderedDict{String,Any},
+)
+    reaction_ids = []
+    reaction_strings = []
+    for (reaction_id, reaction_string) in rxn_ids_to_strings
+        push!(reaction_ids, reaction_id)
+        push!(reaction_strings, reaction_string)
+    end
+    reaction_map_df =
+        DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    df_1 = innerjoin(visited_reactions_df, reaction_map_df; on = :reaction_id)
+    return df_1
 end
 
 """
