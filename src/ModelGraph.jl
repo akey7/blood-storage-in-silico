@@ -551,7 +551,7 @@ Run DFS plan acorss all uFBA models specified in the arguments with [`dfs_from_m
 
 Returns a named tuple of two DataFrames.
 1. `visited_metabolite_df`: A DataFrame of metabolites visited in the traversals. This DataFrame contains columns `additive`, `final_time`, `start_metabolite_id`, and `visited_metabolite_id`.
-2. `visited_reaction_df`: A DataFrame of reactions visited in the traversals. This DataFrame contains the columns `additive`, `final_time`, `start_metabolite_id`, and `visited_reaction_id`.
+2. `visited_reaction_df`: A DataFrame of reactions visited in the traversals. This DataFrame contains the columns `additive`, `final_time`, `start_metabolite_id`, and `reaction_id`.
 """
 function run_all_dfs_plans(
     model_graphs::Dict{Tuple{String,Int64},Dict{Symbol,Any}},
@@ -580,7 +580,7 @@ function run_all_dfs_plans(
                     additive = additive,
                     final_time = final_time,
                     start_metabolite_id = start_metabolite_id,
-                    visited_reaction = visited_reaction,
+                    reaction_id = visited_reaction,
                 )
                 push!(visited_reaction_rows, visited_reaction_row)
             end
@@ -605,15 +605,20 @@ function run_all_dfs_plans(
     )
 end
 
-function enrich_visited_reactions_df(rxn_ids_to_strings::OrderedDict{String,Any})
+function enrich_visited_reactions_df(
+    visited_reactions_df::DataFrame,
+    rxn_ids_to_strings::OrderedDict{String,Any},
+)
     reaction_ids = []
     reaction_strings = []
     for (reaction_id, reaction_string) in rxn_ids_to_strings
         push!(reaction_ids, reaction_id)
         push!(reaction_strings, reaction_string)
     end
-    reaction_map_df = DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
-    display(first(reaction_map_df, 5))
+    reaction_map_df =
+        DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    df_1 = innerjoin(visited_reactions_df, reaction_map_df; on = :reaction_id)
+    return df_1
 end
 
 """
