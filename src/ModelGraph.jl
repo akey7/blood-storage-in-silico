@@ -592,7 +592,7 @@ function run_all_dfs_plans(
             paths_metabolite_ids = dfs_plan_result[:paths_metabolite_ids]
             paths_reaction_ids = dfs_plan_result[:paths_reaction_ids]
             for (path_idx, path_metabolite_ids) in enumerate(paths_metabolite_ids)
-                visited_metabolite_ids = path_metabolite_ids[2:end]
+                visited_metabolite_ids = path_metabolite_ids
                 for (idx, visited_metabolite_id) in enumerate(visited_metabolite_ids)
                     hops = idx - 1
                     visited_metabolite_row = (
@@ -607,7 +607,7 @@ function run_all_dfs_plans(
                 end
             end
             for (path_idx, path_reaction_ids) in enumerate(paths_reaction_ids)
-                visited_reaction_ids = path_reaction_ids[2:end]
+                visited_reaction_ids = path_reaction_ids
                 for (idx, visited_reaction_id) in enumerate(visited_reaction_ids)
                     hops = idx - 1
                     visited_reaction_row = (
