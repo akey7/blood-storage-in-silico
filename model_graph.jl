@@ -49,26 +49,14 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 @info "Creating uFBA model graphs"
 ufba_model_graphs = make_graphs_for_ufba_models(ufba_models)
 
-# @info "Placing uFBA results onto graph"
-# graph_data = make_graph(fba_model; skip_exchanges = false)
-
-# @info "Running graph search"
-# dfs_plan_filename = joinpath("input", "dfs_plan.csv")
-# dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
-# println("Read DFS plan from $dfs_plan_filename")
-
-# dfs_plan_result = run_dfs_plan(dfs_plan, graph_data, common_metabolite_ids)
-# dfs_plan_result_summary = summarize_dfs_plan_result(dfs_plan_result)
-
-# df_plan_result_filename = joinpath("output", "gem_dfs", "dfs_plan_result.json")
-# open(df_plan_result_filename, "w") do io
-#     JSON3.pretty(io, dfs_plan_result)
-# end
-
-# dfs_plan_result_summary_filename =
-#     joinpath("output", "gem_dfs", "dfs_plan_result_summary.json")
-# open(dfs_plan_result_summary_filename, "w") do io
-#     JSON3.pretty(io, dfs_plan_result_summary)
-# end
-
-# println("Wrote $df_plan_result_filename and $dfs_plan_result_summary_filename")
+@info "Running graph search"
+dfs_plan_filename = joinpath("input", "dfs_plan.csv")
+dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
+println("Read DFS plan from $dfs_plan_filename")
+visited_metabolite_filename = joinpath("output", "gem_dfs", "visited_metabolite.csv")
+visited_reaction_filename = joinpath("output", "gem_dfs", "visited_reaction.csv")
+plan_results = run_all_dfs_plans(ufba_model_graphs, dfs_plan, common_metabolite_ids)
+CSV.write(visited_metabolite_filename, plan_results.visited_metabolite_df)
+println("Wrote $visited_metabolite_filename")
+CSV.write(visited_reaction_filename, plan_results.visited_reaction_df)
+println("Wrote $visited_reaction_filename")

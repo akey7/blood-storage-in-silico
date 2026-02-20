@@ -33,7 +33,8 @@ export model_to_dictionaries,
     prepare_spectral_clustering_for_yaml,
     find_isolated_vertices,
     load_ufba_models,
-    make_graphs_for_ufba_models
+    make_graphs_for_ufba_models,
+    run_all_dfs_plans
 
 """
     load_ufba_models()
@@ -497,7 +498,7 @@ function run_dfs_plan(
     max_depths = dfs_plan[!, :max_depth]
     results::Vector{Dict{Symbol,Any}} = []
     for (metabolite_id, max_depth) ∈ zip(metabolite_ids, max_depths)
-        println("run_dfs_plan() Search from $metabolite_id for max_depth of $max_depth")
+        # println("run_dfs_plan() Search from $metabolite_id for max_depth of $max_depth")
         result = dfs_from_metabolite_id(
             graph_data,
             String(metabolite_id),
@@ -540,6 +541,8 @@ function run_all_dfs_plans(
 )
     visited_metabolite_rows = []
     visited_reaction_rows = []
+    n_model_graphs = length(keys(model_graphs))
+    prog = Progress(n_model_graphs, "Executing DFS plan for uFBA models")
     for ((additive, final_time), graph_data) ∈ model_graphs
         dfs_plan_result = run_dfs_plan(dfs_plan, graph_data, metabolite_ids_to_skip)
         summarized_dfs_plan_result = summarize_dfs_plan_result(dfs_plan_result)
@@ -563,6 +566,7 @@ function run_all_dfs_plans(
                 push!(visited_reaction_rows, visited_reaction_row)
             end
         end
+        next!(prog)
     end
     visited_metabolite_df = DataFrame(visited_metabolite_rows)
     visited_reaction_df = DataFrame(visited_reaction_rows)
