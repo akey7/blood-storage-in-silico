@@ -51,6 +51,8 @@ output
 ├── relative_absolute_c_means
 ├── relative_absolute_plots
 ├── uFBA_histograms
+├── gem_dfs
+├── ufba_models
 ```
 
 ### Install Dependencies

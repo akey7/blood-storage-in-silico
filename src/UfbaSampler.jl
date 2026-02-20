@@ -40,7 +40,8 @@ export sample_fluxes,
     execute_ufba_job,
     count_n_all_zero_fluxes,
     does_manual_prune_list_match_sink_name,
-    load_flux_bounds_overrides
+    load_flux_bounds_overrides,
+    sbml_add_constant_to_selfclosing_parameters!
 
 
 """
@@ -144,17 +145,60 @@ function load_flux_bounds_overrides()
 end
 
 """
+    sbml_add_constant_to_selfclosing_parameters!(infile::AbstractString; outfile::AbstractString = infile, default_constant::AbstractString = "true")
+
+This is a patch because COBREXA is writing corrupt SBML files. This opens the file and fixes the problem.
+
+# Arguments
+1. `infile::AbstractString`: Filename to patch.
+2. `outfile::AbstractString = infile`: Out file to write
+3. `default_constant::AbstractString = "true"`: Constant to patch with.
+"""
+function sbml_add_constant_to_selfclosing_parameters!(
+    infile::AbstractString;
+    outfile::AbstractString = infile,
+    default_constant::AbstractString = "true",
+)
+    s = read(infile, String)
+    s2 = replace(
+        s,
+        Regex(raw"<parameter\b(?![^>]*\bconstant=)([^>]*)\s*/>") =>
+            SubstitutionString("<parameter\\1 constant=\"$default_constant\"/>"),
+    )
+    write(outfile, s2)
+end
+
+"""
+    save_ufba_model_sbml(model::A.AbstractFBCModel, additive::AbstractString, final_time::Int64)
+
+Save the given uFBA model to the filesystem for later retrieval. Models are saved in SBML format in the `output/ufba_models` folder.
+
+# Arguments:
+1. `model::A.AbstractFBCModel`: uFBA model to save.
+2. `additive::AbstractString`: Additive the uFBA model is in.
+3. `final_time::Int64`: Final time of the uFBA model.
+"""
+function save_ufba_model_sbml(
+    model::A.AbstractFBCModel,
+    additive::AbstractString,
+    final_time::Int64,
+)
+    filename = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).xml")
+    sbml_fbc = convert(S.SBMLFBCModel, model)
+    save_model(sbml_fbc, filename)
+    sbml_add_constant_to_selfclosing_parameters!(filename)
+    println("Wrote $filename")
+end
+
+"""
     query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
 
 Find the rate of concentration chage for the metabolite in the given additive at the given final time. Returns `nothing` if not found.
 
 # Arguments
 1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.load_metabolite_bounds).
-
 2. `additive`: String of the additive as specified in the DataFrame.
-
 3. `metabolite`: Metabolite id.
-
 4. `final_time`: The final time point of the interval.
 
 # Returns
@@ -771,6 +815,7 @@ function make_ufba_models_for_additives_and_times(
             additive,
             string.(zero_case3_sinks),
         )
+        save_ufba_model_sbml(pruned_model, additive, final_time)
         (
             additive = additive,
             final_time = final_time,
