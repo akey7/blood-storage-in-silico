@@ -16,6 +16,7 @@ using Clustering
 using DataStructures
 using LinearAlgebra
 using ProgressMeter
+using OrderedCollections
 
 export model_to_dictionaries,
     metabolite_id_keys_reaction_id_values,
@@ -34,7 +35,8 @@ export model_to_dictionaries,
     find_isolated_vertices,
     load_ufba_models,
     make_graphs_for_ufba_models,
-    run_all_dfs_plans
+    run_all_dfs_plans,
+    enrich_visited_reactions_df
 
 """
     load_ufba_models()
@@ -601,6 +603,17 @@ function run_all_dfs_plans(
             :start_metabolite_id
         ),
     )
+end
+
+function enrich_visited_reactions_df(rxn_ids_to_strings::OrderedDict{String,Any})
+    reaction_ids = []
+    reaction_strings = []
+    for (reaction_id, reaction_string) in rxn_ids_to_strings
+        push!(reaction_ids, reaction_id)
+        push!(reaction_strings, reaction_string)
+    end
+    reaction_map_df = DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    display(first(reaction_map_df, 5))
 end
 
 """
