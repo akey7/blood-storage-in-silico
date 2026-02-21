@@ -277,6 +277,9 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
     metabolite_to_metabolites = metabolite_connections[:metabolite_to_metabolites]
     metabolite_pairs_to_reactions = metabolite_connections[:metabolite_pairs_to_reactions]
     for (vertex_metabolite_id, neighbor_metabolite_ids) ∈ metabolite_to_metabolites
+        # if contains(vertex_metabolite_id, "_e")
+        #     println("Encountered extraceelular metabolite $vertex_metabolite_id")
+        # end
         vertex_idx = metabolite_ids_to_ints[vertex_metabolite_id]
         set_prop!(mg, vertex_idx, :metabolite_id, vertex_metabolite_id)
         for neighbor_metabolite_id ∈ neighbor_metabolite_ids
