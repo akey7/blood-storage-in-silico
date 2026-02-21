@@ -283,6 +283,9 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
         vertex_idx = metabolite_ids_to_ints[vertex_metabolite_id]
         set_prop!(mg, vertex_idx, :metabolite_id, vertex_metabolite_id)
         for neighbor_metabolite_id ∈ neighbor_metabolite_ids
+            # if contains(neighbor_metabolite_id, "_e")
+            #     println("neighbor_metabolite_id $neighbor_metabolite_id")
+            # end
             neighbor_idx = metabolite_ids_to_ints[neighbor_metabolite_id]
             reaction_id = metabolite_pairs_to_reactions[(
                 vertex_metabolite_id,
