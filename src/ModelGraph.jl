@@ -246,6 +246,9 @@ The dictionary contains the following keys:
 4. `:mg`: `MetaGraph` of the metaoblic network, useful for visualization and interoperatbility with the Graphs.jl ecosystem.
 """
 function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
+    # exchanges =
+    #     [rxn_name for (rxn_name, _) in model.reactions if contains(rxn_name, "R_EX")]
+    # display(exchanges)
     N = length(model.metabolites)
     metabolite_integer::Int64 = 1
     metabolite_ids_to_ints::Dict{String,Int64} = Dict()
