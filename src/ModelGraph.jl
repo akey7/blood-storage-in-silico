@@ -249,6 +249,11 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
     # exchanges =
     #     [rxn_name for (rxn_name, _) in model.reactions if contains(rxn_name, "R_EX")]
     # display(exchanges)
+    # extracellular_metabolites = [
+    #     metabolite_name for
+    #     (metabolite_name, _) in model.metabolites if contains(metabolite_name, "_e")
+    # ]
+    # display(extracellular_metabolites)
     N = length(model.metabolites)
     metabolite_integer::Int64 = 1
     metabolite_ids_to_ints::Dict{String,Int64} = Dict()
