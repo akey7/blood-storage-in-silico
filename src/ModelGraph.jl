@@ -129,6 +129,7 @@ function metabolite_id_to_other_side_metabolite_ids(
 )
     metabolite_to_metabolites::Dict{String,Vector{String}} = Dict()
     metabolite_pairs_to_reactions::Dict{Tuple{String,String},String} = Dict()
+    metabolites_to_exchanges::Dict{String,String} = Dict()
     for (metabolite_id, reaction_ids) ∈ metabolite_id_to_reaction_ids
         metabolite_to_metabolites[metabolite_id] = Vector()
         for reaction_id ∈ reaction_ids
@@ -139,15 +140,20 @@ function metabolite_id_to_other_side_metabolite_ids(
                 coeff == other_metabolite_sign
             ]
             append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
-            for other_metabolite_id ∈ other_metabolite_ids
-                metabolite_pair = (metabolite_id, other_metabolite_id)
-                metabolite_pairs_to_reactions[(metabolite_pair)] = reaction_id
+            if length(other_metabolite_ids) >= 1
+                for other_metabolite_id ∈ other_metabolite_ids
+                    metabolite_pair = (metabolite_id, other_metabolite_id)
+                    metabolite_pairs_to_reactions[(metabolite_pair)] = reaction_id
+                end
+            else
+                metabolites_to_exchanges[metabolite_id] = reaction_id
             end
         end
     end
     Dict(
         :metabolite_to_metabolites => metabolite_to_metabolites,
         :metabolite_pairs_to_reactions => metabolite_pairs_to_reactions,
+        :metabolite_to_exchanges => metabolites_to_exchanges,
     )
 end
 
