@@ -18,7 +18,8 @@ export histograms_for_reaction_v2,
     pivot_sampling_df_long,
     map_metabolites_to_sinks,
     net_sink_fluxes,
-    net_flux_from_up_and_down
+    net_flux_from_up_and_down,
+    calc_median_flux_df
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -290,6 +291,15 @@ function net_sink_fluxes(sampling_df, sink_map)
     end
     net_flux_df = @orderby(DataFrame(rows), :metabolite_id, :additive, :final_time)
     return net_flux_df
+end
+
+function calc_median_flux_df(sampling_df)
+    long_df = pivot_sampling_df_long(sampling_df)
+    median_df = @chain long_df begin
+        @groupby(:additive, :final_time, :reaction_id)
+        @combine(:median_flux = median(:flux))
+    end
+    return median_df
 end
 
 end

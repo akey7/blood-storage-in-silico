@@ -8,8 +8,8 @@ using YAML
 
 include("src/ModelGraph.jl")
 using .ModelGraph
-include("src/FbaModelBuilder.jl")
-using .FbaModelBuilder
+include("src/UfbaSamplerAnalysisAndViz.jl")
+using .UfbaSamplerAnalysisAndViz
 
 # Common metabolites not to be traversed
 common_metabolite_ids = [
@@ -61,12 +61,18 @@ dfs_plan_filename = joinpath("input", "dfs_plan.csv")
 dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
 println("Read DFS plan from $dfs_plan_filename")
 
+@info "Calculating median uFBA fluxes"
+median_df = calc_median_flux_df(sampling_df)
+
 @info "Analyzing visited metabolites and reactions"
 visited_metabolite_filename = joinpath("output", "gem_dfs", "visited_metabolite.csv")
 visited_reaction_filename = joinpath("output", "gem_dfs", "visited_reaction.csv")
 plan_results = run_all_dfs_plans(ufba_model_graphs, dfs_plan, common_metabolite_ids)
-enriched_visited_reactions_df =
-    enrich_visited_reactions_df(plan_results.visited_reaction_df, rxn_ids_to_strings)
+enriched_visited_reactions_df = enrich_visited_reactions_df(
+    plan_results.visited_reaction_df,
+    rxn_ids_to_strings,
+    median_df,
+)
 CSV.write(visited_metabolite_filename, plan_results.visited_metabolite_df)
 println("Wrote $visited_metabolite_filename")
 CSV.write(visited_reaction_filename, enriched_visited_reactions_df)

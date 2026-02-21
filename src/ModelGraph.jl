@@ -626,6 +626,7 @@ end
 function enrich_visited_reactions_df(
     visited_reactions_df::DataFrame,
     rxn_ids_to_strings::OrderedDict{String,Any},
+    median_df::DataFrame,
 )
     reaction_ids = []
     reaction_strings = []
@@ -635,8 +636,22 @@ function enrich_visited_reactions_df(
     end
     reaction_map_df =
         DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
-    df_1 = innerjoin(visited_reactions_df, reaction_map_df; on = :reaction_id)
-    return df_1
+    result_df = @chain visited_reactions_df begin
+        innerjoin(reaction_map_df; on = :reaction_id)
+        innerjoin(median_df; on = [:additive, :final_time, :reaction_id])
+        @orderby(:additive, :final_time, :start_metabolite_id, :path_idx, :hops)
+        @select(
+            :additive,
+            :final_time,
+            :start_metabolite_id,
+            :path_idx,
+            :hops,
+            :reaction_id,
+            :median_flux,
+            :reaction_string
+        )
+    end
+    return result_df
 end
 
 """
