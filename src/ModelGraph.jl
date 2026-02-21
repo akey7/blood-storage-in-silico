@@ -291,6 +291,9 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
                 vertex_metabolite_id,
                 neighbor_metabolite_id,
             )]
+            # if contains(reaction_id, "R_EX")
+            #     println("Encountered exchange reaction $reaction_id")
+            # end
             if skip_exchanges && contains(lowercase(reaction_id), "r_ex")
                 continue
             end
