@@ -277,7 +277,7 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
                 vertex_metabolite_id,
                 neighbor_metabolite_id,
             )]
-            if skip_exchanges && endswith(lowercase(reaction_id), "ex")
+            if skip_exchanges && contains(lowercase(reaction_id), "r_ex")
                 continue
             end
             adj_matrix[vertex_idx, neighbor_idx] = 1
