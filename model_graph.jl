@@ -8,8 +8,8 @@ using YAML
 
 include("src/ModelGraph.jl")
 using .ModelGraph
-include("src/FbaModelBuilder.jl")
-using .FbaModelBuilder
+include("src/UfbaSamplerAnalysisAndViz.jl")
+using .UfbaSamplerAnalysisAndViz
 
 # Common metabolites not to be traversed
 common_metabolite_ids = [
@@ -60,6 +60,9 @@ ufba_model_graphs = make_graphs_for_ufba_models(ufba_models)
 dfs_plan_filename = joinpath("input", "dfs_plan.csv")
 dfs_plan = CSV.read(dfs_plan_filename, DataFrame)
 println("Read DFS plan from $dfs_plan_filename")
+
+@info "Calculating median uFBA fluxes"
+median_df = calc_median_flux_df(sampling_df)
 
 @info "Analyzing visited metabolites and reactions"
 visited_metabolite_filename = joinpath("output", "gem_dfs", "visited_metabolite.csv")
