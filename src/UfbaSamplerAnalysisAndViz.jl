@@ -293,6 +293,19 @@ function net_sink_fluxes(sampling_df, sink_map)
     return net_flux_df
 end
 
+"""
+    calc_median_flux_df(sampling_df)
+
+Calculate median fluxes for all reactions in the given wide sampling DataFrame.
+
+# Arguments
+1. `sampling_df`: Wide sampling DataFrame returned by [`sample_fluxes`](@ref BloodStorageInSilico.UfbaSampler.sample_fluxes)
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns: `additive`, `final_time`, `reaction_id`, and `median_flux` columns.
+"""
 function calc_median_flux_df(sampling_df)
     long_df = pivot_sampling_df_long(sampling_df)
     median_df = @chain long_df begin
