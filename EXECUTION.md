@@ -126,6 +126,8 @@ Outputs the following files:
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
+Outputs csv and plot files of analyses of the uFBA results.
+
 Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
 
 There are no fancy threads or workers here, so execution is simple.
@@ -134,4 +136,25 @@ On macOS or Windows:
 
 ```
 julia --project=. ufba_sampler_analysis_and_viz.jl
+```
+
+### (6) `mode_graph.jl`: Analyze the uFBA models as graphs
+
+Analyzes the uFBA models as graphs.
+
+Runs code in `src/ModelGraph.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, the reaction id to reaction string mapping file at `output/ufba_sampling.csv`, uFBA model SBML files in `output/ufba_models`, and `input/gem_dfs/dfs_plan.csv`. Writes `output/gem_dfs/visited_metabolite.csv` (which specifies the metabolites traversed on DFS traversals) and `output/gem_dfs/visited_reaction.csv` (which specifies the reactions traversed on DFS traversals).
+
+The "DFS plan" file in `input/gem_dfs/dfs_plan.csv` needs the following columns:
+
+1. `metabolite_id`: Metabolite id to start a DFS traversal at.
+2. `max_depth`: Maximum number of hops to traverse from the starting vertex.
+
+A default `input/dfs_plan.csv` is provided in the repo as an example.
+
+Displays progress bars to show progress as it works through the data.
+
+This script only uses a single thread, so execution on macOS or Window is simple:
+
+```
+julia --project=. model_graph.jl
 ```
