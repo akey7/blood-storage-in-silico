@@ -111,8 +111,11 @@ end
     metabolite_id_to_other_side_metabolite_ids(model::A.CanonicalModel.Model, metabolite_id_to_reaction_ids::Dict{String, Vector{String}})
 
 This function does two things:
-1. For each metabolite_id, find each metabolite_id on the other side of the reactions, as found by the opposite sign of the stoichiometric coefficients.
-2. Maps pairs of metabolite ids to the reaction that connects them.
+1. For each `metabolite_id`, find each metabolite_id on the other side of the reactions, as found by the opposite sign of the stoichiometric coefficients (if oppostie side metabolites are present).
+2. For reactions that have metabolites on both sides of the reaction (normal reactions and transporters), maps pairs of metabolite ids to the reaction that connects them.
+3. For reactions that just have a metabolite on one side of the reactions (exchanges and sinks), maps single metabolites to the reaction id of the corresponding exchange/sink.
+
+The first two operations are used by [`make_graph`](@ref BloodStorageInSilico.ModelGraph.make_graph) to make graphs of models. At this time, the results of the thirs operation are not used because that would lead to inconsistent defintions of vertices and edges. See [`make_graph`](@ref BloodStorageInSilico.ModelGraph.make_graph) for more information on this.
 
 # Arguments
 1. `model::A.CanonicalModel.Model`: Model to inspect
@@ -120,8 +123,10 @@ This function does two things:
 
 # Returns
 `Dict{Symbol,Dict{String,Vector{Any}}}`
+
 1. `:metabolite_to_metabolties`: metabolite_ids as keys and vectors of metabolite ids as values. The metabolite ids in the vectors are on the "other side" of the reactions according to stoichiometry in the reactions. For example, the metabolite id keys that are products will have lists of their reactants across all reactions in which they participate.
 2. `:metabolite_pairs_to_reactions`: Metabolite pairs as keys and reaction ids as values. This can be used to label the edges in the metabolite graph. It shows what reaction pair metabolite ids together.
+3. `:metabolites_to_exchanges_sinks`: This dictionary contains information about exchanges and sinks. Maps single metabolites ids as keys to single reaction ids as values.
 """
 function metabolite_id_to_other_side_metabolite_ids(
     model::A.CanonicalModel.Model,
@@ -129,7 +134,7 @@ function metabolite_id_to_other_side_metabolite_ids(
 )
     metabolite_to_metabolites::Dict{String,Vector{String}} = Dict()
     metabolite_pairs_to_reactions::Dict{Tuple{String,String},String} = Dict()
-    metabolites_to_exchanges::Dict{String,String} = Dict()
+    metabolites_to_exchanges_sinks::Dict{String,String} = Dict()
     for (metabolite_id, reaction_ids) ∈ metabolite_id_to_reaction_ids
         metabolite_to_metabolites[metabolite_id] = Vector()
         for reaction_id ∈ reaction_ids
@@ -146,14 +151,14 @@ function metabolite_id_to_other_side_metabolite_ids(
                     metabolite_pairs_to_reactions[(metabolite_pair)] = reaction_id
                 end
             else
-                metabolites_to_exchanges[metabolite_id] = reaction_id
+                metabolites_to_exchanges_sinks[metabolite_id] = reaction_id
             end
         end
     end
     Dict(
         :metabolite_to_metabolites => metabolite_to_metabolites,
         :metabolite_pairs_to_reactions => metabolite_pairs_to_reactions,
-        :metabolite_to_exchanges => metabolites_to_exchanges,
+        :metabolites_to_exchanges_sinks => metabolites_to_exchanges_sinks,
     )
 end
 
@@ -239,9 +244,10 @@ end
 
 Creates a graph and related data of the given model, with metabolite ids as the vertices and reactions as the edges.
 
+Note: This function does not add edges for exchanges, though it does add edges for transports. The reason it doesn't add edges for edges for exchanges or sinks is because exchanges and sinks only include one metabolite and would therefore necessitate a different definition for an edge than the rest of the metabolites/reactions. So to maintain consistency sinks/exchanges are skipped.
+
 # Argument
 1. `model::A.CanonicalModel.Model`: Model loaded by `model_to_dictionaries()`
-2. `skip_exchanges::Bool`: Defaults to `false`. If `true`, it will not add edges for exchange reactions.
 
 # Returns
 `Dict{Symbol,Any}`
@@ -251,15 +257,7 @@ The dictionary contains the following keys:
 3. `:adj_matrix`: NxN adjacency matrix, with N being number of metabolites ids.
 4. `:mg`: `MetaGraph` of the metaoblic network, useful for visualization and interoperatbility with the Graphs.jl ecosystem.
 """
-function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
-    # exchanges =
-    #     [rxn_name for (rxn_name, _) in model.reactions if contains(rxn_name, "R_EX")]
-    # display(exchanges)
-    # extracellular_metabolites = [
-    #     metabolite_name for
-    #     (metabolite_name, _) in model.metabolites if contains(metabolite_name, "_e")
-    # ]
-    # display(extracellular_metabolites)
+function make_graph(model::A.CanonicalModel.Model)
     N = length(model.metabolites)
     metabolite_integer::Int64 = 1
     metabolite_ids_to_ints::Dict{String,Int64} = Dict()
@@ -283,24 +281,15 @@ function make_graph(model::A.CanonicalModel.Model; skip_exchanges::Bool = false)
     metabolite_to_metabolites = metabolite_connections[:metabolite_to_metabolites]
     metabolite_pairs_to_reactions = metabolite_connections[:metabolite_pairs_to_reactions]
     for (vertex_metabolite_id, neighbor_metabolite_ids) ∈ metabolite_to_metabolites
-        # if contains(vertex_metabolite_id, "_e")
-        #     println("Encountered extraceelular metabolite $vertex_metabolite_id")
-        # end
         vertex_idx = metabolite_ids_to_ints[vertex_metabolite_id]
         set_prop!(mg, vertex_idx, :metabolite_id, vertex_metabolite_id)
         for neighbor_metabolite_id ∈ neighbor_metabolite_ids
-            # if contains(neighbor_metabolite_id, "_e")
-            #     println("neighbor_metabolite_id $neighbor_metabolite_id")
-            # end
             neighbor_idx = metabolite_ids_to_ints[neighbor_metabolite_id]
             reaction_id = metabolite_pairs_to_reactions[(
                 vertex_metabolite_id,
                 neighbor_metabolite_id,
             )]
-            # if contains(reaction_id, "R_EX")
-            #     println("Encountered exchange reaction $reaction_id")
-            # end
-            if skip_exchanges && contains(lowercase(reaction_id), "r_ex")
+            if contains(lowercase(reaction_id), "r_ex")
                 continue
             end
             adj_matrix[vertex_idx, neighbor_idx] = 1
