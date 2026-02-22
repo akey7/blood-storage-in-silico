@@ -635,6 +635,30 @@ function run_all_dfs_plans(
     )
 end
 
+"""
+    enrich_visited_reactions_df(visited_reactions_df::DataFrame, rxn_ids_to_strings::OrderedDict{String,Any}, median_df::DataFrame)
+
+"Enrich" the visited reactions DataFrame returned by [`run_all_dfs_plans`](@ref BloodStorageInSilico.ModelGraph.run_all_dfs_plans) by adding columns with median flux rate and reaction string to the visited reactions DataFrame.
+
+# Arguments
+1. `visited_reactions_df::DataFrame`: Visited reactions DataFrame
+2. `rxn_ids_to_strings::OrderedDict{String,Any}` The mapping of reaction ids to reactions returned by [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings)
+3. `median_df::DataFrame`: Median flux DataFrame returned by [`calc_median_flux_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.calc_median_flux_df)
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns: 
+
+1. `:additive`: The additive of the model.
+2. `:final_time`: The final time of the model.
+3. `:start_metabolite_id`: The starting metabolite id of the traversed path.
+4. `:path_idx`: The path index, an integer (starting at 1), that specifies which depth-first path from the starting metabolite id is traversed for this row.
+5. `:hops`: The number of hops across the graph (starting at 0 for a reaction containing the metabolite id) that this reaction is found at on the depth first path starting from the starting metabolite id.
+6. `:reaction_id`: Reaction id of the traversed edge.
+7. `:median_flux`: The median flux of the reaction on the traversed edge.
+8. `:reaction_string`: The reaction string of the traversed edge.
+"""
 function enrich_visited_reactions_df(
     visited_reactions_df::DataFrame,
     rxn_ids_to_strings::OrderedDict{String,Any},
