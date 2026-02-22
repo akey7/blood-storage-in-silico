@@ -42,15 +42,21 @@ Output will be saved to `output/normalized_abundance_correlations.csv` and `outp
 
 Uses `src/RawRelativeIntensities.jl` to make 3D PCA plots reducing relative metabolite abundances down to fewer features.
 
-This script does not use multiple workers or threads, so executing it is easy.
+Execution is multithreaded, so the number of threads should be specified.
 
-On macOS or Windows:
+On macOS:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. raw_relative_intensities.jl
+```
+
+On Windows, assuming `JULIA_NUM_THREADS` has been set in settings:
 
 ```
 julia --project=. raw_relative_intensities.jl
 ```
 
-This will display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
+This script will write the PCA loadings for all additives to `output/relative_pca_loadings.csv`. This script will also display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
 
 ### (3) `absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
 
@@ -112,9 +118,17 @@ Which would sample all models with 10 chains, run all models, and use 32 concurr
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
 
+Outputs the following files:
+1. `outputs/ufba_sampling_status.csv`: That statuses of each uFBA sampling job (fail or ok)
+2. `outputs/ufba_sampling.csv`: The samplings of the fluxes. Used by next step.
+3. `outputs/case3_sinks.csv`: The unmeasured metabolite sinks from the Case 3 analysis, and whether they had zero or non-zero flux.
+4. `outputs/case3_sinks_aggregated.csv`: Counts of zero and nonzero sinks. 
+
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
-Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. 
+Outputs csv and plot files of analyses of the uFBA results.
+
+Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
 
 There are no fancy threads or workers here, so execution is simple.
 
@@ -122,4 +136,25 @@ On macOS or Windows:
 
 ```
 julia --project=. ufba_sampler_analysis_and_viz.jl
+```
+
+### (6) `mode_graph.jl`: Analyze the uFBA models as graphs
+
+Analyzes the uFBA models as graphs.
+
+Runs code in `src/ModelGraph.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, the reaction id to reaction string mapping file at `output/ufba_sampling.csv`, uFBA model SBML files in `output/ufba_models`, and `input/gem_dfs/dfs_plan.csv`. Writes `output/gem_dfs/visited_metabolite.csv` (which specifies the metabolites traversed on DFS traversals) and `output/gem_dfs/visited_reaction.csv` (which specifies the reactions traversed on DFS traversals).
+
+The "DFS plan" file in `input/gem_dfs/dfs_plan.csv` needs the following columns:
+
+1. `metabolite_id`: Metabolite id to start a DFS traversal at.
+2. `max_depth`: Maximum number of hops to traverse from the starting vertex.
+
+A default `input/dfs_plan.csv` is provided in the repo as an example.
+
+Displays progress bars to show progress as it works through the data.
+
+This script only uses a single thread, so execution on macOS or Window is simple:
+
+```
+julia --project=. model_graph.jl
 ```

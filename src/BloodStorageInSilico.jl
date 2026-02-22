@@ -7,6 +7,7 @@ include("UfbaSampler.jl")
 include("UfbaSamplerAnalysisAndViz.jl")
 include("RawRelativeIntensities.jl")
 include("FbaModelBuilder.jl")
+include("ModelGraph.jl")
 
 export MetaboliteTimelines,
     TreatmentsAgainstControlMedians,
@@ -14,6 +15,7 @@ export MetaboliteTimelines,
     UfbaSampler,
     UfbaSamplerAnalysisAndViz,
     RawRelativeIntensities,
-    FbaModelBuilder
+    FbaModelBuilder,
+    ModelGraph
 
 end

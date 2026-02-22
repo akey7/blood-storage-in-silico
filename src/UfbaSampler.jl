@@ -1,9 +1,7 @@
 module UfbaSampler
 
 using Distributed
-
 using COBREXA, HiGHS, JuMP, MathOptInterface
-
 using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
@@ -41,7 +39,9 @@ export sample_fluxes,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
-    does_manual_prune_list_match_sink_name
+    does_manual_prune_list_match_sink_name,
+    load_flux_bounds_overrides,
+    sbml_add_constant_to_selfclosing_parameters!
 
 
 """
@@ -113,7 +113,7 @@ end
 """
     load_metabolite_bounds()
 
-Loads the rates of metabolite oncentration change from the `concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
+Loads the rates of metabolite oncentration change from the `output/concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
 
 Downstream handling of this DataFrame expects to find the following columns in the csv: additive, metabolite, final_time, intercept, rate, lb, ub.
 
@@ -129,17 +129,76 @@ function load_metabolite_bounds()
 end
 
 """
+    load_flux_bounds_overrides()
+
+Loads `input/flux_bounds_overrides.csv`. This file contains rate bounds for fluxes that **override** the specifications in the RBC-GEM.
+
+# Returns
+`DataFrame`
+
+Returns the flux bounds overrides DataFrame.
+"""
+function load_flux_bounds_overrides()
+    flux_bounds_filename = joinpath("input", "flux_bounds_overrides.csv")
+    flux_bounds_df = CSV.read(flux_bounds_filename, DataFrame)
+    return flux_bounds_df
+end
+
+"""
+    sbml_add_constant_to_selfclosing_parameters!(infile::AbstractString; outfile::AbstractString = infile, default_constant::AbstractString = "true")
+
+This is a patch because COBREXA is writing corrupt SBML files. This opens the file and fixes the problem.
+
+# Arguments
+1. `infile::AbstractString`: Filename to patch.
+2. `outfile::AbstractString = infile`: Out file to write
+3. `default_constant::AbstractString = "true"`: Constant to patch with.
+"""
+function sbml_add_constant_to_selfclosing_parameters!(
+    infile::AbstractString;
+    outfile::AbstractString = infile,
+    default_constant::AbstractString = "true",
+)
+    s = read(infile, String)
+    s2 = replace(
+        s,
+        Regex(raw"<parameter\b(?![^>]*\bconstant=)([^>]*)\s*/>") =>
+            SubstitutionString("<parameter\\1 constant=\"$default_constant\"/>"),
+    )
+    write(outfile, s2)
+end
+
+"""
+    save_ufba_model_sbml(model::A.AbstractFBCModel, additive::AbstractString, final_time::Int64)
+
+Save the given uFBA model to the filesystem for later retrieval. Models are saved in SBML format in the `output/ufba_models` folder.
+
+# Arguments:
+1. `model::A.AbstractFBCModel`: uFBA model to save.
+2. `additive::AbstractString`: Additive the uFBA model is in.
+3. `final_time::Int64`: Final time of the uFBA model.
+"""
+function save_ufba_model_sbml(
+    model::A.AbstractFBCModel,
+    additive::AbstractString,
+    final_time::Int64,
+)
+    filename = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).xml")
+    sbml_fbc = convert(S.SBMLFBCModel, model)
+    save_model(sbml_fbc, filename)
+    sbml_add_constant_to_selfclosing_parameters!(filename)
+    println("Wrote $filename")
+end
+
+"""
     query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
 
 Find the rate of concentration chage for the metabolite in the given additive at the given final time. Returns `nothing` if not found.
 
 # Arguments
 1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.load_metabolite_bounds).
-
 2. `additive`: String of the additive as specified in the DataFrame.
-
 3. `metabolite`: Metabolite id.
-
 4. `final_time`: The final time point of the interval.
 
 # Returns
@@ -707,6 +766,7 @@ function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
+    flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -718,7 +778,11 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
+        full_model = create_fba_model(
+            base_rbc_gem;
+            exchanges = exchanges,
+            flux_bounds_overrides_df = flux_bounds_overrides_df,
+        )
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -740,13 +804,18 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(base_rbc_gem; exchanges = exchanges)
+        pruned_model = create_fba_model(
+            base_rbc_gem;
+            exchanges = exchanges,
+            flux_bounds_overrides_df = flux_bounds_overrides_df,
+        )
         add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,
             additive,
             string.(zero_case3_sinks),
         )
+        save_ufba_model_sbml(pruned_model, additive, final_time)
         (
             additive = additive,
             final_time = final_time,
@@ -770,12 +839,14 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
 
 # Returns
-`DataFrame`
+`Tuple{DataFrame,DataFrame}`
 
-Returns a DataFrame of with the status of unmeasured metabolite sinks for each uFBA job.
+Returns two DataFrames:
+1. Status of unmeasured metabolite sinks for each uFBA job.
+2. Aggregated status of unmeasured metabolites sinks for each uFBA job.
 """
 function extract_case3_sinks(ufba_jobs)
-    rows = []
+    status_rows = []
     for ufba_job in ufba_jobs
         for zero_case3_sink in ufba_job.zero_case3_sinks
             row = (
@@ -784,7 +855,7 @@ function extract_case3_sinks(ufba_jobs)
                 sink = zero_case3_sink,
                 status = "zero",
             )
-            push!(rows, row)
+            push!(status_rows, row)
         end
         for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
             row = (
@@ -793,10 +864,15 @@ function extract_case3_sinks(ufba_jobs)
                 sink = nonzero_case3_sink,
                 status = "nonzero",
             )
-            push!(rows, row)
+            push!(status_rows, row)
         end
     end
-    return DataFrame(rows)
+    status_df = DataFrame(status_rows)
+    status_aggregated_df = @chain status_df begin
+        @groupby(:additive, :final_time, :status)
+        combine(nrow => :count)
+    end
+    return status_df, status_aggregated_df
 end
 
 """

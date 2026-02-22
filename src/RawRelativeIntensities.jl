@@ -1,5 +1,6 @@
 module RawRelativeIntensities
 
+using Base.Iterators
 using CSV
 using DataFrames
 using DataFramesMeta
@@ -10,13 +11,18 @@ using Statistics
 using Makie
 using GLMakie
 using ThreadsX
+using ProgressMeter
 
 export load_relative_intensities,
     pca_relative_intensities,
     plot_pca_panels,
     display_pca_scores_3d,
     gather_pca_scores,
-    calc_pca_scores_3d_limits
+    calc_pca_scores_limits,
+    pca_loadings_report,
+    plot_single_additive_2d_pcas,
+    plot_additive_pair_2d_pcas,
+    detect_week_1_side
 
 """
     load_relative_intensities()
@@ -29,13 +35,9 @@ Loads the relative quantification (intensity) and pivots it long.
 Returns a long DataFrame with the following columns: 
 
 1. `:Sample`, the sample id
-
 2. `:Time` the time point of the measurement (in weeks)
-
 3. `:Additive`: Additive the measurement was taken in.
-
 4. `:MixedName`: The name of either a single compound or group of compounds under the same peak.
-
 5. `:Intensity`: The integrated area of the peak.
 """
 function load_relative_intensities()
@@ -67,9 +69,10 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 3. `patient_time_labels`: Labels for each observation of patient and time.
 4. `kept_columns`: List of columns that were kept for the PCA after data cleaning
 5. `wide_df`: Wide DataFrame used to make the `Matrix` for the PCA.
+6. `additive`: The additive the PCA was performed for.
 """
 function pca_relative_intensities(long_df, additive)
-    @info "Beginning PCA"
+    # @info "Beginning PCA for $additive"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = split(:Sample, "_")[3][1:2])
@@ -98,7 +101,7 @@ function pca_relative_intensities(long_df, additive)
         end
         for (patient_time_label, i) in zip(eachrow(patient_time_labels), axes(X, 1))
             if ismissing(X[i, j])
-                println("$patient_time_label, $metabolite is missing")
+                println("$patient_time_label, $metabolite_name is missing")
                 X[i, j] = colmeans[j]
             end
         end
@@ -139,8 +142,9 @@ function pca_relative_intensities(long_df, additive)
     kept_columns = findall(good_cols)
     # display(kept_columns)
     # display(M)
-    @info "Finished PCA"
+    # @info "Finished PCA for $additive"
     return (
+        additive = additive,
         model = M,
         scores = scores,
         patient_time_labels = patient_time_labels,
@@ -150,13 +154,61 @@ function pca_relative_intensities(long_df, additive)
 end
 
 """
+    plot_additive_pair_2d_pcas(long_df)
+
+# Arguments
+1. `long_df`: The long DataFrame of relative abundances.
+"""
+function plot_additive_pair_2d_pcas(long_df)
+    additives = sort(unique(long_df.Additive))
+    pairs = product(additives, additives)
+    non_dupes = [(a1, a2) for (a1, a2) in pairs if a1 != a2]
+    n_non_dupes = length(non_dupes)
+    limits = calc_pca_scores_limits(long_df)
+    prog = Progress(n_non_dupes, desc = "Plotting 2D Additive Pair PCAs")
+    for (left_additive, right_additive) in non_dupes
+        super_title = "$left_additive and $right_additive"
+        fig = Figure(; size = (1280, 720))
+        pca_result_left = pca_relative_intensities(long_df, left_additive)
+        pca_result_right = pca_relative_intensities(long_df, right_additive)
+        plot_pca_scores(pca_result_left, fig; side = :left, limits = limits)
+        plot_pca_scores(pca_result_right, fig; side = :right, limits = limits)
+        Label(fig[0, :], text = super_title, fontsize = 50)
+        filename =
+            joinpath("output", "pca_plots", "PCA $left_additive and $right_additive.png")
+        save(filename, fig)
+        next!(prog)
+    end
+end
+
+"""
+    plot_single_additive_2d_pcas(long_df)
+
+Plot the 2D PCA multi panel plots.
+
+# Arguments
+1. `long_df`: Long DataFrame of relative intensities.
+"""
+function plot_single_additive_2d_pcas(long_df)
+    additives = sort(unique(long_df.Additive))
+    n_additives = length(additives)
+    prog = Progress(n_additives, desc = "Plotting 2D Single-Additive PCAs")
+    for additive in additives
+        pca_result = pca_relative_intensities(long_df, additive)
+        fig = plot_pca_panels(pca_result, additive)
+        filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        save(filename, fig)
+        next!(prog)
+    end
+end
+
+"""
     plot_pca_panels(pca_result, super_title)
 
 Using [`plot_pca_scores`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scores) and [`plot_pca_scree`](@ref BloodStorageInSilico.RawRelativeIntensities.plot_pca_scree), assemble a 2D set of panels for to plot the PCA results.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
-
 2. `super_title`: The super title to put over the top of both panels.
 
 # Returns
@@ -168,25 +220,26 @@ function plot_pca_panels(pca_result, super_title)
     fig = Figure(; size = (1280, 720))
     plot_pca_scores(pca_result, fig)
     plot_pca_scree(pca_result, fig)
-    # plot_pca_loadings(pca_result, fig)
     Label(fig[0, :], text = super_title, fontsize = 50)
     return fig
 end
 
 """
-    plot_pca_scores(pca_result, fig)
+    plot_pca_scores(pca_result, fig; side = :right)
 
-Plot a panel of the first two PCs against each other in a scatter plot.
+Plot a panel of the first two PCs against each other in a scatter plot. Mirrors the PC1 axis if Day 1 would be on the right side without this correction.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
-
 2. `fig`: A Makie figure to plot onto.
+3. `side`: Plot the panel on the either `:left` or `:right` side of the provided figure. Defaults to `:right`
+4. `limits`: If specified, a tuple of tuples from [`calc_pca_scores_limits`](@ref BloodStorageInSilico.RawRelativeIntensities.calc_pca_scores_limits) to specify the axis limits for the plot. If unspecified, limits will be left at the default. Defaults to `nothing`.
 """
-function plot_pca_scores(pca_result, fig)
+function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
     M = pca_result.model
     scores = pca_result.scores
-    pc1 = scores[1, :]
+    week_1_direction = detect_week_1_side(pca_result)
+    pc1_corrected = week_1_direction == :left ? scores[1, :] : scores[1, :] .* -1
     pc2 = scores[2, :]
     time_labels = pca_result.patient_time_labels.Time
     time_color_map = Dict(
@@ -209,17 +262,16 @@ function plot_pca_scores(pca_result, fig)
     xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
     ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
     title = "PCA of Timeseries"
-    ax_scatter = Axis(fig[1:3, 2:3], xlabel = xlabel, ylabel = ylabel, title = title)
-    ax_hist = Axis(fig[4, 2:3])
-    # for (x, y, tl) in zip(pc1, pc2, time_labels)
-    #     text!(ax, x, y; text = string(tl), offset = (5, -5), align = (:left, :bottom))
-    # end
+    f_scatter = side == :right ? fig[1:3, 3:4] : fig[1:3, 1:2]
+    f_hist = side == :right ? fig[4, 3:4] : fig[4, 1:2]
+    ax_scatter = Axis(f_scatter, xlabel = xlabel, ylabel = ylabel, title = title)
+    ax_hist = Axis(f_hist)
     unique_times = sort(unique(time_labels))
     for t in unique_times
         idxs = findall(==(t), time_labels)
         scatter!(
             ax_scatter,
-            pc1[idxs],
+            pc1_corrected[idxs],
             pc2[idxs],
             color = time_color_map[t],
             marker = time_shape_map[t],
@@ -227,8 +279,20 @@ function plot_pca_scores(pca_result, fig)
             label = string(t),
             alpha = 0.75,
         )
+        if !isnothing(limits)
+            xmin = limits[1][1]
+            xmax = limits[1][2]
+            ymin = limits[2][1]
+            ymax = limits[2][2]
+            limits!(ax_scatter, xmin, xmax, ymin, ymax)
+        end
     end
-    hist!(ax_hist, pc1; bins = 6)
+    hist!(ax_hist, pc1_corrected; bins = 6)
+    if !isnothing(limits)
+        xmin = limits[1][1]
+        xmax = limits[1][2]
+        xlims!(ax_hist, xmin, xmax)
+    end
     axislegend(ax_scatter; position = :rb)
 end
 
@@ -239,7 +303,6 @@ Plots a PCA scree plot panel onto the given figure.
 
 # Arguments
 1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
-
 2. `fig`: Make `Figure` to plot the panel onto.
 """
 function plot_pca_scree(pca_result, fig)
@@ -253,7 +316,7 @@ function plot_pca_scree(pca_result, fig)
     ylabel = "Percent"
     title = "Cumulative variance explained"
     ax = Axis(
-        fig[2:3, 1],
+        fig[2:3, 1:2],
         xlabel = xlabel,
         ylabel = ylabel,
         title = title,
@@ -307,7 +370,21 @@ function gather_pca_scores(pca_result)
     return df
 end
 
-function calc_pca_scores_3d_limits(long_df; margin = 1.1)
+"""
+    calc_pca_scores_limits(long_df; margin = 1.1)
+
+Computes 3D axis limits for PCA plots across all additives to set the axis limits of all 3D PCA plots so that plots of different additives can be directly compared.
+
+# Arguments
+1. `long_df`: Long dataframe relative intensities.
+2. `margin = 1.1`: Multiplier to create margins around the PCA plots.
+
+# Returns
+`Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Tuple{Float64,Float64}}`
+
+Returns tuple of tuples suitable for passing to GLMakie that define axis limits for each principal component.
+"""
+function calc_pca_scores_limits(long_df; margin = 1.1)
     additives = sort(unique(long_df.Additive))
     all_pca_results = ThreadsX.map(additives) do additive
         pca_relative_intensities(long_df, additive)
@@ -335,6 +412,26 @@ function calc_pca_scores_3d_limits(long_df; margin = 1.1)
         (pc2_min*margin, pc2_max*margin),
         (pc3_min*margin, pc3_max*margin),
     )
+end
+
+"""
+    detect_week_1_side(pca_result)
+
+Detects the PC1 side of the plot that Week 1 (assuming PC1 is on the x axis) and returns `:left` if it is on the left side and returns `:right` if it is on the right side.
+
+# Arguments
+1. `pca_result`: PCA result as calculated by Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities)
+
+# Returns
+`Symbol`
+
+Returns `:left` for left side, `:right` for right side.
+"""
+function detect_week_1_side(pca_result)
+    result_df = gather_pca_scores(pca_result)
+    week_1_df = @rsubset(result_df, :time == 1)
+    direction = sign(week_1_df[1, :pc1]) <= 0.0 ? :left : :right
+    return direction
 end
 
 """
@@ -404,6 +501,87 @@ function display_pca_scores_3d(limits, pca_result, additive)
     axislegend(ax_scatter_3d, "Week"; position = :rb, margin = (-30, -30, -30, -30))
     @info "Finished preparing PCA plot"
     GLMakie.display(fig)
+end
+
+"""
+    extract_pca_loadings(pca_result, additive)
+
+Extracts the loadings of the metabolite features on each of the PCs. Used by [`pca_loadings_report`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_loadings_report).
+
+# Arguments
+1. `pca_result`: Result from The long DataFrame from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_name`: Names of the metabolites.
+3. `pc1_loading`: Loadings on the first PC.
+4. `pc2_loading`: Loadings on the second PC.
+5. `pc3_loading`: Loadings on the third PC.
+6. `pc4_loading`: Loadings on the fourth PC.
+7. `pc5_loading`: Loadings on the fifth PC.
+8. `pc6_loading`: Loadings on the sixth PC.
+"""
+function extract_pca_loadings(pca_result)
+    additive = pca_result.additive
+    M = pca_result.model
+    L = loadings(M)
+    pc1_loadings = L[:, 1]
+    pc2_loadings = L[:, 2]
+    pc3_loadings = L[:, 3]
+    pc4_loadings = L[:, 4]
+    pc5_loadings = L[:, 5]
+    pc6_loadings = L[:, 6]
+    kept_columns = pca_result.kept_columns
+    wide_df = pca_result.wide_df
+    metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
+    loadings_df = DataFrame(
+        additive = additive,
+        metabolite_name = metabolite_names,
+        pc1_loading = pc1_loadings,
+        pc2_loading = pc2_loadings,
+        pc3_loading = pc3_loadings,
+        pc4_loading = pc4_loadings,
+        pc5_loading = pc5_loadings,
+        pc6_loading = pc6_loadings,
+    )
+    result_df = @orderby(loadings_df, :pc1_loading)
+    return result_df
+end
+
+"""
+    loadings_report(long_df)
+
+Collect and concatenate all PC loadings in all additives into a DataFrame.
+
+# Arguments
+1. `long_df`: Long DataFrame of relative intensities
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+
+1. `additive`: Additive the PCA was performed for.
+2. `metabolite_name`: Names of the metabolites.
+3. `pc1_loading`: Loadings on the first PC.
+4. `pc2_loading`: Loadings on the second PC.
+5. `pc3_loading`: Loadings on the third PC.
+6. `pc4_loading`: Loadings on the fourth PC.
+7. `pc5_loading`: Loadings on the fifth PC.
+8. `pc6_loading`: Loadings on the sixth PC.
+"""
+function pca_loadings_report(long_df)
+    additives = sort(unique(long_df.Additive))
+    all_pca_results = ThreadsX.map(additives) do additive
+        pca_result = pca_relative_intensities(long_df, additive)
+        extract_pca_loadings(pca_result)
+    end
+    result_df = vcat(all_pca_results...)
+    return result_df
 end
 
 end

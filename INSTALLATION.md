@@ -19,6 +19,7 @@ input
 ├── Proportionation Sheet 2.csv
 ├── RBC-GEM.json
 ├── RBC-GEM.xml
+├── flux_bounds_overrides.csv
 └── Subsystem Category Map.csv
 ```
 
@@ -31,6 +32,8 @@ Incidentally, here are purposes of select input files:
 3. `Proportination Sheet 2.csv` maps columns from the metabolomics data, splits apart columns that contain multiple RBC-GEM metabolites, and proportionates the intensity values among multiple metabolites (if needed), and maps RBC-GEM identifiers to names in the metabolomics data.
 
 4. `Subsystem Category Map.csv`, maps GEM subsystems into categories for better data visualization. This is the first two columns of [`subsystems.tsv` v1.3.0 of the RBC-GEM](https://github.com/z-haiman/RBC-GEM/blob/1.3.0/data/curation/subsystems.tsv)
+
+5. `flux_bounds_overrides.csv`: Flux bounds in this file override what is specified in the RBC-GEM.
 
 ### Create the `output/` Folders
 
@@ -48,6 +51,8 @@ output
 ├── relative_absolute_c_means
 ├── relative_absolute_plots
 ├── uFBA_histograms
+├── gem_dfs
+├── ufba_models
 ```
 
 ### Install Dependencies
