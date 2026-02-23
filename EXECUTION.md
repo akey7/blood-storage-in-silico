@@ -158,3 +158,11 @@ This script only uses a single thread, so execution on macOS or Window is simple
 ```
 julia --project=. model_graph.jl
 ```
+
+## Other Scripts
+
+There are other scripts that you can run in this project. They are outside of the main uFBA workflow, and are thus optional. They are documented here for completeness.
+
+### `fba_model_builder.jl`: Sanity check on a single FBA model
+
+This script creates a single FBA model and samples the fluxes as a quick sanity check when building models in `FbaModelBuilder.jl`. If it doesn't report any errors, that is good news! However, try the models in the uFBA workflow to check for errors before you run the victory lap.
