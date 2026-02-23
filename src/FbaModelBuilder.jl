@@ -31,6 +31,16 @@ function load_base_rbc_gem()
     return rbc_gem
 end
 
+"""
+    default_exchanges()
+
+Return a vector of some common exchanges for the model this module builds. Compare to [`as3_exchanges`](@ref BloodStorageInSilico.UfbaSampler.FbaModelBuilder.as3_exchanges).
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings of reaction ids for the default exchanges.
+"""
 function default_exchanges()
     exchange_reaction_ids = [
         # Original exchanges
@@ -57,6 +67,16 @@ function default_exchanges()
     return exchange_reaction_ids
 end
 
+"""
+    as3_exchanges()
+
+Return a list of exchanges limited to those that would account for extracellular metabolites found in additive solution 3. Compare to [`default_exchanges`](@ref BloodStorageInSilico.UfbaSampler.FbaModelBuilder.default_exchanges).
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings for the requested exchanges.
+"""
 function as3_exchanges()
     exchange_reaction_ids = [
         "R_EX_pi_e",
