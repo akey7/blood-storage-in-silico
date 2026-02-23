@@ -8,7 +8,7 @@ import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 
-export load_base_rbc_gem, create_fba_model, default_exchanges
+export load_base_rbc_gem, create_fba_model, default_exchanges, as3_exchanges
 
 """
     load_base_rbc_gem()
@@ -32,7 +32,7 @@ function load_base_rbc_gem()
 end
 
 function default_exchanges()
-    exchange_reactions_ids = [
+    exchange_reaction_ids = [
         # Original exchanges
         "R_EX_glc__D_e",
         "R_EX_pyr_e",
@@ -48,13 +48,25 @@ function default_exchanges()
         "R_EX_h_e",
         "R_EX_h2o_e",
 
-        # Exchanges for AS-3
+        # Exchanges added for AS-3
         "R_EX_pi_e",
         "R_EX_cit_e",
         "R_EX_na1_e",
         "R_EX_cl_e",
     ]
-    return exchange_reactions_ids
+    return exchange_reaction_ids
+end
+
+function as3_exchanges()
+    exchange_reaction_ids = [
+        "R_EX_pi_e",
+        "R_EX_cit_e",
+        "R_EX_na1_e",
+        "R_EX_cl_e",
+        "R_EX_ade_e",
+        "R_EX_glc__D_e",
+    ]
+    return exchange_reaction_ids
 end
 
 """
