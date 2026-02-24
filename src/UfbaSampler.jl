@@ -131,17 +131,17 @@ end
 """
     load_flux_bounds_overrides()
 
-Loads `input/flux_bounds_overrides.csv`. This file contains rate bounds for fluxes that **override** the specifications in the RBC-GEM.
+Loads `input/flux_bounds_overrides.csv`. This file contains rate bounds for fluxes that **override** the specifications in the RBC-GEM. If the `.csv` file does not exist, then `nothing` is returned.
 
 # Returns
-`DataFrame`
+`Union{DataFrame,Nothing}`
 
-Returns the flux bounds overrides DataFrame.
+Returns the flux bounds overrides DataFrame or `nothing` if the source file does not exist.
 """
 function load_flux_bounds_overrides()
     flux_bounds_filename = joinpath("input", "flux_bounds_overrides.csv")
-    flux_bounds_df = CSV.read(flux_bounds_filename, DataFrame)
-    return flux_bounds_df
+    return isfile(flux_bounds_filename) ? CSV.read(flux_bounds_filename, DataFrame) :
+           nothing
 end
 
 """

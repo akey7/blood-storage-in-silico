@@ -33,7 +33,11 @@ init_workers!()
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
 # Create reaction ids to strings mapping 
-fba_model = create_fba_model(load_base_rbc_gem(); exchanges = default_exchanges(), flux_bounds_overrides_df = flux_bounds_overrides_df)
+fba_model = create_fba_model(
+    load_base_rbc_gem();
+    exchanges = default_exchanges(),
+    flux_bounds_overrides_df = flux_bounds_overrides_df,
+)
 metabolite_status_df =
     find_metabolite_matches(fba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
 add_sinks_for_unmatched_metabolites!(
