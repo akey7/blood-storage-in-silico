@@ -35,6 +35,22 @@ export load_absolute_quant,
     qc
 
 """
+    load_metabolite_id_changes()
+
+Load the metabolite id change file, if present. Return the DataFrame if the `.csv` is present or `nothing` if the file does not exist.
+
+# Returns
+`Union{DataFrame,Nothing}`
+
+Returns the metabolite id change file if present or `nothing` if the file is not present. 
+"""
+function load_metabolite_id_changes()
+    metabolite_id_changes_filename = joinpath("input", "metabolite_id_changes.csv")
+    return isfile(metabolite_id_changes_filename) ?
+           CSV.read(metabolite_id_changes_filename, DataFrame) : nothing
+end
+
+"""
     load_absolute_quant()
 
 Loads the aboslute quantification data from the Excel sheet at "input/Absolute Quant Data Sheet.xlsx". Loads the proportination data from a different sheet in the same workbook and maps individual peaks in the absolute quant data to proportional concentrations for further analysis. Performs initial mapping of absolute quant data in terms of single metabolite ids.
