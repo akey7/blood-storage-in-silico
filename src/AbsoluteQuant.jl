@@ -32,7 +32,8 @@ export load_absolute_quant,
     regress_concentration_vs_time,
     plot_pca_all_additives,
     plot_all_regressions,
-    qc
+    qc,
+    load_metabolite_id_changes
 
 """
     load_metabolite_id_changes()
@@ -157,6 +158,16 @@ function qc(fold_changes_df, patient_count = 6)
         sort(:Count)
     end
     return qc_fold_change_counts_df, qc_fold_change_zeros_df
+end
+
+function change_metabolite_ids(original_long_df, metabolite_id_changes_df)
+    remapped_df = @chain original_long_df begin
+        innerjoin(metabolite_id_changes_df, on = :Metabolite)
+        select(Not(:Metabolite))
+        rename(:NewMetabolite => :Metabolite)
+        @orderby(:Sample, :Time, :Additive, :Metabolite)
+    end
+    return remapped_df
 end
 
 """
