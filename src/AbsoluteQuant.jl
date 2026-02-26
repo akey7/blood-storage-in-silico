@@ -160,14 +160,37 @@ function qc(fold_changes_df, patient_count = 6)
     return qc_fold_change_counts_df, qc_fold_change_zeros_df
 end
 
-function change_metabolite_ids(original_long_df, metabolite_id_changes_df)
-    remapped_df = @chain original_long_df begin
-        innerjoin(metabolite_id_changes_df, on = :Metabolite)
-        select(Not(:Metabolite))
-        rename(:NewMetabolite => :Metabolite)
-        @orderby(:Sample, :Time, :Additive, :Metabolite)
+function change_fold_changes_metabolite_ids(
+    original_long_df,
+    metabolite_id_changes_df = nothing,
+)
+    if isnothing(metabolite_id_changes_df)
+        return original_long_df
+    else
+        remapped_df = @chain original_long_df begin
+            innerjoin(metabolite_id_changes_df, on = :Metabolite)
+            select(Not(:Metabolite))
+            rename(:NewMetabolite => :Metabolite)
+            @orderby(:Sample, :Time, :Additive, :Metabolite)
+        end
+        return remapped_df
     end
-    return remapped_df
+end
+
+function change_absolute_quant_metabolite_ids(
+    original_long_df,
+    metabolite_id_changes_df = nothing,
+)
+    if isnothing(metabolite_id_changes_df)
+        return original_long_df
+    else
+        remapped_df = @chain original_long_df begin
+            innerjoin(metabolite_id_changes_df, on = :Metabolite)
+            select(Not(:Metabolite))
+            rename(:NewMetabolite => :Metabolite)
+        end
+        return remapped_df
+    end
 end
 
 """
@@ -199,7 +222,19 @@ The wide DataFrame contains the following columns and is sorted by `:Additive` a
 3. `:Additive`: Additive
 4. A subsequent column for each metabolite
 """
-function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+function combine_relative_and_absolute_quant(
+    original_fold_changes_df,
+    original_absolute_quant_medians_df,
+    metabolite_id_changes_df = nothing,
+)
+    fold_changes_df = change_fold_changes_metabolite_ids(
+        original_fold_changes_df,
+        metabolite_id_changes_df,
+    )
+    absolute_quant_medians_df = change_absolute_quant_metabolite_ids(
+        original_absolute_quant_medians_df,
+        metabolite_id_changes_df,
+    )
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
         @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)

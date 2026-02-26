@@ -1,7 +1,7 @@
 ﻿Metabolite,NewMetabolite
-M_na1_c,M_na1_e
-M_cl_c,M_cl_e
-M_pi_c,M_pi_e
-M_cit_c,M_cit_e
-M_ade_c,M_ade_e
-M_glc__D_c,M_glc__D_e
+na1_c,na1_e
+cl_c,cl_e
+pi_c,pi_e
+cit_c,cit_e
+ade_c,ade_e
+glc__D_c,glc__D_e
