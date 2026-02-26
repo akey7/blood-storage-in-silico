@@ -335,6 +335,8 @@ function prepare_median_flux_vector_matrix(sampling_df)
             :additive_final_time =
                 combine_and_clean_addititve_final_time(:additive, :final_time)
         )
+        @select(:additive_final_time, :reaction_id, :median_flux)
+        @orderby(:additive_final_time, :reaction_id)
     end
     return transformed_df
 end
