@@ -337,6 +337,7 @@ function prepare_median_flux_vector_matrix(sampling_df)
         )
         @select(:additive_final_time, :reaction_id, :median_flux)
         @orderby(:additive_final_time, :reaction_id)
+        unstack(:reaction_id, :additive_final_time, :median_flux)
     end
     return transformed_df
 end
