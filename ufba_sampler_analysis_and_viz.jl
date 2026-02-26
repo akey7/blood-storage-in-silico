@@ -20,10 +20,17 @@ diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
 CSV.write(diagnostic_filename, diagnostic_df)
 println("Wrote $diagnostic_filename")
 
-plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+# @info "Plotting uFBA histograms"
+# plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
 sink_map = map_metabolites_to_sinks(sampling_df)
 net_sink_fluxes_df = net_sink_fluxes(sampling_df, sink_map)
 net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
 CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
 println("Wrote $net_sink_flux_filename")
+
+@info "Writing median flux DataFrame"
+median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
+median_flux_df = calc_median_flux_df(sampling_df)
+CSV.write(median_flux_filename, median_flux_df)
+println("Wrote $median_flux_filename")
