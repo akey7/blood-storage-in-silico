@@ -50,7 +50,7 @@ output
 ├── regression_plots
 ├── relative_absolute_c_means
 ├── relative_absolute_plots
-├── uFBA_histograms
+├── uFBA_histograms_v2
 ├── gem_dfs
 ├── ufba_models
 ```
