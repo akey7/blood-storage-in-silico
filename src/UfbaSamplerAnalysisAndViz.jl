@@ -319,6 +319,20 @@ function calc_median_flux_df(sampling_df)
     return median_df
 end
 
+"""
+    combine_and_clean_addititve_final_time(additive, final_time)
+
+Combine additive and final time specifications into a single lowercase string with `-` and ` ` substituted with `_`.
+
+# Arguments
+1. `additive`: The additive string
+2. `final_time`: The final time integer
+
+# Returns
+`String`
+
+Returns a string formatted in the way specified above.
+"""
 function combine_and_clean_addititve_final_time(additive, final_time)
     cleaned_additive = @chain additive begin
         lowercase()
