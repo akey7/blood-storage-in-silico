@@ -111,7 +111,7 @@ end
     metabolite_id_to_other_side_metabolite_ids(model::A.CanonicalModel.Model, metabolite_id_to_reaction_ids::Dict{String, Vector{String}})
 
 This function does two things:
-1. For each `metabolite_id`, find each metabolite_id on the other side of the reactions, as found by the opposite sign of the stoichiometric coefficients (if oppostie side metabolites are present).
+1. For each `metabolite_id`, find each metabolite_id on the other side of the reactions, as found by the opposite sign of the stoichiometric coefficients (if oppostie side metabolites are present). These "other side" metabolites are further filtered by their stoichiometric coefficient to line up with the bounds of the reaction for which the edge is being specified. 
 2. For reactions that have metabolites on both sides of the reaction (normal reactions and transporters), maps pairs of metabolite ids to the reaction that connects them.
 3. For reactions that just have a metabolite on one side of the reactions (exchanges and sinks), maps single metabolites to the reaction id of the corresponding exchange/sink.
 
@@ -141,12 +141,26 @@ function metabolite_id_to_other_side_metabolite_ids(
             stoichiometry = model.reactions[reaction_id].stoichiometry
             lower_bound = model.reactions[reaction_id].lower_bound
             upper_bound = model.reactions[reaction_id].upper_bound
-            other_metabolite_sign = -1 * sign(stoichiometry[metabolite_id])
-            other_metabolite_ids = [
-                other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
-                coeff == other_metabolite_sign
-            ]
-            append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            other_side_sign = -1 * sign(stoichiometry[metabolite_id])
+            if isapprox(lower_bound, 0.0) && upper_bound > 0.0
+                other_metabolite_ids = [
+                    other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
+                    coeff == other_side_sign && coeff > 0
+                ]
+                append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            elseif lower_bound < 0.0 && isapprox(upper_bound, 0.0)
+                other_metabolite_ids = [
+                    other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
+                    coeff == other_side_sign && coeff < 0
+                ]
+                append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            else
+                other_metabolite_ids = [
+                    other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
+                    coeff == other_side_sign
+                ]
+                append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            end
             if length(other_metabolite_ids) >= 1
                 for other_metabolite_id ∈ other_metabolite_ids
                     metabolite_pair = (metabolite_id, other_metabolite_id)
