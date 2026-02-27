@@ -139,6 +139,8 @@ function metabolite_id_to_other_side_metabolite_ids(
         metabolite_to_metabolites[metabolite_id] = Vector()
         for reaction_id ∈ reaction_ids
             stoichiometry = model.reactions[reaction_id].stoichiometry
+            lower_bound = model.reactions[reaction_id].lower_bound
+            upper_bound = model.reactions[reaction_id].upper_bound
             other_metabolite_sign = -1 * sign(stoichiometry[metabolite_id])
             other_metabolite_ids = [
                 other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
