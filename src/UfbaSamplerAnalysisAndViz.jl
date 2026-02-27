@@ -11,6 +11,7 @@ using DataFramesMeta
 using ProgressMeter
 using HypothesisTests
 using MultipleTesting
+using Chain
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -19,7 +20,10 @@ export histograms_for_reaction_v2,
     map_metabolites_to_sinks,
     net_sink_fluxes,
     net_flux_from_up_and_down,
-    calc_median_flux_df
+    calc_median_flux_df,
+    combine_and_clean_addititve_final_time,
+    prepare_median_flux_vector_matrix
+
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -313,6 +317,56 @@ function calc_median_flux_df(sampling_df)
         @combine(:median_flux = median(:flux))
     end
     return median_df
+end
+
+"""
+    combine_and_clean_addititve_final_time(additive, final_time)
+
+Combine additive and final time specifications into a single lowercase string with `-` and ` ` substituted with `_`.
+
+# Arguments
+1. `additive`: The additive string
+2. `final_time`: The final time integer
+
+# Returns
+`String`
+
+Returns a string formatted in the way specified above.
+"""
+function combine_and_clean_addititve_final_time(additive, final_time)
+    cleaned_additive = @chain additive begin
+        lowercase()
+        replace("-" => "_", " " => "_")
+    end
+    combined = "$(cleaned_additive)_$(final_time)"
+    return combined
+end
+
+"""
+    prepare_median_flux_vector_matrix(sampling_df)
+
+Prepare a data matrix of the uFBA results. Each row is a reaction, each column is an additive at a time point, and each element is the median flux for that row and column.
+
+# Arguments
+1. `sampling_df`: The wide formatted sampling DataFrame
+
+# Returns
+`DataFrame`
+
+Returns a data matrix in the form of a DataFrame as specified above.
+"""
+function prepare_median_flux_vector_matrix(sampling_df)
+    median_df = calc_median_flux_df(sampling_df)
+    transformed_df = @chain median_df begin
+        @rtransform(
+            :additive_final_time =
+                combine_and_clean_addititve_final_time(:additive, :final_time)
+        )
+        @select(:additive_final_time, :reaction_id, :median_flux)
+        @orderby(:additive_final_time, :reaction_id)
+        unstack(:reaction_id, :additive_final_time, :median_flux)
+    end
+    return transformed_df
 end
 
 end

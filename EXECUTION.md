@@ -128,7 +128,7 @@ Outputs the following files:
 
 Outputs csv and plot files of analyses of the uFBA results.
 
-Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
+Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
 
 There are no fancy threads or workers here, so execution is simple.
 
