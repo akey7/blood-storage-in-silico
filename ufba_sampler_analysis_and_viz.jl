@@ -20,8 +20,8 @@ diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
 CSV.write(diagnostic_filename, diagnostic_df)
 println("Wrote $diagnostic_filename")
 
-# @info "Plotting uFBA histograms"
-# plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+@info "Plotting uFBA histograms"
+plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
 
 sink_map = map_metabolites_to_sinks(sampling_df)
 net_sink_fluxes_df = net_sink_fluxes(sampling_df, sink_map)
