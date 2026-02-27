@@ -65,8 +65,8 @@ println("Read DFS plan from $dfs_plan_filename")
 median_df = calc_median_flux_df(sampling_df)
 
 @info "Analyzing visited metabolites and reactions"
-visited_metabolite_filename = joinpath("output", "gem_dfs", "visited_metabolite.csv")
-visited_reaction_filename = joinpath("output", "gem_dfs", "visited_reaction.csv")
+visited_metabolite_filename = joinpath("output", "gem_dfs", "visited_metabolites.csv")
+visited_reaction_filename = joinpath("output", "gem_dfs", "visited_reactions.csv")
 plan_results = run_all_dfs_plans(ufba_model_graphs, dfs_plan, common_metabolite_ids)
 enriched_visited_reactions_df = enrich_visited_reactions_df(
     plan_results.visited_reaction_df,
