@@ -42,8 +42,6 @@ There are a lot of modules and scripts in this repo, and they produce a lot of o
 ```
 output
 ├── c_means_plots
-├── kinetic_model
-├── masspy_interface
 ├── pca_plot_dfs
 ├── pca_plots
 ├── plots
