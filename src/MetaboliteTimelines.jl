@@ -15,6 +15,7 @@ using ThreadsX
 using AlgebraOfGraphics
 using CairoMakie
 using Makie
+using ProgressMeter
 
 export load_and_clean,
     plot_aggregations_for_all_metabolites, normalized_abundance_correlations
@@ -111,19 +112,21 @@ end
 """
     plot_aggregations_for_all_metabolites(df)
 
-Plots aggregations for all metabolites with [`plot_aggregations_for_metabolite`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite). Saves each file to `output/plots`, with the metabolite name "cleaned" to make a well-behaved filename.
+Plots aggregations for all metabolites with [`plot_aggregations_for_metabolite`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite). Saves each file to `output/plots`, with the metabolite name "cleaned" to make a well-behaved filename. Displays a nifty status bar while generating the plots.
 
 # Arguments
 1. `df`: The DataFrame returned by [`load_and_clean`](@ref BloodStorageInSilico.MetaboliteTimelines.plot_aggregations_for_metabolite).
 """
 function plot_aggregations_for_all_metabolites(df)
     metabolites = unique(df.Metabolite)
+    n_metabolites = length(metabolites)
+    prog = Progress(n_metabolites, "Writing metabolite timelines")
     for metabolite in metabolites
         fig = plot_aggregations_for_metabolite(df, metabolite)
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9]" => "_")
         filename = joinpath("output", "plots", "$(clean_metabolite).png")
         save(filename, fig)
-        println("Wrote $filename")
+        next!(prog)
     end
 end
 

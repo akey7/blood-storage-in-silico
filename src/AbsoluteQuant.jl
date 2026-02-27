@@ -19,6 +19,7 @@ using StatsModels
 using Statistics
 using Random
 using ThreadsX
+using ProgressMeter
 
 export load_absolute_quant,
     load_relative_quant,
@@ -523,7 +524,7 @@ end
 """
     plot_all_mM_timeseries(long_df)
 
-Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes.
+Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes. Dislpays a nifty progress bar as it writes plots.
 
 # Arguments
 1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant). The source of the data that will be plotted.
@@ -546,6 +547,8 @@ function plot_all_mM_timeseries(long_df)
         "08-Taurine" => ColorSchemes.bamako10[5],
     )
     pal_vec = [cluster_palette[a] for a in additives]
+    n_plots = length(metabolites)
+    prog = Progress(n_plots, "Writing mM timeseries plots")
     for metabolite in metabolites
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
         filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
@@ -572,7 +575,7 @@ function plot_all_mM_timeseries(long_df)
             axis = (; title = metabolite, xticks = time_points),
         )
         save(filename, fig)
-        println("Wrote $filename")
+        next!(prog)
     end
 end
 
@@ -660,7 +663,7 @@ end
 """
     plot_all_regressions(long_df)
 
-Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression) for all metabolites in all additives to plot regression results. Saves plots to `output/regression_plots`
+Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression) for all metabolites in all additives to plot regression results. Saves plots to `output/regression_plots`. Displays a nifty progress bar as it writes plots.
 
 # Arguments
 1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
@@ -669,11 +672,13 @@ function plot_all_regressions(long_df)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
     pairs = product(additives, metabolites)
+    n_pairs = length(pairs)
+    prog = Progress(n_pairs, "Writing regression plots")
     for (additive, metabolite) in pairs
         filename = joinpath("output", "regression_plots", "$additive $metabolite.png")
         fig = plot_regression(long_df, additive, metabolite)
         save(filename, fig)
-        println("Wrote $filename")
+        next!(prog)
     end
 end
 
