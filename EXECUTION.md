@@ -40,7 +40,7 @@ Output will be saved to `output/normalized_abundance_correlations.csv` and `outp
 
 ### (2) `raw_relative_intensities.jl`: 3D PCA Plots of Relative Quant Data
 
-Uses `src/RawRelativeIntensities.jl` to make 3D PCA plots reducing relative metabolite abundances down to fewer features.
+Uses `src/RawRelativeIntensities.jl` to make PCA plots reducing relative metabolite abundances down to fewer features.
 
 Execution is multithreaded, so the number of threads should be specified.
 
@@ -56,7 +56,10 @@ On Windows, assuming `JULIA_NUM_THREADS` has been set in settings:
 julia --project=. raw_relative_intensities.jl
 ```
 
-This script will write the PCA loadings for all additives to `output/relative_pca_loadings.csv`. This script will also display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
+Outputs:
+1. PCA loadings for all additives to `output/relative_pca_loadings.csv`.
+2. PCA plot DataFrames as `.csv` files to `output/pca_plot_dfs`.
+3. 2D PCA plots of single additives and pairs of additives to `output/pca_plots`.
 
 ### (3) `absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
 
