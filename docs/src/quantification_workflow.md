@@ -4,6 +4,15 @@ The quantification workflow does an exploratory data analysis (EDA) of the relat
 
 They are presented here in the order they are executed to produce results.
 
+## MetaboliteTimelines
+
+This module contains functionality to visualize the median of relative quant data intensities and find correlations between metabolites. The syntax of the DataFrame manipulations in this module is not as eloquent as it is in other modules, but it gets the job done.
+
+```@autodocs
+Modules = [BloodStorageInSilico.MetaboliteTimelines]
+Order   = [:function]
+```
+
 ## RawRelativeIntensities
 
 RawRelativeIntensities works with the relative quantification data. This includes exploratory analysis of the relative intensity data and preparation to incorporate with absolute quantification data.

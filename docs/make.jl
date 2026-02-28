@@ -24,6 +24,5 @@ makedocs(
         "Home" => "index.md",
         "Quantification Workflow" => "quantification_workflow.md",
         "uFBA Workflow" => "ufba_workflow.md",
-        "Other Modules" => "other.md",
     ],
 )

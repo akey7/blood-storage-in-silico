@@ -40,7 +40,7 @@ Output will be saved to `output/normalized_abundance_correlations.csv` and `outp
 
 ### (2) `raw_relative_intensities.jl`: 3D PCA Plots of Relative Quant Data
 
-Uses `src/RawRelativeIntensities.jl` to make 3D PCA plots reducing relative metabolite abundances down to fewer features.
+Uses `src/RawRelativeIntensities.jl` to make PCA plots reducing relative metabolite abundances down to fewer features.
 
 Execution is multithreaded, so the number of threads should be specified.
 
@@ -56,7 +56,10 @@ On Windows, assuming `JULIA_NUM_THREADS` has been set in settings:
 julia --project=. raw_relative_intensities.jl
 ```
 
-This script will write the PCA loadings for all additives to `output/relative_pca_loadings.csv`. This script will also display interactive GLMakie scatter plots of the first 3 principal components. Screen capture to obtain files for publication or presentations.
+Outputs:
+1. PCA loadings for all additives to `output/relative_pca_loadings.csv`.
+2. PCA plot DataFrames as `.csv` files to `output/pca_plot_dfs`.
+3. 2D PCA plots of single additives and pairs of additives to `output/pca_plots`.
 
 ### (3) `absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
 
@@ -66,15 +69,13 @@ Uses `src/AbsoluteQuant.jl` to perform the following tasks:
 
 2. Writes quality checks to `output/qc_fold_changes.csv` and `output/qc_fold_change_zeros.csv`.
 
-3. Map and proportinoate (see documentation built in [INSTALLATION.md](INSTALLATION.md)) combined metaboilite names to single metabolite ids from the RBC-GEM. Approximate absolute concentrations for the relative quant data using accompanying absolute quant data. Write result to `output/relative_absolute_quant.csv`.
+3. Map and proportinoate (see documentation built in [INSTALLATION.md](INSTALLATION.md)) combined metaboilite names to single metabolite ids from the RBC-GEM. Approximate absolute concentrations for the relative quant data using accompanying absolute quant data. Writes result to `output/relative_absolute_quant.csv`.
 
 4. Plots the approximated absolute concentrations over time to plots in the `output/relative_absolute_plots/[cleaned metabolite name].png`
 
 5. Perform c-means clustering on the metabolite trajectories. Create plots of c-means clusters and an accompanying elbow plot for each additive to `output/relative_absolute_c_means/`. Write cluster memberships to `output/c_means_primary_clusters.csv`.
 
-6. Performs PCA analysis on the approximate absolute quant values **NOTE: This functionality is deprecated in preference of the PCA in `raw_relative_intensities.jl` file**
-
-7. Performs the regression to determine the rates of metabolite concentration changes and writes the result to `output/concentration_rates.csv`. Plots regression data and stores the plots in `output/regression_plots/`
+6. Performs the regression to determine the rates of metabolite concentration changes and writes the result to `output/concentration_rates.csv`. Plots regression data and stores the plots in `output/regression_plots/`
 
 This script uses multiple threads to calculate all the regression quickly, so it relies on the `JULIA_NUM_THREADS` variable.
 
@@ -128,9 +129,21 @@ Outputs the following files:
 
 Outputs csv and plot files of analyses of the uFBA results.
 
-Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`, and writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`. Makes a nifty progress bar to show progress. Also diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
+Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Shows nifty status bars to indicate progress.
 
-There are no fancy threads or workers here, so execution is simple.
+Uses the following input file:
+
+1. Reads the uFBA sampling results file at `output/ufba_sampling.csv`.
+
+Outputs the following files:
+
+1. Writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`.
+2. writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
+3. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
+4. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
+5. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
+
+There are no threads or workers in this script, so execution is simple.
 
 On macOS or Windows:
 
@@ -142,7 +155,7 @@ julia --project=. ufba_sampler_analysis_and_viz.jl
 
 Analyzes the uFBA models as graphs.
 
-Runs code in `src/ModelGraph.jl`. Reads the uFBA sampling results file at `output/ufba_sampling.csv`, the reaction id to reaction string mapping file at `output/ufba_sampling.csv`, uFBA model SBML files in `output/ufba_models`, and `input/gem_dfs/dfs_plan.csv`. Writes `output/gem_dfs/visited_metabolite.csv` (which specifies the metabolites traversed on DFS traversals) and `output/gem_dfs/visited_reaction.csv` (which specifies the reactions traversed on DFS traversals).
+Runs code in `src/ModelGraph.jl`.
 
 The "DFS plan" file in `input/gem_dfs/dfs_plan.csv` needs the following columns:
 
@@ -150,6 +163,16 @@ The "DFS plan" file in `input/gem_dfs/dfs_plan.csv` needs the following columns:
 2. `max_depth`: Maximum number of hops to traverse from the starting vertex.
 
 A default `input/dfs_plan.csv` is provided in the repo as an example.
+
+Inputs
+1. `input/dfs_plan.csv`, which are the metabolites to start traversal of the graph from.
+2. uFBA sampling results file at `output/ufba_sampling.csv`.
+3. Reaction id to reaction string mapping file at `output/rxn_ids_to_strings.yml`.
+4. uFBA model SBML files in `output/ufba_models`.
+
+Outputs
+1. Writes `output/gem_dfs/visited_metabolites.csv` (which specifies the metabolites traversed on DFS traversals)
+2. Writes `output/gem_dfs/visited_reaction.csv` (which specifies the reactions traversed on DFS traversals).
 
 Displays progress bars to show progress as it works through the data.
 
