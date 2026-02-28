@@ -172,7 +172,7 @@ Inputs
 
 Outputs
 1. Writes `output/gem_dfs/visited_metabolites.csv` (which specifies the metabolites traversed on DFS traversals)
-2. `output/gem_dfs/visited_reaction.csv` (which specifies the reactions traversed on DFS traversals).
+2. Writes `output/gem_dfs/visited_reaction.csv` (which specifies the reactions traversed on DFS traversals).
 
 Displays progress bars to show progress as it works through the data.
 
