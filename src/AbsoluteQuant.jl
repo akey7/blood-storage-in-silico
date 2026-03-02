@@ -74,7 +74,7 @@ function load_absolute_quant()
 end
 
 function load_extracellular_absolute_quant()
-    filename = joinpath("output", "Absolute Quant Extracellular Datasheet.xlsx")
+    filename = joinpath("input", "Absolute Quant Extracellular Datasheet.xlsx")
     df = DataFrame(XLSX.readtable(filename, "Sheet1"))
     select_df = @select(df, :metabolite_id, :median_prop_mM)
 end

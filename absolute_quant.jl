@@ -10,7 +10,7 @@ println("Num threads $num_threads")
 
 Random.seed!(123)
 
-println(">" ^ 10, " WRANGLING DATA ", "<" ^ 10)
+println(">" ^ 10, " COMBINING RELATIVE AND ABSOLUTE QUANT DATA ", "<" ^ 10)
 absolute_quant_df, absolute_quant_medians_df = load_absolute_quant()
 absolute_extracellular_quant_df = load_extracellular_absolute_quant()
 absolute_quant_filename = joinpath("output", "absolute_quant.csv")
