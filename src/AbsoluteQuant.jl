@@ -23,7 +23,7 @@ using ProgressMeter
 
 export load_absolute_quant,
     load_relative_quant,
-    combine_relative_and_absolute_quant,
+    combine_relative_and_absolute_quant_c,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
     plot_c_means_all_additives,
@@ -34,7 +34,8 @@ export load_absolute_quant,
     plot_pca_all_additives,
     plot_all_regressions,
     qc,
-    load_extracellular_absolute_quant
+    load_extracellular_absolute_quant,
+    combine_relative_and_absolute_quant_e
 
 """
     load_absolute_quant()
@@ -152,7 +153,7 @@ function qc(fold_changes_df, patient_count = 6)
 end
 
 """
-    combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+    combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_medians_df)
 
 This is where the magic of this module truly happens. Here, the relative quant and absolute quant data are combined to approximate aboslute quantification to put into models.
 
@@ -180,7 +181,7 @@ The wide DataFrame contains the following columns and is sorted by `:Additive` a
 3. `:Additive`: Additive
 4. A subsequent column for each metabolite
 """
-function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+function combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_medians_df)
     long_df = @chain fold_changes_df begin
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
         @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
@@ -192,6 +193,26 @@ function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_med
         @orderby(:Additive, :Time)
     end
     return long_df, wide_df
+end
+
+function combine_relative_and_absolute_quant_e(
+    fold_changes_df,
+    absolute_extracellular_quant_df,
+)
+    # Fold changes columns: :Sample, :Time, :Additive, :Metabolite, :FoldChange
+    # absolute_extracellular_quant_df columns: :metabolite_id, :median_prop_mM
+    quant_e_df = rename(absolute_extracellular_quant_df, :metabolite_id => :Metabolite)
+    long_df = @chain fold_changes_df begin
+        innerjoin(quant_e_df, on = :Metabolite)
+        @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
+        @orderby(:Additive, :Time, :Metabolite)
+    end
+    # wide_df = @chain long_df begin
+    #     @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
+    #     unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
+    #     @orderby(:Additive, :Time)
+    # end
+    return long_df
 end
 
 """
