@@ -199,18 +199,17 @@ function combine_relative_and_absolute_quant_e(
     fold_changes_df,
     absolute_extracellular_quant_df,
 )
-    # Fold changes columns: :Sample, :Time, :Additive, :Metabolite, :FoldChange
-    # absolute_extracellular_quant_df columns: :metabolite_id, :median_prop_mM
-    # quant_e_df = rename(absolute_extracellular_quant_df, :metabolite_id => :Metabolite)
     quant_e_df = @chain absolute_extracellular_quant_df begin
         rename(:metabolite_id => :Metabolite)
         @rtransform(:compound = replace(:Metabolite, "_e" => ""))
     end
     fold_changes_compounds_df =
         @rtransform(fold_changes_df, :compound = replace(:Metabolite, "_c" => ""))
-    long_df = @chain fold_changes_compounds_df begin
-        innerjoin(quant_e_df, on = :compound, makeunique = true)
+    long_df = @chain quant_e_df begin
+        innerjoin(fold_changes_compounds_df, on = :compound, makeunique = true)
         @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
+        select(Not(:Metabolite_1, :compound))
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange, :absolute_mM)
         @orderby(:Additive, :Time, :Metabolite)
     end
     wide_df = @chain long_df begin
