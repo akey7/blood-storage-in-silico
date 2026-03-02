@@ -33,7 +33,8 @@ export load_absolute_quant,
     regress_concentration_vs_time,
     plot_pca_all_additives,
     plot_all_regressions,
-    qc
+    qc,
+    load_extracellular_absolute_quant
 
 """
     load_absolute_quant()
@@ -70,6 +71,12 @@ function load_absolute_quant()
         :median_prop_mM = median(:prop_mM)
     end
     return absolute_quant_df, absolute_quant_medians_df
+end
+
+function load_extracellular_absolute_quant()
+    filename = joinpath("output", "Absolute Quant Extracellular Datasheet.xlsx")
+    df = DataFrame(XLSX.readtable(filename, "Sheet1"))
+    select_df = @select(df, :metabolite_id, :median_prop_mM)
 end
 
 """

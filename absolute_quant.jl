@@ -12,6 +12,7 @@ Random.seed!(123)
 
 println(">" ^ 10, " WRANGLING DATA ", "<" ^ 10)
 absolute_quant_df, absolute_quant_medians_df = load_absolute_quant()
+absolute_extracellular_quant_df = load_extracellular_absolute_quant()
 absolute_quant_filename = joinpath("output", "absolute_quant.csv")
 CSV.write(absolute_quant_filename, absolute_quant_df)
 println(first(absolute_quant_medians_df, 10))
@@ -46,9 +47,8 @@ all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.c
 CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
 println("Wrote $all_primary_cluster_df_filename")
 
-println(">" ^ 10, " RATE REGRESSION ", "<" ^ 10)
+println(">" ^ 10, " RATE REGRESSIONS ", "<" ^ 10)
 rate_df = regress_concentration_vs_time(long_df)
-# display(first(rate_df, 20))
 rate_filename = joinpath("output", "concentration_rates.csv")
 CSV.write(rate_filename, rate_df)
 fig_conc_vs_time = plot_all_regressions(long_df)
