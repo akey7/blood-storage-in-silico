@@ -75,6 +75,18 @@ function load_absolute_quant()
     return absolute_quant_df, absolute_quant_medians_df
 end
 
+"""
+    load_extracellular_absolute_quant()
+
+Loads the absolute quant data for extracellular meatbolites from the `Sheet1` sheet of `input/Absolute Quant Extracellular Datasheet.xlsx`.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns
+1. `:metabolite_id`: The extracellular metabolite id
+2. `:median_prop_mM`: Median proportinated absolute concentration.
+"""
 function load_extracellular_absolute_quant()
     filename = joinpath("input", "Absolute Quant Extracellular Datasheet.xlsx")
     df = DataFrame(XLSX.readtable(filename, "Sheet1"))
