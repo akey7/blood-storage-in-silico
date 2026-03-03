@@ -164,21 +164,23 @@ function diagnose_flux_stats(sampling_df)
 end
 
 """
-    map_metabolites_to_sinks(sampling_df)
+    map_metabolites_to_sinks(long_df, additive, final_time)
 
 Extracts the sinks (up and down) from the given samples and maps unmeasured metabolite ids to their corresponding up and down sinks.
 
 # Arguments
-1. `sampling_df`: The wide sampling DataFrame.
+1. `long_df`: The long sampling DataFrame.
+2. `additive`: The additive of interest
+3. `final_time`: The final time of interest
 
 # Returns
 `Dict{String,Dict{Symbol,String}}`
 
 Returns a dictionary mapping strings (metabolite_ids) to a second level of dictionaries. The second level of dictionaries contain `:up` and/or `:down` keys which in turn map to reaction ids that are the up or and/or down sinks for the metabolite_id key in the top-level dictionary.
 """
-function map_metabolites_to_sinks(sampling_df)
-    long_df = pivot_sampling_df_long(sampling_df)
-    reaction_ids = sort(unique(long_df.reaction_id))
+function map_metabolites_to_sinks(long_df, additive, final_time)
+    filtered_df = @rsubset(long_df, :additive == additive, :final_time == final_time)
+    reaction_ids = sort(unique(filtered_df.reaction_id))
     sink_ids = [
         reaction_id for reaction_id in reaction_ids if contains(reaction_id, "R_UNKNOWN_SK")
     ]
@@ -227,13 +229,12 @@ function net_flux_from_up_and_down(
 end
 
 """
-    net_sink_fluxes(sampling_df, sink_map)
+    net_sink_fluxes(sampling_df)
 
 Calucates the net fluxes between each pair of sinks by summing their values together (when both sinks are present) or selecting only the up or down flux where just one sink is available.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of sampling values.
-2. `sink_map`: Dictionary from [`map_metabolites_to_sinks`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.map_metabolites_to_sinks) mapping unmeasured metabolites to sink reaction ids.
 
 # Returns
 `DataFrame`
@@ -246,7 +247,7 @@ Returns a DataFrame with the following columns
 5. `down_median_flux`: The median flux of the down sink flux distribution.
 6. `net_median_flux`: The net flux summed over both sinks.
 """
-function net_sink_fluxes(sampling_df, sink_map)
+function net_sink_fluxes(sampling_df)
     @info "Calculating net sink fluxes"
     long_df = pivot_sampling_df_long(sampling_df)
     final_times = sort(unique(long_df.final_time))
@@ -257,12 +258,15 @@ function net_sink_fluxes(sampling_df, sink_map)
         @combine(:median_flux = median(:flux))
     end
     rows = []
-    n_calculations = length(keys(sink_map)) * length(pairs)
+    n_calculations = length(pairs)
     prog = Progress(n_calculations, desc = "Calculating net sink fluxes")
-    for (metabolite_id, sinks) in sink_map
-        up_id = get(sinks, :up, nothing)
-        down_id = get(sinks, :down, nothing)
-        for (additive, final_time) in pairs
+    # for (metabolite_id, sinks) in sink_map
+    for (additive, final_time) in pairs   
+        # for (additive, final_time) in pairs
+        sink_map = map_metabolites_to_sinks(long_df, additive, final_time)
+        for (metabolite_id, sinks) in sink_map
+            up_id = get(sinks, :up, nothing)
+            down_id = get(sinks, :down, nothing)
             up_df =
                 !isnothing(up_id) ?
                 @rsubset(

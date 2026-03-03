@@ -22,8 +22,7 @@ CSV.write(diagnostic_filename, diagnostic_df)
 println("Wrote $diagnostic_filename")
 
 @info "Mapping metabolites to sinks"
-sink_map = map_metabolites_to_sinks(sampling_df)
-net_sink_fluxes_df = net_sink_fluxes(sampling_df, sink_map)
+net_sink_fluxes_df = net_sink_fluxes(sampling_df)
 net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
 CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
 println("Wrote $net_sink_flux_filename")
@@ -40,11 +39,11 @@ println("Wrote $net_sink_flux_filename")
 # CSV.write(data_matrix_filename, data_matrix_df)
 # println("Wrote $data_matrix_filename")
 
-@info "Reading long measurements file"
-absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
-absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
-measurements_and_sinks_report_df =
-    prepare_measurements_and_sinks_report_df(sink_map, absolute_quant_long_df)
+# @info "Reporting measured and unmeasured metabolites, with and without sinks"
+# absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
+# absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
+# measurements_and_sinks_report_df =
+#     prepare_measurements_and_sinks_report_df(sink_map, absolute_quant_long_df)
 # display(first(measurements_and_sinks_report_df, 10))
 
 # @info "Plotting uFBA histograms"
