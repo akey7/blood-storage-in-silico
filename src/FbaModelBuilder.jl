@@ -412,7 +412,10 @@ function create_fba_model(
     println("> Setting NaKt load")
     model.reactions["R_NaKt"].objective_coefficient = 1.0
 
-    return model
+    metabolite_ids = [metabolite_id for (metabolite_id, _) in model.metabolites]
+    metabolites_df = DataFrame(metabolite_id = metabolite_ids)
+
+    return model, metabolites_df
 end
 
 end

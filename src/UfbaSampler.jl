@@ -778,7 +778,7 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(
+        full_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
@@ -804,7 +804,7 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(
+        pruned_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
