@@ -39,12 +39,20 @@ println("Wrote $net_sink_flux_filename")
 # CSV.write(data_matrix_filename, data_matrix_df)
 # println("Wrote $data_matrix_filename")
 
-# @info "Reporting measured and unmeasured metabolites, with and without sinks"
-# absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
-# absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
-# measurements_and_sinks_report_df =
-#     prepare_measurements_and_sinks_report_df(sink_map, absolute_quant_long_df)
-# display(first(measurements_and_sinks_report_df, 10))
+@info "Reporting measured and unmeasured metabolites, with and without sinks"
+absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
+absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
+fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
+fba_model_metabolites_df = CSV.read(fba_model_metabolites_filename, DataFrame)
+measurements_and_sinks_report_df = prepare_measurements_and_sinks_report_df(
+    absolute_quant_long_df,
+    fba_model_metabolites_df,
+    sampling_df,
+)
+measurements_and_sinks_report_filename =
+    joinpath("output", "measurements_and_sinks_report.csv")
+CSV.write(measurements_and_sinks_report_filename, measurements_and_sinks_report_df)
+println("Wrote $measurements_and_sinks_report_filename")
 
 # @info "Plotting uFBA histograms"
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)

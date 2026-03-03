@@ -383,22 +383,38 @@ function prepare_median_flux_vector_matrix(sampling_df)
     return transformed_df
 end
 
-function prepare_measurements_and_sinks_report_df(sink_map, absolute_quant_long_df)
+function prepare_measurements_and_sinks_report_df(
+    absolute_quant_long_df,
+    fba_model_metabolites_df,
+    sampling_df,
+)
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
+    additives = sort(unique(long_sampling_df.additive))
+    final_times = sort(unique(long_sampling_df.final_time))
+    fba_model_metabolite_ids = sort(unique(fba_model_metabolites_df.metabolite_id))
     measured_metabolite_ids = sort(unique(absolute_quant_long_df.Metabolite))
-    println("measured_metabolite_ids")
-    display(first(measured_metabolite_ids, 10))
-
-    # sink_rows = []
-    # for (metabolite_id, sinks) in sink_map
-    #     up_sink = get(sinks, :up, missing)
-    #     down_sink = get(sinks, :down, missing)
-    #     sink_row = (metabolite_id = metabolite_id, up_sink = up_sink, down_sink = down_sink)
-    #     push!(sink_rows, sink_row)
-    # end
-    # sink_df = DataFrame(sink_rows)
-    # return sink_df
-
-    return DataFrame()
+    pairs = product(additives, final_times)
+    n_pairs = length(pairs)
+    prog = Progress(n_pairs, "Preparing measurements and sinks report")
+    report_rows = []
+    for (additive, final_time) in pairs
+        sink_map = map_metabolites_to_sinks(long_sampling_df, additive, final_time)
+        for fba_model_metabolite_id in fba_model_metabolite_ids
+            is_measured = fba_model_metabolite_id in measured_metabolite_ids
+            has_sinks = fba_model_metabolite_id in keys(sink_map)
+            report_row = (
+                additive = additive,
+                final_time = final_time,
+                metabolite_id = fba_model_metabolite_id,
+                is_measured = is_measured,
+                has_sinks = has_sinks,
+            )
+            push!(report_rows, report_row)
+        end
+        next!(prog)
+    end
+    report_df = DataFrame(report_rows)
+    return report_df
 end
 
 end
