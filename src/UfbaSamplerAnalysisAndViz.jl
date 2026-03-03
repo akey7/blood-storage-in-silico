@@ -23,7 +23,8 @@ export histograms_for_reaction_v2,
     calc_median_flux_df,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
-    prepare_measurements_and_sinks_report_df
+    prepare_measurements_and_sinks_report_df,
+    safely_query_sink_map
 
 
 """
@@ -383,6 +384,15 @@ function prepare_median_flux_vector_matrix(sampling_df)
     return transformed_df
 end
 
+function safely_query_sink_map(sink_map, metabolite_id, direction)
+    metabolite_sinks = get(sink_map, metabolite_id, nothing)
+    if isnothing(metabolite_sinks)
+        return missing
+    else
+        return get(metabolite_sinks, direction, missing)
+    end
+end
+
 function prepare_measurements_and_sinks_report_df(
     absolute_quant_long_df,
     fba_model_metabolites_df,
@@ -402,12 +412,16 @@ function prepare_measurements_and_sinks_report_df(
         for fba_model_metabolite_id in fba_model_metabolite_ids
             is_measured = fba_model_metabolite_id in measured_metabolite_ids
             has_sinks = fba_model_metabolite_id in keys(sink_map)
+            up_sink = safely_query_sink_map(sink_map, fba_model_metabolite_id, :up)
+            down_sink = safely_query_sink_map(sink_map, fba_model_metabolite_id, :down)
             report_row = (
                 additive = additive,
                 final_time = final_time,
                 metabolite_id = fba_model_metabolite_id,
                 is_measured = is_measured,
                 has_sinks = has_sinks,
+                up_sink = up_sink,
+                down_sink = down_sink,
             )
             push!(report_rows, report_row)
         end
