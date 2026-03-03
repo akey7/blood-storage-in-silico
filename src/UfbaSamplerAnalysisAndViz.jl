@@ -22,7 +22,8 @@ export histograms_for_reaction_v2,
     net_flux_from_up_and_down,
     calc_median_flux_df,
     combine_and_clean_addititve_final_time,
-    prepare_median_flux_vector_matrix
+    prepare_median_flux_vector_matrix,
+    prepare_measurements_and_sinks_report_df
 
 
 """
@@ -367,6 +368,18 @@ function prepare_median_flux_vector_matrix(sampling_df)
         unstack(:reaction_id, :additive_final_time, :median_flux)
     end
     return transformed_df
+end
+
+function prepare_measurements_and_sinks_report_df(sink_map)
+    sink_rows = []
+    for (metabolite_id, sinks) in sink_map
+        up_sink = get(sinks, :up, missing)
+        down_sink = get(sinks, :down, missing)
+        sink_row = (metabolite_id = metabolite_id, up_sink = up_sink, down_sink = down_sink)
+        push!(sink_rows, sink_row)
+    end
+    sink_df = DataFrame(sink_rows)
+    return sink_df
 end
 
 end
