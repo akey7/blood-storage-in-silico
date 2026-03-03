@@ -35,7 +35,8 @@ export load_absolute_quant,
     plot_all_regressions,
     qc,
     load_extracellular_absolute_quant,
-    combine_relative_and_absolute_quant_e
+    combine_relative_and_absolute_quant_e,
+    union_and_pivot_wide
 
 """
     load_absolute_quant()
@@ -186,12 +187,8 @@ function combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_m
         innerjoin(absolute_quant_medians_df, on = :Metabolite)
         @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
         @orderby(:Additive, :Time, :Metabolite)
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange, :absolute_mM)
     end
-    # wide_df = @chain long_df begin
-    #     @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
-    #     unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
-    #     @orderby(:Additive, :Time)
-    # end
     return long_df
 end
 
@@ -212,12 +209,17 @@ function combine_relative_and_absolute_quant_e(
         @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange, :absolute_mM)
         @orderby(:Additive, :Time, :Metabolite)
     end
-    # wide_df = @chain long_df begin
-    #     @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
-    #     unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
-    #     @orderby(:Additive, :Time)
-    # end
     return long_df
+end
+
+function union_and_pivot_wide(absolute_quant_c_long_df, absolute_quant_e_long_df)   
+    union_long_df = vcat(absolute_quant_c_long_df, absolute_quant_e_long_df)
+    union_wide_df = @chain union_long_df begin
+        @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
+        unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
+        @orderby(:Additive, :Time, :Sample)
+    end
+    return union_long_df, union_wide_df
 end
 
 """
