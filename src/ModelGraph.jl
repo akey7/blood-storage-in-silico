@@ -144,20 +144,22 @@ function metabolite_id_to_other_side_metabolite_ids(
             other_side_sign = -1 * sign(stoichiometry[metabolite_id])
             if isapprox(lower_bound, 0.0) && upper_bound > 0.0
                 other_metabolite_ids = [
-                    other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
+                    other_metabolite_id for
+                    (other_metabolite_id, coeff) ∈ stoichiometry if
                     coeff == other_side_sign && coeff > 0
                 ]
                 append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
             elseif lower_bound < 0.0 && isapprox(upper_bound, 0.0)
                 other_metabolite_ids = [
-                    other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
+                    other_metabolite_id for
+                    (other_metabolite_id, coeff) ∈ stoichiometry if
                     coeff == other_side_sign && coeff < 0
                 ]
                 append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
             else
                 other_metabolite_ids = [
-                    other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
-                    coeff == other_side_sign
+                    other_metabolite_id for
+                    (other_metabolite_id, coeff) ∈ stoichiometry if coeff == other_side_sign
                 ]
                 append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
             end

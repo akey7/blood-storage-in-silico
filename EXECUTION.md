@@ -65,7 +65,7 @@ Outputs:
 
 Uses `src/AbsoluteQuant.jl` to perform the following tasks:
 
-1. Loads data relative and absolute quant data files.
+1. Loads data relative (`Data Sheet 1.CSV`) and absolute quant (`Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`) data files.
 
 2. Writes quality checks to `output/qc_fold_changes.csv` and `output/qc_fold_change_zeros.csv`.
 
@@ -106,13 +106,13 @@ The command line arguments to the Julia environment and script are the following
 On a macOS or Linux machine with 14 cores, an example command to set the number of workers and threads on the same line would be:
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. -p 7 .\ufba_sampler.jl --nchains 10 --nmodels -1
+JULIA_NUM_THREADS=7 julia --project=. -p 7 ufba_sampler.jl --nchains 5 --nmodels -1
 ```
 
 On a Windows machine with 64 cores, an example to work with your previously set `JULIA_NUM_THREADS` environment variable would be:
 
 ```
-julia --project=. -p 32 .\ufba_sampler.jl --nchains 10 --nmodels -1
+julia --project=. -p 32 .\ufba_sampler.jl --nchains 5 --nmodels -1
 ```
 
 Which would sample all models with 10 chains, run all models, and use 32 concurrent workers.
