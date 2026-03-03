@@ -370,16 +370,22 @@ function prepare_median_flux_vector_matrix(sampling_df)
     return transformed_df
 end
 
-function prepare_measurements_and_sinks_report_df(sink_map)
-    sink_rows = []
-    for (metabolite_id, sinks) in sink_map
-        up_sink = get(sinks, :up, missing)
-        down_sink = get(sinks, :down, missing)
-        sink_row = (metabolite_id = metabolite_id, up_sink = up_sink, down_sink = down_sink)
-        push!(sink_rows, sink_row)
-    end
-    sink_df = DataFrame(sink_rows)
-    return sink_df
+function prepare_measurements_and_sinks_report_df(sink_map, absolute_quant_long_df)
+    measured_metabolite_ids = sort(unique(absolute_quant_long_df.Metabolite))
+    println("measured_metabolite_ids")
+    display(first(measured_metabolite_ids, 10))
+
+    # sink_rows = []
+    # for (metabolite_id, sinks) in sink_map
+    #     up_sink = get(sinks, :up, missing)
+    #     down_sink = get(sinks, :down, missing)
+    #     sink_row = (metabolite_id = metabolite_id, up_sink = up_sink, down_sink = down_sink)
+    #     push!(sink_rows, sink_row)
+    # end
+    # sink_df = DataFrame(sink_rows)
+    # return sink_df
+
+    return DataFrame()
 end
 
 end

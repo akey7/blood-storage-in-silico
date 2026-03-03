@@ -43,8 +43,9 @@ println("Wrote $net_sink_flux_filename")
 @info "Reading long measurements file"
 absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
 absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
-measurements_and_sinks_report_df = prepare_measurements_and_sinks_report_df(sink_map)
-display(first(measurements_and_sinks_report_df, 10))
+measurements_and_sinks_report_df =
+    prepare_measurements_and_sinks_report_df(sink_map, absolute_quant_long_df)
+# display(first(measurements_and_sinks_report_df, 10))
 
 # @info "Plotting uFBA histograms"
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
