@@ -260,9 +260,7 @@ function net_sink_fluxes(sampling_df)
     rows = []
     n_calculations = length(pairs)
     prog = Progress(n_calculations, desc = "Calculating net sink fluxes")
-    # for (metabolite_id, sinks) in sink_map
-    for (additive, final_time) in pairs   
-        # for (additive, final_time) in pairs
+    for (additive, final_time) in pairs
         sink_map = map_metabolites_to_sinks(long_df, additive, final_time)
         for (metabolite_id, sinks) in sink_map
             up_id = get(sinks, :up, nothing)
@@ -298,8 +296,19 @@ function net_sink_fluxes(sampling_df)
             next!(prog)
         end
     end
-    net_flux_df = @orderby(DataFrame(rows), :metabolite_id, :additive, :final_time)
-    return net_flux_df
+    net_flux_df_1 = DataFrame(rows)
+    net_flux_df_2 = @chain net_flux_df_1 begin
+        @select(
+            :additive,
+            :final_time,
+            :metabolite_id,
+            :up_median_flux,
+            :down_median_flux,
+            :net_median_flux
+        )
+        @orderby(:additive, :final_time, :metabolite_id)
+    end
+    return net_flux_df_2
 end
 
 """
