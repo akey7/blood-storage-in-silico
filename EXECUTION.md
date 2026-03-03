@@ -65,7 +65,7 @@ Outputs:
 
 Uses `src/AbsoluteQuant.jl` to perform the following tasks:
 
-1. Loads data relative and absolute quant data files.
+1. Loads data relative (`Data Sheet 1.CSV`) and absolute quant (`Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`) data files.
 
 2. Writes quality checks to `output/qc_fold_changes.csv` and `output/qc_fold_change_zeros.csv`.
 

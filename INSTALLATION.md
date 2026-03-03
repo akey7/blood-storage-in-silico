@@ -15,6 +15,7 @@ Most of the files are tracked in the git repo. The complete `input/` repo should
 ```
 input
 ├── Absolute Quant Data Sheet.xlsx
+├── Absolute Quant Extracellular Datasheet.xlsx
 ├── Data Sheet 1.CSV
 ├── Proportionation Sheet 2.csv
 ├── RBC-GEM.json
@@ -23,9 +24,9 @@ input
 └── Subsystem Category Map.csv
 ```
 
-Incidentally, here are purposes of select input files:
+Here are purposes of the input files:
 
-1. `Data Sheet 1.CSV` which is the metabolomics data being analyzed.
+1. `Data Sheet 1.CSV` is the relative quant metabolomics data to be combined with absolute quantification data.
 
 2. `RBC-GEM.*` is the GEM onto which the metabolomics data above are mapped.
 
@@ -34,6 +35,8 @@ Incidentally, here are purposes of select input files:
 4. `Subsystem Category Map.csv`, maps GEM subsystems into categories for better data visualization. This is the first two columns of [`subsystems.tsv` v1.3.0 of the RBC-GEM](https://github.com/z-haiman/RBC-GEM/blob/1.3.0/data/curation/subsystems.tsv)
 
 5. `flux_bounds_overrides.csv`: Flux bounds in this file override what is specified in the RBC-GEM.
+
+6. `Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`: Absolute quantification information, to be combined with relative quant data.
 
 ### Create the `output/` Folders
 
