@@ -212,8 +212,14 @@ function combine_relative_and_absolute_quant_e(
     return long_df
 end
 
-function union_and_pivot_wide(absolute_quant_c_long_df, absolute_quant_e_long_df)   
-    union_long_df = vcat(absolute_quant_c_long_df, absolute_quant_e_long_df)
+function union_and_pivot_wide(
+    absolute_quant_c_long_df,
+    absolute_quant_e_long_df;
+    include_extracellular = true,
+)
+    union_long_df =
+        include_extracellular ? vcat(absolute_quant_c_long_df, absolute_quant_e_long_df) :
+        absolute_quant_c_long_df
     union_wide_df = @chain union_long_df begin
         @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
         unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
