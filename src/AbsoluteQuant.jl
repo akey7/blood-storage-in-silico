@@ -236,7 +236,15 @@ See also: [`combine_relative_and_absolute_quant_c`](@ref BloodStorageInSilico.Ab
 # Returns
 `Tuple{DataFrame,DataFrame}`
 
-Returns a wide DataFrame that contains the following columns and is sorted by `:Additive`, `:Time`, and `:Sample`:
+First element of the tuple is a long DataFrame with the following columns:
+1. `:Sample`: Sample id
+2. `:Time`: Measurement time (in weeks)
+3. `:Additive`: Additive
+4. `:Metabolite`: Metabolite id
+5. `:FoldChange`: Fold change from absolute quant
+6. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+
+Second element of the tuple is a wide DataFrame that contains the following columns and is sorted by `:Additive`, `:Time`, and `:Sample`:
 1. `:Sample`: Sample id of that row
 2. `:Time`: Time in weeks of that observation
 3. `:Additive`: Additive
