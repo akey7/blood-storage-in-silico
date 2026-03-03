@@ -187,12 +187,12 @@ function combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_m
         @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
         @orderby(:Additive, :Time, :Metabolite)
     end
-    wide_df = @chain long_df begin
-        @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
-        unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
-        @orderby(:Additive, :Time)
-    end
-    return long_df, wide_df
+    # wide_df = @chain long_df begin
+    #     @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
+    #     unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
+    #     @orderby(:Additive, :Time)
+    # end
+    return long_df
 end
 
 function combine_relative_and_absolute_quant_e(
@@ -212,12 +212,12 @@ function combine_relative_and_absolute_quant_e(
         @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange, :absolute_mM)
         @orderby(:Additive, :Time, :Metabolite)
     end
-    wide_df = @chain long_df begin
-        @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
-        unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
-        @orderby(:Additive, :Time)
-    end
-    return long_df, wide_df
+    # wide_df = @chain long_df begin
+    #     @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
+    #     unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
+    #     @orderby(:Additive, :Time)
+    # end
+    return long_df
 end
 
 """
