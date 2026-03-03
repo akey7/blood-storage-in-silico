@@ -428,7 +428,12 @@ function prepare_measurements_and_sinks_report_df(
         next!(prog)
     end
     report_df = DataFrame(report_rows)
-    return report_df
+    report_aggregated_df = @chain report_df begin
+        @groupby(:additive, :final_time)
+        @combine(:n_measured = sum(:is_measured), :n_have_sinks = sum(:has_sinks))
+        @orderby(:additive, :final_time)
+    end
+    return report_df, report_aggregated_df
 end
 
 end
