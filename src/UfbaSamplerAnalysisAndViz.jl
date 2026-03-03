@@ -240,9 +240,9 @@ Calucates the net fluxes between each pair of sinks by summing their values toge
 `DataFrame`
 
 Returns a DataFrame with the following columns
-1. `metabolite_id`: The metabolite id matching the sinks.
-2. `additive`: The additive.
-3. `final_time`: The final time point of the model/
+1. `additive`: The additive.
+2. `final_time`: The final time point of the model
+3. `metabolite_id`: The metabolite id matching the sinks.
 4. `up_median_flux`: The median flux of the up sink flux distribution.
 5. `down_median_flux`: The median flux of the down sink flux distribution.
 6. `net_median_flux`: The net flux summed over both sinks.
