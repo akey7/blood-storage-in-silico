@@ -22,15 +22,15 @@ qc_fold_changes_filename = joinpath("output", "qc_fold_changes.csv")
 CSV.write(qc_fold_changes_filename, qc_fold_changes_df)
 qc_fold_change_zeros_filename = joinpath("output", "qc_fold_change_zeros.csv")
 CSV.write(qc_fold_change_zeros_filename, qc_fold_change_zeros_df)
-long_df =
+absolute_quant_c_long_df =
     combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_medians_df)
-long_df_filename = joinpath("output", "absolute_quant_c_long.csv")
-CSV.write(long_df_filename, long_df)
-println("Wrote $long_df_filename")
 absolute_quant_e_long_df =
     combine_relative_and_absolute_quant_e(fold_changes_df, absolute_extracellular_quant_df)
+absolute_quant_c_long_filename = joinpath("output", "absolute_quant_c_long.csv")
 absolute_quant_e_long_filename = joinpath("output", "absolute_quant_e_long.csv")
+CSV.write(absolute_quant_c_long_filename, absolute_quant_c_long_df)
 CSV.write(absolute_quant_e_long_filename, absolute_quant_e_long_df)
+println("Write $absolute_quant_c_long_filename")
 println("Wrote $absolute_quant_e_long_filename")
 
 # println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
