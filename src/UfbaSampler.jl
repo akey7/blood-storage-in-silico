@@ -409,23 +409,21 @@ function add_sinks_for_unmatched_metabolites!(
     else
         @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
     end
-
     if isnothing(sink_opt_outs)
         @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
     else
         @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
     end
-
+    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : prune_zero_sinks
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
     end
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
-        if does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) &&
-           !isnothing(prune_zero_sinks) &&
-           sink_up_name in prune_zero_sinks
-            # println("Skipping zero flux sink $sink_up_name")
+        if does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
+           sink_up_name in prune_zero_sinks_2
+            println("Skipping zero flux sink $sink_up_name")
         else
             sink_up = Reaction(
                 name = sink_up_name,
@@ -437,10 +435,9 @@ function add_sinks_for_unmatched_metabolites!(
             # display(sink_up)
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
-        if does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) &&
-           !isnothing(prune_zero_sinks) &&
-           sink_down_name in prune_zero_sinks
-            # println("Skipping zero flux sink $sink_down_name")
+        if does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
+           sink_down_name in prune_zero_sinks_2
+            println("Skipping zero flux sink $sink_down_name")
         else
             sink_down = Reaction(
                 name = sink_down_name,
