@@ -398,44 +398,54 @@ end
 function prepare_measurements_and_sinks_report_df(
     absolute_quant_long_df,
     fba_model_metabolites_df,
+    ufba_added_sink_ids_df,
     sampling_df,
 )
     long_sampling_df = pivot_sampling_df_long(sampling_df)
     additives = sort(unique(long_sampling_df.additive))
     final_times = sort(unique(long_sampling_df.final_time))
-    fba_model_metabolite_ids = sort(unique(fba_model_metabolites_df.metabolite_id))
-    measured_metabolite_ids = sort(unique(absolute_quant_long_df.Metabolite))
-    pairs = product(additives, final_times)
-    n_pairs = length(pairs)
-    prog = Progress(n_pairs, "Preparing measurements and sinks report")
-    report_rows = []
-    for (additive, final_time) in pairs
-        sink_map = map_metabolites_to_sinks(long_sampling_df, additive, final_time)
-        for fba_model_metabolite_id in fba_model_metabolite_ids
-            is_measured = fba_model_metabolite_id in measured_metabolite_ids
-            has_sinks = fba_model_metabolite_id in keys(sink_map)
-            up_sink = safely_query_sink_map(sink_map, fba_model_metabolite_id, :up)
-            down_sink = safely_query_sink_map(sink_map, fba_model_metabolite_id, :down)
-            report_row = (
-                additive = additive,
-                final_time = final_time,
-                metabolite_id = fba_model_metabolite_id,
-                is_measured = is_measured,
-                has_sinks = has_sinks,
-                up_sink = up_sink,
-                down_sink = down_sink,
-            )
-            push!(report_rows, report_row)
-        end
+    fba_metabolite_ids = sort(unique(fba_model_metabolites_df.metabolite_id))
+    tasks = product(fba_metabolite_ids, additives, final_times)
+    n_tasks = length(tasks)
+    prog = Progress(n_tasks, "Matching FBA, measured, and sink metabolite ids")
+    rows = map(tasks) do t
+        fba_metabolite_id, additive, final_time = t
+        measured_df = @rsubset(
+            absolute_quant_long_df,
+            :Additive == additive,
+            :Time == final_time,
+            :Metabolite == fba_metabolite_id
+        )
+        sink_up_df = @rsubset(
+            ufba_added_sink_ids_df,
+            :additive == additive,
+            :final_time == final_time,
+            :metabolite_id == fba_metabolite_id,
+            :direction == "up",
+        )
+        sink_down_df = @rsubset(
+            ufba_added_sink_ids_df,
+            :additive == additive,
+            :final_time == final_time,
+            :metabolite_id == fba_metabolite_id,
+            :direction == "down",
+        )
+        is_measured = nrow(measured_df) > 0
+        has_up_sink = nrow(sink_up_df) > 0
+        has_down_sink = nrow(sink_down_df) > 0
         next!(prog)
+        return (
+            additive = additive,
+            final_time = final_time,
+            fba_metabolite_id = fba_metabolite_id,
+            is_measured = is_measured,
+            has_up_sink = has_up_sink,
+            has_down_sink = has_down_sink,
+        )
     end
-    report_df = DataFrame(report_rows)
-    report_aggregated_df = @chain report_df begin
-        @groupby(:additive, :final_time)
-        @combine(:n_measured = sum(:is_measured), :n_have_sinks = sum(:has_sinks))
-        @orderby(:additive, :final_time)
-    end
-    return report_df, report_aggregated_df
+    unsorted_df = DataFrame(rows)
+    result_df = @orderby(unsorted_df, :additive, :final_time, :fba_metabolite_id)
+    return result_df
 end
 
 end
