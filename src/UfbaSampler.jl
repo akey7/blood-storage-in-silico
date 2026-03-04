@@ -627,25 +627,28 @@ end
 """
     count_n_all_zero_fluxes(samples_df)
 
-Counts the number of fluxes which have every sample at zero flux. This is to assist in finding potentially broken reactions in uFBA jobs.
+Counts the number of fluxes which have every sample at zero flux and return the ids of reactions that are blocked. This is to assist in finding potentially broken reactions in uFBA jobs.
 
 # Arguments
 1. `samples_df`: DataFrame result of an apparently successful sampling run.
 
 # Returns
-`Int64`
+`Tuple{Int64,Vector{String}}`
 
-Returns the count of the fluxes which have all samples at zero.
+Returns a tuple with the count of the fluxes which have all samples at zero as the first element and a vector of blocked reaction_ids as the second element.
 """
 function count_n_all_zero_fluxes(samples_df)
     n_all_zero_fluxes = 0
-    for col in eachcol(samples_df)
+    blocked_reaction_ids = []
+    for col_name in names(samples_df)
+        col = samples_df[!, col_name]
         n_zeros = sum(isapprox.(col, 0.0, atol = 1.0e-10))
         if n_zeros == length(col)
             n_all_zero_fluxes += 1
+            push!(blocked_reaction_ids, col_name)
         end
     end
-    return n_all_zero_fluxes
+    return n_all_zero_fluxes, blocked_reaction_ids
 end
 
 """
@@ -692,10 +695,10 @@ function execute_ufba_job(job, n_chains = 10)
     else
         println("Simple optimization succeeded! Sampling fluxes...")
         samples_df = sample_fluxes(pruned_model; n_chains = n_chains)
-        n_all_zero_fluxes = count_n_all_zero_fluxes(samples_df)
+        n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
         samples_df[!, :additive] .= additive
         samples_df[!, :final_time] .= final_time
-        return samples_df, n_all_zero_fluxes
+        return samples_df, n_all_zero_fluxes, blocked_reaction_ids
     end
 end
 
@@ -709,16 +712,18 @@ Executes and aggregates results from all uFBA jobs specified.
 2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
-`Tuple{DataFrame,DataFrame,DataFrame}`
+`Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
 
-A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, and counts of statuses across all sampling jobs.
+A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, counts of statuses across all sampling jobs, and per-model blocked reaction ids.
 """
 function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
     end
-    all_results =
-        [(sdf, n_all_zero_fluxes) for (sdf, n_all_zero_fluxes) in all_sampling_dfs_1]
+    all_results = [
+        (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
+        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in all_sampling_dfs_1
+    ]
     status_rows = vcat(
         eachrow([
             (
@@ -726,17 +731,28 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
                 final_time = job.final_time,
                 status = isnothing(sdf) ? "fail" : "ok",
                 n_all_zero_fluxes = n_all_zero_fluxes,
-            ) for (job, (sdf, n_all_zero_fluxes)) in zip(jobs, all_results)
+            ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
         ])...,
     )
+    blocked_reaction_ids_rows = []
+    for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
+        for blocked_reaction_id in blocked_reaction_ids
+            blocked_reaction_ids_row = (
+                additive = job.additive,
+                final_time = job.final_time,
+                blocked_reaction_id = blocked_reaction_id,
+            )
+            push!(blocked_reaction_ids_rows, blocked_reaction_ids_row)
+        end
+    end
+    sampling_df = vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...)
     status_df = DataFrame(status_rows)
     status_counts_df = @chain status_df begin
         @groupby(:status)
         combine(nrow => :Count)
     end
-    return vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...),
-    status_df,
-    status_counts_df
+    blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
+    return sampling_df, status_df, status_counts_df, blocked_reaction_ids_df
 end
 
 """
