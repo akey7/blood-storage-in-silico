@@ -145,6 +145,8 @@ Outputs the following files:
 3. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
 4. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
 5. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
+6. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
+7. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
 
 There are no threads or workers in this script, so execution is simple.
 
