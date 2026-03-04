@@ -443,9 +443,19 @@ function prepare_measurements_and_sinks_report_df(
             has_down_sink = has_down_sink,
         )
     end
-    unsorted_df = DataFrame(rows)
-    result_df = @orderby(unsorted_df, :additive, :final_time, :fba_metabolite_id)
-    return result_df
+    unsorted_report_df = DataFrame(rows)
+    report_df = @orderby(unsorted_report_df, :additive, :final_time, :fba_metabolite_id)
+    report_by_model_df = @chain report_df begin
+        @groupby(:additive, :final_time)
+        @combine(
+            :n_fba_metabolites = length(unique(:fba_metabolite_id)),
+            :n_measured_metabolites = sum(:is_measured),
+            :n_up_sinks = sum(:has_up_sink),
+            :n_down_sinks = sum(:has_down_sink)
+        )
+        @orderby(:additive, :final_time)
+    end
+    return report_df, report_by_model_df
 end
 
 end

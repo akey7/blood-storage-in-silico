@@ -46,20 +46,24 @@ fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
 fba_model_metabolites_df = CSV.read(fba_model_metabolites_filename, DataFrame)
 ufba_added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
 ufba_added_sink_ids_df = CSV.read(ufba_added_sink_ids_filename, DataFrame)
-measurements_and_sinks_report_df = prepare_measurements_and_sinks_report_df(
-    absolute_quant_long_df,
-    fba_model_metabolites_df,
-    ufba_added_sink_ids_df,
-    sampling_df,
-)
+measurements_and_sinks_report_df, measurements_and_sinks_report_by_model_df =
+    prepare_measurements_and_sinks_report_df(
+        absolute_quant_long_df,
+        fba_model_metabolites_df,
+        ufba_added_sink_ids_df,
+        sampling_df,
+    )
 measurements_and_sinks_report_filename =
     joinpath("output", "measurements_and_sinks_report.csv")
 CSV.write(measurements_and_sinks_report_filename, measurements_and_sinks_report_df)
 println("Wrote $measurements_and_sinks_report_filename")
-# report_aggregated_filename =
-#     joinpath("output", "measurements_and_sinks_report_aggregated.csv")
-# CSV.write(report_aggregated_filename, report_aggregated_df)
-# println("Wrote $report_aggregated_filename")
+measurements_and_sinks_report_by_model_filename =
+    joinpath("output", "measurements_and_sinks_report_by_model.csv")
+CSV.write(
+    measurements_and_sinks_report_by_model_filename,
+    measurements_and_sinks_report_by_model_df,
+)
+println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 # @info "Plotting uFBA histograms"
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
