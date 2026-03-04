@@ -397,6 +397,11 @@ Add sinks for unmeasured (umatched) metabolites in the model. This is part of th
 3. `additive::AbstractString`: Additive for measurement search.
 4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
 5. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If a `Vector{String}`, sinks with specified substrings are ensured to not be added to the model. For example, placing `2pg_c` in this list will ensure that NO sink for `2pg_c` will be added. This parameter provides another way to manually opt-out of sinks, rather than simply relying on the automated zero-flux pruning process. If this parameter is `nothing`, no manual pruning is performed in this way.
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings with the reaction ids of all sinks added to the model.
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
