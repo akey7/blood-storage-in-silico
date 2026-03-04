@@ -29,11 +29,11 @@ n_models = parse_args(s)["nmodels"]
 
 init_workers!()
 
-# Load flux bounds overrides
+@info "Load flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
-# Create reaction ids to strings mapping 
-fba_model = create_fba_model(
+@info "Create reaction ids to strings mapping and save FBA model metabolites"
+fba_model, fba_model_metabolites_df = create_fba_model(
     load_base_rbc_gem();
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
@@ -49,9 +49,12 @@ add_sinks_for_unmatched_metabolites!(
 rxn_ids_to_strings = map_reaction_ids_to_reaction_strings(fba_model)
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
-@info "Wrote $rxn_ids_to_strings_filename"
+println("Wrote $rxn_ids_to_strings_filename")
+fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
+CSV.write(fba_model_metabolites_filename, fba_model_metabolites_df)
+println("Wrote $fba_model_metabolites_filename")
 
-# Run uFBA jobs
+@info "Run uFBA jobs"
 
 # ufba_jobs = make_ufba_models_for_additives_and_times(
 #     metabolites_bounds_df,
@@ -68,7 +71,9 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 )
 
 case3_sinks_df, case3_sinks_aggregated_df = extract_case3_sinks(ufba_jobs)
-sampling_df, status_df, status_counts_df = execute_all_ufba_jobs(ufba_jobs, n_chains)
+added_case3_sink_ids_df = extract_added_case3_sink_ids(ufba_jobs)
+sampling_df, status_df, status_counts_df, blocked_reaction_ids_df =
+    execute_all_ufba_jobs(ufba_jobs, n_chains)
 @info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
@@ -85,3 +90,9 @@ println("Wrote $case3_sinks_filename")
 case3_sinks_aggregated_filename = joinpath("output", "case3_sinks_aggregated.csv")
 CSV.write(case3_sinks_aggregated_filename, case3_sinks_aggregated_df)
 println("Wrote $case3_sinks_aggregated_filename")
+blocked_reaction_ids_filename = joinpath("output", "ufba_blocked_reaction_ids.csv")
+CSV.write(blocked_reaction_ids_filename, blocked_reaction_ids_df)
+println("Wrote $blocked_reaction_ids_filename")
+added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
+CSV.write(added_sink_ids_filename, added_case3_sink_ids_df)
+println("Wrote $added_sink_ids_filename")

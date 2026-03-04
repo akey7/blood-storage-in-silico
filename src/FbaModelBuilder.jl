@@ -124,8 +124,7 @@ end
 """
     create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; exchanges::Union{Nothing,Vector{String}} = nothing, flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing)
 
-Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
-for the uFBA study.
+Creates the models for the for the uFBA runs.
 
 # Arguments
 1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by `load_base_rbc_gem`. If left as `nothing`, this function will call `load_base_rbc_gem` directly.
@@ -133,9 +132,9 @@ for the uFBA study.
 3. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, this DataFrame contains flux bounds for reactions that will override the RBC-GEM's flux bounds.
 
 # Returns
-`A.CanonicalModel.Model`
+`Tuple{A.CanonicalModel.Model,DataFrame}`
 
-Returns the newly constructed three pathway model.
+Returns a tuple of the newly constructed model as the first element and a single-column (called `:metabolite_id`) DataFrame of metabolite ids in the model as the second element.
 """
 function create_fba_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
@@ -412,7 +411,11 @@ function create_fba_model(
     println("> Setting NaKt load")
     model.reactions["R_NaKt"].objective_coefficient = 1.0
 
-    return model
+    metabolite_ids =
+        [replace(metabolite_id, "M_" => "") for (metabolite_id, _) in model.metabolites]
+    metabolites_df = DataFrame(metabolite_id = metabolite_ids)
+
+    return model, metabolites_df
 end
 
 end

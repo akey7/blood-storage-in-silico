@@ -41,7 +41,8 @@ export sample_fluxes,
     count_n_all_zero_fluxes,
     does_manual_prune_list_match_sink_name,
     load_flux_bounds_overrides,
-    sbml_add_constant_to_selfclosing_parameters!
+    sbml_add_constant_to_selfclosing_parameters!,
+    extract_added_case3_sink_ids
 
 
 """
@@ -396,6 +397,11 @@ Add sinks for unmeasured (umatched) metabolites in the model. This is part of th
 3. `additive::AbstractString`: Additive for measurement search.
 4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
 5. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If a `Vector{String}`, sinks with specified substrings are ensured to not be added to the model. For example, placing `2pg_c` in this list will ensure that NO sink for `2pg_c` will be added. This parameter provides another way to manually opt-out of sinks, rather than simply relying on the automated zero-flux pruning process. If this parameter is `nothing`, no manual pruning is performed in this way.
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings with the reaction ids of all sinks added to the model.
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
@@ -409,24 +415,23 @@ function add_sinks_for_unmatched_metabolites!(
     else
         @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
     end
-
     if isnothing(sink_opt_outs)
         @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
     else
         @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
     end
-
+    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : prune_zero_sinks
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
     end
+    added_sink_ids = []
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
-        if does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) &&
-           !isnothing(prune_zero_sinks) &&
-           sink_up_name in prune_zero_sinks
-            # println("Skipping zero flux sink $sink_up_name")
-        else
+        if !(
+            does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
+            sink_up_name in prune_zero_sinks_2
+        )
             sink_up = Reaction(
                 name = sink_up_name,
                 stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -434,14 +439,15 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 0.0,
             )
             model.reactions[sink_up_name] = sink_up
-            # display(sink_up)
+            push!(added_sink_ids, sink_up_name)
+        else
+            # println("Skipping zero flux sink $sink_up_name")
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
-        if does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) &&
-           !isnothing(prune_zero_sinks) &&
-           sink_down_name in prune_zero_sinks
-            # println("Skipping zero flux sink $sink_down_name")
-        else
+        if !(
+            does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
+            sink_down_name in prune_zero_sinks_2
+        )
             sink_down = Reaction(
                 name = sink_down_name,
                 stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -449,9 +455,12 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 1000.0,
             )
             model.reactions[sink_down_name] = sink_down
-            # display(sink_down)
+            push!(added_sink_ids, sink_down_name)
+        else
+            # println("Skipping zero flux sink $sink_down_name")
         end
     end
+    return added_sink_ids
 end
 
 """
@@ -624,6 +633,33 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
 end
 
 """
+    count_n_all_zero_fluxes(samples_df)
+
+Counts the number of fluxes which have every sample at zero flux and return the ids of reactions that are blocked. This is to assist in finding potentially broken reactions in uFBA jobs.
+
+# Arguments
+1. `samples_df`: DataFrame result of an apparently successful sampling run.
+
+# Returns
+`Tuple{Int64,Vector{String}}`
+
+Returns a tuple with the count of the fluxes which have all samples at zero as the first element and a vector of blocked reaction_ids as the second element.
+"""
+function count_n_all_zero_fluxes(samples_df)
+    n_all_zero_fluxes = 0
+    blocked_reaction_ids = []
+    for col_name in names(samples_df)
+        col = samples_df[!, col_name]
+        n_zeros = sum(isapprox.(col, 0.0, atol = 1.0e-10))
+        if n_zeros == length(col)
+            n_all_zero_fluxes += 1
+            push!(blocked_reaction_ids, col_name)
+        end
+    end
+    return n_all_zero_fluxes, blocked_reaction_ids
+end
+
+"""
     execute_ufba_job(job, n_chains = 10)
 
 Execute a uFBA job specified by the first argument with the given number of chains.
@@ -667,35 +703,11 @@ function execute_ufba_job(job, n_chains = 10)
     else
         println("Simple optimization succeeded! Sampling fluxes...")
         samples_df = sample_fluxes(pruned_model; n_chains = n_chains)
-        n_all_zero_fluxes = count_n_all_zero_fluxes(samples_df)
+        n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
         samples_df[!, :additive] .= additive
         samples_df[!, :final_time] .= final_time
-        return samples_df, n_all_zero_fluxes
+        return samples_df, n_all_zero_fluxes, blocked_reaction_ids
     end
-end
-
-"""
-    count_n_all_zero_fluxes(samples_df)
-
-Counts the number of fluxes which have every sample at zero flux. This is to assist in finding potentially broken reactions in uFBA jobs.
-
-# Arguments
-1. `samples_df`: DataFrame result of an apparently successful sampling run.
-
-# Returns
-`Int64`
-
-Returns the count of the fluxes which have all samples at zero.
-"""
-function count_n_all_zero_fluxes(samples_df)
-    n_all_zero_fluxes = 0
-    for col in eachcol(samples_df)
-        n_zeros = sum(isapprox.(col, 0.0, atol = 1.0e-10))
-        if n_zeros == length(col)
-            n_all_zero_fluxes += 1
-        end
-    end
-    return n_all_zero_fluxes
 end
 
 """
@@ -708,16 +720,18 @@ Executes and aggregates results from all uFBA jobs specified.
 2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
-`Tuple{DataFrame,DataFrame,DataFrame}`
+`Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
 
-A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, and counts of statuses across all sampling jobs.
+A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, counts of statuses across all sampling jobs, and per-model blocked reaction ids.
 """
 function execute_all_ufba_jobs(jobs, n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
     end
-    all_results =
-        [(sdf, n_all_zero_fluxes) for (sdf, n_all_zero_fluxes) in all_sampling_dfs_1]
+    all_results = [
+        (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
+        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in all_sampling_dfs_1
+    ]
     status_rows = vcat(
         eachrow([
             (
@@ -725,17 +739,28 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
                 final_time = job.final_time,
                 status = isnothing(sdf) ? "fail" : "ok",
                 n_all_zero_fluxes = n_all_zero_fluxes,
-            ) for (job, (sdf, n_all_zero_fluxes)) in zip(jobs, all_results)
+            ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
         ])...,
     )
+    blocked_reaction_ids_rows = []
+    for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
+        for blocked_reaction_id in blocked_reaction_ids
+            blocked_reaction_ids_row = (
+                additive = job.additive,
+                final_time = job.final_time,
+                blocked_reaction_id = blocked_reaction_id,
+            )
+            push!(blocked_reaction_ids_rows, blocked_reaction_ids_row)
+        end
+    end
+    sampling_df = vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...)
     status_df = DataFrame(status_rows)
     status_counts_df = @chain status_df begin
         @groupby(:status)
         combine(nrow => :Count)
     end
-    return vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...),
-    status_df,
-    status_counts_df
+    blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
+    return sampling_df, status_df, status_counts_df, blocked_reaction_ids_df
 end
 
 """
@@ -761,6 +786,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
 7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
 8. `nonzero_case3_sinks`: Sinks that have non-zero flux
+9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_case3_sinks and non_zero_case3_sinks.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -778,7 +804,7 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
-        full_model = create_fba_model(
+        full_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
@@ -804,12 +830,12 @@ function make_ufba_models_for_additives_and_times(
             analyze_case_3(case_3_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
-        pruned_model = create_fba_model(
+        pruned_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
         )
-        add_sinks_for_unmatched_metabolites!(
+        added_sink_ids = add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,
             additive,
@@ -825,6 +851,7 @@ function make_ufba_models_for_additives_and_times(
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
             zero_case3_sinks = zero_case3_sinks,
             nonzero_case3_sinks = nonzero_case3_sinks,
+            added_sink_ids = added_sink_ids,
         )
     end
     return result
@@ -873,6 +900,50 @@ function extract_case3_sinks(ufba_jobs)
         combine(nrow => :count)
     end
     return status_df, status_aggregated_df
+end
+
+"""
+    extract_added_case3_sink_ids(jobs)
+
+Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
+
+# Arguments
+1. `jobs`: The result of the call to [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+1. `additive`: The additive
+2. `final_time`: Final time of the model
+3. `metabolite_id`: The metabolite the sink is for
+4. `direction`: up or down depending on the direction of the sink.
+5. `added_sink_id`: The reaction id of the corresponding sink.
+
+The DataFrame is sorted by additive, final time. metabolite id, and direction.
+"""
+function extract_added_case3_sink_ids(jobs)
+    rows = []
+    for job in jobs
+        additive = job.additive
+        final_time = job.final_time
+        for added_sink_id in job.added_sink_ids
+            direction = contains(added_sink_id, "UP") ? "up" : "down"
+            metabolite_id =
+                replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
+            row = (
+                additive = additive,
+                final_time = final_time,
+                metabolite_id = metabolite_id,
+                direction = direction,
+                added_sink_id = added_sink_id,
+            )
+            push!(rows, row)
+        end
+    end
+    unsorted_df = DataFrame(rows)
+    sorted_df = @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
+    return sorted_df
 end
 
 """
