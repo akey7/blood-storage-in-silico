@@ -421,10 +421,10 @@ function add_sinks_for_unmatched_metabolites!(
     end
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
-        if does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
-           sink_up_name in prune_zero_sinks_2
-            println("Skipping zero flux sink $sink_up_name")
-        else
+        if !(
+            does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
+            sink_up_name in prune_zero_sinks_2
+        )
             sink_up = Reaction(
                 name = sink_up_name,
                 stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -433,12 +433,14 @@ function add_sinks_for_unmatched_metabolites!(
             )
             model.reactions[sink_up_name] = sink_up
             # display(sink_up)
+        else
+            println("Skipping zero flux sink $sink_up_name")
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
-        if does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
-           sink_down_name in prune_zero_sinks_2
-            println("Skipping zero flux sink $sink_down_name")
-        else
+        if !(
+            does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
+            sink_down_name in prune_zero_sinks_2
+        )
             sink_down = Reaction(
                 name = sink_down_name,
                 stoichiometry = Dict("M_$(metabolite)" => -1.0),
@@ -447,6 +449,8 @@ function add_sinks_for_unmatched_metabolites!(
             )
             model.reactions[sink_down_name] = sink_down
             # display(sink_down)
+        else
+            println("Skipping zero flux sink $sink_down_name")
         end
     end
 end
