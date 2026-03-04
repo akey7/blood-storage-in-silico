@@ -23,8 +23,7 @@ export histograms_for_reaction_v2,
     calc_median_flux_df,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
-    prepare_measurements_and_sinks_report_df,
-    safely_query_sink_map
+    prepare_measurements_and_sinks_report_df
 
 
 """
@@ -386,15 +385,43 @@ function prepare_median_flux_vector_matrix(sampling_df)
     return transformed_df
 end
 
-function safely_query_sink_map(sink_map, metabolite_id, direction)
-    metabolite_sinks = get(sink_map, metabolite_id, nothing)
-    if isnothing(metabolite_sinks)
-        return missing
-    else
-        return get(metabolite_sinks, direction, missing)
-    end
-end
+"""
+    prepare_measurements_and_sinks_report_df(absolute_quant_long_df, fba_model_metabolites_df, ufba_added_sink_ids_df, sampling_df)
 
+Prepares two DataFrames detailing the number of metabolites in each model and how many sinks there are.
+
+The first DataFrame is longer than the second and contains one row per metabolite. On each row, the additive, time, and metabolite are listed, along with boolean columns with whether the metabolite has up/down sinks, or is measured.
+
+The second DataFrame aggregates these per-metabolite rows into per-model rows, outlining overal counts of unique metabolites, how many metabolites are measured, and the number of up and down sinks.
+
+# Arguments
+1. `absolute_quant_long_df`: The absolute quant measurements from `output/absolute_quant_long.csv`
+2. `fba_model_metabolites_df`: The FBA model metabolites from `output/fba_model_metabolites.csv`
+3. `ufba_added_sink_ids_df`: The sinks added to models during the uFBA process from `output/ufba_added_sink_ids.csv`
+4. `sampling_df`: The wide sampling DataFrame from all uFBA runs.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns two DataFrames, one for each report. The first element is the per-metabolite report, and the second element is the per-model report.
+
+The first DataFrame contains the following columns
+1. `additive`: Additive of the model
+2. `final_time`: Final time of the model
+3. `fba_metabolite_id`: Metabolite id from the FBA model
+4. `is_measured`: `true` if the metabolite was measured
+5. `has_up_sink`: `true` if there is an up sink for the metabolite
+6. `has_down_sink`: `true` if there is a down sink for the metabolite
+
+The second DataFrame contains the following columns:
+1. `additive`: Additive of the model
+2. `final_time`: Final time of the model
+3. `n_fba_metabolites`: Number of metabolites in the model
+4. `n_measured_metabolites`: The number of metabolites that have absolute quant measurements.
+5. `n_without_sinks`: Number of metabolites without sinks
+6. `n_up_sinks`: Number of up sinks
+7. `n_down_sinks`: Number of down sinks
+"""
 function prepare_measurements_and_sinks_report_df(
     absolute_quant_long_df,
     fba_model_metabolites_df,
