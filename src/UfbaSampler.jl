@@ -625,6 +625,30 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
 end
 
 """
+    count_n_all_zero_fluxes(samples_df)
+
+Counts the number of fluxes which have every sample at zero flux. This is to assist in finding potentially broken reactions in uFBA jobs.
+
+# Arguments
+1. `samples_df`: DataFrame result of an apparently successful sampling run.
+
+# Returns
+`Int64`
+
+Returns the count of the fluxes which have all samples at zero.
+"""
+function count_n_all_zero_fluxes(samples_df)
+    n_all_zero_fluxes = 0
+    for col in eachcol(samples_df)
+        n_zeros = sum(isapprox.(col, 0.0, atol = 1.0e-10))
+        if n_zeros == length(col)
+            n_all_zero_fluxes += 1
+        end
+    end
+    return n_all_zero_fluxes
+end
+
+"""
     execute_ufba_job(job, n_chains = 10)
 
 Execute a uFBA job specified by the first argument with the given number of chains.
@@ -673,30 +697,6 @@ function execute_ufba_job(job, n_chains = 10)
         samples_df[!, :final_time] .= final_time
         return samples_df, n_all_zero_fluxes
     end
-end
-
-"""
-    count_n_all_zero_fluxes(samples_df)
-
-Counts the number of fluxes which have every sample at zero flux. This is to assist in finding potentially broken reactions in uFBA jobs.
-
-# Arguments
-1. `samples_df`: DataFrame result of an apparently successful sampling run.
-
-# Returns
-`Int64`
-
-Returns the count of the fluxes which have all samples at zero.
-"""
-function count_n_all_zero_fluxes(samples_df)
-    n_all_zero_fluxes = 0
-    for col in eachcol(samples_df)
-        n_zeros = sum(isapprox.(col, 0.0, atol = 1.0e-10))
-        if n_zeros == length(col)
-            n_all_zero_fluxes += 1
-        end
-    end
-    return n_all_zero_fluxes
 end
 
 """
