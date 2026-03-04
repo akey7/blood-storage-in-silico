@@ -902,19 +902,22 @@ function extract_added_case3_sink_ids(jobs)
         additive = job.additive
         final_time = job.final_time
         for added_sink_id in job.added_sink_ids
+            direction = contains(added_sink_id, "UP") ? "up" : "down"
             metabolite_id =
                 replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
             row = (
                 additive = additive,
                 final_time = final_time,
-                added_sink_id = added_sink_id,
                 metabolite_id = metabolite_id,
+                direction = direction,
+                added_sink_id = added_sink_id,
             )
             push!(rows, row)
         end
     end
-    result_df = DataFrame(rows)
-    return result_df
+    unsorted_df = DataFrame(rows)
+    sorted_df = @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
+    return sorted_df
 end
 
 """

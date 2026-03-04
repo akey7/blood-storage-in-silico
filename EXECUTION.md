@@ -126,6 +126,7 @@ Outputs the following files:
 4. `output/case3_sinks_aggregated.csv`: Counts of zero and nonzero sinks. 
 5. `output/fba_model_metabolites.csv`: Metabolite ids of the FBA models created for the uFBA runs.
 6. `output/ufba_blocked_reaction_ids.csv`: Reaction ids of blocked reactions for each model.
+7. `output/ufba_added_sink_ids.csv`: Reaction ids of sinks added and their corresponding metabolites.
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
