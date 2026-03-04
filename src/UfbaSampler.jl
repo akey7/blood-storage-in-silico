@@ -41,7 +41,8 @@ export sample_fluxes,
     count_n_all_zero_fluxes,
     does_manual_prune_list_match_sink_name,
     load_flux_bounds_overrides,
-    sbml_add_constant_to_selfclosing_parameters!
+    sbml_add_constant_to_selfclosing_parameters!,
+    extract_added_case3_sink_ids
 
 
 """
@@ -419,6 +420,7 @@ function add_sinks_for_unmatched_metabolites!(
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
     end
+    added_sink_ids = []
     for metabolite in sort(unique(not_found_df.metabolite))
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
         if !(
@@ -432,6 +434,7 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 0.0,
             )
             model.reactions[sink_up_name] = sink_up
+            push!(added_sink_ids, sink_up_name)
         else
             # println("Skipping zero flux sink $sink_up_name")
         end
@@ -447,10 +450,12 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 1000.0,
             )
             model.reactions[sink_down_name] = sink_down
+            push!(added_sink_ids, sink_down_name)
         else
             # println("Skipping zero flux sink $sink_down_name")
         end
     end
+    return added_sink_ids
 end
 
 """
@@ -824,7 +829,7 @@ function make_ufba_models_for_additives_and_times(
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
         )
-        add_sinks_for_unmatched_metabolites!(
+        added_sink_ids = add_sinks_for_unmatched_metabolites!(
             pruned_model,
             metabolite_status_df,
             additive,
@@ -840,6 +845,7 @@ function make_ufba_models_for_additives_and_times(
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
             zero_case3_sinks = zero_case3_sinks,
             nonzero_case3_sinks = nonzero_case3_sinks,
+            added_sink_ids = added_sink_ids,
         )
     end
     return result
@@ -888,6 +894,27 @@ function extract_case3_sinks(ufba_jobs)
         combine(nrow => :count)
     end
     return status_df, status_aggregated_df
+end
+
+function extract_added_case3_sink_ids(jobs)
+    rows = []
+    for job in jobs
+        additive = job.additive
+        final_time = job.final_time
+        for added_sink_id in job.added_sink_ids
+            metabolite_id =
+                replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
+            row = (
+                additive = additive,
+                final_time = final_time,
+                added_sink_id = added_sink_id,
+                metabolite_id = metabolite_id,
+            )
+            push!(rows, row)
+        end
+    end
+    result_df = DataFrame(rows)
+    return result_df
 end
 
 """

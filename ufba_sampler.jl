@@ -71,6 +71,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 )
 
 case3_sinks_df, case3_sinks_aggregated_df = extract_case3_sinks(ufba_jobs)
+added_case3_sink_ids_df = extract_added_case3_sink_ids(ufba_jobs)
 sampling_df, status_df, status_counts_df, blocked_reaction_ids_df =
     execute_all_ufba_jobs(ufba_jobs, n_chains)
 @info "uFBA: Final status"
@@ -92,3 +93,6 @@ println("Wrote $case3_sinks_aggregated_filename")
 blocked_reaction_ids_filename = joinpath("output", "ufba_blocked_reaction_ids.csv")
 CSV.write(blocked_reaction_ids_filename, blocked_reaction_ids_df)
 println("Wrote $blocked_reaction_ids_filename")
+added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
+CSV.write(added_sink_ids_filename, added_case3_sink_ids_df)
+println("Wrote $added_sink_ids_filename")
