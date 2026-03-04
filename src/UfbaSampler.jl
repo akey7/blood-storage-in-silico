@@ -781,6 +781,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
 7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
 8. `nonzero_case3_sinks`: Sinks that have non-zero flux
+9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_case3_sinks and non_zero_case3_sinks.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -896,6 +897,26 @@ function extract_case3_sinks(ufba_jobs)
     return status_df, status_aggregated_df
 end
 
+"""
+    extract_added_case3_sink_ids(jobs)
+
+Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
+
+# Arguments
+1. `jobs`: The result of the call to [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+1. `additive`: The additive
+2. `final_time`: Final time of the model
+3. `metabolite_id`: The metabolite the sink is for
+4. `direction`: up or down depending on the direction of the sink.
+5. `added_sink_id`: The reaction id of the corresponding sink.
+
+The DataFrame is sorted by additive, final time. metabolite id, and direction.
+"""
 function extract_added_case3_sink_ids(jobs)
     rows = []
     for job in jobs
