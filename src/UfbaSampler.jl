@@ -432,9 +432,8 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 0.0,
             )
             model.reactions[sink_up_name] = sink_up
-            # display(sink_up)
         else
-            println("Skipping zero flux sink $sink_up_name")
+            # println("Skipping zero flux sink $sink_up_name")
         end
         sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
         if !(
@@ -448,9 +447,8 @@ function add_sinks_for_unmatched_metabolites!(
                 upper_bound = 1000.0,
             )
             model.reactions[sink_down_name] = sink_down
-            # display(sink_down)
         else
-            println("Skipping zero flux sink $sink_down_name")
+            # println("Skipping zero flux sink $sink_down_name")
         end
     end
 end
