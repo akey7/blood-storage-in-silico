@@ -450,6 +450,7 @@ function prepare_measurements_and_sinks_report_df(
         @combine(
             :n_fba_metabolites = length(unique(:fba_metabolite_id)),
             :n_measured_metabolites = sum(:is_measured),
+            :n_without_sinks = sum(.!(:has_up_sink .| :has_down_sink)),
             :n_up_sinks = sum(:has_up_sink),
             :n_down_sinks = sum(:has_down_sink)
         )
