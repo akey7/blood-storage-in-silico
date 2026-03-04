@@ -203,29 +203,31 @@ function map_metabolites_to_sinks(long_df, additive, final_time)
 end
 
 """
-    net_flux_from_up_and_down(up_flux::Union{Float64,Missing}, down_flux::Union{Float64})
+    net_flux_from_up_and_down(up_flux::Union{Float64,Missing}, down_flux::Union{Float64,Missing})
 
 Helper function for [`net_sink_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.net_sink_fluxes). Calculates the net flux of two sink fluxes avoiding missing values.
 
 # Arguments
 1. `up_flux::Union{Float64,Missing}`: Flux of the up sink. If `missing`, this value is ignored when computing the net flux.
-2. `down_flux::Union{Float64}`: Flux of the down sink. If `missing`, this value is ignored when computing the net flux.
+2. `down_flux::Union{Float64,Missing}`: Flux of the down sink. If `missing`, this value is ignored when computing the net flux.
 
 # Returns
-`Float64`
+`Union{Float64,Missing}`
 
-Returns the net flux of the sinks, calculated by summing the fluxes together and skipping missing values.
+Returns the net flux of the sinks, calculated by summing the fluxes together and skipping missing values. If both fluxes are missing, returns `missing`.
 """
 function net_flux_from_up_and_down(
     up_flux::Union{Float64,Missing},
-    down_flux::Union{Float64},
+    down_flux::Union{Float64,Missing},
 )
     if !ismissing(up_flux) && !ismissing(down_flux)
         return up_flux + down_flux
     elseif !ismissing(up_flux)
         return up_flux
-    else
+    elseif !ismissing(down_flux)
         return down_flux
+    else
+        return missing
     end
 end
 
