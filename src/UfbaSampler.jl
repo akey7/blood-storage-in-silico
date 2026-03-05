@@ -42,7 +42,8 @@ export sample_fluxes,
     does_manual_prune_list_match_sink_name,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
-    extract_added_case3_sink_ids
+    extract_added_case3_sink_ids,
+    find_metabolites_with_exchanges
 
 
 """
@@ -386,6 +387,14 @@ function does_manual_prune_list_match_sink_name(
     end
 end
 
+function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+    exchange_ids = [
+        reaction_id for (reaction_id, _) in model.reactions if contains(reaction_id, "R_EX")
+    ]
+    metabolite_ids = [replace(exchange_id, "R_EX_" => "") for exchange_id in exchange_ids]
+    return metabolite_ids
+end
+
 """
     add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing}; sink_opt_outs::Union{Vector{String},Nothing} = nothing)
 
@@ -420,6 +429,7 @@ function add_sinks_for_unmatched_metabolites!(
     else
         @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
     end
+    metabolites_with_exchanges = find_metabolites_with_exchanges(model)
     prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : prune_zero_sinks
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
