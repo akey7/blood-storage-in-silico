@@ -337,7 +337,9 @@ function create_fba_model(
     discovered_metabolite_ids::Vector{String} = []
     for reaction_id ∈ all_reaction_ids
         for metabolite_id ∈ keys(rbc_gem.reactions[reaction_id].stoichiometry)
-            push!(discovered_metabolite_ids, metabolite_id)
+            if metabolite_id ∉ discovered_metabolite_ids
+                push!(discovered_metabolite_ids, metabolite_id)
+            end
         end
     end
 
