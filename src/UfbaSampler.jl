@@ -703,7 +703,6 @@ Execute a uFBA job specified by the first argument with the given number of chai
 
 # Arguments
 1. `job`: `NamedTuple` with the following keys: `additive` to specify the additive solution, `final_time` to specify the time point of the simulation, `pruned_model` to specify the model to optimize, `metabolite_bounds_df` rates of chage of metabolites in a DataFrame.
-
 2. `n_chains`: Number of chains to sample. Defaults to 10.
 
 # Returns
@@ -748,20 +747,25 @@ function execute_ufba_job(job, n_chains = 10)
 end
 
 """
-    execute_all_ufba_jobs(jobs, n_chains = 10)
+    execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 
 Executes and aggregates results from all uFBA jobs specified.
 
 # Arguments
 1. `jobs`: Vector of all jobs to be executed.
-2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
+2. `rxn_ids_to_strings_df`: The DataFrame mapping reactions ids to strings made by [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings)
+3. `n_chains = 10`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
 `Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
 
-A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, counts of statuses across all sampling jobs, and per-model blocked reaction ids.
+A tuple of the following four DataFrames: 
+1. All sampling results,
+2. Statuses of each attempted sampling job,
+3. Counts of statuses across all sampling jobs, and
+4. Per-model blocked reaction ids with reaction strings joined in.
 """
-function execute_all_ufba_jobs(jobs, n_chains = 10)
+function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
     end
@@ -797,7 +801,12 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
         combine(nrow => :Count)
     end
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
-    return sampling_df, status_df, status_counts_df, blocked_reaction_ids_df
+    joined_blocked_reaction_ids_df = innerjoin(
+        blocked_reaction_ids_df,
+        rxn_ids_to_strings_df,
+        on = :blocked_reaction_id => :reaction_id,
+    )
+    return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
 end
 
 """

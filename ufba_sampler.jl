@@ -73,8 +73,8 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 
 case3_sinks_df, case3_sinks_aggregated_df = extract_case3_sinks(ufba_jobs)
 added_case3_sink_ids_df = extract_added_case3_sink_ids(ufba_jobs)
-sampling_df, status_df, status_counts_df, blocked_reaction_ids_df =
-    execute_all_ufba_jobs(ufba_jobs, n_chains)
+sampling_df, status_df, status_counts_df, blocked_reactions_df =
+    execute_all_ufba_jobs(ufba_jobs, rxn_ids_to_strings_df; n_chains = n_chains)
 @info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
@@ -91,9 +91,9 @@ println("Wrote $case3_sinks_filename")
 case3_sinks_aggregated_filename = joinpath("output", "case3_sinks_aggregated.csv")
 CSV.write(case3_sinks_aggregated_filename, case3_sinks_aggregated_df)
 println("Wrote $case3_sinks_aggregated_filename")
-blocked_reaction_ids_filename = joinpath("output", "ufba_blocked_reaction_ids.csv")
-CSV.write(blocked_reaction_ids_filename, blocked_reaction_ids_df)
-println("Wrote $blocked_reaction_ids_filename")
+blocked_reactions_filename = joinpath("output", "ufba_blocked_reactions.csv")
+CSV.write(blocked_reactions_filename, blocked_reactions_df)
+println("Wrote $blocked_reactions_filename")
 added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
 CSV.write(added_sink_ids_filename, added_case3_sink_ids_df)
 println("Wrote $added_sink_ids_filename")
