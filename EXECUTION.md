@@ -125,7 +125,7 @@ Outputs the following files:
 3. `output/case3_sinks.csv`: The unmeasured metabolite sinks from the Case 3 analysis, and whether they had zero or non-zero flux.
 4. `output/case3_sinks_aggregated.csv`: Counts of zero and nonzero sinks. 
 5. `output/fba_model_metabolites.csv`: Metabolite ids of the FBA models created for the uFBA runs.
-6. `output/ufba_blocked_reaction_ids.csv`: Reaction ids of blocked reactions for each model.
+6. `output/ufba_blocked_reactions.csv`: Reaction ids of blocked reactions and their corresponding strings for each model.
 7. `output/ufba_added_sink_ids.csv`: Reaction ids of sinks added and their corresponding metabolites.
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
@@ -140,13 +140,12 @@ Uses the following input file:
 
 Outputs the following files:
 
-1. Writes a reaction id to reaction string yaml file to `output/ufba_sampling.csv`.
-2. writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
-3. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
-4. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
-5. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
-6. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
-7. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
+1. writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
+2. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
+3. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
+4. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
+5. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
+6. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
 
 There are no threads or workers in this script, so execution is simple.
 

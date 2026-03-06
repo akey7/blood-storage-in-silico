@@ -78,9 +78,11 @@ Maps reaction_ids in the given model to human-readable reaction strings specifyi
 1. `model::A.AbstractFBCModel`: The model to create the reaction strings from.
 
 # Returns
-`Dict{String,String}`
+`Tuple{Dict{String,String},DataFrame}`
 
-Returns a dicitonary mapping reaction ids in the model to a human-readable reaction string.
+Returns a tuple with two elements:
+1. A dictionary mapping reaction ids in the model to a human-readable reaction string and
+2. A DataFrame with `:reaction_id` and `:reaction_string` columns.
 """
 function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
     result_dict = OrderedDict()
