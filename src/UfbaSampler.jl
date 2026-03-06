@@ -13,6 +13,7 @@ using DataFrames
 using DataFramesMeta
 using ThreadsX
 using OrderedCollections
+using Chain
 
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
@@ -43,7 +44,8 @@ export sample_fluxes,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_case3_sink_ids,
-    find_metabolites_with_exchanges
+    find_metabolites_with_exchanges,
+    decompose_sink_id
 
 
 """
@@ -905,6 +907,16 @@ function make_ufba_models_for_additives_and_times(
     return result
 end
 
+function decompose_sink_id(sink_id)
+    sink_str = String(sink_id)
+    metabolite_id = @chain sink_str begin
+        replace("R_UNKNOWN_SK_DOWN_" => "")
+        replace("R_UNKNOWN_SK_UP_" => "")
+    end
+    direction = occursin(sink_str, "UP") ? "up" : "down"
+    return metabolite_id, direction
+end
+
 """
     extract_case3_sinks(ufba_jobs)
 
@@ -923,26 +935,34 @@ function extract_case3_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         for zero_case3_sink in ufba_job.zero_case3_sinks
+            metabolite_id, direction = decompose_sink_id(zero_case3_sink)
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
-                sink = zero_case3_sink,
                 status = "zero",
+                metabolite_id = metabolite_id,
+                direction = direction,
+                sink = zero_case3_sink,
             )
             push!(status_rows, row)
         end
         for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
+            metabolite_id, direction = decompose_sink_id(nonzero_case3_sink)
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
-                sink = nonzero_case3_sink,
                 status = "nonzero",
+                metabolite_id = metabolite_id,
+                direction = direction,
+                sink = nonzero_case3_sink,
             )
             push!(status_rows, row)
         end
     end
     status_df = DataFrame(status_rows)
-    return status_df
+    sorted_df =
+        @orderby(status_df, :additive, :final_time, :status, :metabolite_id, :direction)
+    return sorted_df
 end
 
 """
