@@ -46,9 +46,10 @@ add_sinks_for_unmatched_metabolites!(
     "01-Ctrl AS3",
     nothing,
 )
-rxn_ids_to_strings = map_reaction_ids_to_reaction_strings(fba_model)
+rxn_ids_to_strings_dict, rxn_ids_to_strings_df =
+    map_reaction_ids_to_reaction_strings(fba_model)
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
-YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings)
+YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings_dict)
 println("Wrote $rxn_ids_to_strings_filename")
 fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
 CSV.write(fba_model_metabolites_filename, fba_model_metabolites_df)

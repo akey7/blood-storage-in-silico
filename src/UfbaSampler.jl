@@ -83,8 +83,11 @@ Maps reaction_ids in the given model to human-readable reaction strings specifyi
 Returns a dicitonary mapping reaction ids in the model to a human-readable reaction string.
 """
 function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
-    result = OrderedDict()
+    result_dict = OrderedDict()
+    reaction_ids = []
+    reaction_strings = []
     for rxn_id in sort(string.(keys(model.reactions)))
+        push!(reaction_ids, rxn_id)
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
         lhs = replace(
@@ -102,14 +105,21 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
             "M_" => "",
         )
         if rxn.lower_bound < 0.0 && isapprox(rxn.upper_bound, 0.0)
-            result[rxn_id] = "$lhs <-- $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            rxn_string = "$lhs <-- $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            result_dict[rxn_id] = rxn_string
+            push!(reaction_strings, rxn_string)
         elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
-            result[rxn_id] = "$lhs --> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            rxn_string = "$lhs --> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            result_dict[rxn_id] = rxn_string
+            push!(reaction_strings, rxn_string)
         else
-            result[rxn_id] = "$lhs <-> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            rxn_string = "$lhs <-> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            result_dict[rxn_id] = rxn_string
+            push!(reaction_strings, rxn_string)
         end
     end
-    return result
+    result_df = DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    return result_dict, result_df
 end
 
 """
