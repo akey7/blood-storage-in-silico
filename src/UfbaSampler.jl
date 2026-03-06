@@ -42,7 +42,8 @@ export sample_fluxes,
     does_manual_prune_list_match_sink_name,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
-    extract_added_case3_sink_ids
+    extract_added_case3_sink_ids,
+    find_metabolites_with_exchanges
 
 
 """
@@ -387,9 +388,30 @@ function does_manual_prune_list_match_sink_name(
 end
 
 """
+    find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+
+Finds extracellular metabolites with exchanges in the provided model and returns a list of the metabolite ids found. Used by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!).
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model which has the metabolites and exchanges of interest.
+
+# Returns
+`Vector{String}`
+
+Returns a list of metabolites with exchanges.
+"""
+function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+    exchange_ids = [
+        reaction_id for (reaction_id, _) in model.reactions if contains(reaction_id, "R_EX")
+    ]
+    metabolite_ids = [replace(exchange_id, "R_EX_" => "") for exchange_id in exchange_ids]
+    return metabolite_ids
+end
+
+"""
     add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing}; sink_opt_outs::Union{Vector{String},Nothing} = nothing)
 
-Add sinks for unmeasured (umatched) metabolites in the model. This is part of the uFBA process. This method mutates the given model in place.
+Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
 
 # Arguments
 1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
@@ -420,21 +442,26 @@ function add_sinks_for_unmatched_metabolites!(
     else
         @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
     end
+    metabolites_with_exchanges = find_metabolites_with_exchanges(model)
     prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : prune_zero_sinks
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
     end
     added_sink_ids = []
-    for metabolite in sort(unique(not_found_df.metabolite))
-        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite"
+    for metabolite_id in sort(unique(not_found_df.metabolite))
+        if metabolite_id in metabolites_with_exchanges
+            println("Skipping sinks for $metabolite_id which has an exchange.")
+            continue
+        end
+        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite_id"
         if !(
             does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
             sink_up_name in prune_zero_sinks_2
         )
             sink_up = Reaction(
                 name = sink_up_name,
-                stoichiometry = Dict("M_$(metabolite)" => -1.0),
+                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
                 lower_bound = -1000.0,
                 upper_bound = 0.0,
             )
@@ -443,14 +470,14 @@ function add_sinks_for_unmatched_metabolites!(
         else
             # println("Skipping zero flux sink $sink_up_name")
         end
-        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite"
+        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite_id"
         if !(
             does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
             sink_down_name in prune_zero_sinks_2
         )
             sink_down = Reaction(
                 name = sink_down_name,
-                stoichiometry = Dict("M_$(metabolite)" => -1.0),
+                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
                 lower_bound = 0.0,
                 upper_bound = 1000.0,
             )

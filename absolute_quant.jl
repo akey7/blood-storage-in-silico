@@ -27,7 +27,7 @@ absolute_quant_e_long_df =
 absolute_quant_long_df, absolute_quant_wide_df = union_and_pivot_wide(
     absolute_quant_c_long_df,
     absolute_quant_e_long_df;
-    include_extracellular = false,
+    include_extracellular = true,
 )
 absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
 CSV.write(absolute_quant_long_filename, absolute_quant_long_df)

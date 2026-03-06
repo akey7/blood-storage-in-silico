@@ -56,19 +56,19 @@ println("Wrote $fba_model_metabolites_filename")
 
 @info "Run uFBA jobs"
 
-# ufba_jobs = make_ufba_models_for_additives_and_times(
-#     metabolites_bounds_df,
-#     n_models;
-#     exchanges = default_exchanges(),
-#     flux_bounds_overrides_df = flux_bounds_overrides_df,
-# )
-
 ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_bounds_df,
     n_models;
-    exchanges = as3_exchanges(),
+    exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
+
+# ufba_jobs = make_ufba_models_for_additives_and_times(
+#     metabolites_bounds_df,
+#     n_models;
+#     exchanges = as3_exchanges(),
+#     flux_bounds_overrides_df = flux_bounds_overrides_df,
+# )
 
 case3_sinks_df, case3_sinks_aggregated_df = extract_case3_sinks(ufba_jobs)
 added_case3_sink_ids_df = extract_added_case3_sink_ids(ufba_jobs)
