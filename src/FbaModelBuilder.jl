@@ -60,9 +60,12 @@ function default_exchanges()
 
         # Exchanges added for AS-3
         "R_EX_pi_e",
-        # "R_EX_cit_e",  # Zero flux
-        "R_EX_na1_e",
+        # "R_EX_cit_e",  # Blocked
+        # "R_EX_na1_e",  # Blocked
         "R_EX_cl_e",
+
+        # Unblocking transporters
+        "R_EX_met__L_e",
     ]
     return exchange_reaction_ids
 end
@@ -248,8 +251,9 @@ function create_fba_model(
     println("> Pyrimidine Catabolism")
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
-    println("> Sodium-Potassium Pump Transporters")
-    na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
+    # println("> Sodium-Potassium Pump Transporters")
+    # na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
+    na_k_pump_reaction_ids = []
 
     println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
@@ -410,8 +414,9 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADPH"])
 
-    println("> Setting NaKt load")
-    model.reactions["R_NaKt"].objective_coefficient = 1.0
+    println("> Skipping NaKt load")
+    # println("> Setting NaKt load")
+    # model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     metabolite_ids =
         [replace(metabolite_id, "M_" => "") for (metabolite_id, _) in model.metabolites]
