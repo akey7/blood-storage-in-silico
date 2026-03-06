@@ -60,7 +60,7 @@ function default_exchanges()
 
         # Exchanges added for AS-3
         "R_EX_pi_e",
-        "R_EX_cit_e",
+        # "R_EX_cit_e",  # Zero flux
         "R_EX_na1_e",
         "R_EX_cl_e",
     ]
@@ -296,7 +296,7 @@ function create_fba_model(
         "R_GLY_Cl_2Nat",
 
         # Additional transporters for AS-3 not listed above
-        "R_CITt",  # Zero flux
+        # "R_CITt",  # Zero flux
         "R_Clt",
     ]
 
