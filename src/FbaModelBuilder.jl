@@ -248,7 +248,7 @@ function create_fba_model(
     println("> Pyrimidine Catabolism")
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
-    println("> Sodium-Potassium Pump")
+    println("> Sodium-Potassium Pump Transporters")
     na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
 
     println("> Other reactions")
@@ -296,7 +296,7 @@ function create_fba_model(
         "R_GLY_Cl_2Nat",
 
         # Additional transporters for AS-3 not listed above
-        # "R_CITt",  # Zero flux
+        "R_CITt",  # Zero flux
         "R_Clt",
     ]
 
