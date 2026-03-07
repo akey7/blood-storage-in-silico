@@ -38,14 +38,16 @@ fba_model, fba_model_metabolites_df = create_fba_model(
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
+mapping_additive = "01-Ctrl AS3"
 metabolite_status_df =
-    find_metabolite_matches(fba_model, metabolites_bounds_df, "01-Ctrl AS3", 2)
-add_sinks_for_unmatched_metabolites!(
-    fba_model,
-    metabolite_status_df,
-    "01-Ctrl AS3",
-    nothing,
+    find_metabolite_matches(fba_model, metabolites_bounds_df, mapping_additive, 2)
+mapping_sink_specifications = (
+    metabolite_status_df = metabolite_status_df,
+    additive = mapping_additive,
+    prune_zero_sinks = nothing,
+    sink_opt_outs = nothing,
 )
+add_sinks_for_unmatched_metabolites!(fba_model, mapping_sink_specifications)
 rxn_ids_to_strings_dict, rxn_ids_to_strings_df =
     map_reaction_ids_to_reaction_strings(fba_model)
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")

@@ -441,11 +441,16 @@ Returns a vector of strings with the reaction ids of all sinks added to the mode
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
-    metabolite_status_df::DataFrame,
-    additive::AbstractString,
-    prune_zero_sinks::Union{Vector{String},Nothing} = nothing,
-    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+    sink_specifications::NamedTuple,
+    # metabolite_status_df::DataFrame,
+    # additive::AbstractString,
+    # prune_zero_sinks::Union{Vector{String},Nothing} = nothing,
+    # sink_opt_outs::Union{Vector{String},Nothing} = nothing,
 )
+    metabolite_status_df = sink_specifications.metabolite_status_df
+    additive = sink_specifications.additive
+    prune_zero_sinks = sink_specifications.prune_zero_sinks
+    sink_opt_outs = sink_specifications.sink_opt_outs
     if isnothing(prune_zero_sinks)
         @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
     else
@@ -865,12 +870,13 @@ function make_ufba_models_for_additives_and_times(
             additive,
             final_time,
         )
-        add_sinks_for_unmatched_metabolites!(
-            full_model,
-            metabolite_status_df,
-            additive,
-            nothing,
+        first_sink_specifications = (
+            metabolite_status_df = metabolite_status_df,
+            additive = additive,
+            prune_zero_sinks = nothing,
+            sink_opt_outs = nothing,
         )
+        add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         ct = case_3_constraint_tree!(full_model, metabolite_status_df, additive)
         case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
         if isnothing(case_3_optimize_result_ct)
@@ -885,11 +891,15 @@ function make_ufba_models_for_additives_and_times(
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
         )
+        second_sink_specifications = (
+            metabolite_status_df = metabolite_status_df,
+            additive = additive,
+            prune_zero_sinks = string.(zero_case3_sinks),
+            sink_opt_outs = nothing,
+        )
         added_sink_ids = add_sinks_for_unmatched_metabolites!(
             pruned_model,
-            metabolite_status_df,
-            additive,
-            string.(zero_case3_sinks),
+            second_sink_specifications,
         )
         save_ufba_model_sbml(pruned_model, additive, final_time)
         (
