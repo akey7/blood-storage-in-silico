@@ -13,6 +13,7 @@ using DataFrames
 using DataFramesMeta
 using ThreadsX
 using OrderedCollections
+using Chain
 
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
@@ -43,7 +44,8 @@ export sample_fluxes,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_case3_sink_ids,
-    find_metabolites_with_exchanges
+    find_metabolites_with_exchanges,
+    decompose_sink_id
 
 
 """
@@ -78,13 +80,18 @@ Maps reaction_ids in the given model to human-readable reaction strings specifyi
 1. `model::A.AbstractFBCModel`: The model to create the reaction strings from.
 
 # Returns
-`Dict{String,String}`
+`Tuple{Dict{String,String},DataFrame}`
 
-Returns a dicitonary mapping reaction ids in the model to a human-readable reaction string.
+Returns a tuple with two elements:
+1. A dictionary mapping reaction ids in the model to a human-readable reaction string and
+2. A DataFrame with `:reaction_id` and `:reaction_string` columns.
 """
 function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
-    result = OrderedDict()
+    result_dict = OrderedDict()
+    reaction_ids = []
+    reaction_strings = []
     for rxn_id in sort(string.(keys(model.reactions)))
+        push!(reaction_ids, rxn_id)
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
         lhs = replace(
@@ -102,14 +109,21 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
             "M_" => "",
         )
         if rxn.lower_bound < 0.0 && isapprox(rxn.upper_bound, 0.0)
-            result[rxn_id] = "$lhs <-- $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            rxn_string = "$lhs <-- $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            result_dict[rxn_id] = rxn_string
+            push!(reaction_strings, rxn_string)
         elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
-            result[rxn_id] = "$lhs --> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            rxn_string = "$lhs --> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            result_dict[rxn_id] = rxn_string
+            push!(reaction_strings, rxn_string)
         else
-            result[rxn_id] = "$lhs <-> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            rxn_string = "$lhs <-> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
+            result_dict[rxn_id] = rxn_string
+            push!(reaction_strings, rxn_string)
         end
     end
-    return result
+    result_df = DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    return result_dict, result_df
 end
 
 """
@@ -409,29 +423,33 @@ function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
 end
 
 """
-    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing}; sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
 
 Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
 
 # Arguments
 1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
-2. `metabolite_status_df::DataFrame`: Metabolite measurement availability DataFrame.
-3. `additive::AbstractString`: Additive for measurement search.
-4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
-5. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If a `Vector{String}`, sinks with specified substrings are ensured to not be added to the model. For example, placing `2pg_c` in this list will ensure that NO sink for `2pg_c` will be added. This parameter provides another way to manually opt-out of sinks, rather than simply relying on the automated zero-flux pruning process. If this parameter is `nothing`, no manual pruning is performed in this way.
+2. `NamedTuple`: A named tuple with additional data to use while adding sinks.
+
+The named tuple needs the following elements
+1. `metabolite_status_df`: The metabolite status DataFrame that specifies which metabolites have measurements and therefore do not need sinks.
+2. `additive`: The additive to search for measurements in.
+3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 / Case 3 optimization. If `nothing`, no sinks are removed from this process.
+4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
 
 # Returns
 `Vector{String}`
 
-Returns a vector of strings with the reaction ids of all sinks added to the model.
+Returns a vector of strings with the reaction ids of all sinks finally added to the model after processing the sink specifications.
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
-    metabolite_status_df::DataFrame,
-    additive::AbstractString,
-    prune_zero_sinks::Union{Vector{String},Nothing};
-    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+    sink_specifications::NamedTuple,
 )
+    metabolite_status_df = sink_specifications.metabolite_status_df
+    additive = sink_specifications.additive
+    prune_zero_sinks = sink_specifications.prune_zero_sinks
+    sink_opt_outs = sink_specifications.sink_opt_outs
     if isnothing(prune_zero_sinks)
         @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
     else
@@ -693,7 +711,6 @@ Execute a uFBA job specified by the first argument with the given number of chai
 
 # Arguments
 1. `job`: `NamedTuple` with the following keys: `additive` to specify the additive solution, `final_time` to specify the time point of the simulation, `pruned_model` to specify the model to optimize, `metabolite_bounds_df` rates of chage of metabolites in a DataFrame.
-
 2. `n_chains`: Number of chains to sample. Defaults to 10.
 
 # Returns
@@ -738,20 +755,25 @@ function execute_ufba_job(job, n_chains = 10)
 end
 
 """
-    execute_all_ufba_jobs(jobs, n_chains = 10)
+    execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 
 Executes and aggregates results from all uFBA jobs specified.
 
 # Arguments
 1. `jobs`: Vector of all jobs to be executed.
-2. `n_chains`: The number of sampling chains for each job. Defaults to 10.
+2. `rxn_ids_to_strings_df`: The DataFrame mapping reactions ids to strings made by [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings)
+3. `n_chains = 10`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
 `Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
 
-A tuple of the following three DataFrames: All sampling results, statuses of each attempted sampling job, counts of statuses across all sampling jobs, and per-model blocked reaction ids.
+A tuple of the following four DataFrames: 
+1. All sampling results,
+2. Statuses of each attempted sampling job,
+3. Counts of statuses across all sampling jobs, and
+4. Per-model blocked reaction ids with reaction strings joined in.
 """
-function execute_all_ufba_jobs(jobs, n_chains = 10)
+function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     all_sampling_dfs_1 = map(jobs) do job
         execute_ufba_job(job, n_chains)
     end
@@ -787,7 +809,12 @@ function execute_all_ufba_jobs(jobs, n_chains = 10)
         combine(nrow => :Count)
     end
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
-    return sampling_df, status_df, status_counts_df, blocked_reaction_ids_df
+    joined_blocked_reaction_ids_df = innerjoin(
+        blocked_reaction_ids_df,
+        rxn_ids_to_strings_df,
+        on = :blocked_reaction_id => :reaction_id,
+    )
+    return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
 end
 
 """
@@ -842,12 +869,13 @@ function make_ufba_models_for_additives_and_times(
             additive,
             final_time,
         )
-        add_sinks_for_unmatched_metabolites!(
-            full_model,
-            metabolite_status_df,
-            additive,
-            nothing,
+        first_sink_specifications = (
+            metabolite_status_df = metabolite_status_df,
+            additive = additive,
+            prune_zero_sinks = nothing,
+            sink_opt_outs = nothing,
         )
+        add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         ct = case_3_constraint_tree!(full_model, metabolite_status_df, additive)
         case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
         if isnothing(case_3_optimize_result_ct)
@@ -862,11 +890,15 @@ function make_ufba_models_for_additives_and_times(
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
         )
+        second_sink_specifications = (
+            metabolite_status_df = metabolite_status_df,
+            additive = additive,
+            prune_zero_sinks = string.(zero_case3_sinks),
+            sink_opt_outs = nothing,
+        )
         added_sink_ids = add_sinks_for_unmatched_metabolites!(
             pruned_model,
-            metabolite_status_df,
-            additive,
-            string.(zero_case3_sinks),
+            second_sink_specifications,
         )
         save_ufba_model_sbml(pruned_model, additive, final_time)
         (
@@ -885,6 +917,29 @@ function make_ufba_models_for_additives_and_times(
 end
 
 """
+    decompose_sink_id(sink_id)
+
+Extract the direction and metabolite id from a given sink id/name.
+
+# Arguments
+1. `sink_id`: The id of the sink.
+
+# Returns
+`Tuple{String,String}`
+
+Returns a tuple of metabolite id and direction.
+"""
+function decompose_sink_id(sink_id)
+    sink_str = String(sink_id)
+    metabolite_id = @chain sink_str begin
+        replace("R_UNKNOWN_SK_DOWN_" => "")
+        replace("R_UNKNOWN_SK_UP_" => "")
+    end
+    direction = occursin(sink_str, "UP") ? "up" : "down"
+    return metabolite_id, direction
+end
+
+"""
     extract_case3_sinks(ufba_jobs)
 
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
@@ -893,40 +948,43 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
 
 # Returns
-`Tuple{DataFrame,DataFrame}`
+`DataFrame`
 
 Returns two DataFrames:
 1. Status of unmeasured metabolite sinks for each uFBA job.
-2. Aggregated status of unmeasured metabolites sinks for each uFBA job.
 """
 function extract_case3_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         for zero_case3_sink in ufba_job.zero_case3_sinks
+            metabolite_id, direction = decompose_sink_id(zero_case3_sink)
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
-                sink = zero_case3_sink,
                 status = "zero",
+                metabolite_id = metabolite_id,
+                direction = direction,
+                sink = zero_case3_sink,
             )
             push!(status_rows, row)
         end
         for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
+            metabolite_id, direction = decompose_sink_id(nonzero_case3_sink)
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
-                sink = nonzero_case3_sink,
                 status = "nonzero",
+                metabolite_id = metabolite_id,
+                direction = direction,
+                sink = nonzero_case3_sink,
             )
             push!(status_rows, row)
         end
     end
     status_df = DataFrame(status_rows)
-    status_aggregated_df = @chain status_df begin
-        @groupby(:additive, :final_time, :status)
-        combine(nrow => :count)
-    end
-    return status_df, status_aggregated_df
+    sorted_df =
+        @orderby(status_df, :additive, :final_time, :status, :metabolite_id, :direction)
+    return sorted_df
 end
 
 """
