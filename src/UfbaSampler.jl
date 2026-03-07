@@ -18,6 +18,9 @@ using Chain
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
 
+include("PruningOptimizations.jl")
+using .PruningOptimizations
+
 export sample_fluxes,
     ufba_all_additives_all_times,
     load_metabolite_bounds,
@@ -28,11 +31,8 @@ export sample_fluxes,
     add_sinks_for_unmatched_metabolites!,
     find_metabolite_matches,
     is_metabolite_in_exchange,
-    case_3_constraint_tree!,
     list_objectives_in_model,
-    optimize_case_3,
     display_jump_results,
-    analyze_case_3,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
     map_reaction_ids_to_reaction_strings,
@@ -524,157 +524,6 @@ function list_objectives_in_model(model::A.AbstractFBCModel)
             println("Reaction $id has objective coefficient: $coeff")
         end
     end
-end
-
-@doc raw"""
-    case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
-
-Sets objective in the model's `ConstraintTree` to prune fluxes according to Case 3 in the Bordbar paper.
-
-``\min \sum_{i=1}^{m} \lvert \Delta x_i \rvert + \sum_{j=1}^{n} \lvert v_j \rvert``
-
-Where ``|\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured metabolites and ``|v_j|`` is the magnitude of the reaction fluxes in the network.
-
-# Arguments
-1. `model::A.AbstractFBCModel`: The model in which **the `ConstraintTree` will be mutated**
-
-2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.find_metabolite_matches) to find unmeasured metabolites.
-
-3. `additive::AbstractString`: Additive to search for metabolite measurement availability.
-
-# Returns
-`ConstraintTree`
-
-The mutated `ConstraintTree` modified with the objective for Case 3.
-"""
-function case_3_constraint_tree!(
-    model::A.AbstractFBCModel,
-    metabolite_status_df::DataFrame,
-    additive::AbstractString,
-)
-    ct = flux_balance_constraints(model)
-    flux_ids = collect(keys(ct.fluxes))
-    unfound_metabolites =
-        @rsubset(metabolite_status_df, :status == "not found", :additive == additive)
-    unfound_metabolite_ids = Symbol.(unique(unfound_metabolites.metabolite))
-
-    abs_flux_vars = C.variables(keys = flux_ids, bounds = C.Between(0.0, Inf))
-    ct_flux_pos = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
-        C.Constraint(abs_flux_var.value + flux.value, C.Between(0.0, Inf))
-    end
-    ct_flux_neg = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
-        C.Constraint(abs_flux_var.value - flux.value, C.Between(0.0, Inf))
-    end
-
-    abs_metabolite_vars =
-        C.variables(keys = unfound_metabolite_ids, bounds = C.Between(0.0, Inf))
-    ct_metabolite_pos =
-        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
-            C.Constraint(abs_metabolite_var.value + stoi.value, C.Between(0.0, Inf))
-        end
-    ct_metabolite_neg =
-        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
-            C.Constraint(abs_metabolite_var.value - stoi.value, C.Between(0.0, Inf))
-        end
-
-    ct =
-        ct +
-        C.ConstraintTree(:abs_flux_vars => abs_flux_vars) +
-        C.ConstraintTree(:flux_pos => ct_flux_pos) +
-        C.ConstraintTree(:flux_neg => ct_flux_neg) +
-        C.ConstraintTree(:abs_metabolite_vars => abs_metabolite_vars) +
-        C.ConstraintTree(:metabolite_pos => ct_metabolite_pos) +
-        C.ConstraintTree(:metabolite_neg => ct_metabolite_neg)
-
-    ct.objective = C.Constraint(
-        C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0) +
-        C.sum(a.value for (metabolite_id, a) in abs_metabolite_vars; init = 0.0),
-    )
-
-    return ct
-end
-
-"""
-    optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-
-Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to find zero flux reactions to prune.
-
-# Arguments
-1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
-
-2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
-
-# Returns
-`C.Tree{Float64}`
-
-`C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
-"""
-function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-    @info "Optimizing case 3"
-
-    num_vars = C.variable_count(ct)
-    model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.@variable(model, x[1:num_vars])
-    JuMP.@objective(model, JuMP.MIN_SENSE, C.substitute(objective, x))
-
-    C.traverse(ct) do c
-        b = c.bound
-        if b isa C.EqualTo
-            JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
-        elseif b isa C.Between
-            val = C.substitute(c.value, x)
-            isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
-            isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
-        end
-    end
-
-    JuMP.set_silent(model)
-    JuMP.optimize!(model)
-    if is_solved_and_feasible(model)
-        println("Case 3 optimization success!")
-        result_ct = deepcopy(ct)
-        var_values = JuMP.value.(model[:x])
-        solution_tree = C.substitute_values(result_ct, var_values)
-        return solution_tree
-    else
-        println("OH NO CASE 3 OPTIMIZATION FAILED!")
-        return nothing
-    end
-end
-
-"""
-    function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
-
-Analyze the results of the Case 3 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
-
-# Argument
-1. `case_3_optimize_result::C.Tree{Float64}`: Case 3 optimization result.
-
-# Returns
-`Tuple{Vector{String},Vector{String},DataFrame}`
-
-Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
-"""
-function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
-    zero_case3_sinks = [
-        k for (k, v) in case_3_optimize_result.fluxes if
-        isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
-    ]
-    nonzero_case3_sinks = [
-        k for (k, v) in case_3_optimize_result.fluxes if
-        !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
-    ]
-    sink_status_rows = []
-    for zero_case3_sink in zero_case3_sinks
-        row = (sink = zero_case3_sink, is_non_zero = false)
-        push!(sink_status_rows, row)
-    end
-    for nonzero_case3_sink in nonzero_case3_sinks
-        row = (sink = nonzero_case3_sink, is_non_zero = true)
-        push!(sink_status_rows, row)
-    end
-    sink_status_df = DataFrame(sink_status_rows)
-    return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
 """
