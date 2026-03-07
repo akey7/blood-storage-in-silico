@@ -907,6 +907,19 @@ function make_ufba_models_for_additives_and_times(
     return result
 end
 
+"""
+    decompose_sink_id(sink_id)
+
+Extract the direction and metabolite id from a given sink id/name.
+
+# Arguments
+1. `sink_id`: The id of the sink.
+
+# Returns
+`Tuple{String,String}`
+
+Returns a tuple of metabolite id and direction.
+"""
 function decompose_sink_id(sink_id)
     sink_str = String(sink_id)
     metabolite_id = @chain sink_str begin
