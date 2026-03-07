@@ -443,7 +443,7 @@ function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     metabolite_status_df::DataFrame,
     additive::AbstractString,
-    prune_zero_sinks::Union{Vector{String},Nothing};
+    prune_zero_sinks::Union{Vector{String},Nothing} = nothing,
     sink_opt_outs::Union{Vector{String},Nothing} = nothing,
 )
     if isnothing(prune_zero_sinks)
