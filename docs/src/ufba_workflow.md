@@ -30,6 +30,17 @@ Modules = [BloodStorageInSilico.UfbaSampler]
 Order   = [:function]
 ```
 
+## PruningOptimizations
+
+PruningOptimizations performs optimizations on uFBA models to prune unneeded sinks.
+
+> Bordbar, A. et al. Elucidating dynamic metabolic physiology through network integration of quantitative time-course metabolomics. Sci Rep 7, 46249 (2017).
+
+```@autodocs
+Modules = [BloodStorageInSilico.UfbaSampler.PruningOptimizations]
+Order   = [:function]
+```
+
 ## UfbaSamplerAnalysisAndViz
 
 Because the `UfbaSampler.jl` module was becoming huge, I split the visualization and analysis functions for `UfbaSampler.jl` into their own module.
