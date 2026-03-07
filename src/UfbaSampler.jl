@@ -338,27 +338,35 @@ function find_metabolite_matches(
                 additive = additive,
                 metabolite = short_metabolite_id,
                 status = "not found",
+                lb = missing,
+                ub = missing,
             )
             push!(status_rows, status_row)
             not_found_count += 1
-            # ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
         elseif is_metabolite_in_exchange(model, short_metabolite_id)
+            lb, ub = bounds
             status_row = (
                 additive = additive,
                 metabolite = short_metabolite_id,
                 status = "in exchange",
+                lb = lb,
+                ub = ub,
             )
             in_exchange_count += 1
-            lb, ub = bounds
             if isapprox(lb, 0.0) && isapprox(ub, 0.0)
                 @warn "$additive $short_metabolite_id is fixed at 0.0"
             end
         else
-            status_row =
-                (additive = additive, metabolite = short_metabolite_id, status = "found")
+            lb, ub = bounds
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "found",
+                lb = lb,
+                ub = ub,
+            )
             push!(status_rows, status_row)
             found_count += 1
-            lb, ub = bounds
             if isapprox(lb, 0.0) && isapprox(ub, 0.0)
                 @warn "$additive $short_metabolite_id is fixed at 0.0"
             end
