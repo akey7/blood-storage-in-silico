@@ -21,9 +21,7 @@ Where ``|\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured
 
 # Arguments
 1. `model::A.AbstractFBCModel`: The model in which **the `ConstraintTree` will be mutated**
-
 2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.find_metabolite_matches) to find unmeasured metabolites.
-
 3. `additive::AbstractString`: Additive to search for metabolite measurement availability.
 
 # Returns
@@ -85,7 +83,6 @@ Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to fi
 
 # Arguments
 1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
-
 2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
 
 # Returns
