@@ -423,29 +423,28 @@ function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
 end
 
 """
-    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString, prune_zero_sinks::Union{Vector{String},Nothing}; sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
 
 Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
 
 # Arguments
 1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
-2. `metabolite_status_df::DataFrame`: Metabolite measurement availability DataFrame.
-3. `additive::AbstractString`: Additive for measurement search.
-4. `prune_zero_sinks::Union{Vector{String},Nothing}`: If specified, the provided list of zero flux sinks are not added (pruned) to the model. If `nothing`, no sinks are pruned.
-5. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If a `Vector{String}`, sinks with specified substrings are ensured to not be added to the model. For example, placing `2pg_c` in this list will ensure that NO sink for `2pg_c` will be added. This parameter provides another way to manually opt-out of sinks, rather than simply relying on the automated zero-flux pruning process. If this parameter is `nothing`, no manual pruning is performed in this way.
+2. `NamedTuple`: A named tuple with additional data to use while adding sinks.
+
+The named tuple needs the following elements
+1. `metabolite_status_df`: The metabolite status DataFrame that specifies which metabolites have measurements and therefore do not need sinks.
+2. `additive`: The additive to search for measurements in.
+3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 / Case 3 optimization. If `nothing`, no sinks are removed from this process.
+4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
 
 # Returns
 `Vector{String}`
 
-Returns a vector of strings with the reaction ids of all sinks added to the model.
+Returns a vector of strings with the reaction ids of all sinks finally added to the model after processing the sink specifications.
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
     sink_specifications::NamedTuple,
-    # metabolite_status_df::DataFrame,
-    # additive::AbstractString,
-    # prune_zero_sinks::Union{Vector{String},Nothing} = nothing,
-    # sink_opt_outs::Union{Vector{String},Nothing} = nothing,
 )
     metabolite_status_df = sink_specifications.metabolite_status_df
     additive = sink_specifications.additive
