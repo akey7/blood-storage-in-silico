@@ -164,7 +164,14 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
         string(flux_id) for
         (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))
     ]
+    non_sink_ids = [
+        string(flux_id) for
+        (flux_id, _) in ct.fluxes if !occursin("R_UNKNOWN_SK", string(flux_id))
+    ]
+    println(">>>>>>>>>> SINKS <<<<<<<<<")
     display(first(sink_ids, 10))
+    println(">>>>>>>>>> NORMAL REACTIONS <<<<<<<<<")
+    display(first(non_sink_ids, 10))
 end
 
 end
