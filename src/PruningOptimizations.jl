@@ -8,7 +8,7 @@ using HiGHS
 import AbstractFBCModels as A
 import ConstraintTrees as C
 
-export case_3_constraint_tree!, optimize_case_3, analyze_case_3
+export case_3_constraint_tree!, optimize_case_3, analyze_case_3, case_1_constraint_tree
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -157,5 +157,18 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     sink_status_df = DataFrame(sink_status_rows)
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
+
+# function case_1_constraint_tree(
+#     model::A.AbstractFBCModel,
+#     metabolite_status_df::DataFrame,
+#     additive::AbstractString,
+# )
+#     ct = flux_balance_constraints(model)
+#     flux_ids = collect(keys(ct.fluxes))
+#     unfound_metabolites =
+#         @rsubset(metabolite_status_df, :status == "not found", :additive == additive)
+#     unfound_metabolite_ids = Symbol.(unique(unfound_metabolites.metabolite))
+#     display(first(unfound_metabolites, 10))
+# end
 
 end
