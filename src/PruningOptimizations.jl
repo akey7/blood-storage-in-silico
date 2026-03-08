@@ -161,17 +161,19 @@ end
 function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
     sink_ids = [
-        string(flux_id) for
+        flux_id for
         (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))
     ]
-    non_sink_ids = [
-        string(flux_id) for
-        (flux_id, _) in ct.fluxes if !occursin("R_UNKNOWN_SK", string(flux_id))
-    ]
-    println(">>>>>>>>>> SINKS <<<<<<<<<")
-    display(first(sink_ids, 10))
-    println(">>>>>>>>>> NORMAL REACTIONS <<<<<<<<<")
-    display(first(non_sink_ids, 10))
+    # non_sink_ids = [
+    #     flux_id for
+    #     (flux_id, _) in ct.fluxes if !occursin("R_UNKNOWN_SK", string(flux_id))
+    # ]
+    indicator_bounds = [C.Between(0, 1) for _ in eachindex(sink_ids)]
+    indicator_constraints = :indicators^C.variables(
+        keys = sink_ids,
+        bounds = indicator_bounds
+    )
+    display(indicator_constraints)
 end
 
 end
