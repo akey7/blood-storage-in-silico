@@ -158,17 +158,13 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
-# function case_1_constraint_tree(
-#     model::A.AbstractFBCModel,
-#     metabolite_status_df::DataFrame,
-#     additive::AbstractString,
-# )
-#     ct = flux_balance_constraints(model)
-#     flux_ids = collect(keys(ct.fluxes))
-#     unfound_metabolites =
-#         @rsubset(metabolite_status_df, :status == "not found", :additive == additive)
-#     unfound_metabolite_ids = Symbol.(unique(unfound_metabolites.metabolite))
-#     display(first(unfound_metabolites, 10))
-# end
+function case_1_constraint_tree(model::A.AbstractFBCModel)
+    ct = flux_balance_constraints(model)
+    sink_ids = [
+        string(flux_id) for
+        (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))
+    ]
+    display(first(sink_ids, 10))
+end
 
 end

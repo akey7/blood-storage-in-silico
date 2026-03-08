@@ -2,6 +2,8 @@ include("src/UfbaSampler.jl")
 using .UfbaSampler
 include("src/FbaModelBuilder.jl")
 using .FbaModelBuilder
+include("src/PruningOptimizations.jl")
+using .PruningOptimizations
 
 @info "Metabolite bounds"
 metabolites_bounds_df = load_metabolite_bounds()
@@ -20,3 +22,14 @@ mapping_additive = "01-Ctrl AS3"
 metabolite_status_df =
     find_metabolite_matches(fba_model, metabolites_bounds_df, mapping_additive, 2)
 display(first(metabolite_status_df, 10))
+first_sink_specifications = (
+    metabolite_status_df = metabolite_status_df,
+    additive = mapping_additive,
+    prune_zero_sinks = nothing,
+    sink_opt_outs = nothing,
+)
+first_added_sink_ids = add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
+display(first(first_added_sink_ids, 10))
+
+@info "Make Case 1 constraint tree"
+case_1_constraint_tree(fba_model)
