@@ -169,11 +169,11 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     #     (flux_id, _) in ct.fluxes if !occursin("R_UNKNOWN_SK", string(flux_id))
     # ]
     indicator_bounds = [C.Between(0, 1) for _ in eachindex(sink_ids)]
-    indicator_constraints = :indicators^C.variables(
+    indicator_variables = :indicators^C.variables(
         keys = sink_ids,
-        bounds = indicator_bounds
+        bounds = indicator_bounds,
     )
-    display(indicator_constraints)
+    display(indicator_variables)
 end
 
 end
