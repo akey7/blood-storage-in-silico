@@ -178,7 +178,40 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
         keys = sink_ids,
         bounds = indicator_bounds,
     )
-    display(indicator_variables)
+    new_ct = ct + indicator_variables
+    display(new_ct)
+end
+
+# function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
+#     model = JuMP.Model(optimizer)
+#     JuMP.@variable(model, x[1:C.variable_count(cs)])
+#     JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+#     C.traverse(cs) do c
+#         isnothing(c.bound) || jump_constraint(model, x, c.value, c.bound)
+#     end
+#     JuMP.set_silent(model)
+#     JuMP.optimize!(model)
+#     JuMP.value.(model[:x])
+# end
+
+function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
+    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
+end
+
+function jump_constraint(m, x, v::C.Value, b::C.Between)
+    isinf(b.lower) || JuMP.@constraint(m, C.substitute(v, x) >= b.lower)
+    isinf(b.upper) || JuMP.@constraint(m, C.substitute(v, x) <= b.upper)
+end
+
+function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
+    var = JuMP.@variable(m, integer = true)
+    JuMP.@constraint(m, var >= b.from)
+    JuMP.@constraint(m, var <= b.to)
+    JuMP.@constraint(m, C.substitute(v, x) == var)
+end
+
+function optimize_case_1(ct::C.ConstraintTree, objective::C.LinearValue)
+    
 end
 
 end
