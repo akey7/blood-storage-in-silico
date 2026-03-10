@@ -237,7 +237,8 @@ function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float6
         row = (sink = nonzero_sink, is_non_zero = true)
         push!(sink_status_rows, row)
     end
-    sink_status_df = DataFrame(sink_status_rows)
+    unordered_df = DataFrame(sink_status_rows)
+    sink_status_df = @orderby(unordered_df, :is_non_zero, :sink)
     return zero_sinks, nonzero_sinks, sink_status_df
 end
 

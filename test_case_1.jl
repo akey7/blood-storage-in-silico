@@ -1,3 +1,5 @@
+using CSV
+
 include("src/UfbaSampler.jl")
 using .UfbaSampler
 include("src/FbaModelBuilder.jl")
@@ -35,4 +37,6 @@ display(first(first_added_sink_ids, 10))
 case_1_ct = case_1_constraint_tree(fba_model)
 pruning_optimization_result = optimize_case_1(case_1_ct, case_1_ct.objective.value)
 zero_sinks, nonzero_sinks, sink_status_df = analyze_pruning_optimization(pruning_optimization_result)
+sink_status_filename = joinpath("output", "case1_sinks.csv")
+CSV.write(sink_status_filename, sink_status_df)
 display(first(sink_status_df, 10))
