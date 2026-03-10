@@ -203,8 +203,16 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     end
     JuMP.set_silent(jump_model)
     JuMP.optimize!(jump_model)
-    jump_result = JuMP.value.(jump_model[:x])
-    display(jump_result)
+    if is_solved_and_feasible(jump_model)
+        println("Case 1 optimization success!")
+        result_ct = deepcopy(ct)
+        var_values = JuMP.value.(jump_model[:x])
+        solution_tree = C.substitute_values(result_ct, var_values)
+        return solution_tree
+    else
+        println("OH NO CASE 1 OPTIMIZATION FAILED!")
+        return nothing
+    end
 end
 
 end
