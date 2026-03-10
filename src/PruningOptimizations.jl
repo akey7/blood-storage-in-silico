@@ -9,7 +9,11 @@ import AbstractFBCModels as A
 import ConstraintTrees as C
 
 export case_3_constraint_tree!,
-    optimize_case_3, analyze_case_3, case_1_constraint_tree, optimize_case_1
+    optimize_case_3,
+    analyze_case_3,
+    case_1_constraint_tree,
+    optimize_case_1,
+    analyze_pruning_optimization
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -213,6 +217,28 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         println("OH NO CASE 1 OPTIMIZATION FAILED!")
         return nothing
     end
+end
+
+function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
+    zero_sinks = [
+        k for (k, v) in pruning_optimization_result.fluxes if
+        isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
+    ]
+    nonzero_sinks = [
+        k for (k, v) in pruning_optimization_result.fluxes if
+        !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
+    ]
+    sink_status_rows = []
+    for zero_sink in zero_sinks
+        row = (sink = zero_sink, is_non_zero = false)
+        push!(sink_status_rows, row)
+    end
+    for nonzero_sink in nonzero_sinks
+        row = (sink = nonzero_sink, is_non_zero = true)
+        push!(sink_status_rows, row)
+    end
+    sink_status_df = DataFrame(sink_status_rows)
+    return zero_sinks, nonzero_sinks, sink_status_df
 end
 
 end

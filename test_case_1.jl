@@ -33,5 +33,6 @@ display(first(first_added_sink_ids, 10))
 
 @info "Test case 1 optimization"
 case_1_ct = case_1_constraint_tree(fba_model)
-case_1_result = optimize_case_1(case_1_ct, case_1_ct.objective.value)
-display(case_1_result)
+pruning_optimization_result = optimize_case_1(case_1_ct, case_1_ct.objective.value)
+zero_sinks, nonzero_sinks, sink_status_df = analyze_pruning_optimization(pruning_optimization_result)
+display(first(sink_status_df, 10))
