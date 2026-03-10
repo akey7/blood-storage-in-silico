@@ -10,6 +10,11 @@ import ConstraintTrees as C
 
 export case_3_constraint_tree!, optimize_case_3, analyze_case_3, case_1_constraint_tree
 
+mutable struct IntegerFromTo <: C.Bound
+    from::Int
+    to::Int
+end
+
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
 
@@ -168,7 +173,7 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     #     flux_id for
     #     (flux_id, _) in ct.fluxes if !occursin("R_UNKNOWN_SK", string(flux_id))
     # ]
-    indicator_bounds = [C.Between(0, 1) for _ in eachindex(sink_ids)]
+    indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(sink_ids)]
     indicator_variables = :indicators^C.variables(
         keys = sink_ids,
         bounds = indicator_bounds,
