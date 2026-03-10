@@ -210,12 +210,13 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
     JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
-    # C.traverse(ct) do c
-    #     isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
-    # end
-    # JuMP.set_silent(jump_model)
-    # JuMP.optimize!(jump_model)
-    # display(JuMP.value.(jump_model[:x]))
+    C.traverse(ct) do c
+        isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
+    end
+    JuMP.set_silent(jump_model)
+    JuMP.optimize!(jump_model)
+    jump_result = JuMP.value.(jump_model[:x])
+    display(jump_result)
 end
 
 end
