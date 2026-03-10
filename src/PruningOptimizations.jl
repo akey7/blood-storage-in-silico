@@ -8,7 +8,8 @@ using HiGHS
 import AbstractFBCModels as A
 import ConstraintTrees as C
 
-export case_3_constraint_tree!, optimize_case_3, analyze_case_3, case_1_constraint_tree
+export case_3_constraint_tree!,
+    optimize_case_3, analyze_case_3, case_1_constraint_tree, optimize_case_1
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -174,7 +175,7 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     new_ct.objective = C.Constraint(
         C.sum(new_ct.indicators[Symbol(sink_id)].value for sink_id in sink_ids; init = 0.0),
     )
-    display(new_ct)
+    return new_ct
 end
 
 # function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
@@ -205,8 +206,16 @@ function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
     JuMP.@constraint(m, C.substitute(v, x) == var)
 end
 
-function optimize_case_1(ct::C.ConstraintTree, objective::C.LinearValue)
-
+function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
+    jump_model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
+    # C.traverse(ct) do c
+    #     isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
+    # end
+    # JuMP.set_silent(jump_model)
+    # JuMP.optimize!(jump_model)
+    # display(JuMP.value.(jump_model[:x]))
 end
 
 end

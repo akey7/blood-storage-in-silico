@@ -31,5 +31,6 @@ first_sink_specifications = (
 first_added_sink_ids = add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
 display(first(first_added_sink_ids, 10))
 
-@info "Make Case 1 constraint tree"
-case_1_constraint_tree(fba_model)
+@info "Test case 1 optimization"
+fba_ct = case_1_constraint_tree(fba_model)
+optimize_case_1(fba_ct, fba_ct.objective.value)
