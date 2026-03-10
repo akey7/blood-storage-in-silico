@@ -165,20 +165,15 @@ end
 
 function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
-    sink_ids = [
-        flux_id for
-        (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))
-    ]
-    # non_sink_ids = [
-    #     flux_id for
-    #     (flux_id, _) in ct.fluxes if !occursin("R_UNKNOWN_SK", string(flux_id))
-    # ]
+    sink_ids =
+        [flux_id for (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))]
     indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(sink_ids)]
-    indicator_variables = :indicators^C.variables(
-        keys = sink_ids,
-        bounds = indicator_bounds,
-    )
+    indicator_variables =
+        :indicators^C.variables(keys = sink_ids, bounds = indicator_bounds)
     new_ct = ct + indicator_variables
+    new_ct.objective = C.Constraint(
+        C.sum(new_ct.indicators[Symbol(sink_id)].value for sink_id in sink_ids; init = 0.0),
+    )
     display(new_ct)
 end
 
@@ -211,7 +206,7 @@ function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
 end
 
 function optimize_case_1(ct::C.ConstraintTree, objective::C.LinearValue)
-    
+
 end
 
 end
