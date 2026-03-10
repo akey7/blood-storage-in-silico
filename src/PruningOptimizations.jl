@@ -10,11 +10,6 @@ import ConstraintTrees as C
 
 export case_3_constraint_tree!, optimize_case_3, analyze_case_3, case_1_constraint_tree
 
-mutable struct IntegerFromTo <: C.Bound
-    from::Int
-    to::Int
-end
-
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
 
@@ -161,6 +156,11 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     end
     sink_status_df = DataFrame(sink_status_rows)
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
+end
+
+mutable struct IntegerFromTo <: C.Bound
+    from::Int
+    to::Int
 end
 
 function case_1_constraint_tree(model::A.AbstractFBCModel)
