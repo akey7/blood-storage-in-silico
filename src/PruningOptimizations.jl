@@ -192,7 +192,7 @@ function jump_constraint(m, x, v::C.Value, b::C.Between)
 end
 
 function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
-    var = JuMP.@variable(m, integer = true)
+    var = JuMP.@variable(m, binary = true)
     JuMP.@constraint(m, var >= b.from)
     JuMP.@constraint(m, var <= b.to)
     JuMP.@constraint(m, C.substitute(v, x) == var)
