@@ -88,7 +88,7 @@ Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to fi
 
 # Arguments
 1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
-2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
+2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument, , and accessed as `ct.objective.value` at invocation time.
 
 # Returns
 `C.Tree{Float64}`
@@ -263,6 +263,20 @@ function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
     JuMP.@constraint(m, C.substitute(v, x) == var)
 end
 
+"""
+    optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
+
+Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune.
+
+# Arguments
+1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
+2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument, and accessed as `ct.objective.value` at invocation time.
+
+# Returns
+`C.Tree{Float64}`
+
+`C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
+"""
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
@@ -284,6 +298,19 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     end
 end
 
+"""
+    analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
+
+Analyze the results of the Case 3 or Case 1 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
+
+# Argument
+1. `pruning_optimization_result::C.Tree{Float64}`: Case 3 optimization result.
+
+# Returns
+`Tuple{Vector{String},Vector{String},DataFrame}`
+
+Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
+"""
 function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
     zero_sinks = [
         k for (k, v) in pruning_optimization_result.fluxes if
