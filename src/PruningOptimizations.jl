@@ -10,7 +10,6 @@ import ConstraintTrees as C
 
 export case_3_constraint_tree!,
     optimize_case_3,
-    analyze_case_3,
     case_1_constraint_tree!,
     optimize_case_1,
     analyze_pruning_optimization
@@ -126,41 +125,6 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
         println("OH NO CASE 3 OPTIMIZATION FAILED!")
         return nothing
     end
-end
-
-"""
-    function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
-
-Analyze the results of the Case 3 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
-
-# Argument
-1. `case_3_optimize_result::C.Tree{Float64}`: Case 3 optimization result.
-
-# Returns
-`Tuple{Vector{String},Vector{String},DataFrame}`
-
-Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
-"""
-function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
-    zero_case3_sinks = [
-        k for (k, v) in case_3_optimize_result.fluxes if
-        isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
-    ]
-    nonzero_case3_sinks = [
-        k for (k, v) in case_3_optimize_result.fluxes if
-        !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
-    ]
-    sink_status_rows = []
-    for zero_case3_sink in zero_case3_sinks
-        row = (sink = zero_case3_sink, is_non_zero = false)
-        push!(sink_status_rows, row)
-    end
-    for nonzero_case3_sink in nonzero_case3_sinks
-        row = (sink = nonzero_case3_sink, is_non_zero = true)
-        push!(sink_status_rows, row)
-    end
-    sink_status_df = DataFrame(sink_status_rows)
-    return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
 # A custom ConstratintTrees bound struct used for indicator variables.
