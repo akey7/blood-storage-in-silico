@@ -11,7 +11,7 @@ import ConstraintTrees as C
 export case_3_constraint_tree!,
     optimize_case_3,
     analyze_case_3,
-    case_1_constraint_tree,
+    case_1_constraint_tree!,
     optimize_case_1,
     analyze_pruning_optimization
 
@@ -185,7 +185,7 @@ Creates an objective and associated using the model's `ConstraintTree` to prune 
 
 Returns the modified `ConstraintTree` with the proper objective for optimization.
 """
-function case_1_constraint_tree(model::A.AbstractFBCModel)
+function case_1_constraint_tree!(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
     sink_ids =
         [flux_id for (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))]
