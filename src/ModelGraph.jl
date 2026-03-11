@@ -385,25 +385,27 @@ function dfs_from_metabolite_id(
     max_depth::Int64,
     metabolite_ids_to_skip::Union{Vector{String},Nothing} = nothing,
 )
-    if !haskey(graph_data[:metabolite_ids_to_ints], metabolite_id)
+    metabolite_ids_to_ints = graph_data[:metabolite_ids_to_ints]
+    if !haskey(metabolite_ids_to_ints, metabolite_id)
         throw(KeyError("$metabolite_id not found in graph."))
     end
     metabolite_ids_to_skip0 =
         isnothing(metabolite_ids_to_skip) ? [] : metabolite_ids_to_skip
     for metabolite_id_to_skip ∈ metabolite_ids_to_skip0
-        if !haskey(graph_data[:metabolite_ids_to_ints], metabolite_id_to_skip)
-            throw(KeyError("Skipped $metabolite_id_to_skip not found in graph."))
+        if !haskey(metabolite_ids_to_ints, metabolite_id_to_skip)
+            @warn "$metabolite_id_to_skip was configured to skipped, but was not found in graph. Ignoring."
         end
     end
     skip_vec = [
-        graph_data[:metabolite_ids_to_ints][metabolite_id] for
-        metabolite_id ∈ metabolite_ids_to_skip0
+        metabolite_ids_to_ints[metabolite_id] for
+        metabolite_id ∈ metabolite_ids_to_skip0 if
+        haskey(metabolite_ids_to_ints, metabolite_id)
     ]
     N = graph_data[:N]
     visited = zeros(Int64, N)
     adj_matrix = graph_data[:adj_matrix]
     paths::Vector{Vector{Int64}} = []
-    start_vertex = graph_data[:metabolite_ids_to_ints][metabolite_id]
+    start_vertex = metabolite_ids_to_ints[metabolite_id]
 
     function dfs(vertex::Int64, hop::Int64, current_path::Vector{Any})
         if hop > max_depth
