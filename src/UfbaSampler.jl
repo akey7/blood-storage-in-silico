@@ -36,14 +36,14 @@ export sample_fluxes,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
     map_reaction_ids_to_reaction_strings,
-    extract_case3_sinks,
+    extract_sinks,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
     does_manual_prune_list_match_sink_name,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
-    extract_added_case3_sink_ids,
+    extract_added_sink_ids,
     find_metabolites_with_exchanges,
     decompose_sink_id
 
@@ -695,13 +695,14 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 4. `pruned_model`: The model after pruning.
 5. `sink_status_df`: DataFrame of status of sinks
 6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
-7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
-8. `nonzero_case3_sinks`: Sinks that have non-zero flux
-9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_case3_sinks and non_zero_case3_sinks.
+7. `zero_sinks`: Sinks that have zero flux that were pruned out
+8. `nonzero_sinks`: Sinks that have non-zero flux
+9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
+    pruning_method::Symbol = :case1,
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
@@ -733,13 +734,17 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        ct = case_3_constraint_tree!(full_model, metabolite_status_df, additive)
-        case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
-        if isnothing(case_3_optimize_result_ct)
+        ct =
+            pruning_method == :case1 ? case_1_constraint_tree(full_model) :
+            case_3_constraint_tree!(full_model, metabolite_status_df, additive)
+        prune_optimize_result_ct =
+            pruning_method == :case1 ? optimize_case_1(ct, ct.objective.value) :
+            optimize_case_3(ct, ct.objective.value)
+        if isnothing(prune_optimize_result_ct)
             @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
         end
-        zero_case3_sinks, nonzero_case3_sinks, sink_status_df =
-            analyze_case_3(case_3_optimize_result_ct)
+        zero_sinks, nonzero_sinks, sink_status_df =
+            analyze_pruning_optimization(prune_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
         pruned_model, _ = create_fba_model(
@@ -750,7 +755,7 @@ function make_ufba_models_for_additives_and_times(
         second_sink_specifications = (
             metabolite_status_df = metabolite_status_df,
             additive = additive,
-            prune_zero_sinks = string.(zero_case3_sinks),
+            prune_zero_sinks = string.(zero_sinks),
             sink_opt_outs = nothing,
         )
         added_sink_ids = add_sinks_for_unmatched_metabolites!(
@@ -765,9 +770,10 @@ function make_ufba_models_for_additives_and_times(
             pruned_model = deepcopy(pruned_model),
             sink_status_df = sink_status_df,
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
-            zero_case3_sinks = zero_case3_sinks,
-            nonzero_case3_sinks = nonzero_case3_sinks,
+            zero_sinks = zero_sinks,
+            nonzero_sinks = nonzero_sinks,
             added_sink_ids = added_sink_ids,
+            pruning_method = pruning_method,
         )
     end
     return result
@@ -797,12 +803,12 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_case3_sinks(ufba_jobs)
+    extract_sinks(ufba_jobs)
 
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
 
 # Arguments
-1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
+1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_sinks` properties.
 
 # Returns
 `DataFrame`
@@ -810,30 +816,30 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 Returns two DataFrames:
 1. Status of unmeasured metabolite sinks for each uFBA job.
 """
-function extract_case3_sinks(ufba_jobs)
+function extract_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
-        for zero_case3_sink in ufba_job.zero_case3_sinks
-            metabolite_id, direction = decompose_sink_id(zero_case3_sink)
+        for zero_sink in ufba_job.zero_sinks
+            metabolite_id, direction = decompose_sink_id(zero_sink)
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "zero",
                 metabolite_id = metabolite_id,
                 direction = direction,
-                sink = zero_case3_sink,
+                sink = zero_sink,
             )
             push!(status_rows, row)
         end
-        for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
-            metabolite_id, direction = decompose_sink_id(nonzero_case3_sink)
+        for nonzero_sink in ufba_job.nonzero_sinks
+            metabolite_id, direction = decompose_sink_id(nonzero_sink)
             row = (
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "nonzero",
                 metabolite_id = metabolite_id,
                 direction = direction,
-                sink = nonzero_case3_sink,
+                sink = nonzero_sink,
             )
             push!(status_rows, row)
         end
@@ -845,7 +851,7 @@ function extract_case3_sinks(ufba_jobs)
 end
 
 """
-    extract_added_case3_sink_ids(jobs)
+    extract_added_sink_ids(jobs)
 
 Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
 
@@ -864,16 +870,18 @@ Returns a DataFrame with the following columns:
 
 The DataFrame is sorted by additive, final time. metabolite id, and direction.
 """
-function extract_added_case3_sink_ids(jobs)
+function extract_added_sink_ids(jobs)
     rows = []
     for job in jobs
         additive = job.additive
         final_time = job.final_time
+        pruning_method = job.pruning_method
         for added_sink_id in job.added_sink_ids
             direction = contains(added_sink_id, "UP") ? "up" : "down"
             metabolite_id =
                 replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
             row = (
+                pruning_method = pruning_method,
                 additive = additive,
                 final_time = final_time,
                 metabolite_id = metabolite_id,
