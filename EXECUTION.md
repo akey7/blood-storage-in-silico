@@ -192,3 +192,7 @@ There are other scripts that you can run in this project. They are outside of th
 ### `fba_model_builder.jl`: Sanity check on a single FBA model
 
 This script creates a single FBA model and samples the fluxes as a quick sanity check when building models in `FbaModelBuilder.jl`. If it doesn't report any errors, that is good news! However, try the models in the uFBA workflow to check for errors before you run the victory lap.
+
+### `case1_vs_case3.jl`: Compare Case 1 to Case 3 sink pruning
+
+This script creates an FBA model and compares pruning sinks with Case 1 vs Case 3 pruning. It outputs three `.csv` files to the `output/case1_vs_case3` folder, and the column and file names are self-explanatory.

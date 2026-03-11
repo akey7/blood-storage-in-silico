@@ -126,6 +126,7 @@ end
 
 # A custom ConstratintTrees bound struct used for indicator variables.
 # From: https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+# See also https://jump.dev/JuMP.jl/stable/tutorials/linear/sudoku/#Mixed-integer-linear-programming-formulation
 mutable struct IntegerFromTo <: C.Bound
     from::Int
     to::Int
@@ -204,7 +205,7 @@ end
 """
     jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
 
-Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
+Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP)). See also [Mixed integer linear programming formulation](https://jump.dev/JuMP.jl/stable/tutorials/linear/sudoku/#Mixed-integer-linear-programming-formulation)
 
 Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
 
