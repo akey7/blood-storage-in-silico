@@ -473,13 +473,14 @@ function prepare_measurements_and_sinks_report_df(
     unsorted_report_df = DataFrame(rows)
     report_df = @orderby(unsorted_report_df, :additive, :final_time, :fba_metabolite_id)
     report_by_model_df = @chain report_df begin
+        @rtransform(:has_at_least_one_sink = :has_up_sink || :has_down_sink)
+        @rtransform(:no_measure_no_sink = !:is_measured && !:has_at_least_one_sink)
         @groupby(:additive, :final_time)
         @combine(
             :n_fba_metabolites = length(unique(:fba_metabolite_id)),
-            :n_measured_metabolites = sum(:is_measured),
-            :n_without_sinks = sum(.!(:has_up_sink .| :has_down_sink)),
-            :n_up_sinks = sum(:has_up_sink),
-            :n_down_sinks = sum(:has_down_sink)
+            :n_measured = sum(:is_measured),
+            :n_at_least_one_sink = sum(:has_at_least_one_sink),
+            :n_no_measure_no_sink = sum(:no_measure_no_sink),
         )
         @orderby(:additive, :final_time)
     end
