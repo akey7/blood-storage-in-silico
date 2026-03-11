@@ -30,13 +30,15 @@ first_sink_specifications = (
     prune_zero_sinks = nothing,
     sink_opt_outs = nothing,
 )
-first_added_sink_ids = add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
+first_added_sink_ids =
+    add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
 display(first(first_added_sink_ids, 10))
 
-@info "Test case 1 optimization"
-case_1_ct = case_1_constraint_tree(fba_model)
-pruning_optimization_result = optimize_case_1(case_1_ct, case_1_ct.objective.value)
-zero_sinks, nonzero_sinks, sink_status_df = analyze_pruning_optimization(pruning_optimization_result)
-sink_status_filename = joinpath("output", "case1_sinks.csv")
-CSV.write(sink_status_filename, sink_status_df)
-display(first(sink_status_df, 10))
+@info "Case 1 optimization"
+case1_ct = case_1_constraint_tree!(fba_model)
+case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
+case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
+    analyze_pruning_optimization(case1_pruning_optimization_result)
+case1_sink_status_filename = joinpath("output", "case1_vs_case3", "case1_sinks.csv")
+CSV.write(case1_sink_status_filename, case1_sink_status_df)
+display(first(case1_sink_status_df, 10))
