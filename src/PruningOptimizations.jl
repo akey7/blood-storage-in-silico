@@ -166,7 +166,7 @@ end
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
 
-Taken from https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
 
 Sets an `EqualTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
 
@@ -186,7 +186,7 @@ end
 """
     jump_constraint(m, x, v::C.Value, b::C.Between)
 
-Taken from https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
 
 Sets an `Between` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
 
@@ -207,7 +207,7 @@ end
 """
     jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
 
-Mostly taken (with a modification enforcing a binary rather than an integer variable on the first line) from https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+Mostly taken (with a modification enforcing a binary rather than an integer variable on the first line) from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
 
 Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
 
