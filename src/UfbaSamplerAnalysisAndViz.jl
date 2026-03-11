@@ -417,10 +417,9 @@ The second DataFrame contains the following columns:
 1. `additive`: Additive of the model
 2. `final_time`: Final time of the model
 3. `n_fba_metabolites`: Number of metabolites in the model
-4. `n_measured_metabolites`: The number of metabolites that have absolute quant measurements.
-5. `n_without_sinks`: Number of metabolites without sinks
-6. `n_up_sinks`: Number of up sinks
-7. `n_down_sinks`: Number of down sinks
+4. `n_measured`: The number of metabolites that have absolute quant approximations.
+5. `n_at_least_one_sink`: The number of metabolites that have one or both sinks.
+6. `n_no_measure_no_sink`: The number of metabolites that have neither an absolute quant approximation nor any sinks.
 """
 function prepare_measurements_and_sinks_report_df(
     absolute_quant_long_df,
