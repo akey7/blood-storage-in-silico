@@ -18,6 +18,9 @@ using Chain
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
 
+include("PruningOptimizations.jl")
+using .PruningOptimizations
+
 export sample_fluxes,
     ufba_all_additives_all_times,
     load_metabolite_bounds,
@@ -28,22 +31,19 @@ export sample_fluxes,
     add_sinks_for_unmatched_metabolites!,
     find_metabolite_matches,
     is_metabolite_in_exchange,
-    case_3_constraint_tree!,
     list_objectives_in_model,
-    optimize_case_3,
     display_jump_results,
-    analyze_case_3,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
     map_reaction_ids_to_reaction_strings,
-    extract_case3_sinks,
+    extract_sinks,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
     does_manual_prune_list_match_sink_name,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
-    extract_added_case3_sink_ids,
+    extract_added_sink_ids,
     find_metabolites_with_exchanges,
     decompose_sink_id
 
@@ -338,27 +338,35 @@ function find_metabolite_matches(
                 additive = additive,
                 metabolite = short_metabolite_id,
                 status = "not found",
+                lb = missing,
+                ub = missing,
             )
             push!(status_rows, status_row)
             not_found_count += 1
-            # ct.flux_stoichiometry[k].bound = C.Between(-1000.0, 1000.0)
         elseif is_metabolite_in_exchange(model, short_metabolite_id)
+            lb, ub = bounds
             status_row = (
                 additive = additive,
                 metabolite = short_metabolite_id,
                 status = "in exchange",
+                lb = lb,
+                ub = ub,
             )
             in_exchange_count += 1
-            lb, ub = bounds
             if isapprox(lb, 0.0) && isapprox(ub, 0.0)
                 @warn "$additive $short_metabolite_id is fixed at 0.0"
             end
         else
-            status_row =
-                (additive = additive, metabolite = short_metabolite_id, status = "found")
+            lb, ub = bounds
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "found",
+                lb = lb,
+                ub = ub,
+            )
             push!(status_rows, status_row)
             found_count += 1
-            lb, ub = bounds
             if isapprox(lb, 0.0) && isapprox(ub, 0.0)
                 @warn "$additive $short_metabolite_id is fixed at 0.0"
             end
@@ -526,157 +534,6 @@ function list_objectives_in_model(model::A.AbstractFBCModel)
     end
 end
 
-@doc raw"""
-    case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
-
-Sets objective in the model's `ConstraintTree` to prune fluxes according to Case 3 in the Bordbar paper.
-
-``\min \sum_{i=1}^{m} \lvert \Delta x_i \rvert + \sum_{j=1}^{n} \lvert v_j \rvert``
-
-Where ``|\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured metabolites and ``|v_j|`` is the magnitude of the reaction fluxes in the network.
-
-# Arguments
-1. `model::A.AbstractFBCModel`: The model in which **the `ConstraintTree` will be mutated**
-
-2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.find_metabolite_matches) to find unmeasured metabolites.
-
-3. `additive::AbstractString`: Additive to search for metabolite measurement availability.
-
-# Returns
-`ConstraintTree`
-
-The mutated `ConstraintTree` modified with the objective for Case 3.
-"""
-function case_3_constraint_tree!(
-    model::A.AbstractFBCModel,
-    metabolite_status_df::DataFrame,
-    additive::AbstractString,
-)
-    ct = flux_balance_constraints(model)
-    flux_ids = collect(keys(ct.fluxes))
-    unfound_metabolites =
-        @rsubset(metabolite_status_df, :status == "not found", :additive == additive)
-    unfound_metabolite_ids = Symbol.(unique(unfound_metabolites.metabolite))
-
-    abs_flux_vars = C.variables(keys = flux_ids, bounds = C.Between(0.0, Inf))
-    ct_flux_pos = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
-        C.Constraint(abs_flux_var.value + flux.value, C.Between(0.0, Inf))
-    end
-    ct_flux_neg = C.zip(abs_flux_vars, ct.fluxes) do abs_flux_var, flux
-        C.Constraint(abs_flux_var.value - flux.value, C.Between(0.0, Inf))
-    end
-
-    abs_metabolite_vars =
-        C.variables(keys = unfound_metabolite_ids, bounds = C.Between(0.0, Inf))
-    ct_metabolite_pos =
-        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
-            C.Constraint(abs_metabolite_var.value + stoi.value, C.Between(0.0, Inf))
-        end
-    ct_metabolite_neg =
-        C.zip(abs_metabolite_vars, ct.flux_stoichiometry) do abs_metabolite_var, stoi
-            C.Constraint(abs_metabolite_var.value - stoi.value, C.Between(0.0, Inf))
-        end
-
-    ct =
-        ct +
-        C.ConstraintTree(:abs_flux_vars => abs_flux_vars) +
-        C.ConstraintTree(:flux_pos => ct_flux_pos) +
-        C.ConstraintTree(:flux_neg => ct_flux_neg) +
-        C.ConstraintTree(:abs_metabolite_vars => abs_metabolite_vars) +
-        C.ConstraintTree(:metabolite_pos => ct_metabolite_pos) +
-        C.ConstraintTree(:metabolite_neg => ct_metabolite_neg)
-
-    ct.objective = C.Constraint(
-        C.sum(a.value for (rxn_id, a) in abs_flux_vars; init = 0.0) +
-        C.sum(a.value for (metabolite_id, a) in abs_metabolite_vars; init = 0.0),
-    )
-
-    return ct
-end
-
-"""
-    optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-
-Create a JuMP model with the given Case 3 `ConstraintTree` and optimize it to find zero flux reactions to prune.
-
-# Arguments
-1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
-
-2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument.
-
-# Returns
-`C.Tree{Float64}`
-
-`C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
-"""
-function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
-    @info "Optimizing case 3"
-
-    num_vars = C.variable_count(ct)
-    model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.@variable(model, x[1:num_vars])
-    JuMP.@objective(model, JuMP.MIN_SENSE, C.substitute(objective, x))
-
-    C.traverse(ct) do c
-        b = c.bound
-        if b isa C.EqualTo
-            JuMP.@constraint(model, C.substitute(c.value, x) == b.equal_to)
-        elseif b isa C.Between
-            val = C.substitute(c.value, x)
-            isinf(b.lower) || JuMP.@constraint(model, val >= b.lower)
-            isinf(b.upper) || JuMP.@constraint(model, val <= b.upper)
-        end
-    end
-
-    JuMP.set_silent(model)
-    JuMP.optimize!(model)
-    if is_solved_and_feasible(model)
-        println("Case 3 optimization success!")
-        result_ct = deepcopy(ct)
-        var_values = JuMP.value.(model[:x])
-        solution_tree = C.substitute_values(result_ct, var_values)
-        return solution_tree
-    else
-        println("OH NO CASE 3 OPTIMIZATION FAILED!")
-        return nothing
-    end
-end
-
-"""
-    function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
-
-Analyze the results of the Case 3 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
-
-# Argument
-1. `case_3_optimize_result::C.Tree{Float64}`: Case 3 optimization result.
-
-# Returns
-`Tuple{Vector{String},Vector{String},DataFrame}`
-
-Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
-"""
-function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
-    zero_case3_sinks = [
-        k for (k, v) in case_3_optimize_result.fluxes if
-        isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
-    ]
-    nonzero_case3_sinks = [
-        k for (k, v) in case_3_optimize_result.fluxes if
-        !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
-    ]
-    sink_status_rows = []
-    for zero_case3_sink in zero_case3_sinks
-        row = (sink = zero_case3_sink, is_non_zero = false)
-        push!(sink_status_rows, row)
-    end
-    for nonzero_case3_sink in nonzero_case3_sinks
-        row = (sink = nonzero_case3_sink, is_non_zero = true)
-        push!(sink_status_rows, row)
-    end
-    sink_status_df = DataFrame(sink_status_rows)
-    return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
-end
-
 """
     count_n_all_zero_fluxes(samples_df)
 
@@ -838,13 +695,15 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 4. `pruned_model`: The model after pruning.
 5. `sink_status_df`: DataFrame of status of sinks
 6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
-7. `zero_case3_sinks`: Sinks that have zero flux that were pruned out
-8. `nonzero_case3_sinks`: Sinks that have non-zero flux
-9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_case3_sinks and non_zero_case3_sinks.
+7. `zero_sinks`: Sinks that have zero flux that were pruned out
+8. `nonzero_sinks`: Sinks that have non-zero flux
+9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
+10. `pruning_method`: The pruning method, either `:case1` or `:case3`
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
+    pruning_method::Symbol = :case1,
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
@@ -876,13 +735,17 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        ct = case_3_constraint_tree!(full_model, metabolite_status_df, additive)
-        case_3_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
-        if isnothing(case_3_optimize_result_ct)
+        ct =
+            pruning_method == :case1 ? case_1_constraint_tree!(full_model) :
+            case_3_constraint_tree!(full_model, metabolite_status_df, additive)
+        prune_optimize_result_ct =
+            pruning_method == :case1 ? optimize_case_1(ct, ct.objective.value) :
+            optimize_case_3(ct, ct.objective.value)
+        if isnothing(prune_optimize_result_ct)
             @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
         end
-        zero_case3_sinks, nonzero_case3_sinks, sink_status_df =
-            analyze_case_3(case_3_optimize_result_ct)
+        zero_sinks, nonzero_sinks, sink_status_df =
+            analyze_pruning_optimization(prune_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
         pruned_model, _ = create_fba_model(
@@ -893,7 +756,7 @@ function make_ufba_models_for_additives_and_times(
         second_sink_specifications = (
             metabolite_status_df = metabolite_status_df,
             additive = additive,
-            prune_zero_sinks = string.(zero_case3_sinks),
+            prune_zero_sinks = string.(zero_sinks),
             sink_opt_outs = nothing,
         )
         added_sink_ids = add_sinks_for_unmatched_metabolites!(
@@ -908,9 +771,10 @@ function make_ufba_models_for_additives_and_times(
             pruned_model = deepcopy(pruned_model),
             sink_status_df = sink_status_df,
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
-            zero_case3_sinks = zero_case3_sinks,
-            nonzero_case3_sinks = nonzero_case3_sinks,
+            zero_sinks = zero_sinks,
+            nonzero_sinks = nonzero_sinks,
             added_sink_ids = added_sink_ids,
+            pruning_method = pruning_method,
         )
     end
     return result
@@ -940,12 +804,12 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_case3_sinks(ufba_jobs)
+    extract_sinks(ufba_jobs)
 
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
 
 # Arguments
-1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_case3_sinks` properties.
+1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_sinks` properties.
 
 # Returns
 `DataFrame`
@@ -953,30 +817,33 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 Returns two DataFrames:
 1. Status of unmeasured metabolite sinks for each uFBA job.
 """
-function extract_case3_sinks(ufba_jobs)
+function extract_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
-        for zero_case3_sink in ufba_job.zero_case3_sinks
-            metabolite_id, direction = decompose_sink_id(zero_case3_sink)
+        pruning_method = ufba_job.pruning_method
+        for zero_sink in ufba_job.zero_sinks
+            metabolite_id, direction = decompose_sink_id(zero_sink)
             row = (
+                pruning_method = pruning_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "zero",
                 metabolite_id = metabolite_id,
                 direction = direction,
-                sink = zero_case3_sink,
+                sink = zero_sink,
             )
             push!(status_rows, row)
         end
-        for nonzero_case3_sink in ufba_job.nonzero_case3_sinks
-            metabolite_id, direction = decompose_sink_id(nonzero_case3_sink)
+        for nonzero_sink in ufba_job.nonzero_sinks
+            metabolite_id, direction = decompose_sink_id(nonzero_sink)
             row = (
+                pruning_method = pruning_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "nonzero",
                 metabolite_id = metabolite_id,
                 direction = direction,
-                sink = nonzero_case3_sink,
+                sink = nonzero_sink,
             )
             push!(status_rows, row)
         end
@@ -988,7 +855,7 @@ function extract_case3_sinks(ufba_jobs)
 end
 
 """
-    extract_added_case3_sink_ids(jobs)
+    extract_added_sink_ids(jobs)
 
 Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
 
@@ -999,24 +866,27 @@ Extract and return a DataFrame of the sinks added to each uFBA model from the fi
 `DataFrame`
 
 Returns a DataFrame with the following columns:
-1. `additive`: The additive
-2. `final_time`: Final time of the model
-3. `metabolite_id`: The metabolite the sink is for
-4. `direction`: up or down depending on the direction of the sink.
-5. `added_sink_id`: The reaction id of the corresponding sink.
+1. `pruning_method`: The pruning method (either `:case1` or `:case3`)
+2. `additive`: The additive
+3. `final_time`: Final time of the model
+4. `metabolite_id`: The metabolite the sink is for
+5. `direction`: up or down depending on the direction of the sink.
+6. `added_sink_id`: The reaction id of the corresponding sink.
 
 The DataFrame is sorted by additive, final time. metabolite id, and direction.
 """
-function extract_added_case3_sink_ids(jobs)
+function extract_added_sink_ids(jobs)
     rows = []
     for job in jobs
         additive = job.additive
         final_time = job.final_time
+        pruning_method = job.pruning_method
         for added_sink_id in job.added_sink_ids
             direction = contains(added_sink_id, "UP") ? "up" : "down"
             metabolite_id =
                 replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
             row = (
+                pruning_method = pruning_method,
                 additive = additive,
                 final_time = final_time,
                 metabolite_id = metabolite_id,
