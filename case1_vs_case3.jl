@@ -56,11 +56,19 @@ CSV.write(case3_sink_status_filename, case3_sink_status_df)
 println("Wrote $case3_sink_status_filename")
 
 @info "Comparing Case 1 vs Case 3 sinks"
-left_df = @rename(case1_sink_status_df, :case1_non_zero = :is_non_zero)
-right_df = @rename(case3_sink_status_df, :case3_non_zero = :is_non_zero)
+left_df = @chain case1_sink_status_df begin
+    @rename(:case1_non_zero = :is_non_zero)
+    @rtransform(:sink_name = replace(string(:sink), "R_UNKNOWN_" => ""))
+    @select(:sink_name, :case1_non_zero)
+end
+right_df = @chain case3_sink_status_df begin
+    @rename(:case3_non_zero = :is_non_zero)
+    @rtransform(:sink_name = replace(string(:sink), "R_UNKNOWN_" => ""))
+    @select(:sink_name, :case3_non_zero)
+end
 comparison_df = @chain left_df begin
-    outerjoin(right_df; on = :sink)
-    @orderby(:sink)
+    outerjoin(right_df; on = :sink_name)
+    @orderby(:sink_name)
 end
 comparison_filename = joinpath("output", "case1_vs_case3", "case1_vs_case3_comparison.csv")
 CSV.write(comparison_filename, comparison_df)
