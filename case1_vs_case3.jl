@@ -68,6 +68,7 @@ right_df = @chain case3_sink_status_df begin
 end
 comparison_df = @chain left_df begin
     outerjoin(right_df; on = :sink_name)
+    @rtransform(:case1_case3_different = :case1_non_zero != :case3_non_zero)
     @orderby(:sink_name)
 end
 comparison_filename = joinpath("output", "case1_vs_case3", "case1_vs_case3_comparison.csv")
