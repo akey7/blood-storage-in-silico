@@ -207,7 +207,7 @@ end
 """
     jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
 
-Mostly taken (with a modification enforcing a binary rather than an integer variable on the first line) from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
+Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
 
 Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
 
@@ -221,7 +221,8 @@ Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch fun
 The specified JuMP constraint.
 """
 function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
-    var = JuMP.@variable(m, binary = true)
+    # var = JuMP.@variable(m, binary = true)  # Appears to generate same results as integer = true setup
+    var = JuMP.@variable(m, integer = true)
     JuMP.@constraint(m, var >= b.from)
     JuMP.@constraint(m, var <= b.to)
     JuMP.@constraint(m, C.substitute(v, x) == var)
