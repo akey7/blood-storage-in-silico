@@ -1,4 +1,6 @@
 using CSV
+using DataFrames
+using DataFramesMeta
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -52,3 +54,14 @@ case3_zero_sinks, case3_nonzero_sinks, case3_sink_status_df =
 case3_sink_status_filename = joinpath("output", "case1_vs_case3", "case3_sinks.csv")
 CSV.write(case3_sink_status_filename, case3_sink_status_df)
 println("Wrote $case3_sink_status_filename")
+
+@info "Comparing Case 1 vs Case 3 sinks"
+left_df = @rename(case1_sink_status_df, :case1_non_zero = :is_non_zero)
+right_df = @rename(case3_sink_status_df, :case3_non_zero = :is_non_zero)
+comparison_df = @chain left_df begin
+    outerjoin(right_df; on = :sink)
+    @orderby(:sink)
+end
+comparison_filename = joinpath("output", "case1_vs_case3", "case1_vs_case3_comparison.csv")
+CSV.write(comparison_filename, comparison_df)
+println("Wrote $comparison_filename")
