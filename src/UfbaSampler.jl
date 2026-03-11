@@ -819,9 +819,11 @@ Returns two DataFrames:
 function extract_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
+        pruning_method = ufba_job.pruning_method
         for zero_sink in ufba_job.zero_sinks
             metabolite_id, direction = decompose_sink_id(zero_sink)
             row = (
+                pruning_method = pruning_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "zero",
@@ -834,6 +836,7 @@ function extract_sinks(ufba_jobs)
         for nonzero_sink in ufba_job.nonzero_sinks
             metabolite_id, direction = decompose_sink_id(nonzero_sink)
             row = (
+                pruning_method = pruning_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "nonzero",
