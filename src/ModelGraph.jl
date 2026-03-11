@@ -357,7 +357,7 @@ end
 """
     dfs_from_metabolite_id(graph_data::Dict{Symbol,Any}, metabolite_id::String, max_depth::Int64, metabolite_ids_to_skip::Union{Vector{String},Nothing})
 
-Perform a depth-first search of the metabolic network starting from the given metabolite_id and limited to max_depth through the network.
+Perform a depth-first search of the metabolic network starting from the given metabolite_id and limited to max_depth through the network. Prints a warning if a metabolite that does not exist is requested to be skipped.
 
 # Returns
 `Dict{Symbol,Any}`
@@ -374,10 +374,6 @@ A dictionary with the following keys:
 2. `metabolite_id::String`: The metabolite_id to start from.
 3. `max_depth::Int64`: Max number of reactions to traverse through the network.
 4.  `metabolite_ids_to_skip::Union{Vector{String},Nothing}`: If specified, a list of metabolite ids not to traverse in the DFS. Defaults to `nothing`, which will traverse everything.
-
-# Throws
-`KeyError`
-Throws a `KeyError` if the `metabolite_id` is not found in the graph.
 """
 function dfs_from_metabolite_id(
     graph_data::Dict{Symbol,Any},
