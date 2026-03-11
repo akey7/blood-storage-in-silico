@@ -9,10 +9,7 @@ import AbstractFBCModels as A
 import ConstraintTrees as C
 
 export case_3_constraint_tree!,
-    optimize_case_3,
-    case_1_constraint_tree!,
-    optimize_case_1,
-    analyze_pruning_optimization
+    optimize_case_3, case_1_constraint_tree!, optimize_case_1, analyze_pruning_optimization
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
