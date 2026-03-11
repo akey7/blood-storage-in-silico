@@ -18,7 +18,7 @@ export case_3_constraint_tree!,
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
 
-Sets objective in the model's `ConstraintTree` to prune fluxes according to Case 3 in the Bordbar paper.
+Creates an objective and associated using the the model's `ConstraintTree` to prune fluxes according to Case 3 in the Bordbar (2016) paper.
 
 ``\min \sum_{i=1}^{m} \lvert \Delta x_i \rvert + \sum_{j=1}^{n} \lvert v_j \rvert``
 
@@ -163,11 +163,28 @@ function analyze_case_3(case_3_optimize_result::C.Tree{Float64})
     return zero_case3_sinks, nonzero_case3_sinks, sink_status_df
 end
 
+# A custom ConstratintTrees bound struct used for indicator variables.
+# From: https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
 mutable struct IntegerFromTo <: C.Bound
     from::Int
     to::Int
 end
 
+@doc raw"""
+    case_1_constraint_tree(model::A.AbstractFBCModel)
+
+Creates an objective and associated using the model's `ConstraintTree` to prune fluxes according to Case 1 in the Bordbar (2016) paper.
+
+``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
+
+# Arguments
+1. `model::A.AbstractFBCModel`: Model with the `ConstraintTree`
+
+# Returns
+`ConstraintTree`
+
+Returns the modified `ConstraintTree` with the proper objective for optimization.
+"""
 function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
     sink_ids =
