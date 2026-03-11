@@ -698,6 +698,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 7. `zero_sinks`: Sinks that have zero flux that were pruned out
 8. `nonzero_sinks`: Sinks that have non-zero flux
 9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
+10. `pruning_method`: The pruning method, either `:case1` or `:case3`
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -865,11 +866,12 @@ Extract and return a DataFrame of the sinks added to each uFBA model from the fi
 `DataFrame`
 
 Returns a DataFrame with the following columns:
-1. `additive`: The additive
-2. `final_time`: Final time of the model
-3. `metabolite_id`: The metabolite the sink is for
-4. `direction`: up or down depending on the direction of the sink.
-5. `added_sink_id`: The reaction id of the corresponding sink.
+1. `pruning_method`: The pruning method (either `:case1` or `:case3`)
+2. `additive`: The additive
+3. `final_time`: Final time of the model
+4. `metabolite_id`: The metabolite the sink is for
+5. `direction`: up or down depending on the direction of the sink.
+6. `added_sink_id`: The reaction id of the corresponding sink.
 
 The DataFrame is sorted by additive, final time. metabolite id, and direction.
 """
