@@ -199,15 +199,63 @@ function case_1_constraint_tree!(model::A.AbstractFBCModel)
     return new_ct
 end
 
+"""
+    jump_constraint(m, x, v::C.Value, b::C.EqualTo)
+
+Taken from https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+
+Sets an `EqualTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
+
+# Arguments
+1. `m`: JuMP model
+2. `x`: Reference to variable on which constraint will be set.
+3. `v::C.Value`: Value to set the constraint to
+4. `b::C.EqualTo`: The `C.EqualTo` bound
+
+# Returns
+The specified JuMP constraint
+"""
 function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
     JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
 end
 
+"""
+    jump_constraint(m, x, v::C.Value, b::C.Between)
+
+Taken from https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+
+Sets an `Between` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
+
+# Arguments
+1. `m`: JuMP model
+2. `x`: Reference to variable on which constraint will be set.
+3. `v::C.Value`: Value to set the constraint to
+4. `b::C.Between`: The `C.Between` bound
+
+# Returns
+The specified JuMP constraint
+"""
 function jump_constraint(m, x, v::C.Value, b::C.Between)
     isinf(b.lower) || JuMP.@constraint(m, C.substitute(v, x) >= b.lower)
     isinf(b.upper) || JuMP.@constraint(m, C.substitute(v, x) <= b.upper)
 end
 
+"""
+    jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
+
+Mostly taken (with a modification enforcing a binary rather than an integer variable on the first line) from https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
+
+Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
+
+# Arguments
+1. `m`: JuMP model
+2. `x`: Reference to variable on which constraint will be set.
+3. `v::C.Value`: Value to set the constraint to
+4. `b::C.IntegerFromTo`: The `C.Between` bound
+
+# Returns
+The specified JuMP constraint.
+"""
 function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
     var = JuMP.@variable(m, binary = true)
     JuMP.@constraint(m, var >= b.from)
