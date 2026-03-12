@@ -289,15 +289,21 @@ Analyze the results of the Case 3 or Case 1 optimization to make lists of of sin
 # Returns
 `Tuple{Vector{String},Vector{String},DataFrame}`
 
-Tuple of reaction ids for zero flux Case 3 sinks, non-zero flux Case 3 sinks, and a status DataFrame for manual inspection.
+Tuple of reaction ids for zero flux sinks, non-zero flux sinks, and a status DataFrame for manual inspection.
 """
-function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
+function analyze_pruning_optimization(
+    pruning_optimization_result::C.Tree{Float64},
+    pruning_optimization::Symbol = :case1,
+)
+    pruning_data =
+        pruning_optimization == :case1 ? pruning_optimization_result.indicators :
+        pruning_optimization_result.fluxes
     zero_sinks = [
-        k for (k, v) in pruning_optimization_result.fluxes if
+        k for (k, v) in pruning_data if
         isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
     nonzero_sinks = [
-        k for (k, v) in pruning_optimization_result.fluxes if
+        k for (k, v) in pruning_data if
         !isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")
     ]
     sink_status_rows = []
@@ -308,6 +314,11 @@ function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float6
     for nonzero_sink in nonzero_sinks
         row = (sink = nonzero_sink, is_non_zero = true)
         push!(sink_status_rows, row)
+    end
+    n_nonzero_sinks = length(nonzero_sinks)
+    n_zero_sinks = length(zero_sinks)
+    if n_nonzero_sinks < 1 && n_zero_sinks > 0
+        @warn "Empty nonzero sinks, $n_zero_sinks zero sinks"
     end
     unordered_df = DataFrame(sink_status_rows)
     sink_status_df = @orderby(unordered_df, :is_non_zero, :sink)
