@@ -151,29 +151,35 @@ function case_1_constraint_tree!(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
     sink_ids =
         [flux_id for (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))]
+    indicator_ids = [Symbol("indicator_$id") for id in sink_ids]
+    coupling_ids = [Symbol("coupling_$id") for id in sink_ids]
     indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(sink_ids)]
     indicator_variables =
-        :indicators^C.variables(keys = sink_ids, bounds = indicator_bounds)
+        :indicators^C.variables(keys = indicator_ids, bounds = indicator_bounds)
     indicator_ct = ct + indicator_variables
     BIG_M = 1000.0
     coupling_constraints =
         :coupling^C.ConstraintTree(
-            id => C.ConstraintTree(
+            coupling_id => C.ConstraintTree(
                 :upper => C.Constraint(
-                    indicator_ct.fluxes[id].value -
-                    BIG_M * indicator_ct.indicators[id].value,
+                    indicator_ct.fluxes[sink_id].value -
+                    BIG_M * indicator_ct.indicators[indicator_id].value,
                     (-Inf, 0.0),
                 ),
                 :lower => C.Constraint(
-                    indicator_ct.fluxes[id].value +
-                    BIG_M * indicator_ct.indicators[id].value,
+                    indicator_ct.fluxes[sink_id].value +
+                    BIG_M * indicator_ct.indicators[indicator_id].value,
                     (0.0, Inf),
                 ),
-            ) for id in sink_ids
+            ) for (sink_id, indicator_id, coupling_id) in
+            zip(sink_ids, indicator_ids, coupling_ids)
         )
     new_ct = indicator_ct + coupling_constraints
     new_ct.objective = C.Constraint(
-        sum((new_ct.indicators[id].value for id in sink_ids), init = C.LinearValue(0.0)),
+        sum(
+            (new_ct.indicators[indicator_id].value for indicator_id in indicator_ids),
+            init = C.LinearValue(0.0),
+        ),
     )
     return new_ct
 end
@@ -258,6 +264,7 @@ Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to fi
 `C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
 """
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
+    display(ct.indicators)
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
     JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
