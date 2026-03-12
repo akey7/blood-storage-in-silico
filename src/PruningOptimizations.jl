@@ -154,9 +154,26 @@ function case_1_constraint_tree!(model::A.AbstractFBCModel)
     indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(sink_ids)]
     indicator_variables =
         :indicators^C.variables(keys = sink_ids, bounds = indicator_bounds)
-    new_ct = ct + indicator_variables
+    indicator_ct = ct + indicator_variables
+    BIG_M = 1000.0
+    coupling_constraints =
+        :coupling^C.ConstraintTree(
+            id => C.ConstraintTree(
+                :upper => C.Constraint(
+                    indicator_ct.fluxes[id].value -
+                    BIG_M * indicator_ct.indicators[id].value,
+                    (-Inf, 0.0),
+                ),
+                :lower => C.Constraint(
+                    indicator_ct.fluxes[id].value +
+                    BIG_M * indicator_ct.indicators[id].value,
+                    (0.0, Inf),
+                ),
+            ) for id in sink_ids
+        )
+    new_ct = indicator_ct + coupling_constraints
     new_ct.objective = C.Constraint(
-        C.sum(new_ct.indicators[Symbol(sink_id)].value for sink_id in sink_ids; init = 0.0),
+        sum((new_ct.indicators[id].value for id in sink_ids), init = C.LinearValue(0.0)),
     )
     return new_ct
 end
