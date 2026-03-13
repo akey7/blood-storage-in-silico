@@ -151,9 +151,16 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
     sink_ids =
         [flux_id for (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))]
-    indicator_ids = [Symbol("indicator_$id") for id in sink_ids]
-    coupling_ids = [Symbol("coupling_$id") for id in sink_ids]
-    indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(sink_ids)]
+
+    # indicator_ids = [Symbol("indicator_$id") for id in sink_ids]
+    # coupling_ids = [Symbol("coupling_$id") for id in sink_ids]
+
+    indicator_ids =
+        [Symbol(replace(string(id), "R_UNKNOWN" => "indicator")) for id in sink_ids]
+    coupling_ids =
+        [Symbol(replace(string(id), "R_UNKNOWN" => "coupling")) for id in sink_ids]
+
+    indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(indicator_ids)]
     indicator_variables =
         :indicators^C.variables(keys = indicator_ids, bounds = indicator_bounds)
     indicator_ct = ct + indicator_variables
@@ -297,13 +304,8 @@ Analyze the results of the Case 3 or Case 1 optimization to make lists of of sin
 
 Tuple of reaction ids for zero flux sinks, non-zero flux sinks, and a status DataFrame for manual inspection.
 """
-function analyze_pruning_optimization(
-    pruning_optimization_result::C.Tree{Float64},
-    pruning_optimization::Symbol = :case1,
-)
-    pruning_data =
-        pruning_optimization == :case1 ? pruning_optimization_result.indicators :
-        pruning_optimization_result.fluxes
+function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
+    pruning_data = pruning_optimization_result.fluxes
     zero_sinks = [
         k for (k, v) in pruning_data if
         isapprox(v, 0.0) && contains(string(k), "R_UNKNOWN_SK")

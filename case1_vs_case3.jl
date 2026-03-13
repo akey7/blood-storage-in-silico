@@ -39,10 +39,15 @@ display(first(first_added_sink_ids, 10))
 
 @info "Case 1 optimization"
 case1_ct = case_1_constraint_tree(fba_model)
-add_metabolite_bounds_to_constraint_tree!(case1_ct, metabolite_bounds_df, additive, final_time)
+add_metabolite_bounds_to_constraint_tree!(
+    case1_ct,
+    metabolite_bounds_df,
+    additive,
+    final_time,
+)
 case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
 case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
-    analyze_pruning_optimization(case1_pruning_optimization_result, :case1)
+    analyze_pruning_optimization(case1_pruning_optimization_result)
 case1_sink_status_filename = joinpath("output", "case1_vs_case3", "case1_sinks.csv")
 CSV.write(case1_sink_status_filename, case1_sink_status_df)
 println("Wrote $case1_sink_status_filename")
@@ -50,10 +55,15 @@ println("Wrote $case1_sink_status_filename")
 @info "Case 3 optimization"
 case3_additive = "01-Ctrl AS3"
 case3_ct = case_3_constraint_tree(fba_model, metabolite_status_df, case3_additive)
-add_metabolite_bounds_to_constraint_tree!(case3_ct, metabolite_bounds_df, additive, final_time)
+add_metabolite_bounds_to_constraint_tree!(
+    case3_ct,
+    metabolite_bounds_df,
+    additive,
+    final_time,
+)
 case3_pruning_optimization_result = optimize_case_3(case3_ct, case3_ct.objective.value)
 case3_zero_sinks, case3_nonzero_sinks, case3_sink_status_df =
-    analyze_pruning_optimization(case3_pruning_optimization_result, :case3)
+    analyze_pruning_optimization(case3_pruning_optimization_result)
 case3_sink_status_filename = joinpath("output", "case1_vs_case3", "case3_sinks.csv")
 CSV.write(case3_sink_status_filename, case3_sink_status_df)
 println("Wrote $case3_sink_status_filename")
