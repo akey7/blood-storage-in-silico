@@ -197,7 +197,7 @@ function add_metabolite_bounds_to_constraint_tree!(
 end
 
 function print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
-    function walk(tree, path="")
+    function walk(tree, path = "")
         for (key, node) in pairs(tree)
             current_path = isempty(path) ? string(key) : "$path.$key"
             if node isa C.Constraint
