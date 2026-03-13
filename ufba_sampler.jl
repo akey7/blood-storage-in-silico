@@ -6,6 +6,8 @@ include("src/UfbaSampler.jl")
 using .UfbaSampler
 include("src/FbaModelBuilder.jl")
 using .FbaModelBuilder
+include("src/MetaboliteBounds.jl")
+using .MetaboliteBounds
 
 metabolites_bounds_df = load_metabolite_bounds()
 

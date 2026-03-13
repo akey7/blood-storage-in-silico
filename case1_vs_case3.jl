@@ -8,6 +8,8 @@ include("src/FbaModelBuilder.jl")
 using .FbaModelBuilder
 include("src/PruningOptimizations.jl")
 using .PruningOptimizations
+include("src/MetaboliteBounds.jl")
+using .MetaboliteBounds
 
 @info "Metabolite bounds"
 metabolites_bounds_df = load_metabolite_bounds()
