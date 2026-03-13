@@ -167,8 +167,8 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
         ind_id = Symbol("ind_", id)
         v = full_ct.fluxes[id].value
         z = full_ct.indicators[ind_id].value
-        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-Inf, 0.0))
-        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, Inf))
+        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
+        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
     end
     final_ct = full_ct + :coupling^couplings
 
