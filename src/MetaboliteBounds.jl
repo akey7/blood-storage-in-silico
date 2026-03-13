@@ -174,8 +174,10 @@ function add_metabolite_bounds_to_constraint_tree!(
     ct::C.ConstraintTree,
     metabolite_bounds_df::DataFrame,
     additive::String,
-    final_time::Int64,
+    final_time::Int64;
+    metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
 )
+    metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         bounds = query_metabolite_bounds(
@@ -184,7 +186,7 @@ function add_metabolite_bounds_to_constraint_tree!(
             short_metabolite_id,
             final_time,
         )
-        if isnothing(bounds)
+        if isnothing(bounds) || short_metabolite_id ∉ metabolites_to_ignore_2
             ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
         else
             lb, ub = bounds
