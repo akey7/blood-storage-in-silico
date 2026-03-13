@@ -151,15 +151,10 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
     sink_ids =
         [flux_id for (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))]
-
-    # indicator_ids = [Symbol("indicator_$id") for id in sink_ids]
-    # coupling_ids = [Symbol("coupling_$id") for id in sink_ids]
-
     indicator_ids =
         [Symbol(replace(string(id), "R_UNKNOWN" => "indicator")) for id in sink_ids]
     coupling_ids =
         [Symbol(replace(string(id), "R_UNKNOWN" => "coupling")) for id in sink_ids]
-
     indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(indicator_ids)]
     indicator_variables =
         :indicators^C.variables(keys = indicator_ids, bounds = indicator_bounds)
