@@ -313,7 +313,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         for (name, con) in jump_constraints
             if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
                JuMP.MOI.IN_CONFLICT
-                println("  - $name")
+                println(" - $con")
             end
         end
         error("Optimization failed: Model is infeasible.")
