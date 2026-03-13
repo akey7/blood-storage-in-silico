@@ -41,3 +41,6 @@ output/
 
 # Ignore log files
 *.log
+
+# Ignore saved JuMP model files
+output/*.lp
