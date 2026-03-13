@@ -325,10 +325,11 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         return C.substitute_values(ct, values_dict)
     elseif status == JuMP.MOI.DUAL_INFEASIBLE
         println("--- Model is $status ---")
-        if JuMP.has_values(jump_model) && result_count(jump_model) > 1
-            println("There are some values in the model, so the model likely has something unbounded. Here is what we know")
-            for idx in 1:result_count(jump_model)
-                println(JuMP.value(idx))
+        println("There are some values in the model, so the model likely has something unbounded. Here is what we know")
+        for (tree_idx, jump_var_ref) in jump_vars
+            val = JuMP.value(jump_var_ref)
+            if abs(val) > 1e-6
+                println("  Tree Index [$tree_idx]: $val")
             end
         end
         error("Optimization failed: Model is infeasible.")
