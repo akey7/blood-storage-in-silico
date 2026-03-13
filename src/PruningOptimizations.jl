@@ -215,6 +215,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
     JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
     jump_vars = Dict{Int,JuMP.VariableRef}()
+
     function register_var!(idx::Int)
         if !haskey(jump_vars, idx)
             jump_vars[idx] = JuMP.@variable(jump_model)
@@ -317,6 +318,10 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
         values_dict = Dict(idx => JuMP.value(v) for (idx, v) in jump_vars)
         return C.substitute_values(ct, values_dict)
+    elseif status == JuMP.MOI.DUAL_INFEASIBLE && JuMP.has_values(jump_model)
+        println("--- Model is $status ---")
+        println("There are some values in the model, so the model is likely unbounded.")
+        error("Optimization failed: Model is infeasible.")
     elseif status == JuMP.MOI.INFEASIBLE
         println("--- Model is Infeasible. Starting Conflict Analysis ---")
         JuMP.compute_conflict!(jump_model)
