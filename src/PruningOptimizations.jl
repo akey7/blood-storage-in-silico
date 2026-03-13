@@ -144,7 +144,7 @@ Creates an objective and associated using the model's `ConstraintTree` to prune 
 ``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
 
 # Arguments
-1. `model::A.AbstractFBCModel`: Model with the `ConstraintTree`
+1. `model::A.AbstractFBCModel`: Model to extract the `ConstraintTree` from.
 
 # Returns
 `ConstraintTree`
