@@ -149,45 +149,36 @@ Creates an objective and associated using the model's `ConstraintTree` to prune 
 # Returns
 `ConstraintTree`
 
-Returns the modified `ConstraintTree` with the proper objective for optimization.
+Returns a new `ConstraintTree` derived from the given model with the proper objective for optimization.
 """
 function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
-    sink_ids =
-        [flux_id for (flux_id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(flux_id))]
-    indicator_ids =
-        [Symbol(replace(string(id), "R_UNKNOWN" => "indicator")) for id in sink_ids]
-    coupling_ids =
-        [Symbol(replace(string(id), "R_UNKNOWN" => "coupling")) for id in sink_ids]
-    indicator_bounds = [IntegerFromTo(0, 1) for _ in eachindex(indicator_ids)]
-    indicator_variables =
-        :indicators^C.variables(keys = indicator_ids, bounds = indicator_bounds)
-    indicator_ct = ct + indicator_variables
-    BIG_M = 1000.0
-    coupling_constraints =
-        :coupling^C.ConstraintTree(
-            coupling_id => C.ConstraintTree(
-                :upper => C.Constraint(
-                    indicator_ct.fluxes[sink_id].value -
-                    BIG_M * indicator_ct.indicators[indicator_id].value,
-                    (-Inf, 0.0),
-                ),
-                :lower => C.Constraint(
-                    indicator_ct.fluxes[sink_id].value +
-                    BIG_M * indicator_ct.indicators[indicator_id].value,
-                    (0.0, Inf),
-                ),
-            ) for (sink_id, indicator_id, coupling_id) in
-            zip(sink_ids, indicator_ids, coupling_ids)
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
+    indicator_vars =
+        :indicators^C.variables(
+            keys = [Symbol("ind_", id) for id in sink_ids],
+            bounds = [C.Between(0, 1) for _ in sink_ids], # Ensure these are treated as integers by the solver interface!
         )
-    new_ct = indicator_ct + coupling_constraints
-    new_ct.objective = C.Constraint(
-        sum(
-            (new_ct.indicators[indicator_id].value for indicator_id in indicator_ids),
-            init = C.LinearValue(0.0),
-        ),
+    full_ct = ct + indicator_vars
+    BIG_M = 1000.0
+    couplings = C.ConstraintTree()
+    for id in sink_ids
+        ind_id = Symbol("ind_", id)
+        v = full_ct.fluxes[id].value
+        z = full_ct.indicators[ind_id].value
+        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-Inf, 0.0))
+        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, Inf))
+    end
+    final_ct = full_ct + :coupling^couplings
+
+    # # Force the first sink to always be on so that at least one indicator is 1
+    # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
+
+    final_ct.objective = C.Constraint(
+        sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
+        nothing, # No bound, this is an objective
     )
-    return new_ct
+    return final_ct
 end
 
 """
@@ -242,51 +233,176 @@ Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch fun
 1. `m`: JuMP model
 2. `x`: Reference to variable on which constraint will be set.
 3. `v::C.Value`: Value to set the constraint to
-4. `b::C.IntegerFromTo`: The `C.Between` bound
+4. `b::C.IntegerFromTo`: The `IntegerFromTo` bound
 
 # Returns
 The specified JuMP constraint.
 """
 function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
     # var = JuMP.@variable(m, binary = true)  # Appears to generate same results as integer = true setup
-    var = JuMP.@variable(m, integer = true)
+    # var = JuMP.@variable(m, integer = true)
+    var = JuMP.@variable(m)
+    JuMP.set_integer(var)
     JuMP.@constraint(m, var >= b.from)
     JuMP.@constraint(m, var <= b.to)
     JuMP.@constraint(m, C.substitute(v, x) == var)
 end
 
+
+# function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
+#     jump_model = JuMP.Model(HiGHS.Optimizer)
+#     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+#     JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
+#     C.traverse(ct) do c
+#         isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
+#     end
+#     jump_model_filename = joinpath("output", "debug_model.lp")
+#     write_to_file(jump_model, jump_model_filename)
+#     JuMP.set_silent(jump_model)
+#     JuMP.optimize!(jump_model)
+#     if is_solved_and_feasible(jump_model)
+#         println("Case 1 optimization success!")
+#         result_ct = deepcopy(ct)
+#         var_values = JuMP.value.(jump_model[:x])
+#         solution_tree = C.substitute_values(result_ct, var_values)
+#         return solution_tree
+#     else
+#         println("OH NO CASE 1 OPTIMIZATION FAILED!")
+#         return nothing
+#     end
+# end
+
 """
     optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
 
-Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune.
+Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune. If the model is infeasible, attempts to list constraints that make the model infeasible. To help with potential debugging, writes the JuMP model diagnostics to `output/debug_model.lp`
+
+This function contains multiple inner functions to help with translating `ConstraintTree` constraints to JuMP constraints:
+1. `register_var!()`: Makes a new JuMP variable
+2. `find_all_indices!()`: Safely find indices by iterating keys only.
+3. `process_tree!()`: Traverse `ConstraintTree` to find variable definitions and apply bounds
+4. `to_jump()`: Helper to convert `C.Value` to JuMP `AffExpr`
+5. `add_constraints!()`: Add Constraints recursively from the `ConstraintTree`
 
 # Arguments
-1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 3 objective.
+1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 1 objective.
 2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument, and accessed as `ct.objective.value` at invocation time.
 
 # Returns
 `C.Tree{Float64}`
 
-`C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
+`C.Tree{Float64}` with the optimization results substituted in. These results can then be used to prune a model.
 """
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     jump_model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
-    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
-    C.traverse(ct) do c
-        isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
+    JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
+    JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
+    jump_vars = Dict{Int,JuMP.VariableRef}()
+    function register_var!(idx::Int)
+        if !haskey(jump_vars, idx)
+            jump_vars[idx] = JuMP.@variable(jump_model)
+        end
     end
-    JuMP.set_silent(jump_model)
+
+    function find_all_indices!(val)
+        val isa C.Value || return
+        for idx in keys(val.idxs)
+            register_var!(idx)
+        end
+    end
+
+    function process_tree!(subtree)
+        subtree isa C.ConstraintTree || return
+        for (name, entry) in subtree
+            if entry isa C.Constraint
+                find_all_indices!(entry.value)
+            elseif entry isa C.ConstraintTree
+                process_tree!(entry)
+            elseif hasproperty(entry, :index) && hasproperty(entry, :bound)
+                idx = entry.index
+                register_var!(idx)
+                v = jump_vars[idx]
+                bound = entry.bound
+                if bound isa C.IntegerFromTo
+                    JuMP.set_lower_bound(v, Float64(bound.lower))
+                    JuMP.set_upper_bound(v, Float64(bound.upper))
+                    JuMP.set_integer(v)
+                elseif bound isa C.Between
+                    JuMP.set_lower_bound(v, bound.lower)
+                    JuMP.set_upper_bound(v, bound.upper)
+                else
+                    bound_type = typeof(bound)
+                    @error "Case 1 optimization: unknown bound type $bound_type for $v, stopping"
+                end
+            end
+        end
+    end
+
+    find_all_indices!(objective)
+    process_tree!(ct)
+
+    function to_jump(val::C.Value)
+        expr = JuMP.AffExpr(0.0)
+        for idx in keys(val.idxs)
+            coeff = val.idxs[idx]
+            JuMP.add_to_expression!(expr, coeff, jump_vars[idx])
+        end
+        return expr
+    end
+
+    jump_constraints = Dict{String,JuMP.ConstraintRef}()
+
+    function add_constraints!(subtree, prefix = "")
+        subtree isa C.ConstraintTree || return
+        for (name, entry) in subtree
+            full_name = isempty(prefix) ? string(name) : "$(prefix).$(name)"
+            if entry isa C.Constraint && string(name) != "objective"
+                expr = to_jump(entry.value)
+                b = entry.bound
+
+                if b isa C.Between
+                    jump_constraints[full_name] = JuMP.@constraint(
+                        jump_model,
+                        b.lower <= expr <= b.upper,
+                        base_name=full_name
+                    )
+                elseif b isa Float64
+                    jump_constraints[full_name] =
+                        JuMP.@constraint(jump_model, expr == b, base_name=full_name)
+                elseif b isa C.EqualTo
+                    jump_constraints[full_name] =
+                        JuMP.@constraint(jump_model, expr == b.equal_to, base_name=full_name)
+                else
+                    constraint_type = typeof(b)
+                    @error "Case 1 optimization: unknown constraint type $constraint_type for $full_name"
+                end
+            elseif entry isa C.ConstraintTree
+                add_constraints!(entry, full_name)
+            end
+        end
+    end
+    add_constraints!(ct)
+    JuMP.@objective(jump_model, Min, to_jump(objective))
+    jump_model_filename = joinpath("output", "debug_model.lp")
+    write_to_file(jump_model, jump_model_filename)
     JuMP.optimize!(jump_model)
-    if is_solved_and_feasible(jump_model)
-        println("Case 1 optimization success!")
-        result_ct = deepcopy(ct)
-        var_values = JuMP.value.(jump_model[:x])
-        solution_tree = C.substitute_values(result_ct, var_values)
-        return solution_tree
+    status = JuMP.termination_status(jump_model)
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        values_dict = Dict(idx => JuMP.value(v) for (idx, v) in jump_vars)
+        return C.substitute_values(ct, values_dict)
+    elseif status == JuMP.MOI.INFEASIBLE
+        println("--- Model is Infeasible. Starting Conflict Analysis ---")
+        JuMP.compute_conflict!(jump_model)
+        println("The following constraints contribute to the conflict:")
+        for (name, con) in jump_constraints
+            if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
+               JuMP.MOI.IN_CONFLICT
+                println("  - $name")
+            end
+        end
+        error("Optimization failed: Model is infeasible.")
     else
-        println("OH NO CASE 1 OPTIMIZATION FAILED!")
-        return nothing
+        error("Optimization failed with status: $status")
     end
 end
 
