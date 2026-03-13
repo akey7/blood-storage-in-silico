@@ -232,6 +232,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
 
     function process_tree!(subtree)
         subtree isa C.ConstraintTree || return
+        MAX_BOUND = 1000.0
         for (name, entry) in subtree
             if entry isa C.Constraint
                 find_all_indices!(entry.value)
@@ -248,8 +249,10 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
                     # JuMP.set_integer(v)
                     JuMP.set_binary(v)
                 elseif bound isa C.Between
-                    JuMP.set_lower_bound(v, bound.lower)
-                    JuMP.set_upper_bound(v, bound.upper)
+                    bound_lower = isinf(bound.lower) ? -MAX_BOUND : bound.lower
+                    bound_upper = isinf(bound.upper) ? MAX_BOUND : bound.upper
+                    JuMP.set_lower_bound(v, bound_lower)
+                    JuMP.set_upper_bound(v, bound_upper)
                 else
                     bound_type = typeof(bound)
                     @error "Case 1 optimization: unknown bound type $bound_type for $v, stopping"
