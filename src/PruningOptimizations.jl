@@ -204,8 +204,8 @@ This function contains multiple inner functions to help with translating `Constr
 """
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     jump_model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
-    JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
+    # JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
+    # JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
     jump_vars = Dict{Int,JuMP.VariableRef}()
     function register_var!(idx::Int)
         if !haskey(jump_vars, idx)
