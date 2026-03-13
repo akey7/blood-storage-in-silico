@@ -280,8 +280,11 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
                     jump_constraints[full_name] =
                         JuMP.@constraint(jump_model, expr == b, base_name=full_name)
                 elseif b isa C.EqualTo
-                    jump_constraints[full_name] =
-                        JuMP.@constraint(jump_model, expr == b.equal_to, base_name=full_name)
+                    jump_constraints[full_name] = JuMP.@constraint(
+                        jump_model,
+                        expr == b.equal_to,
+                        base_name=full_name
+                    )
                 elseif b isa IntegerFromTo
                     jump_constraints[full_name] = JuMP.@constraint(
                         jump_model,
