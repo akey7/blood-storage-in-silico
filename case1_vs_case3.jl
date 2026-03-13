@@ -54,11 +54,12 @@ case1_ct = case_1_constraint_tree(fba_model)
 # )
 @info "Case 1: Optimize constraint tree"
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
-case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
-nonzero_indicator_ids = check_case_1_optimization_results(case1_pruning_optimization_result)
-display(first(nonzero_indicator_ids, 10))
+case1_optimization_tree = optimize_case_1(case1_ct, case1_ct.objective.value)
+inspect_results(case1_optimization_tree)
+# nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
+# display(first(nonzero_indicator_ids, 10))
 # case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
-#     analyze_pruning_optimization(case1_pruning_optimization_result)
+#     analyze_pruning_optimization(case1_optimization_tree)
 # case1_sink_status_filename = joinpath("output", "case1_vs_case3", "case1_sinks.csv")
 # CSV.write(case1_sink_status_filename, case1_sink_status_df)
 # println("Wrote $case1_sink_status_filename")

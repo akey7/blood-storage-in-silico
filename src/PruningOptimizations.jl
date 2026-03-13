@@ -14,7 +14,8 @@ export case_3_constraint_tree,
     optimize_case_1,
     analyze_pruning_optimization,
     check_case_1_optimization_results,
-    list_non_zeros
+    list_non_zeros,
+    inspect_results
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -322,9 +323,14 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
         values_dict = Dict(idx => JuMP.value(v) for (idx, v) in jump_vars)
         return C.substitute_values(ct, values_dict)
-    elseif status == JuMP.MOI.DUAL_INFEASIBLE && JuMP.has_values(jump_model)
+    elseif status == JuMP.MOI.DUAL_INFEASIBLE
         println("--- Model is $status ---")
-        println("There are some values in the model, so the model likely has something unbounded.")
+        if JuMP.has_values(jump_model) && result_count(jump_model) > 1
+            println("There are some values in the model, so the model likely has something unbounded. Here is what we know")
+            for idx in 1:result_count(jump_model)
+                println(JuMP.value(idx))
+            end
+        end
         error("Optimization failed: Model is infeasible.")
     elseif status == JuMP.MOI.INFEASIBLE
         println("--- Model is Infeasible. Starting Conflict Analysis ---")
@@ -344,18 +350,19 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     end
 end
 
-# function list_non_zeros(tree, prefix="")
-#     for (name, entry) in tree
-#         path = isempty(prefix) ? string(name) : "$prefix.$name"
-#         if entry isa Float64
-#             if abs(entry) > 1e-6
-#                 println("$path: $entry")
-#             end
-#         elseif entry isa C.Tree
-#             list_non_zeros(entry, path)
-#         end
-#     end
-# end
+function inspect_results(tree, prefix="", threshold=1e-6)
+    # Check if the current node is a leaf (Float64)
+    if tree isa Float64
+        if abs(tree) > threshold
+            println("$prefix: $tree")
+        end
+        return
+    end
+    for (name, subtree) in tree
+        new_prefix = isempty(prefix) ? string(name) : "$prefix.$name"
+        inspect_results(subtree, new_prefix, threshold)
+    end
+end
 
 """
     analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
