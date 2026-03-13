@@ -157,7 +157,7 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     indicator_vars =
         :indicators^C.variables(
             keys = [Symbol("ind_", id) for id in sink_ids],
-            bounds = [C.Between(0, 1) for _ in sink_ids], # Ensure these are treated as integers by the solver interface!
+            bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
         )
     full_ct = ct + indicator_vars
     BIG_M = 1000.0
@@ -281,6 +281,12 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
                 elseif b isa C.EqualTo
                     jump_constraints[full_name] =
                         JuMP.@constraint(jump_model, expr == b.equal_to, base_name=full_name)
+                elseif b isa IntegerFromTo
+                    jump_constraints[full_name] = JuMP.@constraint(
+                        jump_model,
+                        b.from <= expr <= b.to,
+                        base_name=full_name
+                    )
                 else
                     constraint_type = typeof(b)
                     @error "Case 1 optimization: unknown constraint type $constraint_type for $full_name"
