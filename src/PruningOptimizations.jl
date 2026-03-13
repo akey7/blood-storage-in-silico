@@ -178,6 +178,14 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
         sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
         nothing, # No bound, this is an objective
     )
+
+    for (id, flux) in final_ct.fluxes
+        if flux.bound == (-Inf, Inf)
+            println("Cleanup: $id was unbounded, setting to finite bounds")
+            flux.bound = C.Between(-1000.0, 1000.0)
+        end
+    end
+
     return final_ct
 end
 
@@ -204,8 +212,8 @@ This function contains multiple inner functions to help with translating `Constr
 """
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     jump_model = JuMP.Model(HiGHS.Optimizer)
-    # JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
-    # JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
+    JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
+    JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
     jump_vars = Dict{Int,JuMP.VariableRef}()
     function register_var!(idx::Int)
         if !haskey(jump_vars, idx)
@@ -301,7 +309,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         end
     end
     add_constraints!(ct)
-    JuMP.@objective(jump_model, Min, to_jump(objective))
+    JuMP.@objective(jump_model, JuMP.MIN_SENSE, to_jump(objective))
     jump_model_filename = joinpath("output", "debug_model.lp")
     write_to_file(jump_model, jump_model_filename)
     JuMP.optimize!(jump_model)
@@ -321,7 +329,9 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         end
         error("Optimization failed: Model is infeasible.")
     else
-        error("Optimization failed with status: $status")
+        error(
+            "Optimization failed with the following status and no further information is available: $status",
+        )
     end
 end
 
