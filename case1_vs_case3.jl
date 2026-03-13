@@ -45,6 +45,7 @@ add_metabolite_bounds_to_constraint_tree!(
     additive,
     final_time,
 )
+print_metabolite_bounds_on_constraint_tree(case1_ct)
 case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
 case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
     analyze_pruning_optimization(case1_pruning_optimization_result)

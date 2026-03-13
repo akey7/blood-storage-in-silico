@@ -10,7 +10,8 @@ using COBREXA
 export load_metabolite_bounds,
     query_metabolite_bounds,
     find_metabolite_matches,
-    add_metabolite_bounds_to_constraint_tree!
+    add_metabolite_bounds_to_constraint_tree!,
+    print_metabolite_bounds_on_constraint_tree
 
 """
     load_metabolite_bounds()
@@ -193,6 +194,20 @@ function add_metabolite_bounds_to_constraint_tree!(
 
     # Just return something, even though this was modified in place.
     return ct
+end
+
+function print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
+    function walk(tree, path="")
+        for (key, node) in pairs(tree)
+            current_path = isempty(path) ? string(key) : "$path.$key"
+            if node isa C.Constraint
+                println("Symbol: $current_path | Bounds: $(node.bound)")
+            elseif node isa C.ConstraintTree
+                walk(node, current_path)
+            end
+        end
+    end
+    walk(ct.flux_stoichiometry)
 end
 
 end
