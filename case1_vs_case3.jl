@@ -11,11 +11,11 @@ using .PruningOptimizations
 include("src/MetaboliteBounds.jl")
 using .MetaboliteBounds
 
-@info "Metabolite bounds"
+@info "Loading metabolite bounds"
 metabolites_bounds_df = load_metabolite_bounds()
 display(first(metabolites_bounds_df, 10))
 
-@info "Flux bounds overrides"
+@info "Loading flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
 @info "Create FBA model and map metabolites onto that model"
@@ -39,7 +39,8 @@ first_added_sink_ids =
 display(first(first_added_sink_ids, 10))
 
 @info "Case 1 optimization"
-case1_ct = case_1_constraint_tree!(fba_model)
+case1_ct = case_1_constraint_tree(fba_model)
+add_metabolite_bounds_to_constraint_tree!(case1_ct, metabolites_bounds_df)
 case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
 case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
     analyze_pruning_optimization(case1_pruning_optimization_result, :case1)
@@ -49,7 +50,8 @@ println("Wrote $case1_sink_status_filename")
 
 @info "Case 3 optimization"
 case3_additive = "01-Ctrl AS3"
-case3_ct = case_3_constraint_tree!(fba_model, metabolite_status_df, case3_additive)
+case3_ct = case_3_constraint_tree(fba_model, metabolite_status_df, case3_additive)
+add_metabolite_bounds_to_constraint_tree!(case3_ct, metabolite_bounds_df)
 case3_pruning_optimization_result = optimize_case_3(case3_ct, case3_ct.objective.value)
 case3_zero_sinks, case3_nonzero_sinks, case3_sink_status_df =
     analyze_pruning_optimization(case3_pruning_optimization_result, :case3)

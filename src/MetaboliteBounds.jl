@@ -168,7 +168,10 @@ function find_metabolite_matches(
     return metabolite_status_df
 end
 
-function add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree)
+function add_metabolite_bounds_to_constraint_tree!(
+    ct::C.ConstraintTree,
+    metabolite_bounds_df::DataFrame,
+)
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         bounds = query_metabolite_bounds(

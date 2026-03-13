@@ -579,8 +579,8 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         ct =
-            pruning_method == :case1 ? case_1_constraint_tree!(full_model) :
-            case_3_constraint_tree!(full_model, metabolite_status_df, additive)
+            pruning_method == :case1 ? case_1_constraint_tree(full_model) :
+            case_3_constraint_tree(full_model, metabolite_status_df, additive)
         prune_optimize_result_ct =
             pruning_method == :case1 ? optimize_case_1(ct, ct.objective.value) :
             optimize_case_3(ct, ct.objective.value)
