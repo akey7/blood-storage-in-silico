@@ -180,7 +180,7 @@ function add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
-        if short_metabolite_id ∉ metabolites_to_ignore
+        if short_metabolite_id ∉ metabolites_to_ignore_2
             bounds = query_metabolite_bounds(
                 metabolite_bounds_df,
                 additive,

@@ -39,12 +39,12 @@ display(first(first_added_sink_ids, 10))
 
 @info "Case 1 optimization"
 case1_ct = case_1_constraint_tree(fba_model)
+# case1_metabolites_to_ignore = ["g6p_c", "glc__D_c", "pyr_e", "lac__L_e"]
 add_metabolite_bounds_to_constraint_tree!(
     case1_ct,
     metabolite_bounds_df,
     additive,
-    final_time;
-    metabolites_to_ignore = ["g6p_c"],
+    final_time
 )
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
 case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
