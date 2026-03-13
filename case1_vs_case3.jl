@@ -12,8 +12,7 @@ include("src/MetaboliteBounds.jl")
 using .MetaboliteBounds
 
 @info "Loading metabolite bounds"
-metabolites_bounds_df = load_metabolite_bounds()
-display(first(metabolites_bounds_df, 10))
+metabolite_bounds_df = load_metabolite_bounds()
 
 @info "Loading flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
@@ -24,13 +23,13 @@ fba_model, fba_model_metabolites_df = create_fba_model(
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
-mapping_additive = "01-Ctrl AS3"
+additive = "01-Ctrl AS3"
+final_time = 2
 metabolite_status_df =
-    find_metabolite_matches(fba_model, metabolites_bounds_df, mapping_additive, 2)
-display(first(metabolite_status_df, 10))
+    find_metabolite_matches(fba_model, metabolite_bounds_df, additive, final_time)
 first_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
-    additive = mapping_additive,
+    additive = additive,
     prune_zero_sinks = nothing,
     sink_opt_outs = nothing,
 )
@@ -40,7 +39,7 @@ display(first(first_added_sink_ids, 10))
 
 @info "Case 1 optimization"
 case1_ct = case_1_constraint_tree(fba_model)
-add_metabolite_bounds_to_constraint_tree!(case1_ct, metabolites_bounds_df)
+add_metabolite_bounds_to_constraint_tree!(case1_ct, metabolite_bounds_df, additive, final_time)
 case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
 case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
     analyze_pruning_optimization(case1_pruning_optimization_result, :case1)
@@ -51,7 +50,7 @@ println("Wrote $case1_sink_status_filename")
 @info "Case 3 optimization"
 case3_additive = "01-Ctrl AS3"
 case3_ct = case_3_constraint_tree(fba_model, metabolite_status_df, case3_additive)
-add_metabolite_bounds_to_constraint_tree!(case3_ct, metabolite_bounds_df)
+add_metabolite_bounds_to_constraint_tree!(case3_ct, metabolite_bounds_df, additive, final_time)
 case3_pruning_optimization_result = optimize_case_3(case3_ct, case3_ct.objective.value)
 case3_zero_sinks, case3_nonzero_sinks, case3_sink_status_df =
     analyze_pruning_optimization(case3_pruning_optimization_result, :case3)

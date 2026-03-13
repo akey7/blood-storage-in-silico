@@ -4,6 +4,7 @@ using CSV
 using DataFrames
 using DataFramesMeta
 import AbstractFBCModels as A
+import ConstraintTrees as C
 using COBREXA
 
 export load_metabolite_bounds,
@@ -171,6 +172,8 @@ end
 function add_metabolite_bounds_to_constraint_tree!(
     ct::C.ConstraintTree,
     metabolite_bounds_df::DataFrame,
+    additive::String,
+    final_time::Int64,
 )
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]

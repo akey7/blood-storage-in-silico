@@ -264,7 +264,6 @@ Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to fi
 `C.Tree{Float64}` with the optimization results substituted in. These results can be used to prune a model.
 """
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
-    display(ct.indicators)
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
     JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
