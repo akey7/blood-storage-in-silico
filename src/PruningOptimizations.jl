@@ -235,7 +235,8 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
                 if bound isa IntegerFromTo
                     JuMP.set_lower_bound(v, Float64(bound.lower))
                     JuMP.set_upper_bound(v, Float64(bound.upper))
-                    JuMP.set_integer(v)
+                    # JuMP.set_integer(v)
+                    JuMP.set_binary(v)
                 elseif bound isa C.Between
                     JuMP.set_lower_bound(v, bound.lower)
                     JuMP.set_upper_bound(v, bound.upper)
