@@ -182,97 +182,6 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
 end
 
 """
-    jump_constraint(m, x, v::C.Value, b::C.EqualTo)
-
-Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
-
-Sets an `EqualTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
-
-# Arguments
-1. `m`: JuMP model
-2. `x`: Reference to variable on which constraint will be set.
-3. `v::C.Value`: Value to set the constraint to
-4. `b::C.EqualTo`: The `C.EqualTo` bound
-
-# Returns
-The specified JuMP constraint
-"""
-function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
-    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
-end
-
-"""
-    jump_constraint(m, x, v::C.Value, b::C.Between)
-
-Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP))
-
-Sets an `Between` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
-
-# Arguments
-1. `m`: JuMP model
-2. `x`: Reference to variable on which constraint will be set.
-3. `v::C.Value`: Value to set the constraint to
-4. `b::C.Between`: The `C.Between` bound
-
-# Returns
-The specified JuMP constraint
-"""
-function jump_constraint(m, x, v::C.Value, b::C.Between)
-    isinf(b.lower) || JuMP.@constraint(m, C.substitute(v, x) >= b.lower)
-    isinf(b.upper) || JuMP.@constraint(m, C.substitute(v, x) <= b.upper)
-end
-
-"""
-    jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
-
-Taken from [Example: Mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/#Example:-Mixed-integer-optimization-(MILP)). See also [Mixed integer linear programming formulation](https://jump.dev/JuMP.jl/stable/tutorials/linear/sudoku/#Mixed-integer-linear-programming-formulation)
-
-Sets an `IntegerFromTo` constraint in a JuMP model. Part of a multi-dispatch function with 3 methods.
-
-# Arguments
-1. `m`: JuMP model
-2. `x`: Reference to variable on which constraint will be set.
-3. `v::C.Value`: Value to set the constraint to
-4. `b::C.IntegerFromTo`: The `IntegerFromTo` bound
-
-# Returns
-The specified JuMP constraint.
-"""
-function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
-    # var = JuMP.@variable(m, binary = true)  # Appears to generate same results as integer = true setup
-    # var = JuMP.@variable(m, integer = true)
-    var = JuMP.@variable(m)
-    JuMP.set_integer(var)
-    JuMP.@constraint(m, var >= b.from)
-    JuMP.@constraint(m, var <= b.to)
-    JuMP.@constraint(m, C.substitute(v, x) == var)
-end
-
-
-# function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
-#     jump_model = JuMP.Model(HiGHS.Optimizer)
-#     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
-#     JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
-#     C.traverse(ct) do c
-#         isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
-#     end
-#     jump_model_filename = joinpath("output", "debug_model.lp")
-#     write_to_file(jump_model, jump_model_filename)
-#     JuMP.set_silent(jump_model)
-#     JuMP.optimize!(jump_model)
-#     if is_solved_and_feasible(jump_model)
-#         println("Case 1 optimization success!")
-#         result_ct = deepcopy(ct)
-#         var_values = JuMP.value.(jump_model[:x])
-#         solution_tree = C.substitute_values(result_ct, var_values)
-#         return solution_tree
-#     else
-#         println("OH NO CASE 1 OPTIMIZATION FAILED!")
-#         return nothing
-#     end
-# end
-
-"""
     optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
 
 Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune. If the model is infeasible, attempts to list constraints that make the model infeasible. To help with potential debugging, writes the JuMP model diagnostics to `output/debug_model.lp`
@@ -323,7 +232,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
                 register_var!(idx)
                 v = jump_vars[idx]
                 bound = entry.bound
-                if bound isa C.IntegerFromTo
+                if bound isa IntegerFromTo
                     JuMP.set_lower_bound(v, Float64(bound.lower))
                     JuMP.set_upper_bound(v, Float64(bound.upper))
                     JuMP.set_integer(v)
