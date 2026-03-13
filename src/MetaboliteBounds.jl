@@ -6,7 +6,10 @@ using DataFramesMeta
 import AbstractFBCModels as A
 using COBREXA
 
-export load_metabolite_bounds, query_metabolite_bounds, find_metabolite_matches
+export load_metabolite_bounds,
+    query_metabolite_bounds,
+    find_metabolite_matches,
+    add_metabolite_bounds_to_constraint_tree!
 
 """
     load_metabolite_bounds()
@@ -165,5 +168,25 @@ function find_metabolite_matches(
     return metabolite_status_df
 end
 
+function add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree)
+    for k in keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        bounds = query_metabolite_bounds(
+            metabolite_bounds_df,
+            additive,
+            short_metabolite_id,
+            final_time,
+        )
+        if isnothing(bounds)
+            ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+        else
+            lb, ub = bounds
+            ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+        end
+    end
+
+    # Just return something, even though this was modified in place.
+    return ct
+end
 
 end

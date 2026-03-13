@@ -420,21 +420,26 @@ function execute_ufba_job(job, n_chains = 10)
     metabolite_bounds_df = job.metabolite_bounds_df
     @info "execute_ufba_job: additive: $additive, final_time: $final_time"
     ct = flux_balance_constraints(pruned_model)
-    for k in keys(ct.flux_stoichiometry)
-        short_metabolite_id = string(k)[3:end]
-        bounds = query_metabolite_bounds(
-            metabolite_bounds_df,
-            additive,
-            short_metabolite_id,
-            final_time,
-        )
-        if isnothing(bounds)
-            ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
-        else
-            lb, ub = bounds
-            ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
-        end
-    end
+    # for k in keys(ct.flux_stoichiometry)
+    #     short_metabolite_id = string(k)[3:end]
+    #     bounds = query_metabolite_bounds(
+    #         metabolite_bounds_df,
+    #         additive,
+    #         short_metabolite_id,
+    #         final_time,
+    #     )
+    #     if isnothing(bounds)
+    #         ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+    #     else
+    #         lb, ub = bounds
+    #         ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+    #     end
+    # end
+    add_metabolite_bounds_to_constraint_tree!(ct)
+
+    # TODO: After I make a new constraint tree, I cannot use flux_balance_analysis
+    # rather I need to use optimized_values.
+
     objective_flux = flux_balance_analysis(pruned_model; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
         println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
@@ -754,6 +759,9 @@ Sample the allowable flux space of the `model`. Use the `julia -p X...` -p comma
 1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
 """
 function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
+    # TODO: Remove n_chains logging and switch to optimizaing a ConstraintTree
+    # with sample_constraints().
+
     println("N Chains: $n_chains")
     s = flux_sample(
         model,
