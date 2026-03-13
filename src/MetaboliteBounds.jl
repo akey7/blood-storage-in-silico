@@ -180,17 +180,20 @@ function add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
-        bounds = query_metabolite_bounds(
-            metabolite_bounds_df,
-            additive,
-            short_metabolite_id,
-            final_time,
-        )
-        if isnothing(bounds) || short_metabolite_id ∉ metabolites_to_ignore_2
-            ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+        if short_metabolite_id ∉ metabolites_to_ignore
+            bounds = query_metabolite_bounds(
+                metabolite_bounds_df,
+                additive,
+                short_metabolite_id,
+                final_time,
+            )
+            if isnothing(bounds)
+                ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+            else
+                lb, ub = bounds
+                ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+            end
         else
-            lb, ub = bounds
-            ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
         end
     end
 

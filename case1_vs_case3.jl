@@ -43,7 +43,8 @@ add_metabolite_bounds_to_constraint_tree!(
     case1_ct,
     metabolite_bounds_df,
     additive,
-    final_time,
+    final_time;
+    metabolites_to_ignore = ["g6p_c"],
 )
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
 case1_pruning_optimization_result = optimize_case_1(case1_ct, case1_ct.objective.value)
