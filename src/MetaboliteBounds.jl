@@ -194,6 +194,7 @@ function add_metabolite_bounds_to_constraint_tree!(
                 ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
             end
         else
+            println("Skipping bounds for metabolite id $short_metabolite_id")
         end
     end
 
