@@ -13,7 +13,8 @@ export case_3_constraint_tree,
     case_1_constraint_tree,
     optimize_case_1,
     analyze_pruning_optimization,
-    check_case_1_optimization_results
+    check_case_1_optimization_results,
+    list_non_zeros
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -320,7 +321,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         return C.substitute_values(ct, values_dict)
     elseif status == JuMP.MOI.DUAL_INFEASIBLE && JuMP.has_values(jump_model)
         println("--- Model is $status ---")
-        println("There are some values in the model, so the model is likely unbounded.")
+        println("There are some values in the model, so the model likely has something unbounded.")
         error("Optimization failed: Model is infeasible.")
     elseif status == JuMP.MOI.INFEASIBLE
         println("--- Model is Infeasible. Starting Conflict Analysis ---")
@@ -339,6 +340,19 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
         )
     end
 end
+
+# function list_non_zeros(tree, prefix="")
+#     for (name, entry) in tree
+#         path = isempty(prefix) ? string(name) : "$prefix.$name"
+#         if entry isa Float64
+#             if abs(entry) > 1e-6
+#                 println("$path: $entry")
+#             end
+#         elseif entry isa C.Tree
+#             list_non_zeros(entry, path)
+#         end
+#     end
+# end
 
 """
     analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
