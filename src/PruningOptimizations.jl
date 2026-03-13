@@ -318,36 +318,79 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     JuMP.@objective(jump_model, JuMP.MIN_SENSE, to_jump(objective))
     jump_model_filename = joinpath("output", "debug_model.lp")
     write_to_file(jump_model, jump_model_filename)
-    JuMP.optimize!(jump_model)
-    status = JuMP.termination_status(jump_model)
-    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
-        values_dict = Dict(idx => JuMP.value(v) for (idx, v) in jump_vars)
-        return C.substitute_values(ct, values_dict)
-    elseif status == JuMP.MOI.DUAL_INFEASIBLE
-        println("--- Model is $status ---")
-        println("There are some values in the model, so the model likely has something unbounded. Here is what we know")
-        for (tree_idx, jump_var_ref) in jump_vars
-            val = JuMP.value(jump_var_ref)
-            if abs(val) > 1e-6
-                println("  Tree Index [$tree_idx]: $val")
+
+    # JuMP.optimize!(jump_model)
+    # status = JuMP.termination_status(jump_model)
+    # if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+    #     values_dict = Dict(idx => JuMP.value(v) for (idx, v) in jump_vars)
+    #     return C.substitute_values(ct, values_dict)
+    # elseif status == JuMP.MOI.DUAL_INFEASIBLE
+    #     println("--- Model is $status ---")
+    #     println("There are some values in the model, so the model likely has something unbounded. Here is what we know")
+    #     for (tree_idx, jump_var_ref) in jump_vars
+    #         val = JuMP.value(jump_var_ref)
+    #         if abs(val) > 1e-6
+    #             println("  Tree Index [$tree_idx]: $val")
+    #         end
+    #     end
+    #     error("Optimization failed: Model is infeasible.")
+    # elseif status == JuMP.MOI.INFEASIBLE
+    #     println("--- Model is Infeasible. Starting Conflict Analysis ---")
+    #     JuMP.compute_conflict!(jump_model)
+    #     println("The following constraints contribute to the conflict:")
+    #     for (name, con) in jump_constraints
+    #         if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
+    #            JuMP.MOI.IN_CONFLICT
+    #             println(" - $con")
+    #         end
+    #     end
+    #     error("Optimization failed: Model is infeasible.")
+    # else
+    #     error(
+    #         "Optimization failed with the following status and no further information is available: $status",
+    #     )
+    # end
+
+    try
+        JuMP.optimize!(jump_model)
+        status = JuMP.termination_status(jump_model)
+        if JuMP.has_values(jump_model)
+            max_idx = maximum(keys(jump_vars))
+            values_vector = zeros(Float64, max_idx)
+            for (idx, v) in jump_vars
+                values_vector[idx] = JuMP.value(v)
+            end
+            results = C.substitute_values(ct, values_vector)
+            if status != JuMP.MOI.OPTIMAL
+                @warn "Solver finished with non-optimal status: $status. Returning partial results."
+            end
+            return results
+        else
+            @error "Solver finished with status $status but no values were returned."
+            if status == JuMP.MOI.INFEASIBLE
+                JuMP.compute_conflict!(jump_model)
+                println("The following constraints contribute to the conflict:")
+                for (name, con) in jump_constraints
+                    if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
+                    JuMP.MOI.IN_CONFLICT
+                        println(" - $con")
+                    end
+                end
+            end
+            return nothing
+        end
+    catch e
+        println("\n!!! Optimization or Substitution Crashed !!!")
+        println("Error type: ", typeof(e))
+        if JuMP.has_values(jump_model)
+            println("Emergency Value Dump")
+            vars = JuMP.all_variables(jump_model)
+            vals = value.(vars)
+            for v in vals
+                println(v)
             end
         end
-        error("Optimization failed: Model is infeasible.")
-    elseif status == JuMP.MOI.INFEASIBLE
-        println("--- Model is Infeasible. Starting Conflict Analysis ---")
-        JuMP.compute_conflict!(jump_model)
-        println("The following constraints contribute to the conflict:")
-        for (name, con) in jump_constraints
-            if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
-               JuMP.MOI.IN_CONFLICT
-                println(" - $con")
-            end
-        end
-        error("Optimization failed: Model is infeasible.")
-    else
-        error(
-            "Optimization failed with the following status and no further information is available: $status",
-        )
+        rethrow(e)
     end
 end
 
