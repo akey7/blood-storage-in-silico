@@ -1,6 +1,7 @@
 using CSV
 using DataFrames
 using DataFramesMeta
+using HiGHS
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -55,7 +56,10 @@ case1_ct = case_1_constraint_tree(fba_model)
 @info "Case 1: Optimize constraint tree"
 
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
-case1_optimization_tree = optimize_case_1_v2(case1_ct, case1_ct.objective.value)
+# case1_optimization_tree = optimize_case_1_v2(case1_ct, case1_ct.objective.value)
+case1_optimization_tree =
+    milp_optimized_vars(case1_ct, case1_ct.objective.value, HiGHS.Optimizer)
+display(case1_optimization_tree)
 
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)

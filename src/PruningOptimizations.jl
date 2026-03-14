@@ -13,6 +13,7 @@ export case_3_constraint_tree,
     case_1_constraint_tree,
     optimize_case_1,
     optimize_case_1_v2,
+    milp_optimized_vars,
     analyze_pruning_optimization,
     check_case_1_optimization_results,
     list_non_zeros,
@@ -137,6 +138,36 @@ end
 mutable struct IntegerFromTo <: C.Bound
     from::Int
     to::Int
+end
+
+function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
+    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
+end
+
+function jump_constraint(m, x, v::C.Value, b::C.Between)
+    isinf(b.lower) || JuMP.@constraint(m, C.substitute(v, x) >= b.lower)
+    isinf(b.upper) || JuMP.@constraint(m, C.substitute(v, x) <= b.upper)
+end
+
+function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
+    var = JuMP.@variable(m, integer = true)
+    JuMP.@constraint(m, var >= b.from)
+    JuMP.@constraint(m, var <= b.to)
+    JuMP.@constraint(m, C.substitute(v, x) == var)
+end
+
+function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
+    model = JuMP.Model(optimizer)
+    JuMP.@variable(model, x[1:C.variable_count(cs)])
+    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    C.traverse(cs) do c
+        isnothing(c.bound) || jump_constraint(model, x, c.value, c.bound)
+    end
+    JuMP.set_silent(model)
+    JuMP.optimize!(model)
+    solved_values = JuMP.value.(model[:x])
+    solution_tree = C.substitute_values(cs, solved_values)
+    return solution_tree
 end
 
 @doc raw"""
