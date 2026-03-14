@@ -12,8 +12,6 @@ export case_3_constraint_tree,
     optimize_case_3,
     case_1_constraint_tree,
     optimize_case_1,
-    optimize_case_1_v2,
-    milp_optimized_vars,
     analyze_pruning_optimization,
     check_case_1_optimization_results,
     list_non_zeros,
@@ -210,7 +208,7 @@ function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
 end
 
 """
-    milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
+    optimize_case_1(cs::C.ConstraintTree, objective::C.Value)
 
 Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune. If the model is infeasible, attempts to list constraints that make the model infeasible. To help with potential debugging, writes the JuMP model diagnostics to `output/debug_model.lp`
 
@@ -223,8 +221,8 @@ Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to fi
 
 `C.Tree{Float64}` with the optimization results substituted in. These results can then be used to prune a model.
 """
-function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
-    jump_model = JuMP.Model(optimizer)
+function optimize_case_1(cs::C.ConstraintTree, objective::C.Value)
+    jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(cs)])
     JuMP.@objective(jump_model, JuMP.MAX_SENSE, C.substitute(objective, x))
     C.traverse(cs) do c
@@ -254,202 +252,6 @@ function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer
         error(
             "Optimization failed with the following status and no further information is available: $status",
         )
-    end
-end
-
-function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
-    jump_model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
-    JuMP.set_optimizer_attribute(jump_model, "primal_feasibility_tolerance", 1e-8)
-    jump_vars = Dict{Int,JuMP.VariableRef}()
-
-    function register_var!(idx::Int)
-        if !haskey(jump_vars, idx)
-            jump_vars[idx] = JuMP.@variable(jump_model)
-        end
-    end
-
-    function find_all_indices!(val)
-        val isa C.Value || return
-        for idx in keys(val.idxs)
-            register_var!(idx)
-        end
-    end
-
-    function process_tree!(subtree)
-        subtree isa C.ConstraintTree || return
-        MAX_BOUND = 1000.0
-        for (name, entry) in subtree
-            if entry isa C.Constraint
-                find_all_indices!(entry.value)
-            elseif entry isa C.ConstraintTree
-                process_tree!(entry)
-            elseif hasproperty(entry, :index) && hasproperty(entry, :bound)
-                idx = entry.index
-                register_var!(idx)
-                v = jump_vars[idx]
-                bound = entry.bound
-                if bound isa IntegerFromTo
-                    JuMP.set_lower_bound(v, Float64(bound.lower))
-                    JuMP.set_upper_bound(v, Float64(bound.upper))
-                    # JuMP.set_integer(v)
-                    JuMP.set_binary(v)
-                elseif bound isa C.Between
-                    bound_lower = isinf(bound.lower) ? -MAX_BOUND : bound.lower
-                    bound_upper = isinf(bound.upper) ? MAX_BOUND : bound.upper
-                    JuMP.set_lower_bound(v, bound_lower)
-                    JuMP.set_upper_bound(v, bound_upper)
-                else
-                    bound_type = typeof(bound)
-                    @error "Case 1 optimization: unknown bound type $bound_type for $v, stopping"
-                end
-            end
-        end
-    end
-
-    find_all_indices!(objective)
-    process_tree!(ct)
-
-    function to_jump(val::C.Value)
-        expr = JuMP.AffExpr(0.0)
-        for idx in keys(val.idxs)
-            coeff = val.idxs[idx]
-            JuMP.add_to_expression!(expr, coeff, jump_vars[idx])
-        end
-        return expr
-    end
-
-    jump_constraints = Dict{String,JuMP.ConstraintRef}()
-
-    function add_constraints!(subtree, prefix = "")
-        subtree isa C.ConstraintTree || return
-        for (name, entry) in subtree
-            full_name = isempty(prefix) ? string(name) : "$(prefix).$(name)"
-            if entry isa C.Constraint && string(name) != "objective"
-                expr = to_jump(entry.value)
-                b = entry.bound
-                println("Adding $name $b")
-                if b isa C.Between
-                    jump_constraints[full_name] = JuMP.@constraint(
-                        jump_model,
-                        b.lower <= expr <= b.upper,
-                        base_name=full_name
-                    )
-                elseif b isa Float64
-                    jump_constraints[full_name] =
-                        JuMP.@constraint(jump_model, expr == b, base_name=full_name)
-                elseif b isa C.EqualTo
-                    jump_constraints[full_name] = JuMP.@constraint(
-                        jump_model,
-                        expr == b.equal_to,
-                        base_name=full_name
-                    )
-                elseif b isa IntegerFromTo
-                    jump_constraints[full_name] = JuMP.@constraint(
-                        jump_model,
-                        b.from <= expr <= b.to,
-                        base_name=full_name
-                    )
-                else
-                    constraint_type = typeof(b)
-                    @error "Case 1 optimization: unknown constraint type $constraint_type for $full_name"
-                end
-            elseif entry isa C.ConstraintTree
-                add_constraints!(entry, full_name)
-            end
-        end
-    end
-    add_constraints!(ct)
-    JuMP.@objective(jump_model, JuMP.MIN_SENSE, to_jump(objective))
-    jump_model_filename = joinpath("output", "debug_model.lp")
-    write_to_file(jump_model, jump_model_filename)
-
-    # JuMP.optimize!(jump_model)
-    # status = JuMP.termination_status(jump_model)
-    # if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
-    #     values_dict = Dict(idx => JuMP.value(v) for (idx, v) in jump_vars)
-    #     return C.substitute_values(ct, values_dict)
-    # elseif status == JuMP.MOI.DUAL_INFEASIBLE
-    #     println("--- Model is $status ---")
-    #     println("There are some values in the model, so the model likely has something unbounded. Here is what we know")
-    #     for (tree_idx, jump_var_ref) in jump_vars
-    #         val = JuMP.value(jump_var_ref)
-    #         if abs(val) > 1e-6
-    #             println("  Tree Index [$tree_idx]: $val")
-    #         end
-    #     end
-    #     error("Optimization failed: Model is infeasible.")
-    # elseif status == JuMP.MOI.INFEASIBLE
-    #     println("--- Model is Infeasible. Starting Conflict Analysis ---")
-    #     JuMP.compute_conflict!(jump_model)
-    #     println("The following constraints contribute to the conflict:")
-    #     for (name, con) in jump_constraints
-    #         if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
-    #            JuMP.MOI.IN_CONFLICT
-    #             println(" - $con")
-    #         end
-    #     end
-    #     error("Optimization failed: Model is infeasible.")
-    # else
-    #     error(
-    #         "Optimization failed with the following status and no further information is available: $status",
-    #     )
-    # end
-
-    try
-        JuMP.optimize!(jump_model)
-        status = JuMP.termination_status(jump_model)
-        if JuMP.has_values(jump_model)
-            max_idx = maximum(keys(jump_vars))
-            values_vector = zeros(Float64, max_idx)
-            for (idx, v) in jump_vars
-                values_vector[idx] = JuMP.value(v)
-            end
-            results = C.substitute_values(ct, values_vector)
-            if status != JuMP.MOI.OPTIMAL
-                @warn "Solver finished with non-optimal status: $status. Returning partial results."
-            end
-            return results
-        else
-            @error "Solver finished with status $status but no values were returned."
-            if status == JuMP.MOI.INFEASIBLE
-                JuMP.compute_conflict!(jump_model)
-                println("The following constraints contribute to the conflict:")
-                for (name, con) in jump_constraints
-                    if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
-                       JuMP.MOI.IN_CONFLICT
-                        println(" - $con")
-                    end
-                end
-            end
-            return nothing
-        end
-    catch e
-        println("\n!!! Optimization or Substitution Crashed !!!")
-        println("Error type: ", typeof(e))
-        if JuMP.has_values(jump_model)
-            println("Emergency Value Dump")
-            vars = JuMP.all_variables(jump_model)
-            vals = value.(vars)
-            for v in vals
-                println(v)
-            end
-        end
-        rethrow(e)
-    end
-end
-
-function inspect_results(tree, prefix = "", threshold = 1e-6)
-    # Check if the current node is a leaf (Float64)
-    if tree isa Float64
-        if abs(tree) > threshold
-            println("$prefix: $tree")
-        end
-        return
-    end
-    for (name, subtree) in tree
-        new_prefix = isempty(prefix) ? string(name) : "$prefix.$name"
-        inspect_results(subtree, new_prefix, threshold)
     end
 end
 
