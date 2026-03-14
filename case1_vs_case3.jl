@@ -34,8 +34,8 @@ first_sink_specifications = (
     prune_zero_sinks = nothing,
     sink_opt_outs = nothing,
 )
-# first_added_sink_ids =
-#     add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
+first_added_sink_ids =
+    add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
 
 # Ensure sinks were added by printing them
 # for (rxn_id, rxn) in fba_model.reactions

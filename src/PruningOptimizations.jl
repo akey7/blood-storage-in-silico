@@ -187,42 +187,42 @@ Returns a new `ConstraintTree` derived from the given model with the proper obje
 """
 function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
-    return ct
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
+    indicator_vars =
+        :indicators^C.variables(
+            keys = [Symbol("ind_", id) for id in sink_ids],
+            bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
+        )
+    full_ct = ct + indicator_vars
+    BIG_M = 1000.0
+    couplings = C.ConstraintTree()
+    for id in sink_ids
+        ind_id = Symbol("ind_", id)
+        v = full_ct.fluxes[id].value
+        z = full_ct.indicators[ind_id].value
+        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
+        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
+    end
+    final_ct = full_ct + :coupling^couplings
 
-    # sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
-    # indicator_vars =
-    #     :indicators^C.variables(
-    #         keys = [Symbol("ind_", id) for id in sink_ids],
-    #         bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
-    #     )
-    # full_ct = ct + indicator_vars
-    # BIG_M = 1000.0
-    # couplings = C.ConstraintTree()
-    # for id in sink_ids
-    #     ind_id = Symbol("ind_", id)
-    #     v = full_ct.fluxes[id].value
-    #     z = full_ct.indicators[ind_id].value
-    #     couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
-    #     couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
-    # end
-    # final_ct = full_ct + :coupling^couplings
+    # # Force the first sink to always be on so that at least one indicator is 1
+    # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
 
-    # # # Force the first sink to always be on so that at least one indicator is 1
-    # # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
+    println(length(sink_ids))
 
-    # final_ct.objective = C.Constraint(
-    #     sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
-    #     nothing, # No bound, this is an objective
-    # )
+    final_ct.objective = C.Constraint(
+        sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
+        nothing, # No bound, this is an objective
+    )
 
-    # for (id, flux) in final_ct.fluxes
-    #     if flux.bound == (-Inf, Inf)
-    #         println("Cleanup: $id was unbounded, setting to finite bounds")
-    #         flux.bound = C.Between(-1000.0, 1000.0)
-    #     end
-    # end
+    for (id, flux) in final_ct.fluxes
+        if flux.bound == (-Inf, Inf)
+            println("Cleanup: $id was unbounded, setting to finite bounds")
+            flux.bound = C.Between(-1000.0, 1000.0)
+        end
+    end
 
-    # return final_ct
+    return final_ct
 end
 
 function optimize_case_1_v2(ct::C.ConstraintTree, objective::C.Value)
