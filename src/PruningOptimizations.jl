@@ -157,17 +157,35 @@ function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
 end
 
 function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
-    model = JuMP.Model(optimizer)
-    JuMP.@variable(model, x[1:C.variable_count(cs)])
-    JuMP.@objective(model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    jump_model = JuMP.Model(optimizer)
+    JuMP.@variable(jump_model, x[1:C.variable_count(cs)])
+    JuMP.@objective(jump_model, JuMP.MAX_SENSE, C.substitute(objective, x))
     C.traverse(cs) do c
-        isnothing(c.bound) || jump_constraint(model, x, c.value, c.bound)
+        isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
     end
-    JuMP.set_silent(model)
-    JuMP.optimize!(model)
-    solved_values = JuMP.value.(model[:x])
-    solution_tree = C.substitute_values(cs, solved_values)
-    return solution_tree
+    JuMP.set_silent(jump_model)
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        solved_values = JuMP.value.(jump_model[:x])
+        solution_tree = C.substitute_values(cs, solved_values)
+        return solution_tree
+    elseif status == JuMP.MOI.INFEASIBLE
+        println("--- Model is Infeasible. Starting Conflict Analysis ---")
+        JuMP.compute_conflict!(jump_model)
+        println("The following constraints contribute to the conflict:")
+        for (name, con) in jump_constraints
+            if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
+               JuMP.MOI.IN_CONFLICT
+                println(" - $con")
+            end
+        end
+        error("Optimization failed: Model is infeasible.")
+    else
+        error(
+            "Optimization failed with the following status and no further information is available: $status",
+        )
+    end
 end
 
 @doc raw"""
@@ -208,8 +226,6 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     # # Force the first sink to always be on so that at least one indicator is 1
     # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
 
-    println(length(sink_ids))
-
     final_ct.objective = C.Constraint(
         sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
         nothing, # No bound, this is an objective
@@ -223,25 +239,6 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     end
 
     return final_ct
-end
-
-function optimize_case_1_v2(ct::C.ConstraintTree, objective::C.Value)
-    jump_model = JuMP.Model(HiGHS.Optimizer)
-
-    C.itraverse(ct) do path, node
-        println("Variable: ", join(string.(path), "."), "  Bound: ", C.bound(node))
-    end
-
-    # function to_jump(val::C.Value)
-    #     expr = JuMP.AffExpr(0.0)
-    #     for idx in keys(val.idxs)
-    #         coeff = val.idxs[idx]
-    #         JuMP.add_to_expression!(expr, coeff, jump_vars[idx])
-    #     end
-    #     return expr
-    # end
-
-    # JuMP.@objective(jump_model, JuMP.MIN_SENSE, to_jump(objective))
 end
 
 """
