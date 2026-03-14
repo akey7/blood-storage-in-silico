@@ -191,15 +191,61 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     return final_ct
 end
 
+"""
+    jump_constraint(m, x, v::C.Value, b::C.EqualTo)
+
+Used by [`optimize_case_1`](@ref BloodStorageInSilico.PruningOptimizations.optimize_case_1) to set `C.EqualTo` constraints on a JuMP model. See [ConstraintTrees.jl's documentation on mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/) for more information.
+
+# Arguments
+1. `m`: JuMP model
+2. `x`: JuMP variable
+3. `v::C.Value`: `ConstraintTree` value
+4. `b::C.EqualTo`: `C.EqualTo` bound
+
+# Returns
+
+A JuMP constraint attached to the JuMP model.
+"""
 function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
     JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
 end
 
+"""
+    jump_constraint(m, x, v::C.Value, b::C.Between)
+
+Used by [`optimize_case_1`](@ref BloodStorageInSilico.PruningOptimizations.optimize_case_1) to set `C.Between` constraints on a JuMP model. See [ConstraintTrees.jl's documentation on mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/) for more information.
+
+# Arguments
+1. `m`: JuMP model
+2. `x`: JuMP variable
+3. `v::C.Value`: `ConstraintTree` value
+4. `b::C.Between`: `b::C.Between` bound
+
+# Returns
+
+A JuMP constraint attached to the JuMP model.
+"""
 function jump_constraint(m, x, v::C.Value, b::C.Between)
+    # If there are problems with infinities, enforce finite limits here if needed
     isinf(b.lower) || JuMP.@constraint(m, C.substitute(v, x) >= b.lower)
     isinf(b.upper) || JuMP.@constraint(m, C.substitute(v, x) <= b.upper)
 end
 
+"""
+    jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
+
+Used by [`optimize_case_1`](@ref BloodStorageInSilico.PruningOptimizations.optimize_case_1) to set `IntegerFromTo` constraints on a JuMP model. See [ConstraintTrees.jl's documentation on mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/) for more information.
+
+# Arguments
+1. `m`: JuMP model
+2. `x`: JuMP variable
+3. `v::C.Value`: `ConstraintTree` value
+4. `b::IntegerFromTo`: Custom `IntegerFromTo` bound
+
+# Returns
+
+A JuMP constraint attached to the JuMP model.
+"""
 function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
     var = JuMP.@variable(m, integer = true)
     JuMP.@constraint(m, var >= b.from)
