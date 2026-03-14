@@ -131,196 +131,195 @@ function optimize_case_3(ct::C.ConstraintTree, objective::C.LinearValue)
     end
 end
 
-# A custom ConstratintTrees bound struct used for indicator variables.
-# From: https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/
-# See also https://jump.dev/JuMP.jl/stable/tutorials/linear/sudoku/#Mixed-integer-linear-programming-formulation
-mutable struct IntegerFromTo <: C.Bound
-    from::Int
-    to::Int
-end
-
-@doc raw"""
-    case_1_constraint_tree(model::A.AbstractFBCModel)
-
-Creates an objective and associated using the model's `ConstraintTree` to prune fluxes according to Case 1 in the Bordbar (2016) paper.
-
-``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
-
-# Arguments
-1. `model::A.AbstractFBCModel`: Model to extract the `ConstraintTree` from.
-
-# Returns
-`ConstraintTree`
-
-Returns a new `ConstraintTree` derived from the given model with the proper objective for optimization.
-"""
-function case_1_constraint_tree(model::A.AbstractFBCModel)
-    ct = flux_balance_constraints(model)
-    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
-    indicator_vars =
-        :indicators^C.variables(
-            keys = [Symbol("ind_", id) for id in sink_ids],
-            bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
-        )
-    full_ct = ct + indicator_vars
-    couplings = C.ConstraintTree()
-    for id in sink_ids
-        ind_id = Symbol("ind_", id)
-        v = full_ct.fluxes[id].value
-        z = full_ct.indicators[ind_id].value
-        M = 1000.0
-        couplings[Symbol("ub_", id)] = C.Constraint(v - M*z, (-Inf, 0.0))
-        couplings[Symbol("lb_", id)] = C.Constraint(v + M*z, (0.0, Inf))
-    end
-    final_ct = full_ct + :coupling^couplings
-
-    # Force the first sink to always be on so that at least one indicator is 1
-    final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
-
-    final_ct.objective = C.Constraint(
-        sum(final_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
-        nothing, # No bound, this is an objective
-    )
-
-    for (id, flux) in final_ct.fluxes
-        if flux.bound == (-Inf, Inf)
-            println("Cleanup: $id was unbounded, setting to finite bounds")
-            flux.bound = C.Between(-1000.0, 1000.0)
-        end
-    end
-
-    return final_ct, sink_ids
-end
-
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
 
-Used by [`optimize_case_1`](@ref BloodStorageInSilico.PruningOptimizations.optimize_case_1) to set `C.EqualTo` constraints on a JuMP model. See [ConstraintTrees.jl's documentation on mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/) for more information.
-
-# Arguments
-1. `m`: JuMP model
-2. `x`: JuMP variable
-3. `v::C.Value`: `ConstraintTree` value
-4. `b::C.EqualTo`: `C.EqualTo` bound
-
-# Returns
-
-A JuMP constraint attached to the JuMP model.
+Attach a ConstraintTrees equality bound to a JuMP model.
 """
 function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
-    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
+    @constraint(m, C.substitute(v, x) == b.equal_to)
 end
 
 """
     jump_constraint(m, x, v::C.Value, b::C.Between)
 
-Used by [`optimize_case_1`](@ref BloodStorageInSilico.PruningOptimizations.optimize_case_1) to set `C.Between` constraints on a JuMP model. See [ConstraintTrees.jl's documentation on mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/) for more information.
-
-# Arguments
-1. `m`: JuMP model
-2. `x`: JuMP variable
-3. `v::C.Value`: `ConstraintTree` value
-4. `b::C.Between`: `b::C.Between` bound
-
-# Returns
-
-A JuMP constraint attached to the JuMP model.
+Attach a ConstraintTrees interval bound to a JuMP model.
 """
 function jump_constraint(m, x, v::C.Value, b::C.Between)
-    # If there are problems with infinities, enforce finite limits here if needed
-    isinf(b.lower) || JuMP.@constraint(m, C.substitute(v, x) >= b.lower)
-    isinf(b.upper) || JuMP.@constraint(m, C.substitute(v, x) <= b.upper)
+    isinf(b.lower) || @constraint(m, C.substitute(v, x) >= b.lower)
+    isinf(b.upper) || @constraint(m, C.substitute(v, x) <= b.upper)
 end
 
 """
-    jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
+    bound_big_m(bound; fallback = 1000.0)
 
-Used by [`optimize_case_1`](@ref BloodStorageInSilico.PruningOptimizations.optimize_case_1) to set `IntegerFromTo` constraints on a JuMP model. See [ConstraintTrees.jl's documentation on mixed integer optimization (MILP)](https://cobrexa.github.io/ConstraintTrees.jl/stable/3-mixed-integer-optimization/) for more information.
-
-# Arguments
-1. `m`: JuMP model
-2. `x`: JuMP variable
-3. `v::C.Value`: `ConstraintTree` value
-4. `b::IntegerFromTo`: Custom `IntegerFromTo` bound
-
-# Returns
-
-A JuMP constraint attached to the JuMP model.
+Choose a big-M from a sink bound when possible, otherwise use `fallback`.
 """
-function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
-    var = JuMP.@variable(m, integer = true)
-    JuMP.@constraint(m, var >= b.from)
-    JuMP.@constraint(m, var <= b.to)
-    JuMP.@constraint(m, C.substitute(v, x) == var)
+function bound_big_m(bound; fallback::Float64 = 1000.0)
+    if bound isa C.Between
+        vals = Float64[]
+        isinf(bound.lower) || push!(vals, abs(bound.lower))
+        isinf(bound.upper) || push!(vals, abs(bound.upper))
+        return isempty(vals) ? fallback : max(maximum(vals), 1e-9)
+    elseif bound isa C.EqualTo
+        return max(abs(bound.equal_to), 1e-9)
+    else
+        return fallback
+    end
 end
 
 """
-    optimize_case_1(cs::C.ConstraintTree, objective::C.Value)
+    optimize_case_1(
+        ct::A.ConstraintTree;
+        optimizer = HiGHS.Optimizer,
+        fallback_M::Float64 = 1000.0,
+        force_first_sink_on::Bool = false,
+        force_first_sink_lb::Float64 = 0.1,
+        silent::Bool = true,
+        write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
+    )
 
-Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune. If the model is infeasible, attempts to list constraints that make the model infeasible. To help with potential debugging, writes the JuMP model diagnostics to `output/debug_model.lp`
+JuMP MILP for Bordbar (2016) Case 1:
 
-# Arguments
-1. `cs::C.ConstraintTree`: `ConstraintTree` with Case 1 objective and constraints from [`case_1_constraint_tree`](@ref BloodStorageInSilico.PruningOptimizations.case_1_constraint_tree)
-2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument, and accessed as `ct.objective.value` at invocation time.
+    min sum(z[i])
+
+where each `z[i]` is a binary indicator for whether sink reaction `i` is allowed to carry flux.
 
 # Returns
-`C.Tree{Float64}`
 
-`C.Tree{Float64}` with the optimization results substituted in. These results can then be used to prune a model.
+Returns a named tuple with:
+1. `solution_tree`: base ConstraintTree with continuous variables substituted
+2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
+3. `sink_ids`: Sink ids
+4. `jump_model`: JuMP model
 """
-function optimize_case_1(cs::C.ConstraintTree, objective::C.Value, sink_ids)
-    jump_model = JuMP.Model(HiGHS.Optimizer)
-    JuMP.@variable(jump_model, x[1:C.variable_count(cs)])
-    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
-    C.traverse(cs) do c
+function optimize_case_1(
+    ct::C.ConstraintTree;
+    optimizer = HiGHS.Optimizer,
+    fallback_M::Float64 = 1000.0,
+    force_first_sink_on::Bool = false,
+    force_first_sink_lb::Float64 = 0.1,
+    silent::Bool = true,
+    write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
+)
+    # ct = flux_balance_constraints(model)
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
+    isempty(sink_ids) && error("No sink reactions matching `R_UNKNOWN_SK` were found.")
+    jump_model = JuMP.Model(optimizer)
+    silent && JuMP.set_silent(jump_model)
+    x = Vector{JuMP.VariableRef}(undef, C.variable_count(ct))
+    for i in eachindex(x)
+        x[i] = @variable(jump_model, base_name = "x_$i")
+    end
+    C.traverse(ct) do c
         isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
     end
-    JuMP.set_silent(jump_model)
-    jump_model_filename = joinpath("output", "debug_model.lp")
-    write_to_file(jump_model, jump_model_filename)
+    @variable(jump_model, z[sink_ids], Bin)
+
+    # Sink (vi) indicator (zi) coupling
+    #
+    #       -M_i * z_i <= v_i <= M_i * z_i
+    #
+    # If z_i = 0, then v_i = 0.
+    # If z_i = 1, then v_i is allowed within ±M_i.
+    #
+    for id in sink_ids
+        v_expr = C.substitute(ct.fluxes[id].value, x)
+        M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
+
+        @constraint(jump_model, v_expr <=  M_i * z[id])
+        @constraint(jump_model, v_expr >= -M_i * z[id])
+    end
+    if force_first_sink_on
+        forced_id = sink_ids[1]
+        forced_v = C.substitute(ct.fluxes[forced_id].value, x)
+        @constraint(jump_model, forced_v >= force_first_sink_lb)
+    end
+    @objective(jump_model, Min, sum(z[id] for id in sink_ids))
+    if !isnothing(write_lp_path)
+        mkpath(dirname(write_lp_path))
+        write_to_file(jump_model, write_lp_path)
+    end
     JuMP.optimize!(jump_model)
     status = JuMP.termination_status(jump_model)
-    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
-        solved_values = JuMP.value.(jump_model[:x])
-        solution_tree = C.substitute_values(cs, solved_values)
+    if !(status in (JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL))
+        error("Optimization failed with termination status: $status")
+    end
+    solved_values = JuMP.value.(x)
+    solution_tree = C.substitute_values(ct, solved_values)
+    indicator_values = Dict(id => JuMP.value(z[id]) for id in sink_ids)
 
-        # Diagnostics
-        @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
-        for id in sink_ids
-            z = solution_tree.indicators[Symbol("ind_", id)]
-            v = solution_tree.fluxes[id]
-            if !(isapprox(v, 0.0) && isapprox(z, 0.0))
-                @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, z)
-            end
+    # Begin diagnostics
+    @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
+    for id in sink_ids
+        v = solution_tree.fluxes[id]
+        zi = indicator_values[id]
+        if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
+            @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
         end
+    end
+
+    if force_first_sink_on
         forced_id = sink_ids[1]
-        forced_ind = Symbol("ind_", forced_id)
         @printf(
             "FORCED %s   flux = %.12f   indicator = %.12f\n",
             string(forced_id),
             solution_tree.fluxes[forced_id],
-            solution_tree.indicators[forced_ind],
-        )
-        # End diagnsotics
-
-        return solution_tree
-    elseif status == JuMP.MOI.INFEASIBLE
-        println("--- Model is Infeasible. Starting Conflict Analysis ---")
-        JuMP.compute_conflict!(jump_model)
-        println("The following constraints contribute to the conflict:")
-        for (name, con) in jump_constraints
-            if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
-               JuMP.MOI.IN_CONFLICT
-                println(" - $con")
-            end
-        end
-        error("Optimization failed: Model is infeasible.")
-    else
-        error(
-            "Optimization failed with the following status and no further information is available: $status",
+            indicator_values[forced_id],
         )
     end
+    # End diagnostics
+
+    return (
+        solution_tree = solution_tree,
+        indicator_values = indicator_values,
+        sink_ids = sink_ids,
+        jump_model = jump_model,
+    )
 end
+
+# If needed, optimizer debugging code.
+# status = JuMP.termination_status(jump_model)
+#     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+#         solved_values = JuMP.value.(jump_model[:x])
+#         solution_tree = C.substitute_values(cs, solved_values)
+
+#         # Diagnostics
+#         @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
+#         for id in sink_ids
+#             z = solution_tree.indicators[Symbol("ind_", id)]
+#             v = solution_tree.fluxes[id]
+#             if !(isapprox(v, 0.0) && isapprox(z, 0.0))
+#                 @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, z)
+#             end
+#         end
+#         forced_id = sink_ids[1]
+#         forced_ind = Symbol("ind_", forced_id)
+#         @printf(
+#             "FORCED %s   flux = %.12f   indicator = %.12f\n",
+#             string(forced_id),
+#             solution_tree.fluxes[forced_id],
+#             solution_tree.indicators[forced_ind],
+#         )
+#         # End diagnsotics
+
+#         return solution_tree
+#     elseif status == JuMP.MOI.INFEASIBLE
+#         println("--- Model is Infeasible. Starting Conflict Analysis ---")
+#         JuMP.compute_conflict!(jump_model)
+#         println("The following constraints contribute to the conflict:")
+#         for (name, con) in jump_constraints
+#             if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
+#                JuMP.MOI.IN_CONFLICT
+#                 println(" - $con")
+#             end
+#         end
+#         error("Optimization failed: Model is infeasible.")
+#     else
+#         error(
+#             "Optimization failed with the following status and no further information is available: $status",
+#         )
+#     end
 
 """
     analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})

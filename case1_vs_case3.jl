@@ -1,7 +1,7 @@
 using CSV
 using DataFrames
 using DataFramesMeta
-using HiGHS
+using COBREXA
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -45,7 +45,7 @@ first_added_sink_ids =
 # end
 
 @info "Case 1: construct constraint tree"
-case1_ct, sink_ids = case_1_constraint_tree(fba_model)
+case1_ct = flux_balance_constraints(fba_model)
 # case1_metabolites_to_ignore = ["g6p_c", "glc__D_c", "pyr_e", "lac__L_e"]
 add_metabolite_bounds_to_constraint_tree!(
     case1_ct,
@@ -57,8 +57,18 @@ add_metabolite_bounds_to_constraint_tree!(
 
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
 # case1_optimization_tree = optimize_case_1_v2(case1_ct, case1_ct.objective.value)
-case1_optimization_tree = optimize_case_1(case1_ct, case1_ct.objective.value, sink_ids)
+# case1_optimization_tree = optimize_case_1(case1_ct, case1_ct.objective.value, sink_ids)
 # display(case1_optimization_tree.indicators)
+
+
+result = optimize_case_1(
+    case1_ct;
+    force_first_sink_on = true,
+    force_first_sink_lb = 0.1,
+)
+# display(result.indicator_values)
+# display(result.solution_tree.fluxes)
+
 
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
