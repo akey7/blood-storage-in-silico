@@ -156,6 +156,20 @@ function jump_constraint(m, x, v::C.Value, b::IntegerFromTo)
     JuMP.@constraint(m, C.substitute(v, x) == var)
 end
 
+"""
+    milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
+
+Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune. If the model is infeasible, attempts to list constraints that make the model infeasible. To help with potential debugging, writes the JuMP model diagnostics to `output/debug_model.lp`
+
+# Arguments
+1. `cs::C.ConstraintTree`: `ConstraintTree` with Case 1 objective and constraints from [`case_1_constraint_tree`](@ref BloodStorageInSilico.PruningOptimizations.case_1_constraint_tree)
+2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument, and accessed as `ct.objective.value` at invocation time.
+
+# Returns
+`C.Tree{Float64}`
+
+`C.Tree{Float64}` with the optimization results substituted in. These results can then be used to prune a model.
+"""
 function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer)
     jump_model = JuMP.Model(optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(cs)])
@@ -164,6 +178,8 @@ function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer
         isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
     end
     JuMP.set_silent(jump_model)
+    jump_model_filename = joinpath("output", "debug_model.lp")
+    write_to_file(jump_model, jump_model_filename)
     JuMP.optimize!(jump_model)
     status = JuMP.termination_status(jump_model)
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
@@ -241,27 +257,6 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
     return final_ct
 end
 
-"""
-    optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
-
-Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to find zero flux reactions to prune. If the model is infeasible, attempts to list constraints that make the model infeasible. To help with potential debugging, writes the JuMP model diagnostics to `output/debug_model.lp`
-
-This function contains multiple inner functions to help with translating `ConstraintTree` constraints to JuMP constraints:
-1. `register_var!()`: Makes a new JuMP variable
-2. `find_all_indices!()`: Safely find indices by iterating keys only.
-3. `process_tree!()`: Traverse `ConstraintTree` to find variable definitions and apply bounds
-4. `to_jump()`: Helper to convert `C.Value` to JuMP `AffExpr`
-5. `add_constraints!()`: Add Constraints recursively from the `ConstraintTree`
-
-# Arguments
-1. `ct::C.ConstraintTree`: `ConstraintTree` with Case 1 objective.
-2. `objective::C.LinearValue`: Objective to optimize the constraint tree for. This can be the objective for the `ConstraintTree` passed as the first argument, and accessed as `ct.objective.value` at invocation time.
-
-# Returns
-`C.Tree{Float64}`
-
-`C.Tree{Float64}` with the optimization results substituted in. These results can then be used to prune a model.
-"""
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.set_optimizer_attribute(jump_model, "mip_feasibility_tolerance", 1e-8)
