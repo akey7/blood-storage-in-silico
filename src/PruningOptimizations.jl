@@ -140,6 +140,59 @@ mutable struct IntegerFromTo <: C.Bound
     to::Int
 end
 
+@doc raw"""
+    case_1_constraint_tree(model::A.AbstractFBCModel)
+
+Creates an objective and associated using the model's `ConstraintTree` to prune fluxes according to Case 1 in the Bordbar (2016) paper.
+
+``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
+
+# Arguments
+1. `model::A.AbstractFBCModel`: Model to extract the `ConstraintTree` from.
+
+# Returns
+`ConstraintTree`
+
+Returns a new `ConstraintTree` derived from the given model with the proper objective for optimization.
+"""
+function case_1_constraint_tree(model::A.AbstractFBCModel)
+    ct = flux_balance_constraints(model)
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
+    indicator_vars =
+        :indicators^C.variables(
+            keys = [Symbol("ind_", id) for id in sink_ids],
+            bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
+        )
+    full_ct = ct + indicator_vars
+    BIG_M = 1000.0
+    couplings = C.ConstraintTree()
+    for id in sink_ids
+        ind_id = Symbol("ind_", id)
+        v = full_ct.fluxes[id].value
+        z = full_ct.indicators[ind_id].value
+        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
+        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
+    end
+    final_ct = full_ct + :coupling^couplings
+
+    # # Force the first sink to always be on so that at least one indicator is 1
+    # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
+
+    final_ct.objective = C.Constraint(
+        sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
+        nothing, # No bound, this is an objective
+    )
+
+    for (id, flux) in final_ct.fluxes
+        if flux.bound == (-Inf, Inf)
+            println("Cleanup: $id was unbounded, setting to finite bounds")
+            flux.bound = C.Between(-1000.0, 1000.0)
+        end
+    end
+
+    return final_ct
+end
+
 function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
     JuMP.@constraint(m, C.substitute(v, x) == b.equal_to)
 end
@@ -202,59 +255,6 @@ function milp_optimized_vars(cs::C.ConstraintTree, objective::C.Value, optimizer
             "Optimization failed with the following status and no further information is available: $status",
         )
     end
-end
-
-@doc raw"""
-    case_1_constraint_tree(model::A.AbstractFBCModel)
-
-Creates an objective and associated using the model's `ConstraintTree` to prune fluxes according to Case 1 in the Bordbar (2016) paper.
-
-``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
-
-# Arguments
-1. `model::A.AbstractFBCModel`: Model to extract the `ConstraintTree` from.
-
-# Returns
-`ConstraintTree`
-
-Returns a new `ConstraintTree` derived from the given model with the proper objective for optimization.
-"""
-function case_1_constraint_tree(model::A.AbstractFBCModel)
-    ct = flux_balance_constraints(model)
-    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
-    indicator_vars =
-        :indicators^C.variables(
-            keys = [Symbol("ind_", id) for id in sink_ids],
-            bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
-        )
-    full_ct = ct + indicator_vars
-    BIG_M = 1000.0
-    couplings = C.ConstraintTree()
-    for id in sink_ids
-        ind_id = Symbol("ind_", id)
-        v = full_ct.fluxes[id].value
-        z = full_ct.indicators[ind_id].value
-        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
-        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
-    end
-    final_ct = full_ct + :coupling^couplings
-
-    # # Force the first sink to always be on so that at least one indicator is 1
-    # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
-
-    final_ct.objective = C.Constraint(
-        sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
-        nothing, # No bound, this is an objective
-    )
-
-    for (id, flux) in final_ct.fluxes
-        if flux.bound == (-Inf, Inf)
-            println("Cleanup: $id was unbounded, setting to finite bounds")
-            flux.bound = C.Between(-1000.0, 1000.0)
-        end
-    end
-
-    return final_ct
 end
 
 function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
