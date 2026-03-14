@@ -7,6 +7,7 @@ using COBREXA
 using HiGHS
 import AbstractFBCModels as A
 import ConstraintTrees as C
+using Printf
 
 export case_3_constraint_tree,
     optimize_case_3,
@@ -162,22 +163,22 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
             bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
         )
     full_ct = ct + indicator_vars
-    BIG_M = 1000.0
     couplings = C.ConstraintTree()
     for id in sink_ids
         ind_id = Symbol("ind_", id)
         v = full_ct.fluxes[id].value
         z = full_ct.indicators[ind_id].value
-        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
-        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
+        M = 1000.0
+        couplings[Symbol("ub_", id)] = C.Constraint(v - M*z, (-Inf, 0.0))
+        couplings[Symbol("lb_", id)] = C.Constraint(v + M*z, (0.0, Inf))
     end
     final_ct = full_ct + :coupling^couplings
 
-    # # Force the first sink to always be on so that at least one indicator is 1
-    # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
+    # Force the first sink to always be on so that at least one indicator is 1
+    final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
 
     final_ct.objective = C.Constraint(
-        sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
+        sum(final_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
         nothing, # No bound, this is an objective
     )
 
@@ -188,7 +189,7 @@ function case_1_constraint_tree(model::A.AbstractFBCModel)
         end
     end
 
-    return final_ct
+    return final_ct, sink_ids
 end
 
 """
@@ -267,10 +268,10 @@ Create a JuMP model with the given Case 1 `ConstraintTree` and optimize it to fi
 
 `C.Tree{Float64}` with the optimization results substituted in. These results can then be used to prune a model.
 """
-function optimize_case_1(cs::C.ConstraintTree, objective::C.Value)
+function optimize_case_1(cs::C.ConstraintTree, objective::C.Value, sink_ids)
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(cs)])
-    JuMP.@objective(jump_model, JuMP.MAX_SENSE, C.substitute(objective, x))
+    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(objective, x))
     C.traverse(cs) do c
         isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
     end
@@ -282,6 +283,26 @@ function optimize_case_1(cs::C.ConstraintTree, objective::C.Value)
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
         solved_values = JuMP.value.(jump_model[:x])
         solution_tree = C.substitute_values(cs, solved_values)
+
+        # Diagnostics
+        @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
+        for id in sink_ids
+            z = solution_tree.indicators[Symbol("ind_", id)]
+            v = solution_tree.fluxes[id]
+            if !(isapprox(v, 0.0) && isapprox(z, 0.0))
+                @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, z)
+            end
+        end
+        forced_id = sink_ids[1]
+        forced_ind = Symbol("ind_", forced_id)
+        @printf(
+            "FORCED %s   flux = %.12f   indicator = %.12f\n",
+            string(forced_id),
+            solution_tree.fluxes[forced_id],
+            solution_tree.indicators[forced_ind],
+        )
+        # End diagnsotics
+
         return solution_tree
     elseif status == JuMP.MOI.INFEASIBLE
         println("--- Model is Infeasible. Starting Conflict Analysis ---")
