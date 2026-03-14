@@ -33,8 +33,8 @@ first_sink_specifications = (
     prune_zero_sinks = nothing,
     sink_opt_outs = nothing,
 )
-first_added_sink_ids =
-    add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
+# first_added_sink_ids =
+#     add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
 
 # Ensure sinks were added by printing them
 # for (rxn_id, rxn) in fba_model.reactions
@@ -53,9 +53,11 @@ case1_ct = case_1_constraint_tree(fba_model)
 #     final_time,
 # )
 @info "Case 1: Optimize constraint tree"
+
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
-case1_optimization_tree = optimize_case_1(case1_ct, case1_ct.objective.value)
-inspect_results(case1_optimization_tree)
+case1_optimization_tree = optimize_case_1_v2(case1_ct, case1_ct.objective.value)
+
+# inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
 # display(first(nonzero_indicator_ids, 10))
 # case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =

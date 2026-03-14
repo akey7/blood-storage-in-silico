@@ -12,6 +12,7 @@ export case_3_constraint_tree,
     optimize_case_3,
     case_1_constraint_tree,
     optimize_case_1,
+    optimize_case_1_v2,
     analyze_pruning_optimization,
     check_case_1_optimization_results,
     list_non_zeros,
@@ -155,40 +156,61 @@ Returns a new `ConstraintTree` derived from the given model with the proper obje
 """
 function case_1_constraint_tree(model::A.AbstractFBCModel)
     ct = flux_balance_constraints(model)
-    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
-    indicator_vars =
-        :indicators^C.variables(
-            keys = [Symbol("ind_", id) for id in sink_ids],
-            bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
-        )
-    full_ct = ct + indicator_vars
-    BIG_M = 1000.0
-    couplings = C.ConstraintTree()
-    for id in sink_ids
-        ind_id = Symbol("ind_", id)
-        v = full_ct.fluxes[id].value
-        z = full_ct.indicators[ind_id].value
-        couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
-        couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
+    return ct
+
+    # sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
+    # indicator_vars =
+    #     :indicators^C.variables(
+    #         keys = [Symbol("ind_", id) for id in sink_ids],
+    #         bounds = [IntegerFromTo(0, 1) for _ in sink_ids],
+    #     )
+    # full_ct = ct + indicator_vars
+    # BIG_M = 1000.0
+    # couplings = C.ConstraintTree()
+    # for id in sink_ids
+    #     ind_id = Symbol("ind_", id)
+    #     v = full_ct.fluxes[id].value
+    #     z = full_ct.indicators[ind_id].value
+    #     couplings[Symbol("up_", id)] = C.Constraint(v - BIG_M * z, (-BIG_M, 0.0))
+    #     couplings[Symbol("lo_", id)] = C.Constraint(v + BIG_M * z, (0.0, BIG_M))
+    # end
+    # final_ct = full_ct + :coupling^couplings
+
+    # # # Force the first sink to always be on so that at least one indicator is 1
+    # # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
+
+    # final_ct.objective = C.Constraint(
+    #     sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
+    #     nothing, # No bound, this is an objective
+    # )
+
+    # for (id, flux) in final_ct.fluxes
+    #     if flux.bound == (-Inf, Inf)
+    #         println("Cleanup: $id was unbounded, setting to finite bounds")
+    #         flux.bound = C.Between(-1000.0, 1000.0)
+    #     end
+    # end
+
+    # return final_ct
+end
+
+function optimize_case_1_v2(ct::C.ConstraintTree, objective::C.Value)
+    jump_model = JuMP.Model(HiGHS.Optimizer)
+
+    C.itraverse(ct) do path, node
+        println("Variable: ", join(string.(path), "."), "  Bound: ", C.bound(node))
     end
-    final_ct = full_ct + :coupling^couplings
 
-    # # Force the first sink to always be on so that at least one indicator is 1
-    # final_ct.fluxes[sink_ids[1]].bound = C.Between(0.1, 1000.0)
+    # function to_jump(val::C.Value)
+    #     expr = JuMP.AffExpr(0.0)
+    #     for idx in keys(val.idxs)
+    #         coeff = val.idxs[idx]
+    #         JuMP.add_to_expression!(expr, coeff, jump_vars[idx])
+    #     end
+    #     return expr
+    # end
 
-    final_ct.objective = C.Constraint(
-        sum(full_ct.indicators[Symbol("ind_", id)].value for id in sink_ids),
-        nothing, # No bound, this is an objective
-    )
-
-    for (id, flux) in final_ct.fluxes
-        if flux.bound == (-Inf, Inf)
-            println("Cleanup: $id was unbounded, setting to finite bounds")
-            flux.bound = C.Between(-1000.0, 1000.0)
-        end
-    end
-
-    return final_ct
+    # JuMP.@objective(jump_model, JuMP.MIN_SENSE, to_jump(objective))
 end
 
 """
@@ -283,7 +305,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
             if entry isa C.Constraint && string(name) != "objective"
                 expr = to_jump(entry.value)
                 b = entry.bound
-
+                println("Adding $name $b")
                 if b isa C.Between
                     jump_constraints[full_name] = JuMP.@constraint(
                         jump_model,
@@ -372,7 +394,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
                 println("The following constraints contribute to the conflict:")
                 for (name, con) in jump_constraints
                     if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
-                    JuMP.MOI.IN_CONFLICT
+                       JuMP.MOI.IN_CONFLICT
                         println(" - $con")
                     end
                 end
@@ -394,7 +416,7 @@ function optimize_case_1(ct::C.ConstraintTree, objective::C.Value)
     end
 end
 
-function inspect_results(tree, prefix="", threshold=1e-6)
+function inspect_results(tree, prefix = "", threshold = 1e-6)
     # Check if the current node is a leaf (Float64)
     if tree isa Float64
         if abs(tree) > threshold
