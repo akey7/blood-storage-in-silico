@@ -59,7 +59,7 @@ add_metabolite_bounds_to_constraint_tree!(
 # case1_optimization_tree = optimize_case_1_v2(case1_ct, case1_ct.objective.value)
 case1_optimization_tree =
     milp_optimized_vars(case1_ct, case1_ct.objective.value, HiGHS.Optimizer)
-display(case1_optimization_tree)
+display(case1_optimization_tree.indicators)
 
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
