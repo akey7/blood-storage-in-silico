@@ -188,7 +188,7 @@ where each `z[i]` is a binary indicator for whether sink reaction `i` is allowed
 # Returns
 
 Returns a named tuple with:
-1. `solution_tree`: base ConstraintTree with continuous variables substituted
+1. `ct`: base ConstraintTree with continuous variables substituted
 2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
@@ -202,7 +202,6 @@ function optimize_case_1(
     silent::Bool = true,
     write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
 )
-    # ct = flux_balance_constraints(model)
     sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
     isempty(sink_ids) && error("No sink reactions matching `R_UNKNOWN_SK` were found.")
     jump_model = JuMP.Model(optimizer)
