@@ -6,13 +6,18 @@ using DataFramesMeta
 import AbstractFBCModels as A
 import ConstraintTrees as C
 using COBREXA
+import AbstractFBCModels: stoichiometry
+import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 
 export load_metabolite_bounds,
     query_metabolite_bounds,
     find_metabolite_matches,
     add_metabolite_bounds_to_constraint_tree!,
     print_metabolite_bounds_on_constraint_tree,
-    add_sinks_for_unmatched_metabolites!
+    add_sinks_for_unmatched_metabolites!,
+    print_sinks_in_model,
+    find_metabolites_with_exchanges,
+    does_manual_prune_list_match_sink_name
 
 """
     load_metabolite_bounds()
@@ -61,6 +66,36 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
         return (lower_bound, upper_bound)
     else
         return nothing
+    end
+end
+
+"""
+    does_manual_prune_list_match_sink_name(sink_name::String, sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+
+Determines if the given sink name contains any of the substrings in the given sink opt-outs list.
+
+# Arguments
+1. `sink_name::String`: The name of the sink.
+2. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If specified, contains a list of substrings that are matched against the given sink name.
+
+# Returns
+`Bool`
+
+Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
+"""
+function does_manual_prune_list_match_sink_name(
+    sink_name::String,
+    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+)
+    if isnothing(sink_opt_outs)
+        return false
+    else
+        for sink_opt_out in sink_opt_outs
+            if contains(sink_name, sink_opt_out)
+                return true
+            end
+        end
+        return false
     end
 end
 
@@ -223,6 +258,27 @@ function add_metabolite_bounds_to_constraint_tree!(
 end
 
 """
+    find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+
+Finds extracellular metabolites with exchanges in the provided model and returns a list of the metabolite ids found. Used by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!).
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model which has the metabolites and exchanges of interest.
+
+# Returns
+`Vector{String}`
+
+Returns a list of metabolites with exchanges.
+"""
+function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+    exchange_ids = [
+        reaction_id for (reaction_id, _) in model.reactions if contains(reaction_id, "R_EX")
+    ]
+    metabolite_ids = [replace(exchange_id, "R_EX_" => "") for exchange_id in exchange_ids]
+    return metabolite_ids
+end
+
+"""
     add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
 
 Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
@@ -328,6 +384,14 @@ function print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
         end
     end
     walk(ct.flux_stoichiometry)
+end
+
+function print_sinks_in_model(fba_model::A.AbstractFBCModel)
+    for (rxn_id, rxn) in fba_model.reactions
+        if occursin("R_UNKNOWN_SK", rxn_id)
+            println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
+        end
+    end
 end
 
 end

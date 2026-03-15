@@ -38,13 +38,9 @@ first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
 
 # Ensure sinks were added by printing them
-# for (rxn_id, rxn) in fba_model.reactions
-#     if occursin("R_UNKNOWN_SK", rxn_id)
-#         println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
-#     end
-# end
+print_sinks_in_model(fba_model)
 
-@info "Case 1: construct constraint tree"
+@info "Case 1: Add metabolite bounds to ConstraintTree"
 case1_ct = flux_balance_constraints(fba_model)
 # case1_metabolites_to_ignore = ["g6p_c", "glc__D_c", "pyr_e", "lac__L_e"]
 add_metabolite_bounds_to_constraint_tree!(
@@ -53,6 +49,8 @@ add_metabolite_bounds_to_constraint_tree!(
     additive,
     final_time,
 )
+print_metabolite_bounds_on_constraint_tree(case1_ct)
+
 @info "Case 1: Optimize constraint tree"
 
 # print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
