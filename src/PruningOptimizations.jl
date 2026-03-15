@@ -14,7 +14,6 @@ export case_3_constraint_tree,
     case_1_constraint_tree,
     optimize_case_1,
     analyze_pruning_optimization,
-    check_case_1_optimization_results,
     list_non_zeros
 
 @doc raw"""
@@ -368,31 +367,6 @@ function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float6
     unordered_df = DataFrame(sink_status_rows)
     sink_status_df = @orderby(unordered_df, :is_non_zero, :sink)
     return zero_sinks, nonzero_sinks, sink_status_df
-end
-
-function check_case_1_optimization_results(ct::C.Tree{Float64})
-    nonzero_indicator_ids = []
-    zero_indicator_ids = []
-    function walk(tree, path = "")
-        for (key, node) in pairs(tree)
-            current_path = isempty(path) ? string(key) : "$path.$key"
-            if node isa Float64
-                if !isapprox(node, 0.0)
-                    push!(nonzero_indicator_ids, current_path)
-                else
-                    push!(zero_indicator_ids, current_path)
-                end
-            elseif node isa C.ConstraintTree
-                walk(node, current_path)
-            end
-        end
-    end
-    walk(ct.indicators)
-    n_zero_indicators = length(zero_indicator_ids)
-    if length(nonzero_indicator_ids) < 1
-        @warn "Did not find any non-zero indicators, but found $n_zero_indicators zero indicators."
-    end
-    return nonzero_indicator_ids
 end
 
 end
