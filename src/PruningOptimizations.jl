@@ -29,7 +29,7 @@ Where ``|\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured
 
 # Arguments
 1. `model::A.AbstractFBCModel`: The model in which **the `ConstraintTree` will be mutated**
-2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.find_metabolite_matches) to find unmeasured metabolites.
+2. `metabolite_status_df::DataFrame`: DataFrame from [`find_metabolite_matches`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.find_metabolite_matches) to find unmeasured metabolites.
 3. `additive::AbstractString`: Additive to search for metabolite measurement availability.
 
 # Returns
@@ -181,7 +181,7 @@ end
 
 JuMP MILP for Bordbar (2016) Case 1:
 
-``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
+``\\min \\sum_{i=1}^{m} 1_{\\Delta x_i \\neq 0}``
 
 a sum of binary indicators, with each indicator `i` determines whether sink reaction `i` is allowed to carry flux.
 

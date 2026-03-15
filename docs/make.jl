@@ -17,6 +17,7 @@ makedocs(
         BloodStorageInSilico.ModelGraph,
         BloodStorageInSilico.UfbaSampler.FbaModelBuilder,
         BloodStorageInSilico.UfbaSampler.PruningOptimizations,
+        BloodStorageInSilico.UfbaSampler.MetaboliteBounds,
     ],
     format = Documenter.HTML(
         prettyurls = false,

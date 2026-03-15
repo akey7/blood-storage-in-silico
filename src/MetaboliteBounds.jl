@@ -37,7 +37,7 @@ end
 Find the rate of concentration chage for the metabolite in the given additive at the given final time. Returns `nothing` if not found.
 
 # Arguments
-1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.load_metabolite_bounds).
+1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.load_metabolite_bounds).
 2. `additive`: String of the additive as specified in the DataFrame.
 3. `metabolite`: Metabolite id.
 4. `final_time`: The final time point of the interval.
