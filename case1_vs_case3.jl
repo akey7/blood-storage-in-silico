@@ -58,11 +58,13 @@ print_metabolite_bounds_on_constraint_tree(case1_ct)
 # case1_optimization_tree = optimize_case_1(case1_ct, case1_ct.objective.value, sink_ids)
 # display(case1_optimization_tree.indicators)
 
+optimize_case_1_result =
+    optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
+case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
 
-result = optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
-# display(result.indicator_values)
-# display(result.solution_tree.fluxes)
-
+@info "Case 1: Prune zero sinks"
+prune_zero_sinks = case_1_analysis.prune
+display(prune_zero_sinks)
 
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)

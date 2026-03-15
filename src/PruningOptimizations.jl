@@ -14,7 +14,8 @@ export case_3_constraint_tree,
     case_1_constraint_tree,
     optimize_case_1,
     analyze_case3_pruning_optimization,
-    list_non_zeros
+    list_non_zeros,
+    analyze_case_1_pruning_optimization
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -367,6 +368,41 @@ function analyze_case3_pruning_optimization(pruning_optimization_result::C.Tree{
     unordered_df = DataFrame(sink_status_rows)
     sink_status_df = @orderby(unordered_df, :is_non_zero, :sink)
     return zero_sinks, nonzero_sinks, sink_status_df
+end
+
+"""
+    analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1e-9)
+
+Classify sinks from the Case 1 optimization result.
+
+# Arguments
+1. `optimize_case_1_result`: Result from [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1)
+2. `atol::Float64 = 1e-9`: Tolerance for approximate zero comparisons.
+
+# Returns
+Named tuple with fields:
+
+1. `prune::Vector{Symbol}`: Sinks to be pruned because the carry no flux.
+2. `keep::Vector{Symbol}`: Sinks to keep because they carry flux.
+"""
+function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1e-9)
+    solution_tree = optimize_case_1_result.solution_tree
+    sink_ids = optimize_case_1_result.sink_ids
+    prune = []
+    keep = []
+    for sink_id in sink_ids
+        flux = solution_tree.fluxes[sink_id]
+        if isapprox(flux, 0.0; atol = atol)
+            push!(prune, sink_id)
+        else
+            push!(keep, sink_id)
+        end
+    end
+    n_keep = length(keep)
+    if n_keep == 0
+        @warn "Case 1 optimization found no sinks to keep."
+    end
+    return (prune = prune, keep = keep)
 end
 
 end
