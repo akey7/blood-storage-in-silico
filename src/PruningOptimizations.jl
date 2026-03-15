@@ -181,14 +181,23 @@ end
 
 JuMP MILP for Bordbar (2016) Case 1:
 
-    min sum(z[i])
+``\min \sum_{i=1}^{m} 1_{\Delta x_i \neq 0}``
 
-where each `z[i]` is a binary indicator for whether sink reaction `i` is allowed to carry flux.
+a sum of binary indicators, with each indicator `i` determines whether sink reaction `i` is allowed to carry flux.
+
+# Arguments
+1. `ct::C.ConstraintTree`: ConstraintTree with sinks and dx/dt metabolites bounds added.
+2. `optimizer = HiGHS.Optimizer`: Reference to an optimizer.
+3. `fallback_M::Float64 = 1000.0`: If a sink bound is not found when creating indocator/coupling constriants, this is the fallback value.
+4. `force_first_sink_on::Bool = false`: A debugging option. If `true`, forcibly sets the first sink to have non-zero flux, which will force the corresponding indicator to 1. Defaults to `false`, which does not force any sinks, and which should be used for general sinnk pruning.
+5. `force_first_sink_lb::Float64 = 0.1`: A non-zero lower bound to force the first sink on with if `force_first_sink_on` is `true`.
+6. `silent::Bool = true`: If `true`, the optimizer output is silenced.
+7. `write_lp_path::Union{Nothing,String} = "output/debug_case1.lp"`: A filename to write the JuMP model to for debugging. If `nothing`, does not write the debugging file.
 
 # Returns
 
 Returns a named tuple with:
-1. `ct`: base ConstraintTree with continuous variables substituted
+1. `solution_tree`: base ConstraintTree with continuous variables substituted
 2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
