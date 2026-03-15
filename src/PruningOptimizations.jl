@@ -15,7 +15,8 @@ export case_3_constraint_tree,
     optimize_case_1,
     analyze_case3_pruning_optimization,
     list_non_zeros,
-    analyze_case_1_pruning_optimization
+    analyze_case_1_pruning_optimization,
+    print_sinks_in_model
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -403,6 +404,14 @@ function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float
         @warn "Case 1 optimization found no sinks to keep."
     end
     return (prune = prune, keep = keep)
+end
+
+function print_sinks_in_model(fba_model::A.AbstractFBCModel)
+    for (rxn_id, rxn) in fba_model.reactions
+        if occursin("R_UNKNOWN_SK", rxn_id)
+            println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
+        end
+    end
 end
 
 end

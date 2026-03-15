@@ -15,7 +15,6 @@ export load_metabolite_bounds,
     add_metabolite_bounds_to_constraint_tree!,
     print_metabolite_bounds_on_constraint_tree,
     add_sinks_for_unmatched_metabolites!,
-    print_sinks_in_model,
     find_metabolites_with_exchanges,
     does_manual_prune_list_match_sink_name
 
@@ -384,14 +383,6 @@ function print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
         end
     end
     walk(ct.flux_stoichiometry)
-end
-
-function print_sinks_in_model(fba_model::A.AbstractFBCModel)
-    for (rxn_id, rxn) in fba_model.reactions
-        if occursin("R_UNKNOWN_SK", rxn_id)
-            println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
-        end
-    end
 end
 
 end
