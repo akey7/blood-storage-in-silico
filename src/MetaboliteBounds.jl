@@ -316,7 +316,7 @@ function add_sinks_for_unmatched_metabolites!(
         @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
     end
     metabolites_with_exchanges = find_metabolites_with_exchanges(model)
-    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : prune_zero_sinks
+    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : string.(prune_zero_sinks)
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
