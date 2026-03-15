@@ -19,6 +19,15 @@ Many of the reactions in this model are from the following paper:
 
 Reaction ids have been mapped from that paper, released in 2016, to reaction ids in the RBC-GEM released in 2024.
 
+## MetaboliteBounds
+
+MetaboliteBounds is for configuring metaolite bounds in models before optimizations.
+
+```@autodocs
+Modules = [BloodStorageInSilico.UfbaSampler.MetaboliteBounds]
+Order   = [:function]
+```
+
 ## UfbaSampler
 
 UfbaSampler creates a three-pathway model and samples it for an unsteady flux balance analysis (uFBA) study as described by Brodbar et al.
