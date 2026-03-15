@@ -12,6 +12,9 @@ using .PruningOptimizations
 include("src/MetaboliteBounds.jl")
 using .MetaboliteBounds
 
+@info "Loading base RBC-GEM"
+base_rbc_gem = load_base_rbc_gem()
+
 @info "Loading metabolite bounds"
 metabolite_bounds_df = load_metabolite_bounds()
 
@@ -19,8 +22,8 @@ metabolite_bounds_df = load_metabolite_bounds()
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
 @info "Create FBA model and map metabolites onto that model"
-fba_model, fba_model_metabolites_df = create_fba_model(
-    load_base_rbc_gem();
+fba_model, _ = create_fba_model(
+    base_rbc_gem;
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
@@ -63,8 +66,22 @@ optimize_case_1_result =
 case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
 
 @info "Case 1: Prune zero sinks"
+second_fba_model, _ = create_fba_model(
+    base_rbc_gem;
+    exchanges = default_exchanges(),
+    flux_bounds_overrides_df = flux_bounds_overrides_df,
+)
 prune_zero_sinks = case_1_analysis.prune
-display(prune_zero_sinks)
+second_sink_specifications = (
+    metabolite_status_df = metabolite_status_df,
+    additive = additive,
+    prune_zero_sinks = prune_zero_sinks,
+    sink_opt_outs = nothing,
+)
+second_added_sink_ids =
+    add_sinks_for_unmatched_metabolites!(second_fba_model, second_sink_specifications)
+println("Added the following sinks")
+display(second_added_sink_ids)
 
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
