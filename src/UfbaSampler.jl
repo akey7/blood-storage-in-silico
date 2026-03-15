@@ -420,27 +420,18 @@ function execute_ufba_job(job, n_chains = 10)
     metabolite_bounds_df = job.metabolite_bounds_df
     @info "execute_ufba_job: additive: $additive, final_time: $final_time"
     ct = flux_balance_constraints(pruned_model)
-    # for k in keys(ct.flux_stoichiometry)
-    #     short_metabolite_id = string(k)[3:end]
-    #     bounds = query_metabolite_bounds(
-    #         metabolite_bounds_df,
-    #         additive,
-    #         short_metabolite_id,
-    #         final_time,
-    #     )
-    #     if isnothing(bounds)
-    #         ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
-    #     else
-    #         lb, ub = bounds
-    #         ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
-    #     end
-    # end
-    add_metabolite_bounds_to_constraint_tree!(ct)
+    add_metabolite_bounds_to_constraint_tree!(
+        ct,
+        metabolite_bounds_df,
+        String(additive),
+        final_time,
+    )
 
     # TODO: After I make a new constraint tree, I cannot use flux_balance_analysis
-    # rather I need to use optimized_values.
+    # rather I need to use optimized_values. Currently this change is breaking.
+    # Potentially need to fix after switching to Case 1 constraints.
 
-    objective_flux = flux_balance_analysis(pruned_model; optimizer = HiGHS.Optimizer)
+    objective_flux = optimized_values(ct; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
         println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
         return nothing, missing
@@ -546,7 +537,6 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
-    pruning_method::Symbol = :case1,
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
@@ -578,12 +568,8 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        ct =
-            pruning_method == :case1 ? case_1_constraint_tree(full_model) :
-            case_3_constraint_tree(full_model, metabolite_status_df, additive)
-        prune_optimize_result_ct =
-            pruning_method == :case1 ? optimize_case_1(ct, ct.objective.value) :
-            optimize_case_3(ct, ct.objective.value)
+        ct = case_3_constraint_tree(full_model, metabolite_status_df, additive)
+        prune_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
         if isnothing(prune_optimize_result_ct)
             @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
         end
@@ -617,7 +603,7 @@ function make_ufba_models_for_additives_and_times(
             zero_sinks = zero_sinks,
             nonzero_sinks = nonzero_sinks,
             added_sink_ids = added_sink_ids,
-            pruning_method = pruning_method,
+            pruning_method = :case3,
         )
     end
     return result

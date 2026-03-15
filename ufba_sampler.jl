@@ -64,7 +64,6 @@ println("Wrote $fba_model_metabolites_filename")
 ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_bounds_df,
     n_models;
-    pruning_method = :case1,
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
@@ -72,7 +71,6 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 # ufba_jobs = make_ufba_models_for_additives_and_times(
 #     metabolites_bounds_df,
 #     n_models;
-#     pruning_method = :case1,
 #     exchanges = as3_exchanges(),
 #     flux_bounds_overrides_df = flux_bounds_overrides_df,
 # )
