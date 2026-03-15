@@ -15,8 +15,7 @@ export case_3_constraint_tree,
     optimize_case_1,
     analyze_pruning_optimization,
     check_case_1_optimization_results,
-    list_non_zeros,
-    inspect_results
+    list_non_zeros
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
