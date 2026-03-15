@@ -13,7 +13,7 @@ export case_3_constraint_tree,
     optimize_case_3,
     case_1_constraint_tree,
     optimize_case_1,
-    analyze_pruning_optimization,
+    analyze_case3_pruning_optimization,
     list_non_zeros
 
 @doc raw"""
@@ -330,7 +330,7 @@ end
 """
     analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
 
-Analyze the results of the Case 3 or Case 1 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
+Analyze the results of the Case 3 optimization to make lists of of sinks added for unmeasured metabolites that have zero flux and non-zero flux. Also gathers these results into a DataFrame for easier manual inspection.
 
 # Argument
 1. `pruning_optimization_result::C.Tree{Float64}`: Case 3 optimization result.
@@ -340,7 +340,7 @@ Analyze the results of the Case 3 or Case 1 optimization to make lists of of sin
 
 Tuple of reaction ids for zero flux sinks, non-zero flux sinks, and a status DataFrame for manual inspection.
 """
-function analyze_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
+function analyze_case3_pruning_optimization(pruning_optimization_result::C.Tree{Float64})
     pruning_data = pruning_optimization_result.fluxes
     zero_sinks = [
         k for (k, v) in pruning_data if

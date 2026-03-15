@@ -588,7 +588,7 @@ function make_ufba_models_for_additives_and_times(
             @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
         end
         zero_sinks, nonzero_sinks, sink_status_df =
-            analyze_pruning_optimization(prune_optimize_result_ct)
+            analyze_case3_pruning_optimization(prune_optimize_result_ct)
         sink_status_df[!, :additive] .= additive
         sink_status_df[!, :final_time] .= final_time
         pruned_model, _ = create_fba_model(
