@@ -235,7 +235,7 @@ function optimize_case_1(
         v_expr = C.substitute(ct.fluxes[id].value, x)
         M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
 
-        @constraint(jump_model, v_expr <=  M_i * z[id])
+        @constraint(jump_model, v_expr <= M_i * z[id])
         @constraint(jump_model, v_expr >= -M_i * z[id])
     end
     if force_first_sink_on

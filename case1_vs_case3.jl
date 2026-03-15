@@ -61,11 +61,7 @@ add_metabolite_bounds_to_constraint_tree!(
 # display(case1_optimization_tree.indicators)
 
 
-result = optimize_case_1(
-    case1_ct;
-    force_first_sink_on = true,
-    force_first_sink_lb = 0.1,
-)
+result = optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
 # display(result.indicator_values)
 # display(result.solution_tree.fluxes)
 

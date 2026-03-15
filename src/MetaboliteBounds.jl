@@ -170,6 +170,23 @@ function find_metabolite_matches(
     return metabolite_status_df
 end
 
+"""
+    add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing)
+
+Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Mutates the given ConstraintTree in place.
+
+# Arguments
+1. `ct::C.ConstraintTree`: ConstraintTree to modify
+2. `metabolite_bounds_df::DataFrame`: DataFrame with the upper and lower bounds of metabolite concentration dx/dt.
+3. `additive::String`: Additive to find in the bounds DataFrame
+4. `final_time::Int64`: Final time to find in the DataFrame.
+5. `metabolites_to_ignore::Union{Vector{String},Nothing} = nothing`: If `nothing`, incorporates constraints for all metabolites in the DataFrame. If specified, ignores the metabolites specified (omit the leading `M_` in this list).
+
+# Returns
+`ConstraintTree`
+
+Returns the mutated ConstraintTree, though capturing this return value after invocation is not necessary as the given ConstraintTree is modified in place.
+"""
 function add_metabolite_bounds_to_constraint_tree!(
     ct::C.ConstraintTree,
     metabolite_bounds_df::DataFrame,
@@ -202,6 +219,14 @@ function add_metabolite_bounds_to_constraint_tree!(
     return ct
 end
 
+"""
+    print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
+
+This function is for debugging. Prints metabolite bounds on the given ConstraintTree `:flux_stoichiometry` branch to ensure they were added.
+
+# Arguments
+1. `ct::C.ConstraintTree`: ConstraintTree to print values from
+"""
 function print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
     function walk(tree, path = "")
         for (key, node) in pairs(tree)
