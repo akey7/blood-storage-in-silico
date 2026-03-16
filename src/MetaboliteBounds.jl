@@ -305,16 +305,18 @@ function add_sinks_for_unmatched_metabolites!(
     additive = sink_specifications.additive
     prune_zero_sinks = sink_specifications.prune_zero_sinks
     sink_opt_outs = sink_specifications.sink_opt_outs
-    if isnothing(prune_zero_sinks)
-        @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
-    else
-        @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
-    end
-    if isnothing(sink_opt_outs)
-        @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
-    else
-        @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
-    end
+
+    # if isnothing(prune_zero_sinks)
+    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
+    # else
+    #     @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
+    # end
+    # if isnothing(sink_opt_outs)
+    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
+    # else
+    #     @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
+    # end
+
     metabolites_with_exchanges = find_metabolites_with_exchanges(model)
     prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : string.(prune_zero_sinks)
     not_found_df = @chain metabolite_status_df begin
@@ -324,7 +326,7 @@ function add_sinks_for_unmatched_metabolites!(
     added_sink_ids = []
     for metabolite_id in sort(unique(not_found_df.metabolite))
         if metabolite_id in metabolites_with_exchanges
-            println("Skipping sinks for $metabolite_id which has an exchange.")
+            # println("Skipping sinks for $metabolite_id which has an exchange.")
             continue
         end
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite_id"

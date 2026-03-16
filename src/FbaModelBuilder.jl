@@ -144,11 +144,11 @@ function create_fba_model(
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
-    if !isnothing(exchanges)
-        @info "Building FBA model and adding exchanges"
-    else
-        @info "Building FBA model without exchanges"
-    end
+    # if !isnothing(exchanges)
+    #     @info "Building FBA model and adding exchanges"
+    # else
+    #     @info "Building FBA model without exchanges"
+    # end
 
     rbc_gem = isnothing(base_gem) ? load_base_rbc_gem() : deepcopy(base_gem)
 

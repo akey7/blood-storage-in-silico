@@ -399,10 +399,12 @@ function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float
             push!(keep, sink_id)
         end
     end
-    n_keep = length(keep)
-    if n_keep == 0
-        @warn "Case 1 optimization found no sinks to keep."
-    end
+
+    # n_keep = length(keep)
+    # if n_keep == 0
+    #     @warn "Case 1 optimization found no sinks to keep."
+    # end
+
     return (prune = prune, keep = keep)
 end
 

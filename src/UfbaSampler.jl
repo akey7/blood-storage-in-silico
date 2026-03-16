@@ -181,7 +181,7 @@ function save_ufba_model_sbml(
     sbml_fbc = convert(S.SBMLFBCModel, model)
     save_model(sbml_fbc, filename)
     sbml_add_constant_to_selfclosing_parameters!(filename)
-    println("Wrote $filename")
+    # println("Wrote $filename")
 end
 
 """
@@ -210,7 +210,8 @@ function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
         println("Simple optimization succeeded!")
         display(solution.fluxes)
         println("> Flux sampling")
-        samples_df = sample_fluxes(model; n_chains = n_chains)
+        workers_config = workers()
+        samples_df = sample_fluxes(model, workers_config; n_chains = n_chains)
         return solution, samples_df
     end
 end
