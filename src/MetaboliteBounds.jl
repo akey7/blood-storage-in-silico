@@ -145,7 +145,7 @@ function find_metabolite_matches(
     additive::AbstractString,
     final_time::Int64,
 )
-    @info "Matching metabolites, additive: $additive, final_time: $final_time"
+    # @info "Matching metabolites, additive: $additive, final_time: $final_time"
     ct = flux_balance_constraints(model)
     status_rows = []
     found_count = 0
@@ -231,7 +231,7 @@ function add_metabolite_bounds_to_constraint_tree!(
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
     n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
-    @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
+    # @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         if short_metabolite_id ∉ metabolites_to_ignore_2
