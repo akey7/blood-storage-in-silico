@@ -177,6 +177,7 @@ end
         force_first_sink_lb::Float64 = 0.1,
         silent::Bool = true,
         write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
+        print_objective_value::Bool = false,
     )
 
 JuMP MILP for Bordbar (2016) Case 1:
@@ -193,6 +194,7 @@ a sum of binary indicators, with each indicator `i` determines whether sink reac
 5. `force_first_sink_lb::Float64 = 0.1`: A non-zero lower bound to force the first sink on with if `force_first_sink_on` is `true`.
 6. `silent::Bool = true`: If `true`, the optimizer output is silenced.
 7. `write_lp_path::Union{Nothing,String} = "output/debug_case1.lp"`: A filename to write the JuMP model to for debugging. If `nothing`, does not write the debugging file.
+8. `print_objective_value::Bool = false`: If `true` prints the objective value.
 
 # Returns
 
@@ -210,6 +212,7 @@ function optimize_case_1(
     force_first_sink_lb::Float64 = 0.1,
     silent::Bool = true,
     write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
+    print_objective_value::Bool = false,
 )
     sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
     isempty(sink_ids) && error("No sink reactions matching `R_UNKNOWN_SK` were found.")
@@ -258,12 +261,14 @@ function optimize_case_1(
     indicator_values = Dict(id => JuMP.value(z[id]) for id in sink_ids)
 
     # Begin diagnostics
-    @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
-    for id in sink_ids
-        v = solution_tree.fluxes[id]
-        zi = indicator_values[id]
-        if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
-            @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
+    if print_objective_value
+        @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
+        for id in sink_ids
+            v = solution_tree.fluxes[id]
+            zi = indicator_values[id]
+            if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
+                @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
+            end
         end
     end
 

@@ -199,9 +199,9 @@ function find_metabolite_matches(
         end
     end
     metabolite_status_df = DataFrame(status_rows)
-    println(
-        "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
-    )
+    # println(
+    #     "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
+    # )
     return metabolite_status_df
 end
 
