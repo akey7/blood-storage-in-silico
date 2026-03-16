@@ -2,6 +2,7 @@ using CSV
 using DataFrames
 using DataFramesMeta
 using COBREXA
+using HiGHS
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -55,14 +56,9 @@ add_metabolite_bounds_to_constraint_tree!(
 print_metabolite_bounds_on_constraint_tree(case1_ct)
 
 @info "Case 1: Optimize constraint tree"
-
-# print_metabolite_bounds_on_constraint_tree(case1_ct)  # Disabled, only for debugging
-# case1_optimization_tree = optimize_case_1_v2(case1_ct, case1_ct.objective.value)
-# case1_optimization_tree = optimize_case_1(case1_ct, case1_ct.objective.value, sink_ids)
-# display(case1_optimization_tree.indicators)
-
-optimize_case_1_result =
-    optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
+# optimize_case_1_result =
+#     optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
+optimize_case_1_result = optimize_case_1(case1_ct)
 case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
 
 @info "Case 1: Prune zero sinks"
@@ -82,6 +78,15 @@ second_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(second_fba_model, second_sink_specifications)
 println("Added the following sinks")
 display(second_added_sink_ids)
+
+@info "Case 1: FBA of pruned model"
+fba_solution_tree = flux_balance_analysis(second_fba_model; optimizer = HiGHS.Optimizer)
+if isnothing(fba_solution_tree)
+    println("Simple optimization failed")
+else
+    println("Simple optimization succeeded!")
+    display(fba_solution_tree.fluxes)
+end
 
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
