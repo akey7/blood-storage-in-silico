@@ -284,7 +284,7 @@ function execute_ufba_job(job, n_chains = 10)
         optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
         println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
-        return nothing, missing
+        return nothing, missing, missing
     else
         println("Simple optimization succeeded! Sampling fluxes...")
         workers_config = workers()
@@ -339,13 +339,15 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     )
     blocked_reaction_ids_rows = []
     for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
-        for blocked_reaction_id in blocked_reaction_ids
-            blocked_reaction_ids_row = (
-                additive = job.additive,
-                final_time = job.final_time,
-                blocked_reaction_id = blocked_reaction_id,
-            )
-            push!(blocked_reaction_ids_rows, blocked_reaction_ids_row)
+        if !ismissing(blocked_reaction_ids)
+            for blocked_reaction_id in blocked_reaction_ids
+                blocked_reaction_ids_row = (
+                    additive = job.additive,
+                    final_time = job.final_time,
+                    blocked_reaction_id = blocked_reaction_id,
+                )
+                push!(blocked_reaction_ids_rows, blocked_reaction_ids_row)
+            end
         end
     end
     sampling_df = vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...)
