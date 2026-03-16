@@ -285,14 +285,14 @@ function execute_ufba_job(job, n_chains = 10)
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
     if !isnothing(pruned_with_metabolite_bounds_ct)
-        @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
+        # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
         objective_flux =
             optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
         if isnothing(objective_flux)
-            println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
+            # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
             return nothing, missing, missing
         else
-            println("Simple optimization succeeded! Sampling fluxes...")
+            # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
             samples_df = sample_fluxes(
                 pruned_with_metabolite_bounds_ct,
@@ -305,7 +305,7 @@ function execute_ufba_job(job, n_chains = 10)
             return samples_df, n_all_zero_fluxes, blocked_reaction_ids
         end
     else
-        @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
+        # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
         return nothing, missing, []
     end
 end
@@ -313,7 +313,7 @@ end
 """
     execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 
-Executes and aggregates results from all uFBA jobs specified. For jobs returned as the failure case from [`execute_ufba_job`](@ref BloodStorageInSilico.UfbaSampler.execute_ufba_job), creates a row in the statuses of each sampling job DataFrame with `n_all_zero_fluxes` as a `missing` value.
+Executes and aggregates results from all uFBA jobs specified. For jobs returned as the failure case from [`execute_ufba_job`](@ref BloodStorageInSilico.UfbaSampler.execute_ufba_job), creates a row in the statuses of each sampling job DataFrame with `n_all_zero_fluxes` as a `missing` value. Displays a nice green status bar as it goes.
 
 # Arguments
 1. `jobs`: Vector of all jobs to be executed.
@@ -330,8 +330,12 @@ A tuple of the following four DataFrames:
 4. Per-model blocked reaction ids with reaction strings joined in.
 """
 function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
+    n_jobs = length(jobs)
+    prog = Progress(n_jobs, "Optimizing and sampling uFBA jobs")
     job_results = map(jobs) do job
-        execute_ufba_job(job, n_chains)
+        job_result = execute_ufba_job(job, n_chains)
+        next!(prog)
+        return job_result
     end
     all_results = [
         (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
