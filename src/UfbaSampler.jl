@@ -287,9 +287,8 @@ function execute_ufba_job(job, n_chains = 10)
         final_time,
     )
 
-    # TODO: After I make a new constraint tree, I cannot use flux_balance_analysis
-    # rather I need to use optimized_values. Currently this change is breaking.
-    # Potentially need to fix after switching to Case 1 constraints.
+    # TODO: Switch back to flux_balance_analysis()! I will have a
+    # AbstractFBCModel to work with in the new order of operations.
 
     objective_flux = optimized_values(ct; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
