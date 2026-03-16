@@ -271,9 +271,14 @@ Execute a uFBA job specified by the first argument with the given number of chai
 2. `n_chains`: Number of chains to sample. Defaults to 10.
 
 # Returns
-`Tuple{Union{Nothing,DataFrame},Union{Int64,Missing}}`
+`Tuple{Union{Nothing,DataFrame},Union{Int64,Missing}, Vector}`
 
-Returns a tuple of two items. First, a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed. Second, an Int64 of the number of fluxes that have zeros for all samples or missing if the sampling failed.
+Returns a tuple of three items: 
+1. First, a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed. 
+2. Second, an Int64 of the number of fluxes that have zeros for all samples or missing if the sampling failed.
+3. A vector of blocked reaction ids
+
+If the pruning optimization with [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) fails, returns `nothing, missing, []`.
 """
 function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
@@ -308,7 +313,7 @@ end
 """
     execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 
-Executes and aggregates results from all uFBA jobs specified.
+Executes and aggregates results from all uFBA jobs specified. For jobs returned as the failure case from [`execute_ufba_job`](@ref BloodStorageInSilico.UfbaSampler.execute_ufba_job), creates a row in the statuses of each sampling job DataFrame with `n_all_zero_fluxes` as a `missing` value.
 
 # Arguments
 1. `jobs`: Vector of all jobs to be executed.
