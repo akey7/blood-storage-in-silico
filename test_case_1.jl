@@ -88,6 +88,7 @@ else
     display(fba_solution_tree.fluxes)
 end
 
+# Case 3 comparison code to be removed after next release
 # inspect_results(case1_optimization_tree)
 # nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
 # display(first(nonzero_indicator_ids, 10))
