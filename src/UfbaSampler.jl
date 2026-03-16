@@ -613,16 +613,17 @@ function extract_added_sink_ids(jobs)
 end
 
 """
-    sample_fluxes(constraints::C.ConstraintTree; n_chains::Int64, tolerance::Float64)
+    sample_fluxes(constraints::C.ConstraintTree, workers_config; n_chains::Int64, tolerance::Float64)
 
-Sample the allowable flux space of the ConstraintTree `ct`. Use the `julia -p X...` -p command line option to set the number of workers for this operation.
+Sample the allowable flux space of the ConstraintTree `ct`. Uses default ACHR sampling method.
 
-Uses default ACHR sampling method.
+Use the `julia -p X...` -p command line option to set the number of workers for this operation.
 
 # Arguments
 1. `constraints::C.ConstraintTree`: ConstraintTree to be sampled.
-2. `n_chains::Int64`: The number of chains to calculate, with each chain producing ~126 samples. Defaults to 10 chains.
-3. `tolerance::Float64`: The tolerance bounds on the objective.
+2. `workers_config`: The output of `Distributed.workers()` used to call this function. This sets up the workers.
+3. `n_chains::Int64`: The number of chains to calculate. Defaults to 10 chains.
+4. `tolerance::Float64`: The tolerance bounds on the objective.
 
 # Returns
 `DataFrame`
