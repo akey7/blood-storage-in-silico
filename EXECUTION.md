@@ -194,6 +194,31 @@ There are other scripts that you can run in this project. They are outside of th
 
 This script creates a single FBA model and samples the fluxes as a quick sanity check when building models in `FbaModelBuilder.jl`. If it doesn't report any errors, that is good news! However, try the models in the uFBA workflow to check for errors before you run the victory lap.
 
-### `case1_vs_case3.jl`: Compare Case 1 to Case 3 sink pruning
+### `test_case_1.jl`: Test Case 1 sink pruning
 
-This script creates an FBA model and compares pruning sinks with Case 1 vs Case 3 pruning. It outputs three `.csv` files to the `output/case1_vs_case3` folder, and the column and file names are self-explanatory.
+I built this script to test Case 1 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
+
+As a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
+
+```
+optimize_case_1_result = optimize_case_1(case1_ct)
+```
+
+uncomment the following lines
+
+```
+optimize_case_1_result =
+    optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
+```
+
+and look for the following output (or something similar)
+
+```
+Info: Case 1: Optimize constraint tree
+objective = 2.000000000000
+R_UNKNOWN_SK_DOWN_10fthf_c   flux = 0.100000000000   indicator = 1.000000000000
+R_UNKNOWN_SK_UP_10fthf_c   flux = -0.100000000000   indicator = 1.000000000000
+FORCED R_UNKNOWN_SK_DOWN_10fthf_c   flux = 0.100000000000   indicator = 1.000000000000
+```
+
+Buried somewhere in the middle of the output.

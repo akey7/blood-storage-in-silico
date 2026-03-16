@@ -14,7 +14,9 @@ export case_3_constraint_tree,
     case_1_constraint_tree,
     optimize_case_1,
     analyze_case3_pruning_optimization,
-    list_non_zeros
+    list_non_zeros,
+    analyze_case_1_pruning_optimization,
+    print_sinks_in_model
 
 @doc raw"""
     case_3_constraint_tree!(model::A.AbstractFBCModel, metabolite_status_df::DataFrame, additive::AbstractString)
@@ -175,6 +177,7 @@ end
         force_first_sink_lb::Float64 = 0.1,
         silent::Bool = true,
         write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
+        print_objective_value::Bool = false,
     )
 
 JuMP MILP for Bordbar (2016) Case 1:
@@ -191,6 +194,7 @@ a sum of binary indicators, with each indicator `i` determines whether sink reac
 5. `force_first_sink_lb::Float64 = 0.1`: A non-zero lower bound to force the first sink on with if `force_first_sink_on` is `true`.
 6. `silent::Bool = true`: If `true`, the optimizer output is silenced.
 7. `write_lp_path::Union{Nothing,String} = "output/debug_case1.lp"`: A filename to write the JuMP model to for debugging. If `nothing`, does not write the debugging file.
+8. `print_objective_value::Bool = false`: If `true` prints the objective value.
 
 # Returns
 
@@ -208,6 +212,7 @@ function optimize_case_1(
     force_first_sink_lb::Float64 = 0.1,
     silent::Bool = true,
     write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
+    print_objective_value::Bool = false,
 )
     sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
     isempty(sink_ids) && error("No sink reactions matching `R_UNKNOWN_SK` were found.")
@@ -256,12 +261,14 @@ function optimize_case_1(
     indicator_values = Dict(id => JuMP.value(z[id]) for id in sink_ids)
 
     # Begin diagnostics
-    @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
-    for id in sink_ids
-        v = solution_tree.fluxes[id]
-        zi = indicator_values[id]
-        if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
-            @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
+    if print_objective_value
+        @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
+        for id in sink_ids
+            v = solution_tree.fluxes[id]
+            zi = indicator_values[id]
+            if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
+                @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
+            end
         end
     end
 
@@ -367,6 +374,51 @@ function analyze_case3_pruning_optimization(pruning_optimization_result::C.Tree{
     unordered_df = DataFrame(sink_status_rows)
     sink_status_df = @orderby(unordered_df, :is_non_zero, :sink)
     return zero_sinks, nonzero_sinks, sink_status_df
+end
+
+"""
+    analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
+
+Classify sinks from the Case 1 optimization result.
+
+# Arguments
+1. `optimize_case_1_result`: Result from [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1)
+2. `atol::Float64 = 1e-9`: Tolerance for approximate zero comparisons.
+
+# Returns
+Named tuple with fields:
+
+1. `prune::Vector{Symbol}`: Sinks to be pruned because the carry no flux.
+2. `keep::Vector{Symbol}`: Sinks to keep because they carry flux.
+"""
+function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
+    solution_tree = optimize_case_1_result.solution_tree
+    sink_ids = optimize_case_1_result.sink_ids
+    prune = []
+    keep = []
+    for sink_id in sink_ids
+        flux = solution_tree.fluxes[sink_id]
+        if isapprox(flux, 0.0; atol = atol)
+            push!(prune, sink_id)
+        else
+            push!(keep, sink_id)
+        end
+    end
+
+    # n_keep = length(keep)
+    # if n_keep == 0
+    #     @warn "Case 1 optimization found no sinks to keep."
+    # end
+
+    return (prune = prune, keep = keep)
+end
+
+function print_sinks_in_model(fba_model::A.AbstractFBCModel)
+    for (rxn_id, rxn) in fba_model.reactions
+        if occursin("R_UNKNOWN_SK", rxn_id)
+            println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
+        end
+    end
 end
 
 end

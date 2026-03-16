@@ -21,7 +21,7 @@ Load the base RBC-GEM from which the model for uFBA sampling will be made
 New model with the entire RBC-GEM.
 """
 function load_base_rbc_gem()
-    println("> Loading RBC-GEM")
+    # println("> Loading RBC-GEM")
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
     rbc_gem = load_model(S.SBMLFBCModel, rbc_gem_path, A.CanonicalModel.Model)
 
@@ -144,15 +144,15 @@ function create_fba_model(
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
-    if !isnothing(exchanges)
-        @info "Building FBA model and adding exchanges"
-    else
-        @info "Building FBA model without exchanges"
-    end
+    # if !isnothing(exchanges)
+    #     @info "Building FBA model and adding exchanges"
+    # else
+    #     @info "Building FBA model without exchanges"
+    # end
 
     rbc_gem = isnothing(base_gem) ? load_base_rbc_gem() : deepcopy(base_gem)
 
-    println("> Glycolysis")
+    # println("> Glycolysis")
     glycolysis_reaction_ids = [
         "R_HEX1",
         "R_PGI",
@@ -170,17 +170,17 @@ function create_fba_model(
 
     # println(glycolysis_reaction_ids)
 
-    println("> RL Shunt")
+    # println("> RL Shunt")
     rl_shunt_reaction_ids = ["R_DPGM", "R_DPGase"]
     # println(rl_shunt_reaction_ids)
 
-    println("> Pentose phosphate pathway")
+    # println("> Pentose phosphate pathway")
     ppp_reaction_ids =
         ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
 
     # println(ppp_reaction_ids)
 
-    println("> Purine metabolism")
+    # println("> Purine metabolism")
     purine_metabolism_reaction_ids = [
         "R_PRPPS",
         "R_PPM",
@@ -201,18 +201,18 @@ function create_fba_model(
 
     # println(purine_metabolism_reaction_ids)
 
-    println("> Methionine Salvage and Metabolism")
+    # println("> Methionine Salvage and Metabolism")
     met_salvage_reaction_ids =
         ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
-    println("> Citric Acid Cycle")
+    # println("> Citric Acid Cycle")
     # citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]  # All citric reactions have zero flux
     citric_reaction_ids = []
 
-    println("> Arginine and Proline Metabolism")
+    # println("> Arginine and Proline Metabolism")
     arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
 
-    println("> Nucleotide Metabolism")
+    # println("> Nucleotide Metabolism")
     nucleotide_reaction_ids = [
         # "R_ADNCYC",  # Broken reaction
         "R_GMPR",
@@ -227,38 +227,38 @@ function create_fba_model(
         "R_GK1",
     ]
 
-    println("> Glutamate Metabolism")
+    # println("> Glutamate Metabolism")
     glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
-    println("> Glutathione Metabolism")
+    # println("> Glutathione Metabolism")
     # glutathione_reaction_ids =
     #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # GGLUCTC has zero flux
     glutathione_reaction_ids = ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
 
-    println("> Urea cycle/amino group metabolism")
+    # println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
 
-    println("> Glycine, Serine, and Threonine Metabolism")
+    # println("> Glycine, Serine, and Threonine Metabolism")
     # glycine_serine_threonine_reaction_ids = ["R_GHMT2"]  # GHMT2 zero flux
     glycine_serine_threonine_reaction_ids = []
 
-    println("> Folate Metabolism")
+    # println("> Folate Metabolism")
     folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
-    println("> Fructose and Mannose Metabolism")
+    # println("> Fructose and Mannose Metabolism")
     fructose_mannose_reaction_ids = ["R_HEX4", "R_HEX7", "R_MAN6PI", "R_SBTD_D2", "R_SBTRa"]
 
-    println("> Pyrimidine Catabolism")
+    # println("> Pyrimidine Catabolism")
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
     # println("> Sodium-Potassium Pump Transporters")
     # na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
     na_k_pump_reaction_ids = []
 
-    println("> Other reactions")
+    # println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
 
-    println("> Transporters")
+    # println("> Transporters")
     transporter_reactions_ids = [
         # Original transporters
         "R_GLC_Dt",
@@ -306,15 +306,15 @@ function create_fba_model(
 
     # println(transporter_reactions_ids)
 
-    if !isnothing(exchanges)
-        println("> Adding exchanges")
-    else
-        println("> Skipping exchanges")
-    end
+    # if !isnothing(exchanges)
+    #     println("> Adding exchanges")
+    # else
+    #     println("> Skipping exchanges")
+    # end
 
     exchange_reactions_ids = isnothing(exchanges) ? [] : exchanges
 
-    println("> Collecting reactions and discovering metabolites")
+    # println("> Collecting reactions and discovering metabolites")
 
     all_reaction_ids = [
         glycolysis_reaction_ids
@@ -347,7 +347,7 @@ function create_fba_model(
         end
     end
 
-    println("Discovered $(length(discovered_metabolite_ids)) metabolites.")
+    # println("Discovered $(length(discovered_metabolite_ids)) metabolites.")
 
     model = Model()
 
@@ -356,7 +356,7 @@ function create_fba_model(
         model.metabolites[discovered_metabolite_id] = copied_metabolite
     end
 
-    println("> Adding reactions and exchanges to model")
+    # println("> Adding reactions and exchanges to model")
 
     for reaction_id ∈ all_reaction_ids
         bounds_override = find_flux_bounds_overrides(flux_bounds_overrides_df, reaction_id)
@@ -370,7 +370,7 @@ function create_fba_model(
         end
     end
 
-    println("> Add ATP load")
+    # println("> Add ATP load")
 
     model.reactions["R_LOAD_ATP"] = Reaction(
         name = "LOAD_ATP",
@@ -388,7 +388,7 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_ATP"])
 
-    println("> Adding NADH load")
+    # println("> Adding NADH load")
 
     # Load due to methemoglobin reduction via CytB5
     model.reactions["R_LOAD_NADH"] = Reaction(
@@ -401,7 +401,7 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADH"])
 
-    println("> Adding NADPH load")
+    # println("> Adding NADPH load")
 
     # Load due to glutathione reduction from GSSG to GSH
     model.reactions["R_LOAD_NADPH"] = Reaction(
@@ -414,7 +414,7 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADPH"])
 
-    println("> Skipping NaKt load")
+    # println("> Skipping NaKt load")
     # println("> Setting NaKt load")
     # model.reactions["R_NaKt"].objective_coefficient = 1.0
 

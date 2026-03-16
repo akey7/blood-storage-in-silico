@@ -6,12 +6,17 @@ using DataFramesMeta
 import AbstractFBCModels as A
 import ConstraintTrees as C
 using COBREXA
+import AbstractFBCModels: stoichiometry
+import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 
 export load_metabolite_bounds,
     query_metabolite_bounds,
     find_metabolite_matches,
     add_metabolite_bounds_to_constraint_tree!,
-    print_metabolite_bounds_on_constraint_tree
+    print_metabolite_bounds_on_constraint_tree,
+    add_sinks_for_unmatched_metabolites!,
+    find_metabolites_with_exchanges,
+    does_manual_prune_list_match_sink_name
 
 """
     load_metabolite_bounds()
@@ -64,6 +69,36 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
 end
 
 """
+    does_manual_prune_list_match_sink_name(sink_name::String, sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+
+Determines if the given sink name contains any of the substrings in the given sink opt-outs list.
+
+# Arguments
+1. `sink_name::String`: The name of the sink.
+2. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If specified, contains a list of substrings that are matched against the given sink name.
+
+# Returns
+`Bool`
+
+Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
+"""
+function does_manual_prune_list_match_sink_name(
+    sink_name::String,
+    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+)
+    if isnothing(sink_opt_outs)
+        return false
+    else
+        for sink_opt_out in sink_opt_outs
+            if contains(sink_name, sink_opt_out)
+                return true
+            end
+        end
+        return false
+    end
+end
+
+"""
     is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
 
 Determines whether a metabolite is in an exchange by detecting a substring in the id of the reaction in which the metabolite is found.
@@ -110,7 +145,7 @@ function find_metabolite_matches(
     additive::AbstractString,
     final_time::Int64,
 )
-    @info "Matching metabolites, additive: $additive, final_time: $final_time"
+    # @info "Matching metabolites, additive: $additive, final_time: $final_time"
     ct = flux_balance_constraints(model)
     status_rows = []
     found_count = 0
@@ -164,9 +199,9 @@ function find_metabolite_matches(
         end
     end
     metabolite_status_df = DataFrame(status_rows)
-    println(
-        "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
-    )
+    # println(
+    #     "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
+    # )
     return metabolite_status_df
 end
 
@@ -195,6 +230,8 @@ function add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
+    n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
+    # @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         if short_metabolite_id ∉ metabolites_to_ignore_2
@@ -217,6 +254,115 @@ function add_metabolite_bounds_to_constraint_tree!(
 
     # Just return something, even though this was modified in place.
     return ct
+end
+
+"""
+    find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+
+Finds extracellular metabolites with exchanges in the provided model and returns a list of the metabolite ids found. Used by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!).
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model which has the metabolites and exchanges of interest.
+
+# Returns
+`Vector{String}`
+
+Returns a list of metabolites with exchanges.
+"""
+function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+    exchange_ids = [
+        reaction_id for (reaction_id, _) in model.reactions if contains(reaction_id, "R_EX")
+    ]
+    metabolite_ids = [replace(exchange_id, "R_EX_" => "") for exchange_id in exchange_ids]
+    return metabolite_ids
+end
+
+"""
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
+
+Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
+2. `NamedTuple`: A named tuple with additional data to use while adding sinks.
+
+The named tuple needs the following elements
+1. `metabolite_status_df`: The metabolite status DataFrame that specifies which metabolites have measurements and therefore do not need sinks.
+2. `additive`: The additive to search for measurements in.
+3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 / Case 3 optimization. If `nothing`, no sinks are removed from this process.
+4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings with the reaction ids of all sinks finally added to the model after processing the sink specifications.
+"""
+function add_sinks_for_unmatched_metabolites!(
+    model::A.AbstractFBCModel,
+    sink_specifications::NamedTuple,
+)
+    metabolite_status_df = sink_specifications.metabolite_status_df
+    additive = sink_specifications.additive
+    prune_zero_sinks = sink_specifications.prune_zero_sinks
+    sink_opt_outs = sink_specifications.sink_opt_outs
+
+    # if isnothing(prune_zero_sinks)
+    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
+    # else
+    #     @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
+    # end
+    # if isnothing(sink_opt_outs)
+    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
+    # else
+    #     @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
+    # end
+
+    metabolites_with_exchanges = find_metabolites_with_exchanges(model)
+    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : string.(prune_zero_sinks)
+    not_found_df = @chain metabolite_status_df begin
+        @rsubset(:status == "not found", :additive == additive)
+        @select(:metabolite)
+    end
+    added_sink_ids = []
+    for metabolite_id in sort(unique(not_found_df.metabolite))
+        if metabolite_id in metabolites_with_exchanges
+            # println("Skipping sinks for $metabolite_id which has an exchange.")
+            continue
+        end
+        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite_id"
+        if !(
+            does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
+            sink_up_name in prune_zero_sinks_2
+        )
+            sink_up = Reaction(
+                name = sink_up_name,
+                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
+                lower_bound = -1000.0,
+                upper_bound = 0.0,
+            )
+            model.reactions[sink_up_name] = sink_up
+            push!(added_sink_ids, sink_up_name)
+        else
+            # println("Skipping zero flux sink $sink_up_name")
+        end
+        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite_id"
+        if !(
+            does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
+            sink_down_name in prune_zero_sinks_2
+        )
+            sink_down = Reaction(
+                name = sink_down_name,
+                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
+                lower_bound = 0.0,
+                upper_bound = 1000.0,
+            )
+            model.reactions[sink_down_name] = sink_down
+            push!(added_sink_ids, sink_down_name)
+        else
+            # println("Skipping zero flux sink $sink_down_name")
+        end
+    end
+    return added_sink_ids
 end
 
 """
