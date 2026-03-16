@@ -61,6 +61,8 @@ function init_workers!(; project::AbstractString = Base.active_project())
                 import Pkg
                 Pkg.activate($project)
                 using COBREXA, HiGHS, JuMP, MathOptInterface
+                include("src/UfbaSampler.jl")
+                using .UfbaSampler
             end,
         )
     end
@@ -286,7 +288,9 @@ function execute_ufba_job(job, n_chains = 10)
         return nothing, missing
     else
         println("Simple optimization succeeded! Sampling fluxes...")
-        samples_df = sample_fluxes(pruned_model; n_chains = n_chains)
+        workers_config = workers()
+        samples_df =
+            sample_fluxes(pruned_with_metabolite_bounds_ct, workers_config; n_chains = n_chains)
         n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
         samples_df[!, :additive] .= additive
         samples_df[!, :final_time] .= final_time
@@ -587,43 +591,98 @@ function extract_added_sink_ids(jobs)
             push!(rows, row)
         end
     end
-    unsorted_df = DataFrame(rows)
-    sorted_df = @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
-    return sorted_df
+    if length(rows) > 0
+        unsorted_df = DataFrame(rows)
+        sorted_df =
+            @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
+        return sorted_df
+    else
+        empty_df = DataFrame(
+            pruning_method = [],
+            additive = [],
+            final_time = [],
+            metabolite_id = [],
+            direction = [],
+            added_sink_id = [],
+        )
+        return empty_df
+    end
 end
 
 """
-    sample_fluxes(model; n_chains::Int64, tolerance::Float64)
+    sample_fluxes(constraints::C.ConstraintTree; n_chains::Int64, tolerance::Float64)
 
-Sample the allowable flux space of the `model`. Use the `julia -p X...` -p command line option to set the number of workers for this operation.
+Sample the allowable flux space of the ConstraintTree `ct`. Use the `julia -p X...` -p command line option to set the number of workers for this operation.
+
+Uses default ACHR sampling method.
 
 # Arguments
-1. `model`: Model to be sampled.
+1. `constraints::C.ConstraintTree`: ConstraintTree to be sampled.
 2. `n_chains::Int64`: The number of chains to calculate, with each chain producing ~126 samples. Defaults to 10 chains.
 3. `tolerance::Float64`: The tolerance bounds on the objective.
 
 # Returns
 `DataFrame`
+
 1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
 """
-function sample_fluxes(model; n_chains::Int64 = 10, tolerance::Float64 = 0.99)
-    # TODO: Remove n_chains logging and switch to optimizaing a ConstraintTree
-    # with sample_constraints().
+function sample_fluxes(
+    constraints,
+    workers_config;
+    n_chains::Int64 = 10,
+    tolerance::Float64 = 0.99,
+)
+    optimizer = HiGHS.Optimizer
+    objective = constraints.objective.value
+    settings = []
+    method = sample_chain_achr
+    seed = UInt64(123)
+    collect_iterations = [32]
 
-    println("N Chains: $n_chains")
-    s = flux_sample(
-        model,
-        optimizer = HiGHS.Optimizer,
-        objective_bound = relative_tolerance_bound(tolerance),
-        n_chains = n_chains,
-        workers = workers(),
-        collect_iterations = [10],
+    objective_flux = optimized_values(
+        constraints;
+        objective = objective,
+        output = constraints.objective,
+        optimizer = optimizer,
+        settings = settings,
     )
-    s_dict = Dict()
-    for reaction_id ∈ keys(s)
-        s_dict[reaction_id] = s[reaction_id]
+    isnothing(objective_flux) && return nothing
+    constraints *= :objective_bound^C.Constraint(objective, objective_flux)
+    warmup = vcat(
+        (
+            transpose(v) for (_, vs) in constraints_variability(
+                constraints,
+                constraints.fluxes;
+                optimizer = optimizer,
+                settings = settings,
+                output = (_, om) -> JuMP.value.(om[:x]),
+                output_type = Vector{Float64},
+                workers = workers_config,
+            ) for v in vs
+        )...,
+    )
+
+    # I could use kwargs... in the following call but am not using that at
+    # this time.
+
+    samples = sample_constraints(
+        method,
+        constraints;
+        seed,
+        output = constraints.fluxes,
+        start_variables = warmup,
+        n_chains,
+        collect_iterations,
+        workers = workers_config,
+    )
+
+    samples_dict = Dict()
+    for reaction_id in keys(samples)
+        samples_dict[reaction_id] = samples[reaction_id]
     end
-    DataFrame(s_dict)
+
+    samples_df = DataFrame(samples_dict)
+    return samples_df
 end
 
 end
