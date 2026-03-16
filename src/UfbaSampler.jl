@@ -380,7 +380,8 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `zero_sinks`: Sinks that have zero flux that were pruned out
 7. `nonzero_sinks`: Sinks that have non-zero flux
 8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
-9. `pruning_method`: The pruning method, either `:case1` or `:case3`
+9. `pruning_method`: The pruning method, currently hardcoded to `:case1`
+10. `pruned_with_metabolite_bounds_ct`: A ConstraintTree with metabolite bounds and the pruned set of sinks added, ready for optimziation.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
