@@ -88,7 +88,6 @@ add_metabolite_bounds_to_constraint_tree!(
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
 @info "Case 1: FBA of pruned model"
-# second_ct_solution_tree = flux_balance_analysis(second_fba_model; optimizer = HiGHS.Optimizer)
 second_ct_solution_tree = optimized_values(second_ct; optimizer = HiGHS.Optimizer)
 if isnothing(second_ct_solution_tree)
     println("Simple optimization failed")
