@@ -53,7 +53,7 @@ add_metabolite_bounds_to_constraint_tree!(
     additive,
     final_time,
 )
-print_metabolite_bounds_on_constraint_tree(case1_ct)
+# print_metabolite_bounds_on_constraint_tree(case1_ct)
 
 @info "Case 1: Optimize constraint tree"
 # optimize_case_1_result =
@@ -78,14 +78,23 @@ second_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(second_fba_model, second_sink_specifications)
 println("Added the following sinks")
 display(second_added_sink_ids)
+second_ct = flux_balance_constraints(second_fba_model)
+add_metabolite_bounds_to_constraint_tree!(
+    second_ct,
+    metabolite_bounds_df,
+    additive,
+    final_time,
+)
+print_metabolite_bounds_on_constraint_tree(second_ct)
 
 @info "Case 1: FBA of pruned model"
-fba_solution_tree = flux_balance_analysis(second_fba_model; optimizer = HiGHS.Optimizer)
-if isnothing(fba_solution_tree)
+# second_ct_solution_tree = flux_balance_analysis(second_fba_model; optimizer = HiGHS.Optimizer)
+second_ct_solution_tree = optimized_values(second_ct; optimizer = HiGHS.Optimizer)
+if isnothing(second_ct_solution_tree)
     println("Simple optimization failed")
 else
     println("Simple optimization succeeded!")
-    display(fba_solution_tree.fluxes)
+    display(second_ct_solution_tree.fluxes)
 end
 
 # Case 3 comparison code to be removed after next release
