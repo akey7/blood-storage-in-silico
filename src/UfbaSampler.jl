@@ -277,17 +277,10 @@ Returns a tuple of two items. First, a DataFrame of sampled fluxes if successful
 function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
-    pruned_model = job.pruned_model
-    metabolite_bounds_df = job.metabolite_bounds_df
+    pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
     @info "execute_ufba_job: additive: $additive, final_time: $final_time"
-    ct = flux_balance_constraints(pruned_model)
-    add_metabolite_bounds_to_constraint_tree!(
-        ct,
-        metabolite_bounds_df,
-        String(additive),
-        final_time,
-    )
-    objective_flux = optimized_values(ct; optimizer = HiGHS.Optimizer)
+    objective_flux =
+        optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
         println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
         return nothing, missing
@@ -405,6 +398,7 @@ function make_ufba_models_for_additives_and_times(
     prog = Progress(n_pairs, "Preparing uFBA models")
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
+        additive_string = String(additive)
         full_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
@@ -456,7 +450,7 @@ function make_ufba_models_for_additives_and_times(
         add_metabolite_bounds_to_constraint_tree!(
             pruned_with_metabolite_bounds_ct,
             metabolite_bounds_df,
-            additive,
+            additive_string,
             final_time,
         )
         next!(prog)
