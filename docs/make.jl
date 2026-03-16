@@ -16,6 +16,8 @@ makedocs(
         BloodStorageInSilico.MetaboliteTimelines,
         BloodStorageInSilico.ModelGraph,
         BloodStorageInSilico.UfbaSampler.FbaModelBuilder,
+        BloodStorageInSilico.UfbaSampler.PruningOptimizations,
+        BloodStorageInSilico.UfbaSampler.MetaboliteBounds,
     ],
     format = Documenter.HTML(
         prettyurls = false,
@@ -24,6 +26,6 @@ makedocs(
         "Home" => "index.md",
         "Quantification Workflow" => "quantification_workflow.md",
         "uFBA Workflow" => "ufba_workflow.md",
-        "Other Modules" => "other.md",
+        "uFBA Analysis Workflow" => "ufba_analysis_workflow.md",
     ],
 )

@@ -15,6 +15,7 @@ Most of the files are tracked in the git repo. The complete `input/` repo should
 ```
 input
 ├── Absolute Quant Data Sheet.xlsx
+├── Absolute Quant Extracellular Datasheet.xlsx
 ├── Data Sheet 1.CSV
 ├── Proportionation Sheet 2.csv
 ├── RBC-GEM.json
@@ -23,9 +24,9 @@ input
 └── Subsystem Category Map.csv
 ```
 
-Incidentally, here are purposes of select input files:
+Here are purposes of the input files:
 
-1. `Data Sheet 1.CSV` which is the metabolomics data being analyzed.
+1. `Data Sheet 1.CSV` is the relative quant metabolomics data to be combined with absolute quantification data.
 
 2. `RBC-GEM.*` is the GEM onto which the metabolomics data above are mapped.
 
@@ -35,24 +36,24 @@ Incidentally, here are purposes of select input files:
 
 5. `flux_bounds_overrides.csv`: Flux bounds in this file override what is specified in the RBC-GEM.
 
+6. `Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`: Absolute quantification information, to be combined with relative quant data.
+
 ### Create the `output/` Folders
 
 There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
 
 ```
 output
-├── c_means_plots
-├── kinetic_model
-├── masspy_interface
 ├── pca_plot_dfs
 ├── pca_plots
 ├── plots
 ├── regression_plots
 ├── relative_absolute_c_means
 ├── relative_absolute_plots
-├── uFBA_histograms
+├── uFBA_histograms_v2
 ├── gem_dfs
 ├── ufba_models
+├── case1_vs_case3
 ```
 
 ### Install Dependencies

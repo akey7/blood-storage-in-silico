@@ -1,0 +1,390 @@
+module MetaboliteBounds
+
+using CSV
+using DataFrames
+using DataFramesMeta
+import AbstractFBCModels as A
+import ConstraintTrees as C
+using COBREXA
+import AbstractFBCModels: stoichiometry
+import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+
+export load_metabolite_bounds,
+    query_metabolite_bounds,
+    find_metabolite_matches,
+    add_metabolite_bounds_to_constraint_tree!,
+    print_metabolite_bounds_on_constraint_tree,
+    add_sinks_for_unmatched_metabolites!,
+    find_metabolites_with_exchanges,
+    does_manual_prune_list_match_sink_name
+
+"""
+    load_metabolite_bounds()
+
+Loads the rates of metabolite oncentration change from the `output/concentration_rates.csv` file. This file is produced by the `AbsoluteQuant` module from absolute (or approximately absolute) metabolomics quantifcation data over time.
+
+Downstream handling of this DataFrame expects to find the following columns in the csv: additive, metabolite, final_time, intercept, rate, lb, ub.
+
+# Returns
+`DataFrame`
+
+Returns the loaded DataFrame.
+"""
+function load_metabolite_bounds()
+    metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
+    metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
+    return metabolite_bounds_df
+end
+
+"""
+    query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+
+Find the rate of concentration chage for the metabolite in the given additive at the given final time. Returns `nothing` if not found.
+
+# Arguments
+1. `metabolite_bounds_df`: DataFrame as loaded by [`load_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.load_metabolite_bounds).
+2. `additive`: String of the additive as specified in the DataFrame.
+3. `metabolite`: Metabolite id.
+4. `final_time`: The final time point of the interval.
+
+# Returns
+`Tuple{Float64,Float64}`
+
+Using the 95% confidence interval of rate in the original DataFrame, a tuple with the lower and upper bounds of this interval.
+"""
+function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, final_time)
+    query_df = @rsubset(
+        metabolite_bounds_df,
+        :additive == additive,
+        :metabolite == metabolite,
+        :final_time == final_time
+    )
+    if nrow(query_df) > 0
+        lower_bound = query_df[1, :lb]
+        upper_bound = query_df[1, :ub]
+        return (lower_bound, upper_bound)
+    else
+        return nothing
+    end
+end
+
+"""
+    does_manual_prune_list_match_sink_name(sink_name::String, sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+
+Determines if the given sink name contains any of the substrings in the given sink opt-outs list.
+
+# Arguments
+1. `sink_name::String`: The name of the sink.
+2. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If specified, contains a list of substrings that are matched against the given sink name.
+
+# Returns
+`Bool`
+
+Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
+"""
+function does_manual_prune_list_match_sink_name(
+    sink_name::String,
+    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+)
+    if isnothing(sink_opt_outs)
+        return false
+    else
+        for sink_opt_out in sink_opt_outs
+            if contains(sink_name, sink_opt_out)
+                return true
+            end
+        end
+        return false
+    end
+end
+
+"""
+    is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
+
+Determines whether a metabolite is in an exchange by detecting a substring in the id of the reaction in which the metabolite is found.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model with the reactions to check.
+
+2. `metabolite::AbstractString`: Metabolite id to search for.
+
+# Returns
+`Bool`
+
+`true` if the metabolite is in an exchange, `false` otherwise.
+"""
+function is_metabolite_in_exchange(model::A.AbstractFBCModel, metabolite::AbstractString)
+    exchange_substring = "EX_$(metabolite[1:end-2])"
+    for rxn in keys(model.reactions)
+        if contains(rxn, exchange_substring)
+            return true
+        end
+    end
+    return false
+end
+
+"""
+    find_metabolite_matches(model::A.AbstractFBCModel, metabolite_bounds_df::DataFrame, additive::AbstractString, final_time::Int64)
+
+Creates a DataFrame of the metabolites found, not found, or in exchange for each additive and time point in the flux balance constratint tree for the given model. This is useful for determining which metabolites have been measured and are available at each time point for each additive. In other words, this is a data quality check function.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model to get the `ConstraintTree` from.
+2. `metabolite_bounds_df::DataFrame`: The metabolite bounds DataFrame to search.
+3. `additive::AbstractString`: Additive being searched.
+4. `final_time::Int64`: Final time being searched.
+
+# Returns
+`DataFrame`
+
+Returns a `DataFrame` of metabolite measurement availability.
+"""
+function find_metabolite_matches(
+    model::A.AbstractFBCModel,
+    metabolite_bounds_df::DataFrame,
+    additive::AbstractString,
+    final_time::Int64,
+)
+    # @info "Matching metabolites, additive: $additive, final_time: $final_time"
+    ct = flux_balance_constraints(model)
+    status_rows = []
+    found_count = 0
+    not_found_count = 0
+    in_exchange_count = 0
+    for k ∈ keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        bounds = query_metabolite_bounds(
+            metabolite_bounds_df,
+            additive,
+            short_metabolite_id,
+            final_time,
+        )
+        if isnothing(bounds)
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "not found",
+                lb = missing,
+                ub = missing,
+            )
+            push!(status_rows, status_row)
+            not_found_count += 1
+        elseif is_metabolite_in_exchange(model, short_metabolite_id)
+            lb, ub = bounds
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "in exchange",
+                lb = lb,
+                ub = ub,
+            )
+            in_exchange_count += 1
+            if isapprox(lb, 0.0) && isapprox(ub, 0.0)
+                @warn "$additive $short_metabolite_id is fixed at 0.0"
+            end
+        else
+            lb, ub = bounds
+            status_row = (
+                additive = additive,
+                metabolite = short_metabolite_id,
+                status = "found",
+                lb = lb,
+                ub = ub,
+            )
+            push!(status_rows, status_row)
+            found_count += 1
+            if isapprox(lb, 0.0) && isapprox(ub, 0.0)
+                @warn "$additive $short_metabolite_id is fixed at 0.0"
+            end
+        end
+    end
+    metabolite_status_df = DataFrame(status_rows)
+    # println(
+    #     "Found $found_count, in exchange $in_exchange_count, not found $not_found_count",
+    # )
+    return metabolite_status_df
+end
+
+"""
+    add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing)
+
+Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Mutates the given ConstraintTree in place.
+
+# Arguments
+1. `ct::C.ConstraintTree`: ConstraintTree to modify
+2. `metabolite_bounds_df::DataFrame`: DataFrame with the upper and lower bounds of metabolite concentration dx/dt.
+3. `additive::String`: Additive to find in the bounds DataFrame
+4. `final_time::Int64`: Final time to find in the DataFrame.
+5. `metabolites_to_ignore::Union{Vector{String},Nothing} = nothing`: If `nothing`, incorporates constraints for all metabolites in the DataFrame. If specified, ignores the metabolites specified (omit the leading `M_` in this list).
+
+# Returns
+`ConstraintTree`
+
+Returns the mutated ConstraintTree, though capturing this return value after invocation is not necessary as the given ConstraintTree is modified in place.
+"""
+function add_metabolite_bounds_to_constraint_tree!(
+    ct::C.ConstraintTree,
+    metabolite_bounds_df::DataFrame,
+    additive::String,
+    final_time::Int64;
+    metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
+)
+    metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
+    n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
+    # @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
+    for k in keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        if short_metabolite_id ∉ metabolites_to_ignore_2
+            bounds = query_metabolite_bounds(
+                metabolite_bounds_df,
+                additive,
+                short_metabolite_id,
+                final_time,
+            )
+            if isnothing(bounds)
+                ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+            else
+                lb, ub = bounds
+                ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+            end
+        else
+            println("Skipping bounds for metabolite id $short_metabolite_id")
+        end
+    end
+
+    # Just return something, even though this was modified in place.
+    return ct
+end
+
+"""
+    find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+
+Finds extracellular metabolites with exchanges in the provided model and returns a list of the metabolite ids found. Used by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!).
+
+# Arguments
+1. `model::A.AbstractFBCModel`: The model which has the metabolites and exchanges of interest.
+
+# Returns
+`Vector{String}`
+
+Returns a list of metabolites with exchanges.
+"""
+function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
+    exchange_ids = [
+        reaction_id for (reaction_id, _) in model.reactions if contains(reaction_id, "R_EX")
+    ]
+    metabolite_ids = [replace(exchange_id, "R_EX_" => "") for exchange_id in exchange_ids]
+    return metabolite_ids
+end
+
+"""
+    add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
+
+Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
+
+# Arguments
+1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**
+2. `NamedTuple`: A named tuple with additional data to use while adding sinks.
+
+The named tuple needs the following elements
+1. `metabolite_status_df`: The metabolite status DataFrame that specifies which metabolites have measurements and therefore do not need sinks.
+2. `additive`: The additive to search for measurements in.
+3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 / Case 3 optimization. If `nothing`, no sinks are removed from this process.
+4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings with the reaction ids of all sinks finally added to the model after processing the sink specifications.
+"""
+function add_sinks_for_unmatched_metabolites!(
+    model::A.AbstractFBCModel,
+    sink_specifications::NamedTuple,
+)
+    metabolite_status_df = sink_specifications.metabolite_status_df
+    additive = sink_specifications.additive
+    prune_zero_sinks = sink_specifications.prune_zero_sinks
+    sink_opt_outs = sink_specifications.sink_opt_outs
+
+    # if isnothing(prune_zero_sinks)
+    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
+    # else
+    #     @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
+    # end
+    # if isnothing(sink_opt_outs)
+    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
+    # else
+    #     @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
+    # end
+
+    metabolites_with_exchanges = find_metabolites_with_exchanges(model)
+    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : string.(prune_zero_sinks)
+    not_found_df = @chain metabolite_status_df begin
+        @rsubset(:status == "not found", :additive == additive)
+        @select(:metabolite)
+    end
+    added_sink_ids = []
+    for metabolite_id in sort(unique(not_found_df.metabolite))
+        if metabolite_id in metabolites_with_exchanges
+            # println("Skipping sinks for $metabolite_id which has an exchange.")
+            continue
+        end
+        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite_id"
+        if !(
+            does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
+            sink_up_name in prune_zero_sinks_2
+        )
+            sink_up = Reaction(
+                name = sink_up_name,
+                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
+                lower_bound = -1000.0,
+                upper_bound = 0.0,
+            )
+            model.reactions[sink_up_name] = sink_up
+            push!(added_sink_ids, sink_up_name)
+        else
+            # println("Skipping zero flux sink $sink_up_name")
+        end
+        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite_id"
+        if !(
+            does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
+            sink_down_name in prune_zero_sinks_2
+        )
+            sink_down = Reaction(
+                name = sink_down_name,
+                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
+                lower_bound = 0.0,
+                upper_bound = 1000.0,
+            )
+            model.reactions[sink_down_name] = sink_down
+            push!(added_sink_ids, sink_down_name)
+        else
+            # println("Skipping zero flux sink $sink_down_name")
+        end
+    end
+    return added_sink_ids
+end
+
+"""
+    print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
+
+This function is for debugging. Prints metabolite bounds on the given ConstraintTree `:flux_stoichiometry` branch to ensure they were added.
+
+# Arguments
+1. `ct::C.ConstraintTree`: ConstraintTree to print values from
+"""
+function print_metabolite_bounds_on_constraint_tree(ct::C.ConstraintTree)
+    function walk(tree, path = "")
+        for (key, node) in pairs(tree)
+            current_path = isempty(path) ? string(key) : "$path.$key"
+            if node isa C.Constraint
+                println("Symbol: $current_path | Bounds: $(node.bound)")
+            elseif node isa C.ConstraintTree
+                walk(node, current_path)
+            end
+        end
+    end
+    walk(ct.flux_stoichiometry)
+end
+
+end

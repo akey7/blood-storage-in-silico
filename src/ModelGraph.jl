@@ -111,7 +111,7 @@ end
     metabolite_id_to_other_side_metabolite_ids(model::A.CanonicalModel.Model, metabolite_id_to_reaction_ids::Dict{String, Vector{String}})
 
 This function does two things:
-1. For each `metabolite_id`, find each metabolite_id on the other side of the reactions, as found by the opposite sign of the stoichiometric coefficients (if oppostie side metabolites are present).
+1. For each `metabolite_id`, find each metabolite_id on the other side of the reactions, as found by the opposite sign of the stoichiometric coefficients (if oppostie side metabolites are present). These "other side" metabolites are further filtered by their stoichiometric coefficient to line up with the bounds of the reaction for which the edge is being specified. 
 2. For reactions that have metabolites on both sides of the reaction (normal reactions and transporters), maps pairs of metabolite ids to the reaction that connects them.
 3. For reactions that just have a metabolite on one side of the reactions (exchanges and sinks), maps single metabolites to the reaction id of the corresponding exchange/sink.
 
@@ -139,12 +139,30 @@ function metabolite_id_to_other_side_metabolite_ids(
         metabolite_to_metabolites[metabolite_id] = Vector()
         for reaction_id ∈ reaction_ids
             stoichiometry = model.reactions[reaction_id].stoichiometry
-            other_metabolite_sign = -1 * sign(stoichiometry[metabolite_id])
-            other_metabolite_ids = [
-                other_metabolite_id for (other_metabolite_id, coeff) ∈ stoichiometry if
-                coeff == other_metabolite_sign
-            ]
-            append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            lower_bound = model.reactions[reaction_id].lower_bound
+            upper_bound = model.reactions[reaction_id].upper_bound
+            other_side_sign = -1 * sign(stoichiometry[metabolite_id])
+            if isapprox(lower_bound, 0.0) && upper_bound > 0.0
+                other_metabolite_ids = [
+                    other_metabolite_id for
+                    (other_metabolite_id, coeff) ∈ stoichiometry if
+                    coeff == other_side_sign && coeff > 0
+                ]
+                append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            elseif lower_bound < 0.0 && isapprox(upper_bound, 0.0)
+                other_metabolite_ids = [
+                    other_metabolite_id for
+                    (other_metabolite_id, coeff) ∈ stoichiometry if
+                    coeff == other_side_sign && coeff < 0
+                ]
+                append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            else
+                other_metabolite_ids = [
+                    other_metabolite_id for
+                    (other_metabolite_id, coeff) ∈ stoichiometry if coeff == other_side_sign
+                ]
+                append!(metabolite_to_metabolites[metabolite_id], other_metabolite_ids)
+            end
             if length(other_metabolite_ids) >= 1
                 for other_metabolite_id ∈ other_metabolite_ids
                     metabolite_pair = (metabolite_id, other_metabolite_id)
@@ -255,7 +273,7 @@ The dictionary contains the following keys:
 1. `:metabolite_ids_to_ints`: Dictionary with metabolite id strings as keys and integer ids as values
 2. `:ints_to_metabolite_ids`: Vector of strings, with each string being a metabolite id at the appropriate index.
 3. `:adj_matrix`: NxN adjacency matrix, with N being number of metabolites ids.
-4. `:mg`: `MetaGraph` of the metaoblic network, useful for visualization and interoperatbility with the Graphs.jl ecosystem.
+4. `:mdg`: `MetaDiGraph` of the metaoblic network, useful for visualization and interoperatbility with the Graphs.jl ecosystem.
 """
 function make_graph(model::A.CanonicalModel.Model)
     N = length(model.metabolites)
@@ -276,13 +294,13 @@ function make_graph(model::A.CanonicalModel.Model)
         metabolite_id_keys_reaction_id_values(model),
     )
     adj_matrix = zeros(Int64, N, N)
-    mg = MetaGraph(N)
-    set_indexing_prop!(mg, :metabolite_id)
+    mdg = MetaDiGraph(N)
+    set_indexing_prop!(mdg, :metabolite_id)
     metabolite_to_metabolites = metabolite_connections[:metabolite_to_metabolites]
     metabolite_pairs_to_reactions = metabolite_connections[:metabolite_pairs_to_reactions]
     for (vertex_metabolite_id, neighbor_metabolite_ids) ∈ metabolite_to_metabolites
         vertex_idx = metabolite_ids_to_ints[vertex_metabolite_id]
-        set_prop!(mg, vertex_idx, :metabolite_id, vertex_metabolite_id)
+        set_prop!(mdg, vertex_idx, :metabolite_id, vertex_metabolite_id)
         for neighbor_metabolite_id ∈ neighbor_metabolite_ids
             neighbor_idx = metabolite_ids_to_ints[neighbor_metabolite_id]
             reaction_id = metabolite_pairs_to_reactions[(
@@ -293,8 +311,8 @@ function make_graph(model::A.CanonicalModel.Model)
                 continue
             end
             adj_matrix[vertex_idx, neighbor_idx] = 1
-            add_edge!(mg, vertex_idx, neighbor_idx)
-            set_prop!(mg, Edge(vertex_idx, neighbor_idx), :reaction_id, reaction_id)
+            add_edge!(mdg, vertex_idx, neighbor_idx)
+            set_prop!(mdg, Edge(vertex_idx, neighbor_idx), :reaction_id, reaction_id)
             reaction_ids_to_vertices[reaction_id] = (vertex_idx, neighbor_idx)
         end
     end
@@ -303,7 +321,7 @@ function make_graph(model::A.CanonicalModel.Model)
         :ints_to_metabolite_ids => ints_to_metabolite_ids,
         :adj_matrix => adj_matrix,
         :N => N,
-        :mg => mg,
+        :mdg => mdg,
         :model => model,
         :metabolite_pairs_to_reactions => metabolite_pairs_to_reactions,
         :reaction_ids_to_vertices => reaction_ids_to_vertices,
@@ -339,7 +357,7 @@ end
 """
     dfs_from_metabolite_id(graph_data::Dict{Symbol,Any}, metabolite_id::String, max_depth::Int64, metabolite_ids_to_skip::Union{Vector{String},Nothing})
 
-Perform a depth-first search of the metabolic network starting from the given metabolite_id and limited to max_depth through the network.
+Perform a depth-first search of the metabolic network starting from the given metabolite_id and limited to max_depth through the network. Prints a warning if a metabolite that does not exist is requested to be skipped.
 
 # Returns
 `Dict{Symbol,Any}`
@@ -356,10 +374,6 @@ A dictionary with the following keys:
 2. `metabolite_id::String`: The metabolite_id to start from.
 3. `max_depth::Int64`: Max number of reactions to traverse through the network.
 4.  `metabolite_ids_to_skip::Union{Vector{String},Nothing}`: If specified, a list of metabolite ids not to traverse in the DFS. Defaults to `nothing`, which will traverse everything.
-
-# Throws
-`KeyError`
-Throws a `KeyError` if the `metabolite_id` is not found in the graph.
 """
 function dfs_from_metabolite_id(
     graph_data::Dict{Symbol,Any},
@@ -367,25 +381,27 @@ function dfs_from_metabolite_id(
     max_depth::Int64,
     metabolite_ids_to_skip::Union{Vector{String},Nothing} = nothing,
 )
-    if !haskey(graph_data[:metabolite_ids_to_ints], metabolite_id)
+    metabolite_ids_to_ints = graph_data[:metabolite_ids_to_ints]
+    if !haskey(metabolite_ids_to_ints, metabolite_id)
         throw(KeyError("$metabolite_id not found in graph."))
     end
     metabolite_ids_to_skip0 =
         isnothing(metabolite_ids_to_skip) ? [] : metabolite_ids_to_skip
     for metabolite_id_to_skip ∈ metabolite_ids_to_skip0
-        if !haskey(graph_data[:metabolite_ids_to_ints], metabolite_id_to_skip)
-            throw(KeyError("Skipped $metabolite_id_to_skip not found in graph."))
+        if !haskey(metabolite_ids_to_ints, metabolite_id_to_skip)
+            @warn "$metabolite_id_to_skip was configured to skipped, but was not found in graph. Ignoring."
         end
     end
     skip_vec = [
-        graph_data[:metabolite_ids_to_ints][metabolite_id] for
-        metabolite_id ∈ metabolite_ids_to_skip0
+        metabolite_ids_to_ints[metabolite_id] for
+        metabolite_id ∈ metabolite_ids_to_skip0 if
+        haskey(metabolite_ids_to_ints, metabolite_id)
     ]
     N = graph_data[:N]
     visited = zeros(Int64, N)
     adj_matrix = graph_data[:adj_matrix]
     paths::Vector{Vector{Int64}} = []
-    start_vertex = graph_data[:metabolite_ids_to_ints][metabolite_id]
+    start_vertex = metabolite_ids_to_ints[metabolite_id]
 
     function dfs(vertex::Int64, hop::Int64, current_path::Vector{Any})
         if hop > max_depth
@@ -454,12 +470,12 @@ A `DataFrame`, sorted by metabolite id, with the following columns
 - `graph_data::Dict{Symbol,Any}`: Graph data from `make_graph()`
 """
 function betweenness_centrality_of_vertices(graph_data::Dict{Symbol,Any})
-    mg = graph_data[:mg]
+    mdg = graph_data[:mdg]
     ints_to_metabolite_ids = graph_data[:ints_to_metabolite_ids]
     model = graph_data[:model]
     metabolite_names = metabolite_ids_to_metabolite_names(model)[:ids_to_names]
-    bc = Parallel.betweenness_centrality(mg; normalize = true)
-    cc = Parallel.closeness_centrality(mg; normalize = true)
+    bc = Parallel.betweenness_centrality(mdg; normalize = true)
+    cc = Parallel.closeness_centrality(mdg; normalize = true)
     df = DataFrame(
         [
             (
@@ -691,70 +707,70 @@ function enrich_visited_reactions_df(
 end
 
 """
-    find_isolated_vertices(mg::MetaGraph)
+    find_isolated_vertices(mdg::MetaDiGraph)
 
-Print the metabolite ids of the isolated vertices (vertices with no neighbors) in the metabolite graph `mg`. This function is used to inform the list of vertices to exclude from clustering because isolated vertices put zeros in the degree matrix which prevent finding eigenvectros of the symmeterized Laplacian in the spectral clustering step.
+Print the metabolite ids of the isolated vertices (vertices with no neighbors) in the metabolite graph `mdg`. This function is used to inform the list of vertices to exclude from clustering because isolated vertices put zeros in the degree matrix which prevent finding eigenvectros of the symmeterized Laplacian in the spectral clustering step.
 
 # Argument
-1. `mg::MetaGraph`: MetaGraph with properties on each vertex of metabolite ids associated with each respective vertex.
+1. `mdg::MetaDiGraph`: MetaDiGraph with properties on each vertex of metabolite ids associated with each respective vertex.
 """
-function find_isolated_vertices(mg::MetaGraph)
-    W = adjacency_matrix(mg)
+function find_isolated_vertices(mdg::MetaDiGraph)
+    W = adjacency_matrix(mdg)
     D = Diagonal(sum(W, dims = 2)[:])
     isolated_vertices = findall(x -> x == 0, diag(D))
-    isolated_metabolite_ids = [get_prop(mg, v, :metabolite_id) for v ∈ isolated_vertices]
+    isolated_metabolite_ids = [get_prop(mdg, v, :metabolite_id) for v ∈ isolated_vertices]
     println(isolated_metabolite_ids)
 end
 
 """
-    remove_metabolite_ids(mg::MetaGraph, metabolite_ids::Vector{String})
+    remove_metabolite_ids(mdg::MetaDiGraph, metabolite_ids::Vector{String})
 
-Remove vertices referenced their associated `metabolite_ids` from `mg`. Returns a new graph leaving the original unchanged.
+Remove vertices referenced their associated `metabolite_ids` from `mdg`. Returns a new graph leaving the original unchanged.
 
 This function can be used to remove clusters of metabolites with very high connectivity (such as O2) that would interfere with spectral clustering's ability to cluster the other metabolites.
 
 # Arguments
-1. `mg::MetaGraph`: Undirected graph with metabolites as vertices connected by edges that represent reactions.
+1. `mdg::MetaDiGraph`: Undirected graph with metabolites as vertices connected by edges that represent reactions.
 2. `metabolite_ids::Vector{String}`: Metabolite ids to remove.
 
 # Returns
-`MetaGraph`
+`MetaDiGraph`
 Returns a new graph with the given metabolite ids removed.
 """
-function remove_metabolite_ids(mg::MetaGraph, metabolite_ids::Vector{String})
-    new_mg = deepcopy(mg)
+function remove_metabolite_ids(mdg::MetaDiGraph, metabolite_ids::Vector{String})
+    new_mdg = deepcopy(mdg)
     for metabolite_id ∈ metabolite_ids
-        for v ∈ 1:nv(new_mg)
-            if get_prop(new_mg, v, :metabolite_id) == metabolite_id
-                rem_vertex!(new_mg, v)
+        for v ∈ 1:nv(new_mdg)
+            if get_prop(new_mdg, v, :metabolite_id) == metabolite_id
+                rem_vertex!(new_mdg, v)
                 break
             end
         end
     end
-    new_mg
+    new_mdg
 end
 
 """
-    spectral_cluster_metabolite_graph(mg::MetaGraph; k::Int64)
+    spectral_cluster_metabolite_graph(mdg::MetaDiGraph; k::Int64)
 
-Perform a spectral clustering of the metabolite graph `mg` into `k` clusters. Return a dictionary with a bunch of key value pairs that are the results of the clustering.
+Perform a spectral clustering of the metabolite graph `mdg` into `k` clusters. Return a dictionary with a bunch of key value pairs that are the results of the clustering.
 
 # Arguments
-1. `mg::MetaGraph`: Undirected metabolite graph with metabolites as vertices connected by edges representing reactions.
+1. `mdg::MetaDiGraph`: Undirected metabolite graph with metabolites as vertices connected by edges representing reactions.
 2. `k::Int64`: How many clusters to split the metabolite graph into.
 
 # Returns
 `Dict{Symbol,Any}`
 Returns a dictionary with the following keys:
-1. `:mg`: The original metabolite graph on which this clustering was performed.
+1. `:mdg`: The original metabolite graph on which this clustering was performed.
 2. `:cluster_to_vertices`: `OrderedDict{Int64,Vector{Int64}}` Keys are cluster ids and values are vectors of vertex ids within that cluster.
 3. `:cluster_ids`: `Vector{Int64}` a vector of all cluster ids.
 """
-function spectral_cluster_metabolite_graph(mg::MetaGraph; k::Int64)
-    W = adjacency_matrix(mg)
+function spectral_cluster_metabolite_graph(mdg::MetaDiGraph; k::Int64)
+    W = adjacency_matrix(mdg)
     D = Diagonal(sum(W, dims = 2)[:])
     D_inv = Diagonal(1 ./ diag(D))
-    L = Array(laplacian_matrix(mg))
+    L = Array(laplacian_matrix(mdg))
     L_rw = D_inv * L
     _, eigvecs = eigs(L_rw, nev = k)
     max_imag = maximum(abs.(imag.(eigvecs)))
@@ -778,7 +794,7 @@ function spectral_cluster_metabolite_graph(mg::MetaGraph; k::Int64)
     Dict(
         :cluster_to_vertices => cluster_to_vertices,
         :cluster_ids => cluster_ids,
-        :mg => mg,
+        :mdg => mdg,
     )
 end
 
@@ -798,7 +814,7 @@ Returns a dictionary with the following keys:
 """
 function prepare_spectral_clustering_for_yaml(clustering)
     all_clusters_sorted = sort(clustering[:cluster_ids])
-    mg = clustering[:mg]
+    mdg = clustering[:mdg]
     cluster_sizes::OrderedDict{Int64,Int64} = OrderedDict()
     for cluster ∈ all_clusters_sorted
         cluster_sizes[cluster] = length(keys(clustering[:cluster_to_vertices][cluster]))
@@ -807,7 +823,7 @@ function prepare_spectral_clustering_for_yaml(clustering)
         OrderedDict(cluster => OrderedDict() for cluster ∈ all_clusters_sorted)
     for (cluster, vertices) ∈ clustering[:cluster_to_vertices]
         cluster_assignments[cluster] = Dict(
-            get_prop(mg, v, :metabolite_id) => length(all_neighbors(mg, v)) for
+            get_prop(mdg, v, :metabolite_id) => length(all_neighbors(mdg, v)) for
             v ∈ vertices
         )
     end

@@ -8,7 +8,7 @@ import SBMLFBCModels as S
 import AbstractFBCModels as A
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 
-export load_base_rbc_gem, create_fba_model, default_exchanges
+export load_base_rbc_gem, create_fba_model, default_exchanges, as3_exchanges
 
 """
     load_base_rbc_gem()
@@ -21,7 +21,7 @@ Load the base RBC-GEM from which the model for uFBA sampling will be made
 New model with the entire RBC-GEM.
 """
 function load_base_rbc_gem()
-    println("> Loading RBC-GEM")
+    # println("> Loading RBC-GEM")
     rbc_gem_path = joinpath("input", "RBC-GEM.xml")
     rbc_gem = load_model(S.SBMLFBCModel, rbc_gem_path, A.CanonicalModel.Model)
 
@@ -31,8 +31,18 @@ function load_base_rbc_gem()
     return rbc_gem
 end
 
+"""
+    default_exchanges()
+
+Return a vector of some common exchanges for the model this module builds. Compare to [`as3_exchanges`](@ref BloodStorageInSilico.UfbaSampler.FbaModelBuilder.as3_exchanges).
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings of reaction ids for the default exchanges.
+"""
 function default_exchanges()
-    exchange_reactions_ids = [
+    exchange_reaction_ids = [
         # Original exchanges
         "R_EX_glc__D_e",
         "R_EX_pyr_e",
@@ -48,13 +58,38 @@ function default_exchanges()
         "R_EX_h_e",
         "R_EX_h2o_e",
 
-        # Exchanges for AS-3
+        # Exchanges added for AS-3
+        "R_EX_pi_e",
+        # "R_EX_cit_e",  # Blocked
+        # "R_EX_na1_e",  # Blocked
+        "R_EX_cl_e",
+
+        # Unblocking transporters
+        "R_EX_met__L_e",
+    ]
+    return exchange_reaction_ids
+end
+
+"""
+    as3_exchanges()
+
+Return a list of exchanges limited to those that would account for extracellular metabolites found in additive solution 3. Compare to [`default_exchanges`](@ref BloodStorageInSilico.UfbaSampler.FbaModelBuilder.default_exchanges).
+
+# Returns
+`Vector{String}`
+
+Returns a vector of strings for the requested exchanges.
+"""
+function as3_exchanges()
+    exchange_reaction_ids = [
         "R_EX_pi_e",
         "R_EX_cit_e",
         "R_EX_na1_e",
         "R_EX_cl_e",
+        "R_EX_ade_e",
+        "R_EX_glc__D_e",
     ]
-    return exchange_reactions_ids
+    return exchange_reaction_ids
 end
 
 """
@@ -92,8 +127,7 @@ end
 """
     create_fba_model(base_gem::Union{A.CanonicalModel.Model,Nothing}; exchanges::Union{Nothing,Vector{String}} = nothing, flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing)
 
-Creates the three pathway (glycolysis, pentose phosphate, purine salvage) model
-for the uFBA study.
+Creates the models for the for the uFBA runs.
 
 # Arguments
 1. `base_gem::Union{A.CanonicalModel.Model,Nothing}`: The base gem loaded by `load_base_rbc_gem`. If left as `nothing`, this function will call `load_base_rbc_gem` directly.
@@ -101,24 +135,24 @@ for the uFBA study.
 3. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, this DataFrame contains flux bounds for reactions that will override the RBC-GEM's flux bounds.
 
 # Returns
-`A.CanonicalModel.Model`
+`Tuple{A.CanonicalModel.Model,DataFrame}`
 
-Returns the newly constructed three pathway model.
+Returns a tuple of the newly constructed model as the first element and a single-column (called `:metabolite_id`) DataFrame of metabolite ids in the model as the second element.
 """
 function create_fba_model(
     base_gem::Union{A.CanonicalModel.Model,Nothing};
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
 )
-    if !isnothing(exchanges)
-        @info "Building FBA model and adding exchanges"
-    else
-        @info "Building FBA model without exchanges"
-    end
+    # if !isnothing(exchanges)
+    #     @info "Building FBA model and adding exchanges"
+    # else
+    #     @info "Building FBA model without exchanges"
+    # end
 
     rbc_gem = isnothing(base_gem) ? load_base_rbc_gem() : deepcopy(base_gem)
 
-    println("> Glycolysis")
+    # println("> Glycolysis")
     glycolysis_reaction_ids = [
         "R_HEX1",
         "R_PGI",
@@ -136,17 +170,17 @@ function create_fba_model(
 
     # println(glycolysis_reaction_ids)
 
-    println("> RL Shunt")
+    # println("> RL Shunt")
     rl_shunt_reaction_ids = ["R_DPGM", "R_DPGase"]
     # println(rl_shunt_reaction_ids)
 
-    println("> Pentose phosphate pathway")
+    # println("> Pentose phosphate pathway")
     ppp_reaction_ids =
         ["R_G6PDH2", "R_PGL", "R_GND", "R_RPI", "R_RPE", "R_TKT1", "R_TALA", "R_TKT2"]
 
     # println(ppp_reaction_ids)
 
-    println("> Purine metabolism")
+    # println("> Purine metabolism")
     purine_metabolism_reaction_ids = [
         "R_PRPPS",
         "R_PPM",
@@ -167,18 +201,18 @@ function create_fba_model(
 
     # println(purine_metabolism_reaction_ids)
 
-    println("> Methionine Salvage and Metabolism")
+    # println("> Methionine Salvage and Metabolism")
     met_salvage_reaction_ids =
         ["R_UNK3", "R_AHC", "R_MDRPD", "R_METAT", "R_MTRI", "R_ARDFE2"]
 
-    println("> Citric Acid Cycle")
+    # println("> Citric Acid Cycle")
     # citric_reaction_ids = ["R_ACITL", "R_FUM", "R_MDH"]  # All citric reactions have zero flux
     citric_reaction_ids = []
 
-    println("> Arginine and Proline Metabolism")
+    # println("> Arginine and Proline Metabolism")
     arg_pro_reaction_ids = ["R_ADMDC", "R_MTAP"]
 
-    println("> Nucleotide Metabolism")
+    # println("> Nucleotide Metabolism")
     nucleotide_reaction_ids = [
         # "R_ADNCYC",  # Broken reaction
         "R_GMPR",
@@ -193,37 +227,38 @@ function create_fba_model(
         "R_GK1",
     ]
 
-    println("> Glutamate Metabolism")
+    # println("> Glutamate Metabolism")
     glutamate_reaction_ids = ["R_ALATA_L", "R_GLNS", "R_GLUN"]
 
-    println("> Glutathione Metabolism")
+    # println("> Glutathione Metabolism")
     # glutathione_reaction_ids =
     #     ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy", "R_GGLUCTC"]  # GGLUCTC has zero flux
     glutathione_reaction_ids = ["R_AMPTASECG", "R_GLUCYS", "R_GTHP", "R_GTHS", "R_GTHOy"]
 
-    println("> Urea cycle/amino group metabolism")
+    # println("> Urea cycle/amino group metabolism")
     urea_reaction_ids = ["R_ARGN", "R_ORNDC", "R_SPMS", "R_SPRMS"]
 
-    println("> Glycine, Serine, and Threonine Metabolism")
+    # println("> Glycine, Serine, and Threonine Metabolism")
     # glycine_serine_threonine_reaction_ids = ["R_GHMT2"]  # GHMT2 zero flux
     glycine_serine_threonine_reaction_ids = []
 
-    println("> Folate Metabolism")
+    # println("> Folate Metabolism")
     folate_reaction_ids = ["R_FTHFL", "R_MTHFC", "R_MTHFD"]
 
-    println("> Fructose and Mannose Metabolism")
+    # println("> Fructose and Mannose Metabolism")
     fructose_mannose_reaction_ids = ["R_HEX4", "R_HEX7", "R_MAN6PI", "R_SBTD_D2", "R_SBTRa"]
 
-    println("> Pyrimidine Catabolism")
+    # println("> Pyrimidine Catabolism")
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
-    println("> Sodium-Potassium Pump")
-    na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
+    # println("> Sodium-Potassium Pump Transporters")
+    # na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
+    na_k_pump_reaction_ids = []
 
-    println("> Other reactions")
+    # println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
 
-    println("> Transporters")
+    # println("> Transporters")
     transporter_reactions_ids = [
         # Original transporters
         "R_GLC_Dt",
@@ -271,15 +306,15 @@ function create_fba_model(
 
     # println(transporter_reactions_ids)
 
-    if !isnothing(exchanges)
-        println("> Adding exchanges")
-    else
-        println("> Skipping exchanges")
-    end
+    # if !isnothing(exchanges)
+    #     println("> Adding exchanges")
+    # else
+    #     println("> Skipping exchanges")
+    # end
 
     exchange_reactions_ids = isnothing(exchanges) ? [] : exchanges
 
-    println("> Collecting reactions and discovering metabolites")
+    # println("> Collecting reactions and discovering metabolites")
 
     all_reaction_ids = [
         glycolysis_reaction_ids
@@ -306,11 +341,13 @@ function create_fba_model(
     discovered_metabolite_ids::Vector{String} = []
     for reaction_id ∈ all_reaction_ids
         for metabolite_id ∈ keys(rbc_gem.reactions[reaction_id].stoichiometry)
-            push!(discovered_metabolite_ids, metabolite_id)
+            if metabolite_id ∉ discovered_metabolite_ids
+                push!(discovered_metabolite_ids, metabolite_id)
+            end
         end
     end
 
-    println("Discovered $(length(discovered_metabolite_ids)) metabolites.")
+    # println("Discovered $(length(discovered_metabolite_ids)) metabolites.")
 
     model = Model()
 
@@ -319,7 +356,7 @@ function create_fba_model(
         model.metabolites[discovered_metabolite_id] = copied_metabolite
     end
 
-    println("> Adding reactions and exchanges to model")
+    # println("> Adding reactions and exchanges to model")
 
     for reaction_id ∈ all_reaction_ids
         bounds_override = find_flux_bounds_overrides(flux_bounds_overrides_df, reaction_id)
@@ -333,7 +370,7 @@ function create_fba_model(
         end
     end
 
-    println("> Add ATP load")
+    # println("> Add ATP load")
 
     model.reactions["R_LOAD_ATP"] = Reaction(
         name = "LOAD_ATP",
@@ -351,7 +388,7 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_ATP"])
 
-    println("> Adding NADH load")
+    # println("> Adding NADH load")
 
     # Load due to methemoglobin reduction via CytB5
     model.reactions["R_LOAD_NADH"] = Reaction(
@@ -364,7 +401,7 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADH"])
 
-    println("> Adding NADPH load")
+    # println("> Adding NADPH load")
 
     # Load due to glutathione reduction from GSSG to GSH
     model.reactions["R_LOAD_NADPH"] = Reaction(
@@ -377,10 +414,15 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADPH"])
 
-    println("> Setting NaKt load")
-    model.reactions["R_NaKt"].objective_coefficient = 1.0
+    # println("> Skipping NaKt load")
+    # println("> Setting NaKt load")
+    # model.reactions["R_NaKt"].objective_coefficient = 1.0
 
-    return model
+    metabolite_ids =
+        [replace(metabolite_id, "M_" => "") for (metabolite_id, _) in model.metabolites]
+    metabolites_df = DataFrame(metabolite_id = metabolite_ids)
+
+    return model, metabolites_df
 end
 
 end

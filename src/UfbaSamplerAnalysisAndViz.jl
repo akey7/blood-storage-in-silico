@@ -11,6 +11,7 @@ using DataFramesMeta
 using ProgressMeter
 using HypothesisTests
 using MultipleTesting
+using Chain
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -19,7 +20,11 @@ export histograms_for_reaction_v2,
     map_metabolites_to_sinks,
     net_sink_fluxes,
     net_flux_from_up_and_down,
-    calc_median_flux_df
+    calc_median_flux_df,
+    combine_and_clean_addititve_final_time,
+    prepare_median_flux_vector_matrix,
+    prepare_measurements_and_sinks_report_df
+
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -159,21 +164,23 @@ function diagnose_flux_stats(sampling_df)
 end
 
 """
-    map_metabolites_to_sinks(sampling_df)
+    map_metabolites_to_sinks(long_df, additive, final_time)
 
 Extracts the sinks (up and down) from the given samples and maps unmeasured metabolite ids to their corresponding up and down sinks.
 
 # Arguments
-1. `sampling_df`: The wide sampling DataFrame.
+1. `long_df`: The long sampling DataFrame.
+2. `additive`: The additive of interest
+3. `final_time`: The final time of interest
 
 # Returns
 `Dict{String,Dict{Symbol,String}}`
 
 Returns a dictionary mapping strings (metabolite_ids) to a second level of dictionaries. The second level of dictionaries contain `:up` and/or `:down` keys which in turn map to reaction ids that are the up or and/or down sinks for the metabolite_id key in the top-level dictionary.
 """
-function map_metabolites_to_sinks(sampling_df)
-    long_df = pivot_sampling_df_long(sampling_df)
-    reaction_ids = sort(unique(long_df.reaction_id))
+function map_metabolites_to_sinks(long_df, additive, final_time)
+    filtered_df = @rsubset(long_df, :additive == additive, :final_time == final_time)
+    reaction_ids = sort(unique(filtered_df.reaction_id))
     sink_ids = [
         reaction_id for reaction_id in reaction_ids if contains(reaction_id, "R_UNKNOWN_SK")
     ]
@@ -195,53 +202,54 @@ function map_metabolites_to_sinks(sampling_df)
 end
 
 """
-    net_flux_from_up_and_down(up_flux::Union{Float64,Missing}, down_flux::Union{Float64})
+    net_flux_from_up_and_down(up_flux::Union{Float64,Missing}, down_flux::Union{Float64,Missing})
 
 Helper function for [`net_sink_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.net_sink_fluxes). Calculates the net flux of two sink fluxes avoiding missing values.
 
 # Arguments
 1. `up_flux::Union{Float64,Missing}`: Flux of the up sink. If `missing`, this value is ignored when computing the net flux.
-2. `down_flux::Union{Float64}`: Flux of the down sink. If `missing`, this value is ignored when computing the net flux.
+2. `down_flux::Union{Float64,Missing}`: Flux of the down sink. If `missing`, this value is ignored when computing the net flux.
 
 # Returns
-`Float64`
+`Union{Float64,Missing}`
 
-Returns the net flux of the sinks, calculated by summing the fluxes together and skipping missing values.
+Returns the net flux of the sinks, calculated by summing the fluxes together and skipping missing values. If both fluxes are missing, returns `missing`.
 """
 function net_flux_from_up_and_down(
     up_flux::Union{Float64,Missing},
-    down_flux::Union{Float64},
+    down_flux::Union{Float64,Missing},
 )
     if !ismissing(up_flux) && !ismissing(down_flux)
         return up_flux + down_flux
     elseif !ismissing(up_flux)
         return up_flux
-    else
+    elseif !ismissing(down_flux)
         return down_flux
+    else
+        return missing
     end
 end
 
 """
-    net_sink_fluxes(sampling_df, sink_map)
+    net_sink_fluxes(sampling_df)
 
 Calucates the net fluxes between each pair of sinks by summing their values together (when both sinks are present) or selecting only the up or down flux where just one sink is available.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of sampling values.
-2. `sink_map`: Dictionary from [`map_metabolites_to_sinks`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.map_metabolites_to_sinks) mapping unmeasured metabolites to sink reaction ids.
 
 # Returns
 `DataFrame`
 
 Returns a DataFrame with the following columns
-1. `metabolite_id`: The metabolite id matching the sinks.
-2. `additive`: The additive.
-3. `final_time`: The final time point of the model/
+1. `additive`: The additive.
+2. `final_time`: The final time point of the model
+3. `metabolite_id`: The metabolite id matching the sinks.
 4. `up_median_flux`: The median flux of the up sink flux distribution.
 5. `down_median_flux`: The median flux of the down sink flux distribution.
 6. `net_median_flux`: The net flux summed over both sinks.
 """
-function net_sink_fluxes(sampling_df, sink_map)
+function net_sink_fluxes(sampling_df)
     @info "Calculating net sink fluxes"
     long_df = pivot_sampling_df_long(sampling_df)
     final_times = sort(unique(long_df.final_time))
@@ -252,12 +260,13 @@ function net_sink_fluxes(sampling_df, sink_map)
         @combine(:median_flux = median(:flux))
     end
     rows = []
-    n_calculations = length(keys(sink_map)) * length(pairs)
+    n_calculations = length(pairs)
     prog = Progress(n_calculations, desc = "Calculating net sink fluxes")
-    for (metabolite_id, sinks) in sink_map
-        up_id = get(sinks, :up, nothing)
-        down_id = get(sinks, :down, nothing)
-        for (additive, final_time) in pairs
+    for (additive, final_time) in pairs
+        sink_map = map_metabolites_to_sinks(long_df, additive, final_time)
+        for (metabolite_id, sinks) in sink_map
+            up_id = get(sinks, :up, nothing)
+            down_id = get(sinks, :down, nothing)
             up_df =
                 !isnothing(up_id) ?
                 @rsubset(
@@ -289,8 +298,19 @@ function net_sink_fluxes(sampling_df, sink_map)
             next!(prog)
         end
     end
-    net_flux_df = @orderby(DataFrame(rows), :metabolite_id, :additive, :final_time)
-    return net_flux_df
+    net_flux_df_1 = DataFrame(rows)
+    net_flux_df_2 = @chain net_flux_df_1 begin
+        @select(
+            :additive,
+            :final_time,
+            :metabolite_id,
+            :up_median_flux,
+            :down_median_flux,
+            :net_median_flux
+        )
+        @orderby(:additive, :final_time, :metabolite_id)
+    end
+    return net_flux_df_2
 end
 
 """
@@ -313,6 +333,157 @@ function calc_median_flux_df(sampling_df)
         @combine(:median_flux = median(:flux))
     end
     return median_df
+end
+
+"""
+    combine_and_clean_addititve_final_time(additive, final_time)
+
+Combine additive and final time specifications into a single lowercase string with `-` and ` ` substituted with `_`.
+
+# Arguments
+1. `additive`: The additive string
+2. `final_time`: The final time integer
+
+# Returns
+`String`
+
+Returns a string formatted in the way specified above.
+"""
+function combine_and_clean_addititve_final_time(additive, final_time)
+    cleaned_additive = @chain additive begin
+        lowercase()
+        replace("-" => "_", " " => "_")
+    end
+    combined = "$(cleaned_additive)_$(final_time)"
+    return combined
+end
+
+"""
+    prepare_median_flux_vector_matrix(sampling_df)
+
+Prepare a data matrix of the uFBA results. Each row is a reaction, each column is an additive at a time point, and each element is the median flux for that row and column.
+
+# Arguments
+1. `sampling_df`: The wide formatted sampling DataFrame
+
+# Returns
+`DataFrame`
+
+Returns a data matrix in the form of a DataFrame as specified above.
+"""
+function prepare_median_flux_vector_matrix(sampling_df)
+    median_df = calc_median_flux_df(sampling_df)
+    transformed_df = @chain median_df begin
+        @rtransform(
+            :additive_final_time =
+                combine_and_clean_addititve_final_time(:additive, :final_time)
+        )
+        @select(:additive_final_time, :reaction_id, :median_flux)
+        @orderby(:additive_final_time, :reaction_id)
+        unstack(:reaction_id, :additive_final_time, :median_flux)
+    end
+    return transformed_df
+end
+
+"""
+    prepare_measurements_and_sinks_report_df(absolute_quant_long_df, fba_model_metabolites_df, ufba_added_sink_ids_df, sampling_df)
+
+Prepares two DataFrames detailing the number of metabolites in each model and how many sinks there are.
+
+The first DataFrame is longer than the second and contains one row per metabolite. On each row, the additive, time, and metabolite are listed, along with boolean columns with whether the metabolite has up/down sinks, or is measured.
+
+The second DataFrame aggregates these per-metabolite rows into per-model rows, outlining overal counts of unique metabolites, how many metabolites are measured, and the number of up and down sinks.
+
+# Arguments
+1. `absolute_quant_long_df`: The absolute quant measurements from `output/absolute_quant_long.csv`
+2. `fba_model_metabolites_df`: The FBA model metabolites from `output/fba_model_metabolites.csv`
+3. `ufba_added_sink_ids_df`: The sinks added to models during the uFBA process from `output/ufba_added_sink_ids.csv`
+4. `sampling_df`: The wide sampling DataFrame from all uFBA runs.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns two DataFrames, one for each report. The first element is the per-metabolite report, and the second element is the per-model report.
+
+The first DataFrame contains the following columns
+1. `additive`: Additive of the model
+2. `final_time`: Final time of the model
+3. `fba_metabolite_id`: Metabolite id from the FBA model
+4. `is_measured`: `true` if the metabolite was measured
+5. `has_up_sink`: `true` if there is an up sink for the metabolite
+6. `has_down_sink`: `true` if there is a down sink for the metabolite
+
+The second DataFrame contains the following columns:
+1. `additive`: Additive of the model
+2. `final_time`: Final time of the model
+3. `n_fba_metabolites`: Number of metabolites in the model
+4. `n_measured`: The number of metabolites that have absolute quant approximations.
+5. `n_at_least_one_sink`: The number of metabolites that have one or both sinks.
+6. `n_no_measure_no_sink`: The number of metabolites that have neither an absolute quant approximation nor any sinks.
+"""
+function prepare_measurements_and_sinks_report_df(
+    absolute_quant_long_df,
+    fba_model_metabolites_df,
+    ufba_added_sink_ids_df,
+    sampling_df,
+)
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
+    additives = sort(unique(long_sampling_df.additive))
+    final_times = sort(unique(long_sampling_df.final_time))
+    fba_metabolite_ids = sort(unique(fba_model_metabolites_df.metabolite_id))
+    tasks = product(fba_metabolite_ids, additives, final_times)
+    n_tasks = length(tasks)
+    prog = Progress(n_tasks, "Matching FBA, measured, and sink metabolite ids")
+    rows = map(tasks) do t
+        fba_metabolite_id, additive, final_time = t
+        measured_df = @rsubset(
+            absolute_quant_long_df,
+            :Additive == additive,
+            :Time == final_time,
+            :Metabolite == fba_metabolite_id
+        )
+        sink_up_df = @rsubset(
+            ufba_added_sink_ids_df,
+            :additive == additive,
+            :final_time == final_time,
+            :metabolite_id == fba_metabolite_id,
+            :direction == "up",
+        )
+        sink_down_df = @rsubset(
+            ufba_added_sink_ids_df,
+            :additive == additive,
+            :final_time == final_time,
+            :metabolite_id == fba_metabolite_id,
+            :direction == "down",
+        )
+        is_measured = nrow(measured_df) > 0
+        has_up_sink = nrow(sink_up_df) > 0
+        has_down_sink = nrow(sink_down_df) > 0
+        next!(prog)
+        return (
+            additive = additive,
+            final_time = final_time,
+            fba_metabolite_id = fba_metabolite_id,
+            is_measured = is_measured,
+            has_up_sink = has_up_sink,
+            has_down_sink = has_down_sink,
+        )
+    end
+    unsorted_report_df = DataFrame(rows)
+    report_df = @orderby(unsorted_report_df, :additive, :final_time, :fba_metabolite_id)
+    report_by_model_df = @chain report_df begin
+        @rtransform(:has_at_least_one_sink = :has_up_sink || :has_down_sink)
+        @rtransform(:no_measure_no_sink = !:is_measured && !:has_at_least_one_sink)
+        @groupby(:additive, :final_time)
+        @combine(
+            :n_fba_metabolites = length(unique(:fba_metabolite_id)),
+            :n_measured = sum(:is_measured),
+            :n_at_least_one_sink = sum(:has_at_least_one_sink),
+            :n_no_measure_no_sink = sum(:no_measure_no_sink),
+        )
+        @orderby(:additive, :final_time)
+    end
+    return report_df, report_by_model_df
 end
 
 end

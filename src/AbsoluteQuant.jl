@@ -19,10 +19,11 @@ using StatsModels
 using Statistics
 using Random
 using ThreadsX
+using ProgressMeter
 
 export load_absolute_quant,
     load_relative_quant,
-    combine_relative_and_absolute_quant,
+    combine_relative_and_absolute_quant_c,
     cluster_all_additives_all_n_clusters,
     plot_elbows,
     plot_c_means_all_additives,
@@ -32,7 +33,10 @@ export load_absolute_quant,
     regress_concentration_vs_time,
     plot_pca_all_additives,
     plot_all_regressions,
-    qc
+    qc,
+    load_extracellular_absolute_quant,
+    combine_relative_and_absolute_quant_e,
+    union_and_pivot_wide
 
 """
     load_absolute_quant()
@@ -69,6 +73,25 @@ function load_absolute_quant()
         :median_prop_mM = median(:prop_mM)
     end
     return absolute_quant_df, absolute_quant_medians_df
+end
+
+"""
+    load_extracellular_absolute_quant()
+
+Loads the absolute quant data for extracellular meatbolites from the `Sheet1` sheet of `input/Absolute Quant Extracellular Datasheet.xlsx`.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns
+1. `:metabolite_id`: The extracellular metabolite id
+2. `:median_prop_mM`: Median proportinated absolute concentration.
+"""
+function load_extracellular_absolute_quant()
+    filename = joinpath("input", "Absolute Quant Extracellular Datasheet.xlsx")
+    df = DataFrame(XLSX.readtable(filename, "Sheet1"))
+    select_df = @select(df, :metabolite_id, :median_prop_mM)
+    return select_df
 end
 
 """
@@ -144,52 +167,122 @@ function qc(fold_changes_df, patient_count = 6)
 end
 
 """
-    combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
+    combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_medians_df)
 
-This is where the magic of this module truly happens. Here, the relative quant and absolute quant data are combined to approximate aboslute quantification to put into models.
+In this function, the relative quant and absolute quant data for the cytosolic metabolites (metabolites ending with `_c`) are combined to approximate aboslute quantification to put into models.
 
 # Arguments
 1. `fold_changes_df`: The relative quant data from [`load_relative_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_relative_quant)
 2. `absolute_quant_medians_df`: The absolute quant data from [`load_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.load_absolute_quant)
 
 # Returns
-`Tuple{DataFrame,DataFrame}`
+`DataFrame`
 
-Returns a long and wide format of this dataframe.
-
-The long DataFrame contains the following columns and sorted by `:Additive`, `:Time`, and `:Metabolite`:
+Returns a long DataFrame that contains the following columns and sorted by `:Additive`, `:Time`, and `:Metabolite`:
 1. `:Sample`: Sample id
 2. `:Time`: Measurement time (in weeks)
 3. `:Additive`: Additive
-4. `:Metabolite`: Metabolite
-5. `:FoldChange`: Original fold change from the relative quant data
-6. `:median_prop_mM`: The median approximate mM of that metabolite from the absolute quant data
-7. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+4. `:Metabolite`: Metabolite id
+5. `:FoldChange`: Fold change from absolute quant
+6. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+"""
+function combine_relative_and_absolute_quant_c(fold_changes_df, absolute_quant_medians_df)
+    long_df = @chain fold_changes_df begin
+        innerjoin(absolute_quant_medians_df, on = :Metabolite)
+        @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
+        @orderby(:Additive, :Time, :Metabolite)
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange, :absolute_mM)
+    end
+    return long_df
+end
 
-The wide DataFrame contains the following columns and is sorted by `:Additive` and `:Time`:
+"""
+    combine_relative_and_absolute_quant_e(fold_changes_df, absolute_extracellular_quant_df)
+
+In this function, the relative quant and absolute quant data for the extracellular metabolites (metabolites ending with `_e`) are combined to approximate aboslute quantification to put into models.
+
+Since the relative quant fold changes DataFrame is specified by cytosolic metabolite ids, these metabolite ids are transformed to extracellular metabolite ids during the join.
+
+# Returns
+`DataFrame`
+
+Returns a long DataFrame that contains the following columns and sorted by `:Additive`, `:Time`, and `:Metabolite`:
+1. `:Sample`: Sample id
+2. `:Time`: Measurement time (in weeks)
+3. `:Additive`: Additive
+4. `:Metabolite`: Metabolite id
+5. `:FoldChange`: Fold change from absolute quant
+6. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+"""
+function combine_relative_and_absolute_quant_e(
+    fold_changes_df,
+    absolute_extracellular_quant_df,
+)
+    quant_e_df = @chain absolute_extracellular_quant_df begin
+        rename(:metabolite_id => :Metabolite)
+        @rtransform(:compound = replace(:Metabolite, "_e" => ""))
+    end
+    fold_changes_compounds_df =
+        @rtransform(fold_changes_df, :compound = replace(:Metabolite, "_c" => ""))
+    long_df = @chain quant_e_df begin
+        innerjoin(fold_changes_compounds_df, on = :compound, makeunique = true)
+        @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
+        select(Not(:Metabolite_1, :compound))
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange, :absolute_mM)
+        @orderby(:Additive, :Time, :Metabolite)
+    end
+    return long_df
+end
+
+"""
+    union_and_pivot_wide(absolute_quant_c_long_df, absolute_quant_e_long_df; include_extracellular = true)
+
+Unions the cytosolic and extracellular absolute quant long DataFrames. Returns the union of the long DataFrame and a wide pivoted DataFrame. Optionally exclude extracellular metabolites.
+
+See also: [`combine_relative_and_absolute_quant_c`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide) and [`combine_relative_and_absolute_quant_e`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide)
+
+# Arguments
+1. `absolute_quant_c_long_df`: Cytosolic absolute quant long DataFrame
+2. `absolute_quant_e_long_df`: Extracellular absolute quant long DataFrame
+3. `include_extracellular = true`: If `true` (the default), extracellular metabolites are included in the result. If `false`, extracellular metabolites are excluded from the results.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+First element of the tuple is a long DataFrame with the following columns:
+1. `:Sample`: Sample id
+2. `:Time`: Measurement time (in weeks)
+3. `:Additive`: Additive
+4. `:Metabolite`: Metabolite id
+5. `:FoldChange`: Fold change from absolute quant
+6. `:absolute_mM`: The approximate mM concentration of that metabolite for that row
+
+Second element of the tuple is a wide DataFrame that contains the following columns and is sorted by `:Additive`, `:Time`, and `:Sample`:
 1. `:Sample`: Sample id of that row
 2. `:Time`: Time in weeks of that observation
 3. `:Additive`: Additive
 4. A subsequent column for each metabolite
 """
-function combine_relative_and_absolute_quant(fold_changes_df, absolute_quant_medians_df)
-    long_df = @chain fold_changes_df begin
-        innerjoin(absolute_quant_medians_df, on = :Metabolite)
-        @rtransform(:absolute_mM = :FoldChange * :median_prop_mM)
-        @orderby(:Additive, :Time, :Metabolite)
-    end
-    wide_df = @chain long_df begin
+function union_and_pivot_wide(
+    absolute_quant_c_long_df,
+    absolute_quant_e_long_df;
+    include_extracellular = true,
+)
+    union_long_df =
+        include_extracellular ? vcat(absolute_quant_c_long_df, absolute_quant_e_long_df) :
+        absolute_quant_c_long_df
+    union_wide_df = @chain union_long_df begin
         @select(:Sample, :Time, :Additive, :Metabolite, :absolute_mM)
         unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
-        @orderby(:Additive, :Time)
+        @orderby(:Additive, :Time, :Sample)
     end
-    return long_df, wide_df
+    return union_long_df, union_wide_df
 end
 
 """
     prepare_long_df_for_clustering(long_df, additive)
 
-Prepare the long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) for timeseries analysis by c-means clustering. The original long DataFrame is filtered down to a single additive. If a measurement is duplicated, the first conflicting measurement will be used and zero values are excluded. The result is a wide DataFrame of timeseries, with a column for each timepoint, that can be used for clustering.
+Prepare the long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide) for timeseries analysis by c-means clustering. The original long DataFrame is filtered down to a single additive. If a measurement is duplicated, the first conflicting measurement will be used and zero values are excluded. The result is a wide DataFrame of timeseries, with a column for each timepoint, that can be used for clustering.
 
 # Arguments
 1. `long_df`: The long DataFrame to pivot.
@@ -309,7 +402,7 @@ end
 To make a complete clustering analysis of this dataset, clustering must be performed for each additive, different numbers of clusters must be attempted, and the results need to be aggregated to make figures. This function iterates through all additives and numbers of clusters to aggregate all of these runs into one place for further analysis.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide) that is the source of the data to be clustered.
 2. `max_clusters = 10`: Defaults to 10. For example, if left at 10, clustering into 2, 3, 4, 5, 6, 7, 8, 9, and 10 clusters will be attempted for selection of the optimal number of clusters.
 
 # Returns
@@ -390,7 +483,7 @@ end
 Clusters metabolite timeline trajectories in the given additive into the given number of clusters, standardizes the concentrations, saves a plot to the `output/relative_absolute_c_means` folder, and returns the memberships DataFrame that made the plot. The requested number of clusters and additive must be in the data passed.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide) that is the source of the data to be clustered.
 2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
 3. `additive`: Additive for the clustering and plotting.
 4. `n_clusters`: Number of clusters to plot the trajectories into.
@@ -495,7 +588,7 @@ end
 Iterates through all additives and calls [`plot_c_means_for_additive_and_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.plot_c_means_for_additive_and_n_clusters) to make a plot for each additive with the given number of clusters.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant) that is the source of the data to be clustered.
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide) that is the source of the data to be clustered.
 2. `all_memberships_dfs`: Vector of DataFrames for clustering into various numbers of clusters as returned by [`cluster_all_additives_all_n_clusters`](@ref BloodStorageInSilico.AbsoluteQuant.cluster_all_additives_all_n_clusters)
 3. `n_clusters`: Number of clusters to plot the trajectories into.
 
@@ -523,10 +616,10 @@ end
 """
     plot_all_mM_timeseries(long_df)
 
-Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes.
+Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes. Dislpays a nifty progress bar as it writes plots.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant). The source of the data that will be plotted.
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide). The source of the data that will be plotted.
 """
 function plot_all_mM_timeseries(long_df)
     agg_df = @chain long_df begin
@@ -546,6 +639,8 @@ function plot_all_mM_timeseries(long_df)
         "08-Taurine" => ColorSchemes.bamako10[5],
     )
     pal_vec = [cluster_palette[a] for a in additives]
+    n_plots = length(metabolites)
+    prog = Progress(n_plots, "Writing mM timeseries plots")
     for metabolite in metabolites
         clean_metabolite = replace(metabolite, r"[^A-Za-z0-9_]" => "_")
         filename = joinpath("output", "relative_absolute_plots", "$(clean_metabolite).png")
@@ -572,7 +667,7 @@ function plot_all_mM_timeseries(long_df)
             axis = (; title = metabolite, xticks = time_points),
         )
         save(filename, fig)
-        println("Wrote $filename")
+        next!(prog)
     end
 end
 
@@ -582,7 +677,7 @@ end
 Used by [`regress_concentration_vs_time`](@ref BloodStorageInSilico.AbsoluteQuant.regress_concentration_vs_time) to get a time course for a particular metabolite in a specified additive.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
 2. `additive`: Additive to select.
 3. `metabolite`: Metabolite id to select
 4. `tf`: Final time point (2, 3, 4, 5, 6) to select
@@ -607,7 +702,7 @@ end
 Regresses the concentration vs time to find the rate of metabolite concentration change (95% confidence interval upper and lower bounds) for all the metabolites and additives in `long_df`. Uses ThreadsX to split this task into multiple threads if multiple threads are available.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
 
 # Returns
 `DataFrame`
@@ -660,20 +755,22 @@ end
 """
     plot_all_regressions(long_df)
 
-Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression) for all metabolites in all additives to plot regression results. Saves plots to `output/regression_plots`
+Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression) for all metabolites in all additives to plot regression results. Saves plots to `output/regression_plots`. Displays a nifty progress bar as it writes plots.
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
 """
 function plot_all_regressions(long_df)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
     pairs = product(additives, metabolites)
+    n_pairs = length(pairs)
+    prog = Progress(n_pairs, "Writing regression plots")
     for (additive, metabolite) in pairs
         filename = joinpath("output", "regression_plots", "$additive $metabolite.png")
         fig = plot_regression(long_df, additive, metabolite)
         save(filename, fig)
-        println("Wrote $filename")
+        next!(prog)
     end
 end
 
@@ -681,7 +778,7 @@ end
     plot_regression(long_df, additive, metabolite)
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
 2. `additive`: Additive
 3. `metabolite`: Metabolite id
 
@@ -713,7 +810,7 @@ end
 Returns data for the scatter layers for [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression).
 
 # Arguments
-1. `long_df`: The long DataFrame from [`combine_relative_and_absolute_quant`](@ref BloodStorageInSilico.AbsoluteQuant.combine_relative_and_absolute_quant).
+1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
 2. `additive`: Additive
 3. `metabolite`: Metabolite id
 

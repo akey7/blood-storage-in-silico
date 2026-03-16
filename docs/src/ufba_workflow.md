@@ -19,6 +19,15 @@ Many of the reactions in this model are from the following paper:
 
 Reaction ids have been mapped from that paper, released in 2016, to reaction ids in the RBC-GEM released in 2024.
 
+## MetaboliteBounds
+
+MetaboliteBounds is for configuring metaolite bounds in models before optimizations.
+
+```@autodocs
+Modules = [BloodStorageInSilico.UfbaSampler.MetaboliteBounds]
+Order   = [:function]
+```
+
 ## UfbaSampler
 
 UfbaSampler creates a three-pathway model and samples it for an unsteady flux balance analysis (uFBA) study as described by Brodbar et al.
@@ -30,20 +39,13 @@ Modules = [BloodStorageInSilico.UfbaSampler]
 Order   = [:function]
 ```
 
-## UfbaSamplerAnalysisAndViz
+## PruningOptimizations
 
-Because the `UfbaSampler.jl` module was becoming huge, I split the visualization and analysis functions for `UfbaSampler.jl` into their own module.
+PruningOptimizations performs optimizations on uFBA models to prune unneeded sinks.
 
-```@autodocs
-Modules = [BloodStorageInSilico.UfbaSamplerAnalysisAndViz]
-Order   = [:function]
-```
-
-## ModelGraph
-
-This module contains functions to process metabolic networks as graphs.
+> Bordbar, A. et al. Elucidating dynamic metabolic physiology through network integration of quantitative time-course metabolomics. Sci Rep 7, 46249 (2017).
 
 ```@autodocs
-Modules = [BloodStorageInSilico.ModelGraph]
+Modules = [BloodStorageInSilico.UfbaSampler.PruningOptimizations]
 Order   = [:function]
 ```
