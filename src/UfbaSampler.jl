@@ -14,6 +14,7 @@ using DataFramesMeta
 using ThreadsX
 using OrderedCollections
 using Chain
+using ProgressMeter
 
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
@@ -386,12 +387,11 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 2. `final_time`: Final time point
 3. `full_model`: The full model created before pruning
 4. `pruned_model`: The model after pruning.
-5. `sink_status_df`: DataFrame of status of sinks
-6. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
-7. `zero_sinks`: Sinks that have zero flux that were pruned out
-8. `nonzero_sinks`: Sinks that have non-zero flux
-9. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
-10. `pruning_method`: The pruning method, either `:case1` or `:case3`
+5. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
+6. `zero_sinks`: Sinks that have zero flux that were pruned out
+7. `nonzero_sinks`: Sinks that have non-zero flux
+8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
+9. `pruning_method`: The pruning method, either `:case1` or `:case3`
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -406,9 +406,9 @@ function make_ufba_models_for_additives_and_times(
         n_models == -1 ? collect(product(additives, final_times)) :
         collect(product(additives, final_times))[1:n_models]
     n_pairs = length(pairs)
+    prog = Progress(n_pairs, "Preparing uFBA models")
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
-        @info "make_ufba_models_for_additives_and_times: $i of $n_pairs"
         full_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
@@ -427,15 +427,15 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        ct = case_3_constraint_tree(full_model, metabolite_status_df, additive)
-        prune_optimize_result_ct = optimize_case_3(ct, ct.objective.value)
-        if isnothing(prune_optimize_result_ct)
-            @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
-        end
-        zero_sinks, nonzero_sinks, sink_status_df =
-            analyze_case3_pruning_optimization(prune_optimize_result_ct)
-        sink_status_df[!, :additive] .= additive
-        sink_status_df[!, :final_time] .= final_time
+        case1_ct = flux_balance_constraints(full_model)
+        prune_optimize_result = optimize_case_1(case1_ct; write_lp_path = nothing)
+        # TODO: Add more robust error handling here.
+        # if isnothing(prune_optimize_result_ct)
+        #     @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
+        # end
+        case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
+        prune_zero_sinks = string.(case_1_analysis.prune)
+        nonzero_sinks = string.(case_1_analysis.keep)
         pruned_model, _ = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
@@ -444,7 +444,7 @@ function make_ufba_models_for_additives_and_times(
         second_sink_specifications = (
             metabolite_status_df = metabolite_status_df,
             additive = additive,
-            prune_zero_sinks = string.(zero_sinks),
+            prune_zero_sinks = prune_zero_sinks,
             sink_opt_outs = nothing,
         )
         added_sink_ids = add_sinks_for_unmatched_metabolites!(
@@ -452,17 +452,17 @@ function make_ufba_models_for_additives_and_times(
             second_sink_specifications,
         )
         save_ufba_model_sbml(pruned_model, additive, final_time)
+        next!(prog)
         (
             additive = additive,
             final_time = final_time,
             full_model = deepcopy(full_model),
             pruned_model = deepcopy(pruned_model),
-            sink_status_df = sink_status_df,
             metabolite_bounds_df = deepcopy(metabolite_bounds_df),
-            zero_sinks = zero_sinks,
+            zero_sinks = prune_zero_sinks,
             nonzero_sinks = nonzero_sinks,
             added_sink_ids = added_sink_ids,
-            pruning_method = :case3,
+            pruning_method = :case1,
         )
     end
     return result

@@ -372,7 +372,7 @@ function analyze_case3_pruning_optimization(pruning_optimization_result::C.Tree{
 end
 
 """
-    analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1e-9)
+    analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
 
 Classify sinks from the Case 1 optimization result.
 
@@ -386,7 +386,7 @@ Named tuple with fields:
 1. `prune::Vector{Symbol}`: Sinks to be pruned because the carry no flux.
 2. `keep::Vector{Symbol}`: Sinks to keep because they carry flux.
 """
-function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1e-9)
+function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
     solution_tree = optimize_case_1_result.solution_tree
     sink_ids = optimize_case_1_result.sink_ids
     prune = []
