@@ -565,7 +565,7 @@ Extract and return a DataFrame of the sinks added to each uFBA model from the fi
 `DataFrame`
 
 Returns a DataFrame with the following columns:
-1. `pruning_method`: The pruning method (either `:case1` or `:case3`)
+1. `pruning_method`: The pruning method (right now, always `:case1`)
 2. `additive`: The additive
 3. `final_time`: Final time of the model
 4. `metabolite_id`: The metabolite the sink is for
