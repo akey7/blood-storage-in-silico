@@ -287,10 +287,6 @@ function execute_ufba_job(job, n_chains = 10)
         String(additive),
         final_time,
     )
-
-    # TODO: Switch back to flux_balance_analysis()! I will have a
-    # AbstractFBCModel to work with in the new order of operations.
-
     objective_flux = optimized_values(ct; optimizer = HiGHS.Optimizer)
     if isnothing(objective_flux)
         println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
