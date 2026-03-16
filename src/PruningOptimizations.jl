@@ -12,8 +12,7 @@ import MathOptInterface as MOI
 
 export optimize_case_1,
     analyze_case_1_pruning_optimization,
-    print_sinks_in_model,
-    optimize_case_1_failure_analysis
+    print_sinks_in_model
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
@@ -81,12 +80,15 @@ a sum of binary indicators, with each indicator `i` determines whether sink reac
 8. `print_objective_value::Bool = false`: If `true` prints the objective value.
 
 # Returns
+`Union{NamedTuple,Nothing}`
 
-Returns a named tuple with:
+Following a successful optimization, returns a named tuple with:
 1. `solution_tree`: base ConstraintTree with continuous variables substituted
 2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
+
+If the optimmization fails, returns `nothing`.
 """
 function optimize_case_1(
     ct::C.ConstraintTree;
@@ -176,6 +178,14 @@ function optimize_case_1(
     end
 end
 
+"""
+    optimize_case_1_failure_analysis(jump_model::JuMP.Model)
+
+Print out diagnostics from a failed Case 1 optimization JuMP model. Called by [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) to assist with failure analysis.
+
+# Arguments
+1. `jump_model::JuMP.Model`: Broken JuMP model
+"""
 function optimize_case_1_failure_analysis(jump_model::JuMP.Model)
     JuMP.compute_conflict!(jump_model)
     model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
