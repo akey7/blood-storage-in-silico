@@ -259,7 +259,7 @@ end
 """
     find_metabolites_with_exchanges(model::A.AbstractFBCModel)
 
-Finds extracellular metabolites with exchanges in the provided model and returns a list of the metabolite ids found. Used by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!).
+Finds extracellular metabolites with exchanges in the provided model and returns a list of the metabolite ids found. Used by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!).
 
 # Arguments
 1. `model::A.AbstractFBCModel`: The model which has the metabolites and exchanges of interest.
@@ -280,7 +280,7 @@ end
 """
     add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
 
-Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
+Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabolites are already part of an exchange. Exchanges take precedence, see [`find_metabolites_with_exchanges`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.find_metabolites_with_exchanges) for details. This method mutates the given model in place.
 
 # Arguments
 1. `model::A.AbstractFBCModel`: Model to add sinks to. **This model is mutated in place.**

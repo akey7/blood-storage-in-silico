@@ -379,7 +379,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 5. `metabolite_bounds_df`: Metabolite rate DataFrame used to create the model
 6. `zero_sinks`: Sinks that have zero flux that were pruned out
 7. `nonzero_sinks`: Sinks that have non-zero flux
-8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
+8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
 9. `pruning_method`: The pruning method, either `:case1` or `:case3`
 """
 function make_ufba_models_for_additives_and_times(
