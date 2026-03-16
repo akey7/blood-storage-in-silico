@@ -6,8 +6,6 @@ using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
 import AbstractFBCModels as A
-# import AbstractFBCModels: stoichiometry
-# import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
 using CSV
 using DataFrames
 using DataFramesMeta
