@@ -289,8 +289,11 @@ function execute_ufba_job(job, n_chains = 10)
     else
         println("Simple optimization succeeded! Sampling fluxes...")
         workers_config = workers()
-        samples_df =
-            sample_fluxes(pruned_with_metabolite_bounds_ct, workers_config; n_chains = n_chains)
+        samples_df = sample_fluxes(
+            pruned_with_metabolite_bounds_ct,
+            workers_config;
+            n_chains = n_chains,
+        )
         n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
         samples_df[!, :additive] .= additive
         samples_df[!, :final_time] .= final_time
