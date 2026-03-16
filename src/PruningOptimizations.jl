@@ -8,8 +8,12 @@ using HiGHS
 import AbstractFBCModels as A
 import ConstraintTrees as C
 using Printf
+import MathOptInterface as MOI
 
-export optimize_case_1, analyze_case_1_pruning_optimization, print_sinks_in_model
+export optimize_case_1,
+    analyze_case_1_pruning_optimization,
+    print_sinks_in_model,
+    optimize_case_1_failure_analysis
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
@@ -133,86 +137,61 @@ function optimize_case_1(
     end
     JuMP.optimize!(jump_model)
     status = JuMP.termination_status(jump_model)
-    if !(status in (JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL))
-        error("Optimization failed with termination status: $status")
-    end
-    solved_values = JuMP.value.(x)
-    solution_tree = C.substitute_values(ct, solved_values)
-    indicator_values = Dict(id => JuMP.value(z[id]) for id in sink_ids)
-
-    # Begin diagnostics
-    if print_objective_value
-        @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
-        for id in sink_ids
-            v = solution_tree.fluxes[id]
-            zi = indicator_values[id]
-            if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
-                @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        solved_values = JuMP.value.(x)
+        solution_tree = C.substitute_values(ct, solved_values)
+        indicator_values = Dict(id => JuMP.value(z[id]) for id in sink_ids)
+        if print_objective_value
+            @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
+            for id in sink_ids
+                v = solution_tree.fluxes[id]
+                zi = indicator_values[id]
+                if !(isapprox(v, 0.0) && isapprox(zi, 0.0))
+                    @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, zi)
+                end
             end
         end
-    end
-
-    if force_first_sink_on
-        forced_id = sink_ids[1]
-        @printf(
-            "FORCED %s   flux = %.12f   indicator = %.12f\n",
-            string(forced_id),
-            solution_tree.fluxes[forced_id],
-            indicator_values[forced_id],
+        if force_first_sink_on
+            forced_id = sink_ids[1]
+            @printf(
+                "FORCED %s   flux = %.12f   indicator = %.12f\n",
+                string(forced_id),
+                solution_tree.fluxes[forced_id],
+                indicator_values[forced_id],
+            )
+        end
+        return (
+            solution_tree = solution_tree,
+            indicator_values = indicator_values,
+            sink_ids = sink_ids,
+            jump_model = jump_model,
         )
+    elseif status == JuMP.MOI.INFEASIBLE
+        @error "Model is infeasible with status $status. Performing failure analysis"
+        optimize_case_1_failure_analysis(jump_model)
+        return nothing
+    else
+        @error "Optimization failed with termination status $status. No further information is available"
+        return nothing
     end
-    # End diagnostics
-
-    return (
-        solution_tree = solution_tree,
-        indicator_values = indicator_values,
-        sink_ids = sink_ids,
-        jump_model = jump_model,
-    )
 end
 
-# If needed, optimizer debugging code.
-# status = JuMP.termination_status(jump_model)
-#     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
-#         solved_values = JuMP.value.(jump_model[:x])
-#         solution_tree = C.substitute_values(cs, solved_values)
-
-#         # Diagnostics
-#         @printf("objective = %.12f\n", JuMP.objective_value(jump_model))
-#         for id in sink_ids
-#             z = solution_tree.indicators[Symbol("ind_", id)]
-#             v = solution_tree.fluxes[id]
-#             if !(isapprox(v, 0.0) && isapprox(z, 0.0))
-#                 @printf("%s   flux = %.12f   indicator = %.12f\n", string(id), v, z)
-#             end
-#         end
-#         forced_id = sink_ids[1]
-#         forced_ind = Symbol("ind_", forced_id)
-#         @printf(
-#             "FORCED %s   flux = %.12f   indicator = %.12f\n",
-#             string(forced_id),
-#             solution_tree.fluxes[forced_id],
-#             solution_tree.indicators[forced_ind],
-#         )
-#         # End diagnsotics
-
-#         return solution_tree
-#     elseif status == JuMP.MOI.INFEASIBLE
-#         println("--- Model is Infeasible. Starting Conflict Analysis ---")
-#         JuMP.compute_conflict!(jump_model)
-#         println("The following constraints contribute to the conflict:")
-#         for (name, con) in jump_constraints
-#             if JuMP.get_attribute(con, JuMP.MOI.ConstraintConflictStatus()) ==
-#                JuMP.MOI.IN_CONFLICT
-#                 println(" - $con")
-#             end
-#         end
-#         error("Optimization failed: Model is infeasible.")
-#     else
-#         error(
-#             "Optimization failed with the following status and no further information is available: $status",
-#         )
-#     end
+function optimize_case_1_failure_analysis(jump_model::JuMP.Model)
+    JuMP.compute_conflict!(jump_model)
+    model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
+    println("Model conflict status: ", model_conflict_status)
+    for con in JuMP.all_constraints(jump_model; include_variable_in_set_constraints = true)
+        con_status = JuMP.get_attribute(con, MOI.ConstraintConflictStatus())
+        if con_status == MOI.IN_CONFLICT
+            con_name = try
+                JuMP.name(con)
+            catch
+                ""
+            end
+            println(" - ", isempty(con_name) ? string(con) : "$con_name :: $con")
+        end
+    end
+end
 
 """
     analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
