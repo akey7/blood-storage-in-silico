@@ -447,7 +447,18 @@ function make_ufba_models_for_additives_and_times(
             pruned_model,
             second_sink_specifications,
         )
+
+        # This SBML will have sinks (if added) but not metabolite bounds.
+        # For the graph analysis that is not important at this time.
         save_ufba_model_sbml(pruned_model, additive, final_time)
+
+        pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
+        add_metabolite_bounds_to_constraint_tree!(
+            pruned_with_metabolite_bounds_ct,
+            metabolite_bounds_df,
+            additive,
+            final_time,
+        )
         next!(prog)
         (
             additive = additive,
@@ -459,6 +470,7 @@ function make_ufba_models_for_additives_and_times(
             nonzero_sinks = nonzero_sinks,
             added_sink_ids = added_sink_ids,
             pruning_method = :case1,
+            pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
         )
     end
     return result
