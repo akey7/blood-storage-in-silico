@@ -279,24 +279,29 @@ function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
-    @info "execute_ufba_job: additive: $additive, final_time: $final_time"
-    objective_flux =
-        optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
-    if isnothing(objective_flux)
-        println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
-        return nothing, missing, missing
+    if !isnothing(pruned_with_metabolite_bounds_ct)
+        @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
+        objective_flux =
+            optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
+        if isnothing(objective_flux)
+            println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
+            return nothing, missing, missing
+        else
+            println("Simple optimization succeeded! Sampling fluxes...")
+            workers_config = workers()
+            samples_df = sample_fluxes(
+                pruned_with_metabolite_bounds_ct,
+                workers_config;
+                n_chains = n_chains,
+            )
+            n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
+            samples_df[!, :additive] .= additive
+            samples_df[!, :final_time] .= final_time
+            return samples_df, n_all_zero_fluxes, blocked_reaction_ids
+        end
     else
-        println("Simple optimization succeeded! Sampling fluxes...")
-        workers_config = workers()
-        samples_df = sample_fluxes(
-            pruned_with_metabolite_bounds_ct,
-            workers_config;
-            n_chains = n_chains,
-        )
-        n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
-        samples_df[!, :additive] .= additive
-        samples_df[!, :final_time] .= final_time
-        return samples_df, n_all_zero_fluxes, blocked_reaction_ids
+        @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
+        return nothing, missing, []
     end
 end
 
@@ -320,12 +325,12 @@ A tuple of the following four DataFrames:
 4. Per-model blocked reaction ids with reaction strings joined in.
 """
 function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
-    all_sampling_dfs_1 = map(jobs) do job
+    job_results = map(jobs) do job
         execute_ufba_job(job, n_chains)
     end
     all_results = [
         (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in all_sampling_dfs_1
+        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in job_results
     ]
     status_rows = vcat(
         eachrow([
@@ -350,7 +355,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             end
         end
     end
-    sampling_df = vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...)
+    sampling_df = vcat([sdf for (sdf, _) in job_results if !isnothing(sdf)]...)
     status_df = DataFrame(status_rows)
     status_counts_df = @chain status_df begin
         @groupby(:status)
@@ -428,53 +433,65 @@ function make_ufba_models_for_additives_and_times(
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
         prune_optimize_result = optimize_case_1(case1_ct; write_lp_path = nothing)
-        # TODO: Add more robust error handling here.
-        # if isnothing(prune_optimize_result_ct)
-        #     @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
-        # end
-        case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
-        prune_zero_sinks = string.(case_1_analysis.prune)
-        nonzero_sinks = string.(case_1_analysis.keep)
-        pruned_model, _ = create_fba_model(
-            base_rbc_gem;
-            exchanges = exchanges,
-            flux_bounds_overrides_df = flux_bounds_overrides_df,
-        )
-        second_sink_specifications = (
-            metabolite_status_df = metabolite_status_df,
-            additive = additive,
-            prune_zero_sinks = prune_zero_sinks,
-            sink_opt_outs = nothing,
-        )
-        added_sink_ids = add_sinks_for_unmatched_metabolites!(
-            pruned_model,
-            second_sink_specifications,
-        )
+        if !isnothing(prune_optimize_result)
+            case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
+            prune_zero_sinks = string.(case_1_analysis.prune)
+            nonzero_sinks = string.(case_1_analysis.keep)
+            pruned_model, _ = create_fba_model(
+                base_rbc_gem;
+                exchanges = exchanges,
+                flux_bounds_overrides_df = flux_bounds_overrides_df,
+            )
+            second_sink_specifications = (
+                metabolite_status_df = metabolite_status_df,
+                additive = additive,
+                prune_zero_sinks = prune_zero_sinks,
+                sink_opt_outs = nothing,
+            )
+            added_sink_ids = add_sinks_for_unmatched_metabolites!(
+                pruned_model,
+                second_sink_specifications,
+            )
 
-        # This SBML will have sinks (if added) but not metabolite bounds.
-        # For the graph analysis that is not important at this time.
-        save_ufba_model_sbml(pruned_model, additive, final_time)
+            # This SBML will have sinks (if added) but not metabolite bounds.
+            # For the graph analysis that is not important at this time.
+            save_ufba_model_sbml(pruned_model, additive, final_time)
 
-        pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
-        add_metabolite_bounds_to_constraint_tree!(
-            pruned_with_metabolite_bounds_ct,
-            metabolite_bounds_df,
-            additive_string,
-            final_time,
-        )
-        next!(prog)
-        (
-            additive = additive,
-            final_time = final_time,
-            full_model = deepcopy(full_model),
-            pruned_model = deepcopy(pruned_model),
-            metabolite_bounds_df = deepcopy(metabolite_bounds_df),
-            zero_sinks = prune_zero_sinks,
-            nonzero_sinks = nonzero_sinks,
-            added_sink_ids = added_sink_ids,
-            pruning_method = :case1,
-            pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
-        )
+            pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
+            add_metabolite_bounds_to_constraint_tree!(
+                pruned_with_metabolite_bounds_ct,
+                metabolite_bounds_df,
+                additive_string,
+                final_time,
+            )
+            next!(prog)
+            return (
+                additive = additive,
+                final_time = final_time,
+                full_model = deepcopy(full_model),
+                pruned_model = deepcopy(pruned_model),
+                metabolite_bounds_df = deepcopy(metabolite_bounds_df),
+                zero_sinks = prune_zero_sinks,
+                nonzero_sinks = nonzero_sinks,
+                added_sink_ids = added_sink_ids,
+                pruning_method = :case1,
+                pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
+            )
+        else
+            next!(prog)
+            return (
+                additive = additive,
+                final_time = final_time,
+                full_model = deepcopy(full_model),
+                pruned_model = deepcopy(pruned_model),
+                metabolite_bounds_df = deepcopy(metabolite_bounds_df),
+                zero_sinks = nothing,
+                nonzero_sinks = nothing,
+                added_sink_ids = nothing,
+                pruning_method = :case1,
+                pruned_with_metabolite_bounds_ct = nothing,
+            )
+        end
     end
     return result
 end

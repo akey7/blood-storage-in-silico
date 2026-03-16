@@ -10,9 +10,7 @@ import ConstraintTrees as C
 using Printf
 import MathOptInterface as MOI
 
-export optimize_case_1,
-    analyze_case_1_pruning_optimization,
-    print_sinks_in_model
+export optimize_case_1, analyze_case_1_pruning_optimization, print_sinks_in_model
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
@@ -88,7 +86,7 @@ Following a successful optimization, returns a named tuple with:
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
 
-If the optimmization fails, returns `nothing`.
+If the optimization fails, returns `nothing`.
 """
 function optimize_case_1(
     ct::C.ConstraintTree;
