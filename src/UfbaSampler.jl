@@ -662,7 +662,8 @@ end
 
 function optimize_constriant_tree(
     ct::C.ConstraintTree,
-    objective_value::Union{Nothing,C.Value} = nothing,
+    objective_value::Union{Nothing,C.Value} = nothing;
+    silent::Bool = true,
 )
     # Adding functionality to optimization_model() in COBREXA.jl
     ct_paths = []
@@ -682,6 +683,7 @@ function optimize_constriant_tree(
             )
         end
     end
+    silent && JuMP.set_silent(jump_model)
     JuMP.optimize!(jump_model)
     status = JuMP.termination_status(jump_model)
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
@@ -690,11 +692,28 @@ function optimize_constriant_tree(
         return solution_tree
     elseif status == JuMP.MOI.INFEASIBLE
         @error "Model is infeasible with status $status. Performing failure analysis"
-        # TODO: Call a failure analysis function here.
+        optimization_failure_analysis(jump_model)
         return nothing
     else
         @error "Optimization failed with termination status $status. No further information is available"
         return nothing
+    end
+end
+
+function optimization_failure_analysis(jump_model::JuMP.Model)
+    JuMP.compute_conflict!(jump_model)
+    model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
+    println("Model conflict status: ", model_conflict_status)
+    for con in JuMP.all_constraints(jump_model; include_variable_in_set_constraints = true)
+        con_status = JuMP.get_attribute(con, MOI.ConstraintConflictStatus())
+        if con_status == MOI.IN_CONFLICT
+            con_name = try
+                JuMP.name(con)
+            catch
+                ""
+            end
+            println(" - ", isempty(con_name) ? string(con) : "$con_name :: $con")
+        end
     end
 end
 
