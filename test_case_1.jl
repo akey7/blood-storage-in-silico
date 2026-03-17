@@ -31,7 +31,7 @@ fba_model, _ = create_fba_model(
 
 @info "Setting up the following model"
 additive = "01-Ctrl AS3"
-final_time = 3
+final_time = 2
 println("additive: $additive, final_time: $final_time")
 
 metabolite_status_df =
@@ -99,17 +99,8 @@ add_metabolite_bounds_to_constraint_tree!(
 )
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
-# @info "Case 1: FBA of pruned model"
-# second_ct_solution_tree = optimized_values(second_ct; optimizer = HiGHS.Optimizer)
-# if isnothing(second_ct_solution_tree)
-#     println("Simple optimization failed")
-# else
-#     println("Simple optimization succeeded!")
-#     display(second_ct_solution_tree.fluxes)
-# end
-
-# @info "Custom FBA of pruned and bounded ConstraintTree"
-# result = optimize_constriant_tree(second_ct, second_ct.objective.value)
-# if !isnothing(result)
-#     display(result)
-# end
+@info "Custom FBA of pruned and bounded ConstraintTree"
+result = optimize_constriant_tree(second_ct, second_ct.objective.value)
+if !isnothing(result)
+    display(result)
+end
