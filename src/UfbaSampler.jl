@@ -660,16 +660,21 @@ function constraint_jump!(jump_model, expr, b::C.Between)
     isinf(b.upper) || JuMP.@constraint(jump_model, expr <= b.upper)
 end
 
-function optimize_constriant_tree(ct::C.ConstraintTree, objective_value::Union{Nothing,C.Value} = nothing)
+function optimize_constriant_tree(
+    ct::C.ConstraintTree,
+    objective_value::Union{Nothing,C.Value} = nothing,
+)
     ct_paths = []
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
-    isnothing(objective_value) || JuMP.@objective(jump_model, JuMP.MAX_SENSE, substitute_jump(objective_value, x))
-    C.itraverse(ct) do path, con 
+    isnothing(objective_value) ||
+        JuMP.@objective(jump_model, JuMP.MAX_SENSE, substitute_jump(objective_value, x))
+    C.itraverse(ct) do path, con
         ct_path = join(path, ".")
         if ct_path != "objective"
             push!(ct_paths, ct_path)
-            isnothing(con.bound) || constraint_jump!(jump_model, substitute_jump(con.value, x), con.bound)
+            isnothing(con.bound) ||
+                constraint_jump!(jump_model, substitute_jump(con.value, x), con.bound)
         end
     end
     return ct_paths
