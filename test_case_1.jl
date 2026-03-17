@@ -60,13 +60,16 @@ add_metabolite_bounds_to_constraint_tree!(
 # print_metabolite_bounds_on_constraint_tree(case1_ct)
 
 @info "Optimize constraint tree"
-optimize_case_1_result = optimize_case_1(
-    case1_ct;
-    force_first_sink_on = true,
-    force_first_sink_lb = 0.1,
-    print_objective_value = true,
-)
-# optimize_case_1_result = optimize_case_1(case1_ct)
+# optimize_case_1_result = optimize_case_1(
+#     case1_ct;
+#     force_first_sink_on = true,
+#     force_first_sink_lb = 0.1,
+#     print_objective_value = true,
+# )
+optimize_case_1_result = optimize_case_1(case1_ct)
+if isnothing(optimize_case_1_result)
+    error("Case 1 optimization failed. Stopping.")
+end
 case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
 
 @info "Prune zero sinks"
