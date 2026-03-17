@@ -651,13 +651,13 @@ function substitute_jump(val::C.LinearValue, vars)
     return e
 end
 
-function constraint_jump!(jump_model, expr, b::C.EqualTo)
-    JuMP.@constraint(jump_model, expr == b.equal_to)
+function constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+    JuMP.@constraint(jump_model, expr == b.equal_to, base_name = base_name)
 end
 
-function constraint_jump!(jump_model, expr, b::C.Between)
+function constraint_jump!(jump_model, expr, b::C.Between; base_name::String)
     isinf(b.lower) || JuMP.@constraint(jump_model, expr >= b.lower)
-    isinf(b.upper) || JuMP.@constraint(jump_model, expr <= b.upper)
+    isinf(b.upper) || JuMP.@constraint(jump_model, expr <= b.upper, base_name = base_name)
 end
 
 function optimize_constriant_tree(
@@ -674,11 +674,27 @@ function optimize_constriant_tree(
         ct_path = join(path, ".")
         if ct_path != "objective"
             push!(ct_paths, ct_path)
-            isnothing(con.bound) ||
-                constraint_jump!(jump_model, substitute_jump(con.value, x), con.bound)
+            isnothing(con.bound) || constraint_jump!(
+                jump_model,
+                substitute_jump(con.value, x),
+                con.bound;
+                base_name = ct_path,
+            )
         end
     end
-    return ct_paths
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        solved_values = JuMP.value.(x)
+        solution_tree = C.substitute_values(ct, solved_values)
+        return solution_tree
+    elseif status == JuMP.MOI.INFEASIBLE
+        @error "Model is infeasible with status $status. Performing failure analysis"
+        return nothing
+    else
+        @error "Optimization failed with termination status $status. No further information is available"
+        return nothing
+    end
 end
 
 """

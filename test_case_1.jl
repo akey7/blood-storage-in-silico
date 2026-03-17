@@ -101,5 +101,5 @@ print_metabolite_bounds_on_constraint_tree(second_ct)
 # end
 
 @info "Case 1: Custom FBA of pruned and bounded ConstraintTree"
-variable_names = optimize_constriant_tree(second_ct, second_ct.objective.value)
-display(variable_names)
+result = optimize_constriant_tree(second_ct, second_ct.objective.value)
+display(result)
