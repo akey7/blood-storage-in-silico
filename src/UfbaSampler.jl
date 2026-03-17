@@ -664,6 +664,7 @@ function optimize_constriant_tree(
     ct::C.ConstraintTree,
     objective_value::Union{Nothing,C.Value} = nothing,
 )
+    # Adding functionality to optimization_model() in COBREXA.jl
     ct_paths = []
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
