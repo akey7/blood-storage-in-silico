@@ -663,14 +663,14 @@ end
 function optimize_constriant_tree(ct::C.ConstraintTree, objective_value::Union{Nothing,C.Value} = nothing)
     ct_paths = []
     jump_model = JuMP.Model(HiGHS.Optimizer)
-    C.itraverse(ct) do path, _ 
-        ct_path = join(path, ".")
-        push!(ct_paths, ct_path)
-    end
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
     isnothing(objective_value) || JuMP.@objective(jump_model, JuMP.MAX_SENSE, substitute_jump(objective_value, x))
-    C.traverse(ct) do c
-        isnothing(c.bound) || constraint_jump!(jump_model, substitute_jump(c.value, x), c.bound)
+    C.itraverse(ct) do path, con 
+        ct_path = join(path, ".")
+        if ct_path != "objective"
+            push!(ct_paths, ct_path)
+            isnothing(con.bound) || constraint_jump!(jump_model, substitute_jump(con.value, x), con.bound)
+        end
     end
     return ct_paths
 end
