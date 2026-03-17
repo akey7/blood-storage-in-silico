@@ -652,12 +652,14 @@ function substitute_jump(val::C.LinearValue, vars)
 end
 
 function constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
-    JuMP.@constraint(jump_model, expr == b.equal_to, base_name = base_name)
+    JuMP.@constraint(jump_model, expr == b.equal_to, base_name = "$(base_name)_eq")
 end
 
 function constraint_jump!(jump_model, expr, b::C.Between; base_name::String)
-    isinf(b.lower) || JuMP.@constraint(jump_model, expr >= b.lower)
-    isinf(b.upper) || JuMP.@constraint(jump_model, expr <= b.upper, base_name = base_name)
+    isinf(b.lower) ||
+        JuMP.@constraint(jump_model, expr >= b.lower, base_name = "$(base_name)_lb")
+    isinf(b.upper) ||
+        JuMP.@constraint(jump_model, expr <= b.upper, base_name = "$(base_name)_ub")
 end
 
 function optimize_constriant_tree(
@@ -691,29 +693,12 @@ function optimize_constriant_tree(
         solution_tree = C.substitute_values(ct, solved_values)
         return solution_tree
     elseif status == JuMP.MOI.INFEASIBLE
-        @error "Model is infeasible with status $status. Performing failure analysis"
+        @error "Model is infeasible with status $status. Performing failure analysis."
         optimization_failure_analysis(jump_model)
         return nothing
     else
         @error "Optimization failed with termination status $status. No further information is available"
         return nothing
-    end
-end
-
-function optimization_failure_analysis(jump_model::JuMP.Model)
-    JuMP.compute_conflict!(jump_model)
-    model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
-    println("Model conflict status: ", model_conflict_status)
-    for con in JuMP.all_constraints(jump_model; include_variable_in_set_constraints = true)
-        con_status = JuMP.get_attribute(con, MOI.ConstraintConflictStatus())
-        if con_status == MOI.IN_CONFLICT
-            con_name = try
-                JuMP.name(con)
-            catch
-                ""
-            end
-            println(" - ", isempty(con_name) ? string(con) : "$con_name :: $con")
-        end
     end
 end
 

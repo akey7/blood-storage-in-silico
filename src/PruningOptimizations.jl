@@ -171,7 +171,7 @@ function optimize_case_1(
         )
     elseif status == JuMP.MOI.INFEASIBLE
         @error "Model is infeasible with status $status. Performing failure analysis"
-        optimize_case_1_failure_analysis(jump_model)
+        optimization_failure_analysis(jump_model)
         return nothing
     else
         @error "Optimization failed with termination status $status. No further information is available"
@@ -180,14 +180,14 @@ function optimize_case_1(
 end
 
 """
-    optimize_case_1_failure_analysis(jump_model::JuMP.Model)
+    optimization_failure_analysis(jump_model::JuMP.Model)
 
-Print out diagnostics from a failed Case 1 optimization JuMP model. Called by [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) to assist with failure analysis.
+Print out diagnostics from a failed Case 1 optimization JuMP model. Assumes all constraints have been named.
 
 # Arguments
 1. `jump_model::JuMP.Model`: Broken JuMP model
 """
-function optimize_case_1_failure_analysis(jump_model::JuMP.Model)
+function optimization_failure_analysis(jump_model::JuMP.Model)
     constraints = JuMP.ConstraintRef[]
     for (F, S) in JuMP.list_of_constraint_types(jump_model)
         for con in JuMP.all_constraints(jump_model, F, S)
