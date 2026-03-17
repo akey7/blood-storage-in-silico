@@ -109,7 +109,6 @@ function optimize_case_1(
     C.traverse(ct) do c
         isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
     end
-    @variable(jump_model, z[sink_ids], Bin)
 
     # Sink (vi) indicator (zi) coupling
     #
@@ -118,6 +117,7 @@ function optimize_case_1(
     # If z_i = 0, then v_i = 0.
     # If z_i = 1, then v_i is allowed within ±M_i.
     #
+    @variable(jump_model, z[sink_ids], Bin)
     for id in sink_ids
         v_expr = C.substitute(ct.fluxes[id].value, x)
         M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
