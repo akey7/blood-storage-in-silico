@@ -81,20 +81,17 @@ a sum of binary indicators, with each indicator `i` determines whether sink reac
 8. `print_objective_value::Bool = false`: If `true` prints the objective value.
 
 # Returns
-`Union{NamedTuple,Nothing}`
-
-Following a successful optimization, returns a named tuple with:
-1. `solution_tree`: base ConstraintTree with continuous variables substituted
-2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
-3. `sink_ids`: Sink ids
-4. `jump_model`: JuMP model
-
-# Returns
 `Tuple{Symbol,Union{ConstraintTree,Vector{String}}}`
 
 Returns a tuple with two elements
 1. A symbol, `:ok` or `:fail`
-2. If the symbol is `:ok`, the second element is a `ConstraintTree` with the optimized values. If the symbol is `:fail`, the second element is a `Vector{String}` of conflicting constraint names or a message that no further information is available.
+2. If the symbol is `:ok`, the second element is a `NamedTuple` with the fields listed below. If the symbol is `:fail`, the second element is a `Vector{String}` of conflicting constraint names or a message that no further information is available.
+
+Elements of the successful named tuple:
+1. `solution_tree`: base ConstraintTree with continuous variables substituted
+2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
+3. `sink_ids`: Sink ids
+4. `jump_model`: JuMP model
 """
 function optimize_case_1(
     ct::C.ConstraintTree;
