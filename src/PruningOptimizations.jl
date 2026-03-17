@@ -17,8 +17,8 @@ export optimize_case_1, analyze_case_1_pruning_optimization, print_sinks_in_mode
 
 Attach a ConstraintTrees equality bound to a JuMP model.
 """
-function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
-    @constraint(m, C.substitute(v, x) == b.equal_to)
+function jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
+    @constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
 end
 
 """
@@ -26,9 +26,11 @@ end
 
 Attach a ConstraintTrees interval bound to a JuMP model.
 """
-function jump_constraint(m, x, v::C.Value, b::C.Between)
-    isinf(b.lower) || @constraint(m, C.substitute(v, x) >= b.lower)
-    isinf(b.upper) || @constraint(m, C.substitute(v, x) <= b.upper)
+function jump_constraint(m, x, v::C.Value, b::C.Between; base_name::String)
+    isinf(b.lower) ||
+        @constraint(m, C.substitute(v, x) >= b.lower, base_name = "$(base_name)_lb")
+    isinf(b.upper) ||
+        @constraint(m, C.substitute(v, x) <= b.upper, base_name = "$(base_name)_ub")
 end
 
 """
@@ -106,8 +108,10 @@ function optimize_case_1(
     for i in eachindex(x)
         x[i] = @variable(jump_model, base_name = "x_$i")
     end
-    C.traverse(ct) do c
-        isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
+    C.itraverse(ct) do path, con
+        ct_path = join(path, ".")
+        isnothing(con.bound) ||
+            jump_constraint(jump_model, x, con.value, con.bound, base_name = ct_path)
     end
 
     # Sink (vi) indicator (zi) coupling
@@ -121,9 +125,8 @@ function optimize_case_1(
     for id in sink_ids
         v_expr = C.substitute(ct.fluxes[id].value, x)
         M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
-
-        @constraint(jump_model, v_expr <= M_i * z[id])
-        @constraint(jump_model, v_expr >= -M_i * z[id])
+        @constraint(jump_model, v_expr <= M_i * z[id], base_name = "big_m_$(id)_ub")
+        @constraint(jump_model, v_expr >= -M_i * z[id], base_name = "big_m_$(id)_lb")
     end
     if force_first_sink_on
         forced_id = sink_ids[1]
@@ -185,18 +188,19 @@ Print out diagnostics from a failed Case 1 optimization JuMP model. Called by [`
 1. `jump_model::JuMP.Model`: Broken JuMP model
 """
 function optimize_case_1_failure_analysis(jump_model::JuMP.Model)
+    constraints = JuMP.ConstraintRef[]
+    for (F, S) in JuMP.list_of_constraint_types(jump_model)
+        for con in JuMP.all_constraints(jump_model, F, S)
+            push!(constraints, con)
+        end
+    end
     JuMP.compute_conflict!(jump_model)
     model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
     println("Model conflict status: ", model_conflict_status)
-    for con in JuMP.all_constraints(jump_model; include_variable_in_set_constraints = true)
-        con_status = JuMP.get_attribute(con, MOI.ConstraintConflictStatus())
-        if con_status == MOI.IN_CONFLICT
-            con_name = try
-                JuMP.name(con)
-            catch
-                ""
-            end
-            println(" - ", isempty(con_name) ? string(con) : "$con_name :: $con")
+    println("Constraints in conflict:")
+    for con in constraints
+        if MOI.get(jump_model, MOI.ConstraintConflictStatus(), con) == MOI.IN_CONFLICT
+            println(" - ", JuMP.name(con))
         end
     end
 end
