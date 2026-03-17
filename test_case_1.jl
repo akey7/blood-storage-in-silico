@@ -91,11 +91,15 @@ add_metabolite_bounds_to_constraint_tree!(
 )
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
-@info "Case 1: FBA of pruned model"
-second_ct_solution_tree = optimized_values(second_ct; optimizer = HiGHS.Optimizer)
-if isnothing(second_ct_solution_tree)
-    println("Simple optimization failed")
-else
-    println("Simple optimization succeeded!")
-    display(second_ct_solution_tree.fluxes)
-end
+# @info "Case 1: FBA of pruned model"
+# second_ct_solution_tree = optimized_values(second_ct; optimizer = HiGHS.Optimizer)
+# if isnothing(second_ct_solution_tree)
+#     println("Simple optimization failed")
+# else
+#     println("Simple optimization succeeded!")
+#     display(second_ct_solution_tree.fluxes)
+# end
+
+@info "Case 1: Custom FBA of pruned and bounded ConstraintTree"
+variable_names = optimize_constriant_tree(second_ct)
+display(variable_names)

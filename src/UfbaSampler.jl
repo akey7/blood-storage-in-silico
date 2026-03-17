@@ -39,8 +39,8 @@ export sample_fluxes,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_sink_ids,
-    decompose_sink_id
-
+    decompose_sink_id,
+    optimize_constriant_tree
 
 """
     init_workers!(; project=Base.active_project())
@@ -637,6 +637,15 @@ function extract_added_sink_ids(jobs)
         )
         return empty_df
     end
+end
+
+function optimize_constriant_tree(ct::C.ConstraintTree)
+    joined_paths = []
+    C.itraverse(ct) do path, x
+        joined_path = join(path, ".")
+        push!(joined_paths, joined_path)
+    end
+    return joined_paths
 end
 
 """
