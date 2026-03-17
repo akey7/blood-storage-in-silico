@@ -286,9 +286,12 @@ function execute_ufba_job(job, n_chains = 10)
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
     if !isnothing(pruned_with_metabolite_bounds_ct)
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
-        objective_flux =
-            optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
-        if isnothing(objective_flux)
+        # objective_flux =
+        #     optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
+        objective_value = pruned_with_metabolite_bounds_ct.objective.value
+        optimization_status, _ =
+            optimize_constriant_tree(pruned_with_metabolite_bounds_ct, objective_value)
+        if optimization_status == :fail
             # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
             return nothing, missing, missing
         else
@@ -441,8 +444,9 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
-        prune_optimize_result = optimize_case_1(case1_ct; write_lp_path = nothing)
-        if !isnothing(prune_optimize_result)
+        prune_optimize_status, prune_optimize_result =
+            optimize_case_1(case1_ct; write_lp_path = nothing)
+        if prune_optimize_status == :ok
             case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
             prune_zero_sinks = string.(case_1_analysis.prune)
             nonzero_sinks = string.(case_1_analysis.keep)
@@ -691,14 +695,12 @@ function optimize_constriant_tree(
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
         solved_values = JuMP.value.(x)
         solution_tree = C.substitute_values(ct, solved_values)
-        return solution_tree
+        return :ok, solution_tree
     elseif status == JuMP.MOI.INFEASIBLE
-        @error "Model is infeasible with status $status. Performing failure analysis."
-        optimization_failure_analysis(jump_model)
-        return nothing
+        conflicted_constraints = optimization_failure_analysis(jump_model)
+        return :fail, conflicted_constraints
     else
-        @error "Optimization failed with termination status $status. No further information is available"
-        return nothing
+        return :fail, ["No further information is available."]
     end
 end
 

@@ -10,7 +10,8 @@ import ConstraintTrees as C
 using Printf
 import MathOptInterface as MOI
 
-export optimize_case_1, analyze_case_1_pruning_optimization, print_sinks_in_model
+export optimize_case_1,
+    analyze_case_1_pruning_optimization, print_sinks_in_model, optimization_failure_analysis
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
