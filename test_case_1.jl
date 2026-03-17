@@ -66,9 +66,10 @@ add_metabolite_bounds_to_constraint_tree!(
 #     force_first_sink_lb = 0.1,
 #     print_objective_value = true,
 # )
-optimize_case_1_result = optimize_case_1(case1_ct)
-if isnothing(optimize_case_1_result)
-    error("Case 1 optimization failed. Stopping.")
+optimize_case_1_ok_fail, optimize_case_1_result = optimize_case_1(case1_ct)
+if optimize_case_1_ok_fail == :fail
+    display(optimize_case_1_result)
+    error("Case 1 optimization failed. Conflicting constraints are listed above. Stopping.")
 end
 case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
 

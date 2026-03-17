@@ -88,7 +88,12 @@ Following a successful optimization, returns a named tuple with:
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
 
-If the optimization fails, returns `nothing`.
+# Returns
+`Tuple{Symbol,Union{ConstraintTree,Vector{String}}}`
+
+Returns a tuple with two elements
+1. A symbol, `:ok` or `:fail`
+2. If the symbol is `:ok`, the second element is a `ConstraintTree` with the optimized values. If the symbol is `:fail`, the second element is a `Vector{String}` of conflicting constraint names or a message that no further information is available.
 """
 function optimize_case_1(
     ct::C.ConstraintTree;
@@ -163,19 +168,18 @@ function optimize_case_1(
                 indicator_values[forced_id],
             )
         end
-        return (
+        result = (
             solution_tree = solution_tree,
             indicator_values = indicator_values,
             sink_ids = sink_ids,
             jump_model = jump_model,
         )
+        return :ok, result
     elseif status == JuMP.MOI.INFEASIBLE
-        @error "Model is infeasible with status $status. Performing failure analysis"
-        optimization_failure_analysis(jump_model)
-        return nothing
+        conflicted_constraints = optimization_failure_analysis(jump_model)
+        return :fail, conflicted_constraints
     else
-        @error "Optimization failed with termination status $status. No further information is available"
-        return nothing
+        return :fail, ["No further information is available."]
     end
 end
 
@@ -186,6 +190,11 @@ Print out diagnostics from a failed Case 1 optimization JuMP model. Assumes all 
 
 # Arguments
 1. `jump_model::JuMP.Model`: Broken JuMP model
+
+# Returns
+`Vector{String}`
+
+Returns names of detected conflicted constraints.
 """
 function optimization_failure_analysis(jump_model::JuMP.Model)
     constraints = JuMP.ConstraintRef[]
@@ -196,13 +205,11 @@ function optimization_failure_analysis(jump_model::JuMP.Model)
     end
     JuMP.compute_conflict!(jump_model)
     model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
-    println("Model conflict status: ", model_conflict_status)
-    println("Constraints in conflict:")
-    for con in constraints
-        if MOI.get(jump_model, MOI.ConstraintConflictStatus(), con) == MOI.IN_CONFLICT
-            println(" - ", JuMP.name(con))
-        end
-    end
+    conflicted_constraints = [
+        JuMP.name(con) for con in constraints if
+        MOI.get(jump_model, MOI.ConstraintConflictStatus(), con) == MOI.IN_CONFLICT
+    ]
+    return conflicted_constraints
 end
 
 """
