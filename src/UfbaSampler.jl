@@ -690,6 +690,7 @@ function optimize_constriant_tree(
         return solution_tree
     elseif status == JuMP.MOI.INFEASIBLE
         @error "Model is infeasible with status $status. Performing failure analysis"
+        # TODO: Call a failure analysis function here.
         return nothing
     else
         @error "Optimization failed with termination status $status. No further information is available"
