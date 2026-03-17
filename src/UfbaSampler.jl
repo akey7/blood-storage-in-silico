@@ -639,13 +639,40 @@ function extract_added_sink_ids(jobs)
     end
 end
 
-function optimize_constriant_tree(ct::C.ConstraintTree)
-    joined_paths = []
-    C.itraverse(ct) do path, x
-        joined_path = join(path, ".")
-        push!(joined_paths, joined_path)
+function substitute_jump(val::C.LinearValue, vars)
+    e = JuMP.AffExpr() # unfortunately @expression(model, 0) is not type stable and gives an Int
+    for (i, w) in zip(val.idxs, val.weights)
+        if i == 0
+            JuMP.add_to_expression!(e, w)
+        else
+            JuMP.add_to_expression!(e, w, vars[i])
+        end
     end
-    return joined_paths
+    return e
+end
+
+function constraint_jump!(jump_model, expr, b::C.EqualTo)
+    JuMP.@constraint(jump_model, expr == b.equal_to)
+end
+
+function constraint_jump!(jump_model, expr, b::C.Between)
+    isinf(b.lower) || JuMP.@constraint(jump_model, expr >= b.lower)
+    isinf(b.upper) || JuMP.@constraint(jump_model, expr <= b.upper)
+end
+
+function optimize_constriant_tree(ct::C.ConstraintTree, objective_value::Union{Nothing,C.Value} = nothing)
+    ct_paths = []
+    jump_model = JuMP.Model(HiGHS.Optimizer)
+    C.itraverse(ct) do path, _ 
+        ct_path = join(path, ".")
+        push!(ct_paths, ct_path)
+    end
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    isnothing(objective_value) || JuMP.@objective(jump_model, JuMP.MAX_SENSE, substitute_jump(objective_value, x))
+    C.traverse(ct) do c
+        isnothing(c.bound) || constraint_jump!(jump_model, substitute_jump(c.value, x), c.bound)
+    end
+    return ct_paths
 end
 
 """
