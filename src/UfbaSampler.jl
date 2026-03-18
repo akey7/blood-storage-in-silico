@@ -295,7 +295,7 @@ function execute_ufba_job(job, n_chains = 10)
             # return nothing, missing, missing
             result = (
                 samples_df = nothing,
-                n_all_zero_fluxes = nothing,
+                n_all_zero_fluxes = missing,
                 blocked_reaction_ids = missing,
                 prune_status = prune_status,
                 fba_status = fba_status,
