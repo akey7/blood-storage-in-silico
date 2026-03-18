@@ -24,8 +24,6 @@ using .MetaboliteBounds
 export sample_fluxes,
     ufba_all_additives_all_times,
     histograms_for_reaction_in_additive,
-    plot_all_histograms,
-    fba,
     is_metabolite_in_exchange,
     list_objectives_in_model,
     display_jump_results,
@@ -183,38 +181,6 @@ function save_ufba_model_sbml(
     save_model(sbml_fbc, filename)
     sbml_add_constant_to_selfclosing_parameters!(filename)
     # println("Wrote $filename")
-end
-
-"""
-    fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-
-Standard flux balance analysis of the given `model`. Returns samples of fluxes upon success, `nothing` for infeasible solutions.
-
-# Arguments
-1. `model::A.AbstractFBCModel`: The model to optimize.
-
-2. `n_chains::Int64 = 10`: Number of chains to sample. Must be a keyword and defaults to 10.
-
-# Returns
-`Union{Nothing,DataFrame}`
-
-Returns samples of fluxes upon success, `nothing` for infeasible solutions.
-"""
-function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-    @info "Standard FBA sampling, N chains $n_chains"
-    println("> Simple optimization attempt")
-    solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
-    if isnothing(solution)
-        println("Simple optimization failed")
-        return nothing, nothing
-    else
-        println("Simple optimization succeeded!")
-        display(solution.fluxes)
-        println("> Flux sampling")
-        workers_config = workers()
-        samples_df = sample_fluxes(model, workers_config; n_chains = n_chains)
-        return solution, samples_df
-    end
 end
 
 """
