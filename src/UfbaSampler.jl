@@ -489,8 +489,14 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = added_sink_ids,
                 pruning_method = :case1,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
+                pruning_breaks_df = nothing,
             )
         else
+            pruning_breaks_df = DataFrame(
+                additive = additive,
+                final_time = final_time,
+                broken_case_1_constraint = prune_optimize_result,
+            )
             next!(prog)
             return (
                 additive = additive,
@@ -503,6 +509,7 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = nothing,
                 pruning_method = :case1,
                 pruned_with_metabolite_bounds_ct = nothing,
+                pruning_breaks_df = pruning_breaks_df,
             )
         end
     end
