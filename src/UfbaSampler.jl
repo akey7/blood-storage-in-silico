@@ -284,16 +284,22 @@ function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
-    if !isnothing(pruned_with_metabolite_bounds_ct)
+    prune_status = job.prune_status
+    if prune_status == :ok
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
-        # objective_flux =
-        #     optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
         objective_value = pruned_with_metabolite_bounds_ct.objective.value
-        optimization_status, _ =
+        fba_status, _ =
             optimize_constriant_tree(pruned_with_metabolite_bounds_ct, objective_value)
-        if optimization_status == :fail
+        if fba_status == :fail
             # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
-            return nothing, missing, missing
+            # return nothing, missing, missing
+            result = (
+                samples_df = nothing,
+                n_all_zero_fluxes = nothing,
+                blocked_reaction_ids = missing,
+                prune_status = prune_status,
+                fba_status = fba_status,
+            )
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
@@ -305,11 +311,25 @@ function execute_ufba_job(job, n_chains = 10)
             n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
-            return samples_df, n_all_zero_fluxes, blocked_reaction_ids
+            # return samples_df, n_all_zero_fluxes, blocked_reaction_ids
+            result = (
+                samples_df = samples_df,
+                n_all_zero_fluxes = n_all_zero_fluxes,
+                blocked_reaction_ids = blocked_reaction_ids,
+                prune_status = prune_status,
+                fba_status = fba_status,
+            )
         end
     else
         # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
-        return nothing, missing, []
+        # return nothing, missing, []
+        result = (
+            samples_df = nothing,
+            n_all_zero_fluxes = missing,
+            blocked_reaction_ids = missing,
+            prune_status = prune_status,
+            fba_status = missing,
+        )
     end
 end
 
@@ -340,22 +360,47 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         next!(prog)
         return job_result
     end
-    all_results = [
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in job_results
-    ]
-    status_rows = vcat(
-        eachrow([
-            (
-                additive = job.additive,
-                final_time = job.final_time,
-                status = isnothing(sdf) ? "fail" : "ok",
-                n_all_zero_fluxes = n_all_zero_fluxes,
-            ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
-        ])...,
-    )
+
+    # all_results = [
+    #     (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
+    #     (sdf, n_all_zero_fluxes, blocked_reaction_ids) in job_results
+    # ]
+    # status_rows = vcat(
+    #     eachrow([
+    #         (
+    #             additive = job.additive,
+    #             final_time = job.final_time,
+    #             status = isnothing(sdf) ? "fail" : "ok",
+    #             n_all_zero_fluxes = n_all_zero_fluxes,
+    #         ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
+    #     ])...,
+    # )
+    # blocked_reaction_ids_rows = []
+    # for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
+    #     if !ismissing(blocked_reaction_ids)
+    #         for blocked_reaction_id in blocked_reaction_ids
+    #             blocked_reaction_ids_row = (
+    #                 additive = job.additive,
+    #                 final_time = job.final_time,
+    #                 blocked_reaction_id = blocked_reaction_id,
+    #             )
+    #             push!(blocked_reaction_ids_rows, blocked_reaction_ids_row)
+    #         end
+    #     end
+    # end
+
+    status_rows = []
     blocked_reaction_ids_rows = []
-    for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
+    for (job, job_result) in zip(jobs, job_results)
+        status_row = (
+            additive = job.additive,
+            final_time = job.final_time,
+            prune_status = job_result.prune_status,
+            fba_status = job_result.fba_status,
+            n_all_zero_fluxes = job_result.n_all_zero_fluxes,
+        )
+        push!(status_rows, status_row)
+        blocked_reaction_ids = job_result.blocked_reaction_ids
         if !ismissing(blocked_reaction_ids)
             for blocked_reaction_id in blocked_reaction_ids
                 blocked_reaction_ids_row = (
@@ -367,18 +412,23 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             end
         end
     end
-    sampling_df = vcat([sdf for (sdf, _) in job_results if !isnothing(sdf)]...)
     status_df = DataFrame(status_rows)
-    status_counts_df = @chain status_df begin
-        @groupby(:status)
-        combine(nrow => :Count)
-    end
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
-    joined_blocked_reaction_ids_df = innerjoin(
-        blocked_reaction_ids_df,
-        rxn_ids_to_strings_df,
-        on = :blocked_reaction_id => :reaction_id,
-    )
+
+    # sampling_df = vcat([sdf for (sdf, _) in job_results if !isnothing(sdf)]...)
+    # status_df = DataFrame(status_rows)
+    # status_counts_df = @chain status_df begin
+    #     @groupby(:status)
+    #     combine(nrow => :Count)
+    # end
+    # joined_blocked_reaction_ids_df = innerjoin(
+    #     blocked_reaction_ids_df,
+    #     rxn_ids_to_strings_df,
+    #     on = :blocked_reaction_id => :reaction_id,
+    # )
+
+    sampling_df = DataFrame()
+
     return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
 end
 
@@ -447,10 +497,10 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
-        prune_optimize_status, prune_optimize_result =
+        prune_status, prune_result =
             optimize_case_1(case1_ct; write_lp_path = nothing)
-        if prune_optimize_status == :ok
-            case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
+        if prune_status == :ok
+            case_1_analysis = analyze_case_1_pruning_optimization(prune_result)
             prune_zero_sinks = string.(case_1_analysis.prune)
             nonzero_sinks = string.(case_1_analysis.keep)
             pruned_model, _ = create_fba_model(
@@ -492,7 +542,7 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = added_sink_ids,
                 prune_method = :case1,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
-                prune_optimize_status = prune_optimize_status,
+                prune_status = prune_status,
                 prune_breaks_df = nothing,
             )
         else
@@ -500,7 +550,7 @@ function make_ufba_models_for_additives_and_times(
                 prune_method = :case1,
                 additive = additive,
                 final_time = final_time,
-                broken_case_1_constraint = prune_optimize_result,
+                broken_case_1_constraint = prune_result,
             )
             next!(prog)
             return (
@@ -514,7 +564,7 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = nothing,
                 prune_method = :case1,
                 pruned_with_metabolite_bounds_ct = nothing,
-                prune_optimize_status = prune_optimize_status,
+                prune_status = prune_status,
                 prune_breaks_df = prune_breaks_df,
             )
         end
