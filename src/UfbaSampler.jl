@@ -562,11 +562,11 @@ Returns two DataFrames:
 function extract_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
-        pruning_method = ufba_job.pruning_method
+        prune_method = ufba_job.prune_method
         for zero_sink in ufba_job.zero_sinks
             metabolite_id, direction = decompose_sink_id(zero_sink)
             row = (
-                pruning_method = pruning_method,
+                prune_method = prune_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "zero",
@@ -579,7 +579,7 @@ function extract_sinks(ufba_jobs)
         for nonzero_sink in ufba_job.nonzero_sinks
             metabolite_id, direction = decompose_sink_id(nonzero_sink)
             row = (
-                pruning_method = pruning_method,
+                prune_method = prune_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "nonzero",
@@ -591,8 +591,15 @@ function extract_sinks(ufba_jobs)
         end
     end
     status_df = DataFrame(status_rows)
-    sorted_df =
-        @orderby(status_df, :additive, :final_time, :status, :metabolite_id, :direction)
+    sorted_df = @orderby(
+        status_df,
+        :prune_method,
+        :additive,
+        :final_time,
+        :status,
+        :metabolite_id,
+        :direction
+    )
     return sorted_df
 end
 
@@ -622,13 +629,13 @@ function extract_added_sink_ids(jobs)
     for job in jobs
         additive = job.additive
         final_time = job.final_time
-        pruning_method = job.pruning_method
+        prune_method = job.prune_method
         for added_sink_id in job.added_sink_ids
             direction = contains(added_sink_id, "UP") ? "up" : "down"
             metabolite_id =
                 replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
             row = (
-                pruning_method = pruning_method,
+                prune_method = prune_method,
                 additive = additive,
                 final_time = final_time,
                 metabolite_id = metabolite_id,
@@ -640,8 +647,14 @@ function extract_added_sink_ids(jobs)
     end
     if length(rows) > 0
         unsorted_df = DataFrame(rows)
-        sorted_df =
-            @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
+        sorted_df = @orderby(
+            unsorted_df,
+            :prune_method,
+            :additive,
+            :final_time,
+            :metabolite_id,
+            :direction
+        )
         return sorted_df
     else
         empty_df = DataFrame(
