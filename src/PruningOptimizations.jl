@@ -184,7 +184,7 @@ end
 """
     optimization_failure_analysis(jump_model::JuMP.Model)
 
-Print out diagnostics from a failed Case 1 optimization JuMP model. Assumes all constraints have been named.
+Gathers names of conflicted constraints in the provided JuMP model.
 
 # Arguments
 1. `jump_model::JuMP.Model`: Broken JuMP model
