@@ -38,7 +38,7 @@ export sample_fluxes,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_sink_ids,
     decompose_sink_id,
-    optimize_constriant_tree,
+    optimize_constraint_tree,
     extract_broken_constraints
 
 """
@@ -256,7 +256,7 @@ function execute_ufba_job(job, n_chains = 10)
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
         objective_value = pruned_with_metabolite_bounds_ct.objective.value
         fba_status, fba_breaks =
-            optimize_constriant_tree(pruned_with_metabolite_bounds_ct, objective_value)
+            optimize_constraint_tree(pruned_with_metabolite_bounds_ct, objective_value)
         if fba_status == :fail
             # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
             result = (
@@ -721,7 +721,7 @@ end
 """
     substitute_jump(val::C.LinearValue, vars)
 
-Called by [`optimize_constriant_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constriant_tree) to create JuMP models.
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
 
 Copied from `substitute_jump` in COBREXA.jl. Used to assemble a `C.LinearValue` into a `JuMP.AffExpr` to create JuMP constraints and objective from `ConstraintTrees`
 
@@ -746,10 +746,36 @@ function substitute_jump(val::C.LinearValue, vars)
     return e
 end
 
+"""
+    constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Mutates the given JuMP model to add a constriant from an expression and given `C.EqualTo` bound. Also accepts a string used to name the objective (the suffix `_eq` is added to this string).
+
+# Arguments
+1. `jump_model`: The JuMP model to mutate.
+2. `expr`: Expression of the constraint.
+3. `b::C.EqualTo`: The bound of the constraint.
+4. `base_name::String`: The base name of the constraint. `_eq` is appended to the base name.
+"""
 function constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
     JuMP.@constraint(jump_model, expr == b.equal_to, base_name = "$(base_name)_eq")
 end
 
+"""
+    constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Mutates the given JuMP model to add a constriant from an expression and given `C.Between` bound. Also accepts a string used to name the objective (the suffixes `_lb` and `_ub` are added to this string).
+
+# Arguments
+1. `jump_model`: The JuMP model to mutate.
+2. `expr`: Expression of the constraint.
+3. `b::C.Between`: The bound of the constraint.
+4. `base_name::String`: The base name of the constraint. `_lb` or `_ub` is appended to the base name depending on the side of the constraint.
+"""
 function constraint_jump!(jump_model, expr, b::C.Between; base_name::String)
     isinf(b.lower) ||
         JuMP.@constraint(jump_model, expr >= b.lower, base_name = "$(base_name)_lb")
@@ -757,13 +783,28 @@ function constraint_jump!(jump_model, expr, b::C.Between; base_name::String)
         JuMP.@constraint(jump_model, expr <= b.upper, base_name = "$(base_name)_ub")
 end
 
-function optimize_constriant_tree(
+"""
+    optimize_constraint_tree(ct::C.ConstraintTree, objective_value::Union{Nothing,C.Value} = nothing; silent::Bool = true)
+
+Creates a JuMP model from the given `ConstraintTree` and optimizes it. Draws inspiration from `optimization_model()` in COBREXA.jl and adds functionality to name constraints and debug broken models using those constraint names upon optimization failure.
+
+# Arguments
+1. `ct::C.ConstraintTree`: Tree containing the constraints.
+2. `objective_value::Union{Nothing,C.Value} = nothing`: Objective value to use in the optimization. If in doubt, using the `ConstraintTree` to be optimized, pass `ct.objective.value`
+3. `silent::Bool = true`: If `true`, silences JuMP during optimization to clean up script outputs.
+
+# Returns
+`Tuple{Symbol,Union{C.ConstraintTree,Vector{String}}}`
+
+Returns a tuple with two elements.
+1. `:ok` or `:fail`: The status of the optimization.
+2. `C.ConstraintTree` of the optimized values OR `Vector{String}` of conflicted constraints that broke the optimization
+"""
+function optimize_constraint_tree(
     ct::C.ConstraintTree,
     objective_value::Union{Nothing,C.Value} = nothing;
     silent::Bool = true,
 )
-    # Adding functionality to optimization_model() in COBREXA.jl
-    ct_paths = []
     jump_model = JuMP.Model(HiGHS.Optimizer)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
     isnothing(objective_value) ||
@@ -771,7 +812,6 @@ function optimize_constriant_tree(
     C.itraverse(ct) do path, con
         ct_path = join(path, ".")
         if ct_path != "objective"
-            push!(ct_paths, ct_path)
             isnothing(con.bound) || constraint_jump!(
                 jump_model,
                 substitute_jump(con.value, x),
