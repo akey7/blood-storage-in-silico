@@ -126,7 +126,9 @@ Outputs the following files:
 4. `output/fba_model_metabolites.csv`: Metabolite ids of the FBA models created for the uFBA runs.
 5. `output/ufba_blocked_reactions.csv`: Reaction ids of blocked reactions and their corresponding strings for each model.
 6. `output/ufba_added_sink_ids.csv`: Reaction ids of sinks added and their corresponding metabolites.
-7. `output/debug_case1.lp`: Diagnostic output from `optimize_case_1()` to assist in debugging Case 1 optimization runs.
+7. `output/debug_case1.lp` (if configured in the code): Diagnostic output from `optimize_case_1()` to assist in debugging Case 1 optimization runs.
+8. `output/ufba_prune_breaks.csv`: Constraints broken in pruning attempts across all uFBA models.
+9. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before 
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
