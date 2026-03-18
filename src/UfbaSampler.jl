@@ -317,6 +317,8 @@ Returns a named tuple with the following four DataFrames:
 2. `status_df`: Statuses of each attempted sampling job,
 3. `status_counts_df`: Counts of statuses across all sampling jobs, and
 4. `joined_blocked_reaction_ids_df`: Per-model blocked reaction ids with reaction strings joined in.
+5. `prune_breaks_df`: DataFrame of constraints conflicted during pruning, consolidated into one DataFrame.
+6. `fba_breaks_df`: DataFrame of constraints conflicted during initial FBA optimization, consolidated into one DataFrame.
 """
 function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     n_jobs = length(jobs)
@@ -663,6 +665,22 @@ function extract_added_sink_ids(jobs)
     end
 end
 
+"""
+    extract_broken_constraints(jobs, job_results)
+
+Called by [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs) to find all broken pruning and simple FBA optimization constraints during execution of all uFBA jobs.
+
+# Arguments
+1. `jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+2. `job_results`: Results of executed uFBA jobs from a local variable in [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs)
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following fields
+1. `prune_breaks_df`: DataFrame with constraints broken in the pruning optimizations. Has columns `additive`, `final_time`, `prune_break`.
+2. `fba_breaks_df`: DataFrame with constraints broken in the simple FBA optimizations. Has columns `additive`, `final_time`, `fba_break`.
+"""
 function extract_broken_constraints(jobs, job_results)
     prune_breaks_dfs = []
     fba_breaks_dfs = []
