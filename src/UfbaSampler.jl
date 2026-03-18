@@ -341,13 +341,13 @@ Executes and aggregates results from all uFBA jobs specified. For jobs returned 
 3. `n_chains = 10`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
-`Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
+`NamedTuple`
 
-A tuple of the following four DataFrames: 
-1. All sampling results,
-2. Statuses of each attempted sampling job,
-3. Counts of statuses across all sampling jobs, and
-4. Per-model blocked reaction ids with reaction strings joined in.
+Returns a named tuple with the following four DataFrames: 
+1. `sampling_df`: All sampling results,
+2. `status_df`: Statuses of each attempted sampling job,
+3. `status_counts_df`: Counts of statuses across all sampling jobs, and
+4. `joined_blocked_reaction_ids_df`: Per-model blocked reaction ids with reaction strings joined in.
 """
 function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     n_jobs = length(jobs)
@@ -396,8 +396,13 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         rxn_ids_to_strings_df,
         on = :blocked_reaction_id => :reaction_id,
     )
-
-    return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
+    result = (
+        sampling_df = sampling_df,
+        status_df = status_df,
+        status_counts_df = status_counts_df,
+        joined_blocked_reaction_ids_df = joined_blocked_reaction_ids_df,
+    )
+    return result
 end
 
 """
