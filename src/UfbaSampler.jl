@@ -292,7 +292,6 @@ function execute_ufba_job(job, n_chains = 10)
             optimize_constriant_tree(pruned_with_metabolite_bounds_ct, objective_value)
         if fba_status == :fail
             # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
-            # return nothing, missing, missing
             result = (
                 samples_df = nothing,
                 n_all_zero_fluxes = missing,
@@ -311,7 +310,6 @@ function execute_ufba_job(job, n_chains = 10)
             n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
-            # return samples_df, n_all_zero_fluxes, blocked_reaction_ids
             result = (
                 samples_df = samples_df,
                 n_all_zero_fluxes = n_all_zero_fluxes,
@@ -322,7 +320,6 @@ function execute_ufba_job(job, n_chains = 10)
         end
     else
         # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
-        # return nothing, missing, []
         result = (
             samples_df = nothing,
             n_all_zero_fluxes = missing,
@@ -360,35 +357,6 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         next!(prog)
         return job_result
     end
-
-    # all_results = [
-    #     (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
-    #     (sdf, n_all_zero_fluxes, blocked_reaction_ids) in job_results
-    # ]
-    # status_rows = vcat(
-    #     eachrow([
-    #         (
-    #             additive = job.additive,
-    #             final_time = job.final_time,
-    #             status = isnothing(sdf) ? "fail" : "ok",
-    #             n_all_zero_fluxes = n_all_zero_fluxes,
-    #         ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
-    #     ])...,
-    # )
-    # blocked_reaction_ids_rows = []
-    # for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
-    #     if !ismissing(blocked_reaction_ids)
-    #         for blocked_reaction_id in blocked_reaction_ids
-    #             blocked_reaction_ids_row = (
-    #                 additive = job.additive,
-    #                 final_time = job.final_time,
-    #                 blocked_reaction_id = blocked_reaction_id,
-    #             )
-    #             push!(blocked_reaction_ids_rows, blocked_reaction_ids_row)
-    #         end
-    #     end
-    # end
-
     status_rows = []
     blocked_reaction_ids_rows = []
     for (job, job_result) in zip(jobs, job_results)
@@ -419,9 +387,6 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         job_result in job_results if !isnothing(job_result.samples_df)
     ]
     sampling_df = vcat(sampling_dfs...)
-
-    # sampling_df = vcat([sdf for (sdf, _) in job_results if !isnothing(sdf)]...)
-
     status_counts_df = @chain status_df begin
         @groupby(:fba_status)
         combine(nrow => :Count)
