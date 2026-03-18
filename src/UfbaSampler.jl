@@ -24,8 +24,6 @@ using .MetaboliteBounds
 export sample_fluxes,
     ufba_all_additives_all_times,
     histograms_for_reaction_in_additive,
-    plot_all_histograms,
-    fba,
     is_metabolite_in_exchange,
     list_objectives_in_model,
     display_jump_results,
@@ -39,8 +37,9 @@ export sample_fluxes,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_sink_ids,
-    decompose_sink_id
-
+    decompose_sink_id,
+    optimize_constraint_tree,
+    extract_broken_constraints
 
 """
     init_workers!(; project=Base.active_project())
@@ -185,38 +184,6 @@ function save_ufba_model_sbml(
 end
 
 """
-    fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-
-Standard flux balance analysis of the given `model`. Returns samples of fluxes upon success, `nothing` for infeasible solutions.
-
-# Arguments
-1. `model::A.AbstractFBCModel`: The model to optimize.
-
-2. `n_chains::Int64 = 10`: Number of chains to sample. Must be a keyword and defaults to 10.
-
-# Returns
-`Union{Nothing,DataFrame}`
-
-Returns samples of fluxes upon success, `nothing` for infeasible solutions.
-"""
-function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-    @info "Standard FBA sampling, N chains $n_chains"
-    println("> Simple optimization attempt")
-    solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
-    if isnothing(solution)
-        println("Simple optimization failed")
-        return nothing, nothing
-    else
-        println("Simple optimization succeeded!")
-        display(solution.fluxes)
-        println("> Flux sampling")
-        workers_config = workers()
-        samples_df = sample_fluxes(model, workers_config; n_chains = n_chains)
-        return solution, samples_df
-    end
-end
-
-"""
     list_objectives_in_model(model::A.AbstractFBCModel)
 
 Lists all objectives in `model` to stdout.
@@ -284,13 +251,22 @@ function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
-    if !isnothing(pruned_with_metabolite_bounds_ct)
+    prune_status = job.prune_status
+    if prune_status == :ok
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
-        objective_flux =
-            optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
-        if isnothing(objective_flux)
+        objective_value = pruned_with_metabolite_bounds_ct.objective.value
+        fba_status, fba_breaks =
+            optimize_constraint_tree(pruned_with_metabolite_bounds_ct, objective_value)
+        if fba_status == :fail
             # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
-            return nothing, missing, missing
+            result = (
+                samples_df = nothing,
+                n_all_zero_fluxes = missing,
+                blocked_reaction_ids = missing,
+                prune_status = prune_status,
+                fba_status = fba_status,
+                fba_breaks = fba_breaks,
+            )
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
@@ -302,11 +278,24 @@ function execute_ufba_job(job, n_chains = 10)
             n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
-            return samples_df, n_all_zero_fluxes, blocked_reaction_ids
+            result = (
+                samples_df = samples_df,
+                n_all_zero_fluxes = n_all_zero_fluxes,
+                blocked_reaction_ids = blocked_reaction_ids,
+                prune_status = prune_status,
+                fba_status = fba_status,
+            )
         end
     else
         # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
-        return nothing, missing, []
+        result = (
+            samples_df = nothing,
+            n_all_zero_fluxes = missing,
+            blocked_reaction_ids = missing,
+            prune_status = prune_status,
+            fba_status = missing,
+            fba_breaks = fba_breaks,
+        )
     end
 end
 
@@ -321,13 +310,15 @@ Executes and aggregates results from all uFBA jobs specified. For jobs returned 
 3. `n_chains = 10`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
-`Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
+`NamedTuple`
 
-A tuple of the following four DataFrames: 
-1. All sampling results,
-2. Statuses of each attempted sampling job,
-3. Counts of statuses across all sampling jobs, and
-4. Per-model blocked reaction ids with reaction strings joined in.
+Returns a named tuple with the following four DataFrames: 
+1. `sampling_df`: All sampling results,
+2. `status_df`: Statuses of each attempted sampling job,
+3. `status_counts_df`: Counts of statuses across all sampling jobs, and
+4. `joined_blocked_reaction_ids_df`: Per-model blocked reaction ids with reaction strings joined in.
+5. `prune_breaks_df`: DataFrame of constraints conflicted during pruning, consolidated into one DataFrame.
+6. `fba_breaks_df`: DataFrame of constraints conflicted during initial FBA optimization, consolidated into one DataFrame.
 """
 function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     n_jobs = length(jobs)
@@ -337,22 +328,18 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         next!(prog)
         return job_result
     end
-    all_results = [
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in job_results
-    ]
-    status_rows = vcat(
-        eachrow([
-            (
-                additive = job.additive,
-                final_time = job.final_time,
-                status = isnothing(sdf) ? "fail" : "ok",
-                n_all_zero_fluxes = n_all_zero_fluxes,
-            ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
-        ])...,
-    )
+    status_rows = []
     blocked_reaction_ids_rows = []
-    for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
+    for (job, job_result) in zip(jobs, job_results)
+        status_row = (
+            additive = job.additive,
+            final_time = job.final_time,
+            prune_status = job_result.prune_status,
+            fba_status = job_result.fba_status,
+            n_all_zero_fluxes = job_result.n_all_zero_fluxes,
+        )
+        push!(status_rows, status_row)
+        blocked_reaction_ids = job_result.blocked_reaction_ids
         if !ismissing(blocked_reaction_ids)
             for blocked_reaction_id in blocked_reaction_ids
                 blocked_reaction_ids_row = (
@@ -364,19 +351,32 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             end
         end
     end
-    sampling_df = vcat([sdf for (sdf, _) in job_results if !isnothing(sdf)]...)
     status_df = DataFrame(status_rows)
+    blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
+    sampling_dfs = [
+        job_result.samples_df for
+        job_result in job_results if !isnothing(job_result.samples_df)
+    ]
+    sampling_df = vcat(sampling_dfs...)
     status_counts_df = @chain status_df begin
-        @groupby(:status)
+        @groupby(:fba_status)
         combine(nrow => :Count)
     end
-    blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
     joined_blocked_reaction_ids_df = innerjoin(
         blocked_reaction_ids_df,
         rxn_ids_to_strings_df,
         on = :blocked_reaction_id => :reaction_id,
     )
-    return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
+    broken_constraints = extract_broken_constraints(jobs, job_results)
+    result = (
+        sampling_df = sampling_df,
+        status_df = status_df,
+        status_counts_df = status_counts_df,
+        joined_blocked_reaction_ids_df = joined_blocked_reaction_ids_df,
+        prune_breaks_df = broken_constraints.prune_breaks_df,
+        fba_breaks_df = broken_constraints.fba_breaks_df,
+    )
+    return result
 end
 
 """
@@ -388,6 +388,7 @@ Create all models that represent each combination of additive and final time poi
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
+4 `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
 
 # Returns
 `Vector{NamedTuple}`
@@ -402,8 +403,10 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `zero_sinks`: Sinks that have zero flux that were pruned out
 7. `nonzero_sinks`: Sinks that have non-zero flux
 8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
-9. `pruning_method`: The pruning method, currently hardcoded to `:case1`
+9. `prune_method`: The pruning method, currently hardcoded to `:case1` because that is the only supported Case.
 10. `pruned_with_metabolite_bounds_ct`: A ConstraintTree with metabolite bounds and the pruned set of sinks added, ready for optimziation.
+11. `prune_optimize_status`: Either `:ok` (for a successful prune optimization) or `:fail` for a failed prune optimization.
+12. `prune_breaks_df`: If pruning was a `:fail` as indicated by `prune_optimize_status`, this field is populated with a DataFrame reporting the broken constraints. If the pruning was `:ok`, this field is `nothing`.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -441,9 +444,9 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
-        prune_optimize_result = optimize_case_1(case1_ct; write_lp_path = nothing)
-        if !isnothing(prune_optimize_result)
-            case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
+        prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
+        if prune_status == :ok
+            case_1_analysis = analyze_case_1_pruning_optimization(prune_result)
             prune_zero_sinks = string.(case_1_analysis.prune)
             nonzero_sinks = string.(case_1_analysis.keep)
             pruned_model, _ = create_fba_model(
@@ -483,10 +486,18 @@ function make_ufba_models_for_additives_and_times(
                 zero_sinks = prune_zero_sinks,
                 nonzero_sinks = nonzero_sinks,
                 added_sink_ids = added_sink_ids,
-                pruning_method = :case1,
+                prune_method = :case1,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
+                prune_status = prune_status,
+                prune_breaks_df = nothing,
             )
         else
+            prune_breaks_df = DataFrame(
+                prune_method = :case1,
+                additive = additive,
+                final_time = final_time,
+                broken_case_1_constraint = prune_result,
+            )
             next!(prog)
             return (
                 additive = additive,
@@ -497,8 +508,10 @@ function make_ufba_models_for_additives_and_times(
                 zero_sinks = nothing,
                 nonzero_sinks = nothing,
                 added_sink_ids = nothing,
-                pruning_method = :case1,
+                prune_method = :case1,
                 pruned_with_metabolite_bounds_ct = nothing,
+                prune_status = prune_status,
+                prune_breaks_df = prune_breaks_df,
             )
         end
     end
@@ -545,11 +558,11 @@ Returns two DataFrames:
 function extract_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
-        pruning_method = ufba_job.pruning_method
+        prune_method = ufba_job.prune_method
         for zero_sink in ufba_job.zero_sinks
             metabolite_id, direction = decompose_sink_id(zero_sink)
             row = (
-                pruning_method = pruning_method,
+                prune_method = prune_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "zero",
@@ -562,7 +575,7 @@ function extract_sinks(ufba_jobs)
         for nonzero_sink in ufba_job.nonzero_sinks
             metabolite_id, direction = decompose_sink_id(nonzero_sink)
             row = (
-                pruning_method = pruning_method,
+                prune_method = prune_method,
                 additive = ufba_job.additive,
                 final_time = ufba_job.final_time,
                 status = "nonzero",
@@ -574,8 +587,15 @@ function extract_sinks(ufba_jobs)
         end
     end
     status_df = DataFrame(status_rows)
-    sorted_df =
-        @orderby(status_df, :additive, :final_time, :status, :metabolite_id, :direction)
+    sorted_df = @orderby(
+        status_df,
+        :prune_method,
+        :additive,
+        :final_time,
+        :status,
+        :metabolite_id,
+        :direction
+    )
     return sorted_df
 end
 
@@ -605,13 +625,13 @@ function extract_added_sink_ids(jobs)
     for job in jobs
         additive = job.additive
         final_time = job.final_time
-        pruning_method = job.pruning_method
+        prune_method = job.prune_method
         for added_sink_id in job.added_sink_ids
             direction = contains(added_sink_id, "UP") ? "up" : "down"
             metabolite_id =
                 replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
             row = (
-                pruning_method = pruning_method,
+                prune_method = prune_method,
                 additive = additive,
                 final_time = final_time,
                 metabolite_id = metabolite_id,
@@ -623,8 +643,14 @@ function extract_added_sink_ids(jobs)
     end
     if length(rows) > 0
         unsorted_df = DataFrame(rows)
-        sorted_df =
-            @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
+        sorted_df = @orderby(
+            unsorted_df,
+            :prune_method,
+            :additive,
+            :final_time,
+            :metabolite_id,
+            :direction
+        )
         return sorted_df
     else
         empty_df = DataFrame(
@@ -636,6 +662,176 @@ function extract_added_sink_ids(jobs)
             added_sink_id = [],
         )
         return empty_df
+    end
+end
+
+"""
+    extract_broken_constraints(jobs, job_results)
+
+Called by [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs) to find all broken pruning and simple FBA optimization constraints during execution of all uFBA jobs.
+
+# Arguments
+1. `jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+2. `job_results`: Results of executed uFBA jobs from a local variable in [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs)
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following fields
+1. `prune_breaks_df`: DataFrame with constraints broken in the pruning optimizations. Has columns `additive`, `final_time`, `prune_break`.
+2. `fba_breaks_df`: DataFrame with constraints broken in the simple FBA optimizations. Has columns `additive`, `final_time`, `fba_break`.
+"""
+function extract_broken_constraints(jobs, job_results)
+    prune_breaks_dfs = []
+    fba_breaks_dfs = []
+    for (job, job_result) in zip(jobs, job_results)
+        additive = job.additive
+        final_time = job.final_time
+        prune_status = job.prune_status
+        fba_status = job_result.fba_status
+        if prune_status == :fail
+            prune_breaks = job.prune_breaks
+            single_prune_breaks_df = DataFrame(
+                additive = additive,
+                final_time = final_time,
+                prune_break = prune_breaks,
+            )
+            push!(prune_breaks_dfs, single_prune_breaks_df)
+        end
+        if fba_status == :fail
+            fba_breaks = job_result.fba_breaks
+            single_fba_break_df = DataFrame(
+                additive = additive,
+                final_time = final_time,
+                fba_break = fba_breaks,
+            )
+            push!(fba_breaks_dfs, single_fba_break_df)
+        end
+    end
+    prune_breaks_df =
+        length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
+        DataFrame(additive = [], final_time = [], prune_break = [])
+    fba_breaks_df =
+        length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
+        DataFrame(additive = [], final_time = [], fba_break = [])
+    result = (prune_breaks_df = prune_breaks_df, fba_breaks_df = fba_breaks_df)
+    return result
+end
+
+"""
+    substitute_jump(val::C.LinearValue, vars)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Copied from `substitute_jump` in COBREXA.jl. Used to assemble a `C.LinearValue` into a `JuMP.AffExpr` to create JuMP constraints and objective from `ConstraintTrees`
+
+# Arguments
+1. `val::C.LinearValue`: The `LinearValue` from which to construct the expression.
+2. `vars`: The JuMP variable(s) used to create the expression.
+
+# Returns
+`JuMP.AffExpr`
+
+The `AffrExpr` for incorporation in the JuMP model.
+"""
+function substitute_jump(val::C.LinearValue, vars)
+    e = JuMP.AffExpr()
+    for (i, w) in zip(val.idxs, val.weights)
+        if i == 0
+            JuMP.add_to_expression!(e, w)
+        else
+            JuMP.add_to_expression!(e, w, vars[i])
+        end
+    end
+    return e
+end
+
+"""
+    constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Mutates the given JuMP model to add a constriant from an expression and given `C.EqualTo` bound. Also accepts a string used to name the objective (the suffix `_eq` is added to this string).
+
+# Arguments
+1. `jump_model`: The JuMP model to mutate.
+2. `expr`: Expression of the constraint.
+3. `b::C.EqualTo`: The bound of the constraint.
+4. `base_name::String`: The base name of the constraint. `_eq` is appended to the base name.
+"""
+function constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+    JuMP.@constraint(jump_model, expr == b.equal_to, base_name = "$(base_name)_eq")
+end
+
+"""
+    constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Mutates the given JuMP model to add a constriant from an expression and given `C.Between` bound. Also accepts a string used to name the objective (the suffixes `_lb` and `_ub` are added to this string).
+
+# Arguments
+1. `jump_model`: The JuMP model to mutate.
+2. `expr`: Expression of the constraint.
+3. `b::C.Between`: The bound of the constraint.
+4. `base_name::String`: The base name of the constraint. `_lb` or `_ub` is appended to the base name depending on the side of the constraint.
+"""
+function constraint_jump!(jump_model, expr, b::C.Between; base_name::String)
+    isinf(b.lower) ||
+        JuMP.@constraint(jump_model, expr >= b.lower, base_name = "$(base_name)_lb")
+    isinf(b.upper) ||
+        JuMP.@constraint(jump_model, expr <= b.upper, base_name = "$(base_name)_ub")
+end
+
+"""
+    optimize_constraint_tree(ct::C.ConstraintTree, objective_value::Union{Nothing,C.Value} = nothing; silent::Bool = true)
+
+Creates a JuMP model from the given `ConstraintTree` and optimizes it. Draws inspiration from `optimization_model()` in COBREXA.jl and adds functionality to name constraints and debug broken models using those constraint names upon optimization failure.
+
+# Arguments
+1. `ct::C.ConstraintTree`: Tree containing the constraints.
+2. `objective_value::Union{Nothing,C.Value} = nothing`: Objective value to use in the optimization. If in doubt, using the `ConstraintTree` to be optimized, pass `ct.objective.value`
+3. `silent::Bool = true`: If `true`, silences JuMP during optimization to clean up script outputs.
+
+# Returns
+`Tuple{Symbol,Union{C.ConstraintTree,Vector{String}}}`
+
+Returns a tuple with two elements.
+1. `:ok` or `:fail`: The status of the optimization.
+2. `C.ConstraintTree` of the optimized values OR `Vector{String}` of conflicted constraints that broke the optimization
+"""
+function optimize_constraint_tree(
+    ct::C.ConstraintTree,
+    objective_value::Union{Nothing,C.Value} = nothing;
+    silent::Bool = true,
+)
+    jump_model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    isnothing(objective_value) ||
+        JuMP.@objective(jump_model, JuMP.MAX_SENSE, substitute_jump(objective_value, x))
+    C.itraverse(ct) do path, con
+        ct_path = join(path, ".")
+        if ct_path != "objective"
+            isnothing(con.bound) || constraint_jump!(
+                jump_model,
+                substitute_jump(con.value, x),
+                con.bound;
+                base_name = ct_path,
+            )
+        end
+    end
+    silent && JuMP.set_silent(jump_model)
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        solved_values = JuMP.value.(x)
+        solution_tree = C.substitute_values(ct, solved_values)
+        return :ok, solution_tree
+    elseif status == JuMP.MOI.INFEASIBLE
+        conflicted_constraints = optimization_failure_analysis(jump_model)
+        return :fail, conflicted_constraints
+    else
+        return :fail, ["No further information is available."]
     end
 end
 

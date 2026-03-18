@@ -10,15 +10,16 @@ import ConstraintTrees as C
 using Printf
 import MathOptInterface as MOI
 
-export optimize_case_1, analyze_case_1_pruning_optimization, print_sinks_in_model
+export optimize_case_1,
+    analyze_case_1_pruning_optimization, print_sinks_in_model, optimization_failure_analysis
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo)
 
 Attach a ConstraintTrees equality bound to a JuMP model.
 """
-function jump_constraint(m, x, v::C.Value, b::C.EqualTo)
-    @constraint(m, C.substitute(v, x) == b.equal_to)
+function jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
+    @constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
 end
 
 """
@@ -26,9 +27,11 @@ end
 
 Attach a ConstraintTrees interval bound to a JuMP model.
 """
-function jump_constraint(m, x, v::C.Value, b::C.Between)
-    isinf(b.lower) || @constraint(m, C.substitute(v, x) >= b.lower)
-    isinf(b.upper) || @constraint(m, C.substitute(v, x) <= b.upper)
+function jump_constraint(m, x, v::C.Value, b::C.Between; base_name::String)
+    isinf(b.lower) ||
+        @constraint(m, C.substitute(v, x) >= b.lower, base_name = "$(base_name)_lb")
+    isinf(b.upper) ||
+        @constraint(m, C.substitute(v, x) <= b.upper, base_name = "$(base_name)_ub")
 end
 
 """
@@ -78,15 +81,17 @@ a sum of binary indicators, with each indicator `i` determines whether sink reac
 8. `print_objective_value::Bool = false`: If `true` prints the objective value.
 
 # Returns
-`Union{NamedTuple,Nothing}`
+`Tuple{Symbol,Union{ConstraintTree,Vector{String}}}`
 
-Following a successful optimization, returns a named tuple with:
+Returns a tuple with two elements
+1. A symbol, `:ok` or `:fail`
+2. If the symbol is `:ok`, the second element is a `NamedTuple` with the fields listed below. If the symbol is `:fail`, the second element is a `Vector{String}` of conflicting constraint names or a message that no further information is available.
+
+Elements of the successful named tuple:
 1. `solution_tree`: base ConstraintTree with continuous variables substituted
 2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
-
-If the optimization fails, returns `nothing`.
 """
 function optimize_case_1(
     ct::C.ConstraintTree;
@@ -106,10 +111,11 @@ function optimize_case_1(
     for i in eachindex(x)
         x[i] = @variable(jump_model, base_name = "x_$i")
     end
-    C.traverse(ct) do c
-        isnothing(c.bound) || jump_constraint(jump_model, x, c.value, c.bound)
+    C.itraverse(ct) do path, con
+        ct_path = join(path, ".")
+        isnothing(con.bound) ||
+            jump_constraint(jump_model, x, con.value, con.bound, base_name = ct_path)
     end
-    @variable(jump_model, z[sink_ids], Bin)
 
     # Sink (vi) indicator (zi) coupling
     #
@@ -118,12 +124,12 @@ function optimize_case_1(
     # If z_i = 0, then v_i = 0.
     # If z_i = 1, then v_i is allowed within ±M_i.
     #
+    @variable(jump_model, z[sink_ids], Bin)
     for id in sink_ids
         v_expr = C.substitute(ct.fluxes[id].value, x)
         M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
-
-        @constraint(jump_model, v_expr <= M_i * z[id])
-        @constraint(jump_model, v_expr >= -M_i * z[id])
+        @constraint(jump_model, v_expr <= M_i * z[id], base_name = "big_m_$(id)_ub")
+        @constraint(jump_model, v_expr >= -M_i * z[id], base_name = "big_m_$(id)_lb")
     end
     if force_first_sink_on
         forced_id = sink_ids[1]
@@ -160,45 +166,48 @@ function optimize_case_1(
                 indicator_values[forced_id],
             )
         end
-        return (
+        result = (
             solution_tree = solution_tree,
             indicator_values = indicator_values,
             sink_ids = sink_ids,
             jump_model = jump_model,
         )
+        return :ok, result
     elseif status == JuMP.MOI.INFEASIBLE
-        @error "Model is infeasible with status $status. Performing failure analysis"
-        optimize_case_1_failure_analysis(jump_model)
-        return nothing
+        conflicted_constraints = optimization_failure_analysis(jump_model)
+        return :fail, conflicted_constraints
     else
-        @error "Optimization failed with termination status $status. No further information is available"
-        return nothing
+        return :fail, ["No further information is available."]
     end
 end
 
 """
-    optimize_case_1_failure_analysis(jump_model::JuMP.Model)
+    optimization_failure_analysis(jump_model::JuMP.Model)
 
-Print out diagnostics from a failed Case 1 optimization JuMP model. Called by [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) to assist with failure analysis.
+Gathers names of conflicted constraints in the provided JuMP model.
 
 # Arguments
 1. `jump_model::JuMP.Model`: Broken JuMP model
+
+# Returns
+`Vector{String}`
+
+Returns names of detected conflicted constraints.
 """
-function optimize_case_1_failure_analysis(jump_model::JuMP.Model)
-    JuMP.compute_conflict!(jump_model)
-    model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
-    println("Model conflict status: ", model_conflict_status)
-    for con in JuMP.all_constraints(jump_model; include_variable_in_set_constraints = true)
-        con_status = JuMP.get_attribute(con, MOI.ConstraintConflictStatus())
-        if con_status == MOI.IN_CONFLICT
-            con_name = try
-                JuMP.name(con)
-            catch
-                ""
-            end
-            println(" - ", isempty(con_name) ? string(con) : "$con_name :: $con")
+function optimization_failure_analysis(jump_model::JuMP.Model)
+    constraints = JuMP.ConstraintRef[]
+    for (F, S) in JuMP.list_of_constraint_types(jump_model)
+        for con in JuMP.all_constraints(jump_model, F, S)
+            push!(constraints, con)
         end
     end
+    JuMP.compute_conflict!(jump_model)
+    model_conflict_status = JuMP.get_attribute(jump_model, MOI.ConflictStatus())
+    conflicted_constraints = [
+        JuMP.name(con) for con in constraints if
+        MOI.get(jump_model, MOI.ConstraintConflictStatus(), con) == MOI.IN_CONFLICT
+    ]
+    return conflicted_constraints
 end
 
 """
