@@ -718,8 +718,24 @@ function extract_broken_constraints(jobs, job_results)
     return result
 end
 
+"""
+    substitute_jump(val::C.LinearValue, vars)
+
+Called by [`optimize_constriant_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constriant_tree) to create JuMP models.
+
+Copied from `substitute_jump` in COBREXA.jl. Used to assemble a `C.LinearValue` into a `JuMP.AffExpr` to create JuMP constraints and objective from `ConstraintTrees`
+
+# Arguments
+1. `val::C.LinearValue`: The `LinearValue` from which to construct the expression.
+2. `vars`: The JuMP variable(s) used to create the expression.
+
+# Returns
+`JuMP.AffExpr`
+
+The `AffrExpr` for incorporation in the JuMP model.
+"""
 function substitute_jump(val::C.LinearValue, vars)
-    e = JuMP.AffExpr() # unfortunately @expression(model, 0) is not type stable and gives an Int
+    e = JuMP.AffExpr()
     for (i, w) in zip(val.idxs, val.weights)
         if i == 0
             JuMP.add_to_expression!(e, w)
