@@ -38,7 +38,7 @@ julia --project=. plot_metabolite_timelines.jl
 
 Output will be saved to `output/normalized_abundance_correlations.csv` and `output/plots`
 
-### (2) `raw_relative_intensities.jl`: 3D PCA Plots of Relative Quant Data
+### (2) `raw_relative_intensities.jl`: PCA Plots of Relative Quant Data
 
 Uses `src/RawRelativeIntensities.jl` to make PCA plots reducing relative metabolite abundances down to fewer features.
 
