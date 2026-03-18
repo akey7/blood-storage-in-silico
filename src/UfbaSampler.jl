@@ -414,20 +414,23 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     end
     status_df = DataFrame(status_rows)
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
+    sampling_dfs = [
+        job_result.samples_df for
+        job_result in job_results if !isnothing(job_result.samples_df)
+    ]
+    sampling_df = vcat(sampling_dfs...)
 
     # sampling_df = vcat([sdf for (sdf, _) in job_results if !isnothing(sdf)]...)
-    # status_df = DataFrame(status_rows)
-    # status_counts_df = @chain status_df begin
-    #     @groupby(:status)
-    #     combine(nrow => :Count)
-    # end
-    # joined_blocked_reaction_ids_df = innerjoin(
-    #     blocked_reaction_ids_df,
-    #     rxn_ids_to_strings_df,
-    #     on = :blocked_reaction_id => :reaction_id,
-    # )
 
-    sampling_df = DataFrame()
+    status_counts_df = @chain status_df begin
+        @groupby(:fba_status)
+        combine(nrow => :Count)
+    end
+    joined_blocked_reaction_ids_df = innerjoin(
+        blocked_reaction_ids_df,
+        rxn_ids_to_strings_df,
+        on = :blocked_reaction_id => :reaction_id,
+    )
 
     return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
 end
@@ -497,8 +500,7 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
-        prune_status, prune_result =
-            optimize_case_1(case1_ct; write_lp_path = nothing)
+        prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
         if prune_status == :ok
             case_1_analysis = analyze_case_1_pruning_optimization(prune_result)
             prune_zero_sinks = string.(case_1_analysis.prune)
