@@ -391,6 +391,7 @@ Create all models that represent each combination of additive and final time poi
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
+4 `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
 
 # Returns
 `Vector{NamedTuple}`
