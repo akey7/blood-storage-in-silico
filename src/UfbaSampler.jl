@@ -40,7 +40,8 @@ export sample_fluxes,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_sink_ids,
     decompose_sink_id,
-    optimize_constriant_tree
+    optimize_constriant_tree,
+    extract_broken_constraints
 
 """
     init_workers!(; project=Base.active_project())
@@ -288,7 +289,7 @@ function execute_ufba_job(job, n_chains = 10)
     if prune_status == :ok
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
         objective_value = pruned_with_metabolite_bounds_ct.objective.value
-        fba_status, _ =
+        fba_status, fba_breaks =
             optimize_constriant_tree(pruned_with_metabolite_bounds_ct, objective_value)
         if fba_status == :fail
             # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
@@ -298,6 +299,7 @@ function execute_ufba_job(job, n_chains = 10)
                 blocked_reaction_ids = missing,
                 prune_status = prune_status,
                 fba_status = fba_status,
+                fba_breaks = fba_breaks,
             )
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
@@ -326,6 +328,7 @@ function execute_ufba_job(job, n_chains = 10)
             blocked_reaction_ids = missing,
             prune_status = prune_status,
             fba_status = missing,
+            fba_breaks = fba_breaks,
         )
     end
 end
@@ -396,11 +399,14 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         rxn_ids_to_strings_df,
         on = :blocked_reaction_id => :reaction_id,
     )
+    broken_constraints = extract_broken_constraints(jobs, job_results)
     result = (
         sampling_df = sampling_df,
         status_df = status_df,
         status_counts_df = status_counts_df,
         joined_blocked_reaction_ids_df = joined_blocked_reaction_ids_df,
+        prune_breaks_df = broken_constraints.prune_breaks_df,
+        fba_breaks_df = broken_constraints.fba_breaks_df,
     )
     return result
 end
@@ -689,6 +695,43 @@ function extract_added_sink_ids(jobs)
         )
         return empty_df
     end
+end
+
+function extract_broken_constraints(jobs, job_results)
+    prune_breaks_dfs = []
+    fba_breaks_dfs = []
+    for (job, job_result) in zip(jobs, job_results)
+        additive = job.additive
+        final_time = job.final_time
+        prune_status = job.prune_status
+        fba_status = job_result.fba_status
+        if prune_status == :fail
+            prune_breaks = job.prune_breaks
+            single_prune_breaks_df = DataFrame(
+                additive = additive,
+                final_time = final_time,
+                prune_break = prune_breaks,
+            )
+            push!(prune_breaks_dfs, single_prune_breaks_df)
+        end
+        if fba_status == :fail
+            fba_breaks = job_result.fba_breaks
+            single_fba_break_df = DataFrame(
+                additive = additive,
+                final_time = final_time,
+                fba_break = fba_breaks,
+            )
+            push!(fba_breaks_dfs, single_fba_break_df)
+        end
+    end
+    prune_breaks_df =
+        length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
+        DataFrame(additive = [], final_time = [], prune_break = [])
+    fba_breaks_df =
+        length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
+        DataFrame(additive = [], final_time = [], fba_break = [])
+    result = (prune_breaks_df = prune_breaks_df, fba_breaks_df = fba_breaks_df)
+    return result
 end
 
 function substitute_jump(val::C.LinearValue, vars)

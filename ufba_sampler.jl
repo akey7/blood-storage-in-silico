@@ -77,11 +77,14 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 
 sink_status_df = extract_sinks(ufba_jobs)
 added_sink_ids_df = extract_added_sink_ids(ufba_jobs)
-ufba_jobs_result = execute_all_ufba_jobs(ufba_jobs, rxn_ids_to_strings_df; n_chains = n_chains)
+ufba_jobs_result =
+    execute_all_ufba_jobs(ufba_jobs, rxn_ids_to_strings_df; n_chains = n_chains)
 sampling_df = ufba_jobs_result.sampling_df
 status_df = ufba_jobs_result.status_df
 status_counts_df = ufba_jobs_result.status_counts_df
 joined_blocked_reaction_ids_df = ufba_jobs_result.joined_blocked_reaction_ids_df
+prune_breaks_df = ufba_jobs_result.prune_breaks_df
+fba_breaks_df = ufba_jobs_result.fba_breaks_df
 @info "uFBA: Final status"
 display(status_df)
 status_filename = joinpath("output", "ufba_sampling_status.csv")
@@ -101,3 +104,9 @@ println("Wrote $blocked_reactions_filename")
 added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
 CSV.write(added_sink_ids_filename, added_sink_ids_df)
 println("Wrote $added_sink_ids_filename")
+prune_breaks_filename = joinpath("output", "ufba_prune_breaks.csv")
+CSV.write(prune_breaks_filename, prune_breaks_df)
+println("Wrote $prune_breaks_filename")
+fba_breaks_filename = joinpath("output", "ufba_fba_breaks.csv")
+CSV.write(fba_breaks_filename, fba_breaks_df)
+println("Wrote $fba_breaks_filename")
