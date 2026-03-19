@@ -37,6 +37,16 @@ function load_metabolite_bounds()
     return metabolite_bounds_df
 end
 
+"""
+    load_metabolite_measurement_opt_outs()
+
+Load the metabolite opt-out list from `input/metabolite_measurement_opt_outs.csv`. This list is used to ignore absolute quant estimations in model construction.
+
+# Returns
+`Vector{String}`
+
+Vector of strings of metabolite ids (without the leading `M_`) to opt out of.
+"""
 function load_metabolite_measurement_opt_outs()
     filename = joinpath("input", "metabolite_measurement_opt_outs.csv")
     if isfile(filename)
