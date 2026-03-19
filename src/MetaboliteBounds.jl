@@ -277,6 +277,15 @@ function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
     return metabolite_ids
 end
 
+function is_metabolite_id_in_opt_outs(metabolite_id::String, opt_outs::Vector{String})
+    for opt_out in opt_outs
+        if occursin(opt_out, metabolite_id)
+            return true
+        end
+    end
+    return false
+end
+
 """
     add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
 
@@ -299,7 +308,8 @@ Returns a vector of strings with the reaction ids of all sinks finally added to 
 """
 function add_sinks_for_unmatched_metabolites!(
     model::A.AbstractFBCModel,
-    sink_specifications::NamedTuple,
+    sink_specifications::NamedTuple;
+    metabolite_measurement_opt_outs_df::Union{Nothing,DataFrame} = nothing,
 )
     metabolite_status_df = sink_specifications.metabolite_status_df
     additive = sink_specifications.additive
@@ -319,6 +329,9 @@ function add_sinks_for_unmatched_metabolites!(
 
     metabolites_with_exchanges = find_metabolites_with_exchanges(model)
     prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : string.(prune_zero_sinks)
+    opt_outs =
+        isnothing(metabolite_measurement_opt_outs_df) ? String[] :
+        String.(sort(unique(metabolite_measurement_opt_outs_df.disabled_metabolite_id)))
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
@@ -327,6 +340,9 @@ function add_sinks_for_unmatched_metabolites!(
     for metabolite_id in sort(unique(not_found_df.metabolite))
         if metabolite_id in metabolites_with_exchanges
             # println("Skipping sinks for $metabolite_id which has an exchange.")
+            continue
+        end
+        if is_metabolite_id_in_opt_outs(metabolite_id, opt_outs)
             continue
         end
         sink_up_name = "R_UNKNOWN_SK_UP_$metabolite_id"
