@@ -39,8 +39,7 @@ export sample_fluxes,
     extract_added_sink_ids,
     decompose_sink_id,
     optimize_constraint_tree,
-    extract_broken_constraints,
-    load_metabolite_measurement_opt_outs
+    extract_broken_constraints
 
 """
     init_workers!(; project=Base.active_project())
@@ -136,11 +135,6 @@ function load_flux_bounds_overrides()
     flux_bounds_filename = joinpath("input", "flux_bounds_overrides.csv")
     return isfile(flux_bounds_filename) ? CSV.read(flux_bounds_filename, DataFrame) :
            nothing
-end
-
-function load_metabolite_measurement_opt_outs()
-    filename = joinpath("input", "metabolite_measurement_opt_outs.csv")
-    return isfile(filename) ? CSV.read(filename, DataFrame) : nothing
 end
 
 """
@@ -386,7 +380,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 end
 
 """
-    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing, flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolite_measurement_opt_outs_df::Union{Nothing,DataFrame} = nothing)
+    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing, flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing)
 
 Create all models that represent each combination of additive and final time point.
 
@@ -395,7 +389,6 @@ Create all models that represent each combination of additive and final time poi
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
 4 `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
-5. `metabolite_measurement_opt_outs_df::Union{Nothing,DataFrame} = nothing`: If specified, these metabolite_ids are ignored when adding metabolite concentration dx/dt bounds.
 
 # Returns
 `Vector{NamedTuple}`
@@ -420,7 +413,6 @@ function make_ufba_models_for_additives_and_times(
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
-    metabolite_measurement_opt_outs_df::Union{Nothing,DataFrame} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
