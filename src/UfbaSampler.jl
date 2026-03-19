@@ -357,7 +357,10 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             end
         end
     end
-    status_df = DataFrame(status_rows)
+    status_df = @chain status_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
+    end
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
     sampling_dfs = [
         job_result.samples_df for
