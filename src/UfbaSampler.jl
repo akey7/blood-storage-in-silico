@@ -266,6 +266,7 @@ function execute_ufba_job(job, n_chains = 10)
                 prune_status = prune_status,
                 fba_status = fba_status,
                 fba_breaks = fba_breaks,
+                job_status = :prune_ok_fba_fail,
             )
             return result
         else
@@ -285,6 +286,8 @@ function execute_ufba_job(job, n_chains = 10)
                 blocked_reaction_ids = blocked_reaction_ids,
                 prune_status = prune_status,
                 fba_status = fba_status,
+                fba_breaks = fba_breaks,
+                job_status = :ok,
             )
             return result
         end
@@ -297,6 +300,7 @@ function execute_ufba_job(job, n_chains = 10)
             prune_status = prune_status,
             fba_status = missing,
             fba_breaks = nothing,
+            job_status = :prune_fail_fba_fail,
         )
         return result
     end
@@ -337,8 +341,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         status_row = (
             additive = job.additive,
             final_time = job.final_time,
-            prune_status = job_result.prune_status,
-            fba_status = job_result.fba_status,
+            job_status = job_result.job_status,
             n_all_zero_fluxes = job_result.n_all_zero_fluxes,
         )
         push!(status_rows, status_row)
@@ -354,7 +357,10 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             end
         end
     end
-    status_df = DataFrame(status_rows)
+    status_df = @chain status_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
+    end
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
     sampling_dfs = [
         job_result.samples_df for
@@ -362,14 +368,14 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     ]
     sampling_df = vcat(sampling_dfs...)
     status_counts_df = @chain status_df begin
-        @groupby(:fba_status)
+        @groupby(:job_status)
         combine(nrow => :Count)
+        @orderby(:Count)
     end
-    joined_blocked_reaction_ids_df = innerjoin(
-        blocked_reaction_ids_df,
-        rxn_ids_to_strings_df,
-        on = :blocked_reaction_id => :reaction_id,
-    )
+    joined_blocked_reaction_ids_df = @chain blocked_reaction_ids_df begin
+        innerjoin(rxn_ids_to_strings_df, on = :blocked_reaction_id => :reaction_id)
+        @orderby(:additive, :final_time, :blocked_reaction_id)
+    end
     broken_constraints = extract_broken_constraints(jobs, job_results)
     result = (
         sampling_df = sampling_df,
@@ -647,8 +653,11 @@ function extract_added_sink_ids(jobs)
         if !isnothing(added_sink_ids)
             for added_sink_id in job.added_sink_ids
                 direction = contains(added_sink_id, "UP") ? "up" : "down"
-                metabolite_id =
-                    replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
+                metabolite_id = replace(
+                    added_sink_id,
+                    "R_UNKNOWN_SK_UP_" => "",
+                    "R_UNKNOWN_SK_DOWN_" => "",
+                )
                 row = (
                     prune_method = prune_method,
                     additive = additive,
@@ -710,12 +719,6 @@ function extract_broken_constraints(jobs, job_results)
         prune_status = job.prune_status
         fba_status = job_result.fba_status
         if prune_status == :fail
-            # prune_breaks = job.prune_breaks
-            # single_prune_breaks_df = DataFrame(
-            #     additive = additive,
-            #     final_time = final_time,
-            #     prune_break = prune_breaks,
-            # )
             single_prune_breaks_df = job.prune_breaks_df
             push!(prune_breaks_dfs, single_prune_breaks_df)
         end
@@ -731,12 +734,19 @@ function extract_broken_constraints(jobs, job_results)
             end
         end
     end
-    prune_breaks_df =
+    unsorted_prune_breaks_df =
         length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
-        DataFrame(additive = [], final_time = [], prune_break = [])
-    fba_breaks_df =
+        DataFrame(additive = [], final_time = [], broken_case_1_constraint = [])
+    prune_breaks_df = @orderby(
+        unsorted_prune_breaks_df,
+        :additive,
+        :final_time,
+        :broken_case_1_constraint
+    )
+    unsorted_fba_breaks_df =
         length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
         DataFrame(additive = [], final_time = [], fba_break = [])
+    fba_breaks_df = @orderby(unsorted_fba_breaks_df, :additive, :final_time, :fba_break)
     result = (prune_breaks_df = prune_breaks_df, fba_breaks_df = fba_breaks_df)
     return result
 end
