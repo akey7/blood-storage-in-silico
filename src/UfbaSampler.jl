@@ -372,11 +372,10 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         combine(nrow => :Count)
         @orderby(:Count)
     end
-    joined_blocked_reaction_ids_df = innerjoin(
-        blocked_reaction_ids_df,
-        rxn_ids_to_strings_df,
-        on = :blocked_reaction_id => :reaction_id,
-    )
+    joined_blocked_reaction_ids_df = @chain blocked_reaction_ids_df begin
+        innerjoin(rxn_ids_to_strings_df, on = :blocked_reaction_id => :reaction_id)
+        @orderby(:additive, :final_time, :blocked_reaction_id)
+    end
     broken_constraints = extract_broken_constraints(jobs, job_results)
     result = (
         sampling_df = sampling_df,
