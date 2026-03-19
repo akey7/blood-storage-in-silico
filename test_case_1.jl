@@ -100,7 +100,7 @@ add_metabolite_bounds_to_constraint_tree!(
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
 @info "Custom FBA of pruned and bounded ConstraintTree"
-result = optimize_constriant_tree(second_ct, second_ct.objective.value)
+result = optimize_constraint_tree(second_ct, second_ct.objective.value)
 if !isnothing(result)
     display(result)
 end
