@@ -39,7 +39,8 @@ export sample_fluxes,
     extract_added_sink_ids,
     decompose_sink_id,
     optimize_constraint_tree,
-    extract_broken_constraints
+    extract_broken_constraints,
+    load_metabolite_measurement_opt_outs
 
 """
     init_workers!(; project=Base.active_project())
@@ -135,6 +136,11 @@ function load_flux_bounds_overrides()
     flux_bounds_filename = joinpath("input", "flux_bounds_overrides.csv")
     return isfile(flux_bounds_filename) ? CSV.read(flux_bounds_filename, DataFrame) :
            nothing
+end
+
+function load_metabolite_measurement_opt_outs()
+    filename = joinpath("input", "metabolite_measurement_opt_outs.csv")
+    return isfile(filename) ? CSV.read(filename, DataFrame) : nothing
 end
 
 """

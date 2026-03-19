@@ -34,6 +34,9 @@ init_workers!()
 @info "Load flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
+@info "Load metabolite measurement opt-outs"
+metabolite_measurement_opt_outs_df = load_metabolite_measurement_opt_outs()
+
 @info "Create reaction ids to strings mapping and save FBA model metabolites"
 fba_model, fba_model_metabolites_df = create_fba_model(
     load_base_rbc_gem();
