@@ -380,7 +380,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 end
 
 """
-    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing, flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing)
+    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing)
 
 Create all models that represent each combination of additive and final time point.
 
@@ -388,7 +388,8 @@ Create all models that represent each combination of additive and final time poi
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
-4 `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
+4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
+5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
 
 # Returns
 `Vector{NamedTuple}`
@@ -413,6 +414,7 @@ function make_ufba_models_for_additives_and_times(
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
+    metabolites_to_ignore::Vector{String} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -443,6 +445,7 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
+        # TODO: Add metabolite bounds before pruning.
         case1_ct = flux_balance_constraints(full_model)
         prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
         if prune_status == :ok
@@ -474,7 +477,8 @@ function make_ufba_models_for_additives_and_times(
                 pruned_with_metabolite_bounds_ct,
                 metabolite_bounds_df,
                 additive_string,
-                final_time,
+                final_time;
+                metabolites_to_ignore = metabolites_to_ignore,
             )
             next!(prog)
             return (

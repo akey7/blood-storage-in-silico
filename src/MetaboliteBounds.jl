@@ -45,7 +45,7 @@ function load_metabolite_measurement_opt_outs()
             sort(unique(df.disabled_metabolite_id)),
         )
     else
-        return []
+        return String[]
     end
 end
 
