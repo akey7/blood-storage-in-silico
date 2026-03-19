@@ -719,12 +719,6 @@ function extract_broken_constraints(jobs, job_results)
         prune_status = job.prune_status
         fba_status = job_result.fba_status
         if prune_status == :fail
-            # prune_breaks = job.prune_breaks
-            # single_prune_breaks_df = DataFrame(
-            #     additive = additive,
-            #     final_time = final_time,
-            #     prune_break = prune_breaks,
-            # )
             single_prune_breaks_df = job.prune_breaks_df
             push!(prune_breaks_dfs, single_prune_breaks_df)
         end
@@ -740,12 +734,19 @@ function extract_broken_constraints(jobs, job_results)
             end
         end
     end
-    prune_breaks_df =
+    unsorted_prune_breaks_df =
         length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
-        DataFrame(additive = [], final_time = [], prune_break = [])
-    fba_breaks_df =
+        DataFrame(additive = [], final_time = [], broken_case_1_constraint = [])
+    prune_breaks_df = @orderby(
+        unsorted_prune_breaks_df,
+        :additive,
+        :final_time,
+        :broken_case_1_constraint
+    )
+    unsorted_fba_breaks_df =
         length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
         DataFrame(additive = [], final_time = [], fba_break = [])
+    fba_breaks_df = @orderby(unsorted_fba_breaks_df, :additive, :final_time, :fba_break)
     result = (prune_breaks_df = prune_breaks_df, fba_breaks_df = fba_breaks_df)
     return result
 end
