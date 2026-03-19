@@ -119,6 +119,9 @@ Which would sample all models with 10 chains, run all models, and use 32 concurr
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
 
+In addition to input files from prior steps, there is an input file of note
+1. `input/metabolite_measurement_opt_outs.csv`: A file of metabolite ids of absolute quant measurements (without the leading `M_`) to ignore when building all models. Used for diagnostic purposes for failing models.
+
 Outputs the following files:
 1. `output/ufba_sampling_status.csv`: That statuses of each uFBA sampling job (fail or ok)
 2. `output/ufba_sampling.csv`: The samplings of the fluxes. Used by next step.

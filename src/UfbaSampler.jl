@@ -267,6 +267,7 @@ function execute_ufba_job(job, n_chains = 10)
                 fba_status = fba_status,
                 fba_breaks = fba_breaks,
             )
+            return result
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
@@ -285,6 +286,7 @@ function execute_ufba_job(job, n_chains = 10)
                 prune_status = prune_status,
                 fba_status = fba_status,
             )
+            return result
         end
     else
         # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
@@ -294,8 +296,9 @@ function execute_ufba_job(job, n_chains = 10)
             blocked_reaction_ids = missing,
             prune_status = prune_status,
             fba_status = missing,
-            fba_breaks = fba_breaks,
+            fba_breaks = nothing,
         )
+        return result
     end
 end
 
@@ -380,7 +383,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 end
 
 """
-    make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64)
+    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing)
 
 Create all models that represent each combination of additive and final time point.
 
@@ -388,7 +391,8 @@ Create all models that represent each combination of additive and final time poi
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
-4 `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
+4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
+5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
 
 # Returns
 `Vector{NamedTuple}`
@@ -413,6 +417,7 @@ function make_ufba_models_for_additives_and_times(
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
+    metabolites_to_ignore::Vector{String} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -444,6 +449,13 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
+        add_metabolite_bounds_to_constraint_tree!(
+            case1_ct,
+            metabolite_bounds_df,
+            additive_string,
+            final_time;
+            metabolites_to_ignore = metabolites_to_ignore,
+        )
         prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
         if prune_status == :ok
             case_1_analysis = analyze_case_1_pruning_optimization(prune_result)
@@ -474,7 +486,8 @@ function make_ufba_models_for_additives_and_times(
                 pruned_with_metabolite_bounds_ct,
                 metabolite_bounds_df,
                 additive_string,
-                final_time,
+                final_time;
+                metabolites_to_ignore = metabolites_to_ignore,
             )
             next!(prog)
             return (
@@ -503,7 +516,7 @@ function make_ufba_models_for_additives_and_times(
                 additive = additive,
                 final_time = final_time,
                 full_model = deepcopy(full_model),
-                pruned_model = deepcopy(pruned_model),
+                pruned_model = nothing,
                 metabolite_bounds_df = deepcopy(metabolite_bounds_df),
                 zero_sinks = nothing,
                 nonzero_sinks = nothing,
@@ -559,31 +572,35 @@ function extract_sinks(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         prune_method = ufba_job.prune_method
-        for zero_sink in ufba_job.zero_sinks
-            metabolite_id, direction = decompose_sink_id(zero_sink)
-            row = (
-                prune_method = prune_method,
-                additive = ufba_job.additive,
-                final_time = ufba_job.final_time,
-                status = "zero",
-                metabolite_id = metabolite_id,
-                direction = direction,
-                sink = zero_sink,
-            )
-            push!(status_rows, row)
-        end
-        for nonzero_sink in ufba_job.nonzero_sinks
-            metabolite_id, direction = decompose_sink_id(nonzero_sink)
-            row = (
-                prune_method = prune_method,
-                additive = ufba_job.additive,
-                final_time = ufba_job.final_time,
-                status = "nonzero",
-                metabolite_id = metabolite_id,
-                direction = direction,
-                sink = nonzero_sink,
-            )
-            push!(status_rows, row)
+        zero_sinks = ufba_job.zero_sinks
+        nonzero_sinks = ufba_job.nonzero_sinks
+        if !isnothing(zero_sinks) && !isnothing(nonzero_sinks)
+            for zero_sink in ufba_job.zero_sinks
+                metabolite_id, direction = decompose_sink_id(zero_sink)
+                row = (
+                    prune_method = prune_method,
+                    additive = ufba_job.additive,
+                    final_time = ufba_job.final_time,
+                    status = "zero",
+                    metabolite_id = metabolite_id,
+                    direction = direction,
+                    sink = zero_sink,
+                )
+                push!(status_rows, row)
+            end
+            for nonzero_sink in ufba_job.nonzero_sinks
+                metabolite_id, direction = decompose_sink_id(nonzero_sink)
+                row = (
+                    prune_method = prune_method,
+                    additive = ufba_job.additive,
+                    final_time = ufba_job.final_time,
+                    status = "nonzero",
+                    metabolite_id = metabolite_id,
+                    direction = direction,
+                    sink = nonzero_sink,
+                )
+                push!(status_rows, row)
+            end
         end
     end
     status_df = DataFrame(status_rows)
@@ -626,19 +643,22 @@ function extract_added_sink_ids(jobs)
         additive = job.additive
         final_time = job.final_time
         prune_method = job.prune_method
-        for added_sink_id in job.added_sink_ids
-            direction = contains(added_sink_id, "UP") ? "up" : "down"
-            metabolite_id =
-                replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
-            row = (
-                prune_method = prune_method,
-                additive = additive,
-                final_time = final_time,
-                metabolite_id = metabolite_id,
-                direction = direction,
-                added_sink_id = added_sink_id,
-            )
-            push!(rows, row)
+        added_sink_ids = job.added_sink_ids
+        if !isnothing(added_sink_ids)
+            for added_sink_id in job.added_sink_ids
+                direction = contains(added_sink_id, "UP") ? "up" : "down"
+                metabolite_id =
+                    replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
+                row = (
+                    prune_method = prune_method,
+                    additive = additive,
+                    final_time = final_time,
+                    metabolite_id = metabolite_id,
+                    direction = direction,
+                    added_sink_id = added_sink_id,
+                )
+                push!(rows, row)
+            end
         end
     end
     if length(rows) > 0
@@ -690,22 +710,25 @@ function extract_broken_constraints(jobs, job_results)
         prune_status = job.prune_status
         fba_status = job_result.fba_status
         if prune_status == :fail
-            prune_breaks = job.prune_breaks
-            single_prune_breaks_df = DataFrame(
-                additive = additive,
-                final_time = final_time,
-                prune_break = prune_breaks,
-            )
+            # prune_breaks = job.prune_breaks
+            # single_prune_breaks_df = DataFrame(
+            #     additive = additive,
+            #     final_time = final_time,
+            #     prune_break = prune_breaks,
+            # )
+            single_prune_breaks_df = job.prune_breaks_df
             push!(prune_breaks_dfs, single_prune_breaks_df)
         end
-        if fba_status == :fail
+        if !ismissing(fba_status) && fba_status == :fail
             fba_breaks = job_result.fba_breaks
-            single_fba_break_df = DataFrame(
-                additive = additive,
-                final_time = final_time,
-                fba_break = fba_breaks,
-            )
-            push!(fba_breaks_dfs, single_fba_break_df)
+            if !isnothing(fba_breaks)
+                single_fba_break_df = DataFrame(
+                    additive = additive,
+                    final_time = final_time,
+                    fba_break = fba_breaks,
+                )
+                push!(fba_breaks_dfs, single_fba_break_df)
+            end
         end
     end
     prune_breaks_df =
@@ -905,7 +928,10 @@ function sample_fluxes(
 
     samples_dict = Dict()
     for reaction_id in keys(samples)
-        samples_dict[reaction_id] = samples[reaction_id]
+        # TODO: Include sinks in sampling DataFrame?
+        if !occursin("R_UNKNOWN_SK_", string(reaction_id))
+            samples_dict[reaction_id] = samples[reaction_id]
+        end
     end
 
     samples_df = DataFrame(samples_dict)

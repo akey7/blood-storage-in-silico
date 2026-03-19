@@ -22,6 +22,9 @@ metabolite_bounds_df = load_metabolite_bounds()
 @info "Loading flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
+@info "Loading metabolite measurement opt outs"
+metabolites_to_ignore = load_metabolite_measurement_opt_outs()
+
 @info "Create FBA model and map metabolites onto that model"
 fba_model, _ = create_fba_model(
     base_rbc_gem;
@@ -55,7 +58,8 @@ add_metabolite_bounds_to_constraint_tree!(
     case1_ct,
     metabolite_bounds_df,
     additive,
-    final_time,
+    final_time;
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 # print_metabolite_bounds_on_constraint_tree(case1_ct)
 
@@ -95,12 +99,13 @@ add_metabolite_bounds_to_constraint_tree!(
     second_ct,
     metabolite_bounds_df,
     additive,
-    final_time,
+    final_time;
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
 @info "Custom FBA of pruned and bounded ConstraintTree"
-result = optimize_constriant_tree(second_ct, second_ct.objective.value)
+result = optimize_constraint_tree(second_ct, second_ct.objective.value)
 if !isnothing(result)
     display(result)
 end
