@@ -41,9 +41,7 @@ function load_metabolite_measurement_opt_outs()
     filename = joinpath("input", "metabolite_measurement_opt_outs.csv")
     if isfile(filename)
         df = CSV.read(filename, DataFrame)
-        return String.(
-            sort(unique(df.disabled_metabolite_id)),
-        )
+        return String.(sort(unique(df.disabled_metabolite_id)))
     else
         return String[]
     end
@@ -261,7 +259,8 @@ function add_metabolite_bounds_to_constraint_tree!(
                 ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
             end
         else
-            println("Skipping bounds for metabolite id $short_metabolite_id")
+            # println("Skipping bounds for metabolite id $short_metabolite_id")
+            continue
         end
     end
 
