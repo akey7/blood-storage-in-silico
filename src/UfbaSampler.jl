@@ -266,6 +266,7 @@ function execute_ufba_job(job, n_chains = 10)
                 prune_status = prune_status,
                 fba_status = fba_status,
                 fba_breaks = fba_breaks,
+                job_status = :prune_ok_fba_fail
             )
             return result
         else
@@ -285,6 +286,8 @@ function execute_ufba_job(job, n_chains = 10)
                 blocked_reaction_ids = blocked_reaction_ids,
                 prune_status = prune_status,
                 fba_status = fba_status,
+                fba_breaks = fba_breaks,
+                job_status = :ok,
             )
             return result
         end
@@ -297,6 +300,7 @@ function execute_ufba_job(job, n_chains = 10)
             prune_status = prune_status,
             fba_status = missing,
             fba_breaks = nothing,
+            job_status = :prune_fail_fba_fail,
         )
         return result
     end
