@@ -266,7 +266,7 @@ function execute_ufba_job(job, n_chains = 10)
                 prune_status = prune_status,
                 fba_status = fba_status,
                 fba_breaks = fba_breaks,
-                job_status = :prune_ok_fba_fail
+                job_status = :prune_ok_fba_fail,
             )
             return result
         else
@@ -341,8 +341,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         status_row = (
             additive = job.additive,
             final_time = job.final_time,
-            prune_status = job_result.prune_status,
-            fba_status = job_result.fba_status,
+            job_status = job_result.job_status,
             n_all_zero_fluxes = job_result.n_all_zero_fluxes,
         )
         push!(status_rows, status_row)
@@ -366,8 +365,9 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     ]
     sampling_df = vcat(sampling_dfs...)
     status_counts_df = @chain status_df begin
-        @groupby(:fba_status)
+        @groupby(:job_status)
         combine(nrow => :Count)
+        @orderby(:Count)
     end
     joined_blocked_reaction_ids_df = innerjoin(
         blocked_reaction_ids_df,
@@ -651,8 +651,11 @@ function extract_added_sink_ids(jobs)
         if !isnothing(added_sink_ids)
             for added_sink_id in job.added_sink_ids
                 direction = contains(added_sink_id, "UP") ? "up" : "down"
-                metabolite_id =
-                    replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
+                metabolite_id = replace(
+                    added_sink_id,
+                    "R_UNKNOWN_SK_UP_" => "",
+                    "R_UNKNOWN_SK_DOWN_" => "",
+                )
                 row = (
                     prune_method = prune_method,
                     additive = additive,
