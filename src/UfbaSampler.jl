@@ -284,6 +284,27 @@ function execute_ufba_job(job, n_chains = 10)
             if !isnothing(sinks_df)
                 sinks_df[!, :additive] .= additive
                 sinks_df[!, :final_time] .= final_time
+                @rtransform!(
+                    sinks_df,
+                    :metabolite = replace(
+                        string(:sink_id),
+                        "R_UNKNOWN_SK_UP_" => "",
+                        "R_UNKNOWN_SK_DOWN_" => "",
+                    )
+                )
+                @rtransform!(
+                    sinks_df,
+                    :direction = occursin("UP", string(:sink_id)) ? "up" : "down"
+                )
+                @select!(
+                    sinks_df,
+                    :additive,
+                    :final_time,
+                    :sink_id,
+                    :metabolite,
+                    :direction,
+                    :median_flux
+                )
             end
             result = (
                 samples_df = samples_df,
@@ -374,8 +395,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         job_result in job_results if !isnothing(job_result.samples_df)
     ]
     sinks_dfs = [
-        job_result.sinks_df for
-        job_result in job_results if !isnothing(job_result.sinks_df)
+        job_result.sinks_df for job_result in job_results if !isnothing(job_result.sinks_df)
     ]
     sampling_df = vcat(sampling_dfs...)
     sinks_df = length(sinks_dfs) > 0 ? vcat(sinks_dfs...) : nothing
@@ -958,9 +978,8 @@ function sample_fluxes(
     samples_df = DataFrame(samples_dict)
 
     sinks_rows = [
-        (sink_id = sink_id, median_flux = median(samples[sink_id]))
-        for sink_id in keys(samples)
-        if occursin("R_UNKNOWN_SK_", string(sink_id))
+        (sink_id = sink_id, median_flux = median(samples[sink_id])) for
+        sink_id in keys(samples) if occursin("R_UNKNOWN_SK_", string(sink_id))
     ]
     if length(sinks_rows) > 0
         sinks_df = DataFrame(sinks_rows)
