@@ -72,8 +72,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_to_ignore = metabolites_to_ignore,
 )
 
-sink_status_df = extract_sinks(ufba_jobs)
-added_sink_ids_df = extract_added_sink_ids(ufba_jobs)
+sink_overview_df = extract_sink_overview(ufba_jobs)
 ufba_jobs_result =
     execute_all_ufba_jobs(ufba_jobs, rxn_ids_to_strings_df; n_chains = n_chains)
 sampling_df = ufba_jobs_result.sampling_df
@@ -96,15 +95,12 @@ println("Wrote $status_filename")
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
-sink_status_filename = joinpath("output", "sink_status.csv")
-CSV.write(sink_status_filename, sink_status_df)
-println("Wrote $sink_status_filename")
+sink_overview_filename = joinpath("output", "ufba_sink_overview.csv")
+CSV.write(sink_overview_filename, sink_overview_df)
+println("Wrote $sink_overview_filename")
 blocked_reactions_filename = joinpath("output", "ufba_blocked_reactions.csv")
 CSV.write(blocked_reactions_filename, joined_blocked_reaction_ids_df)
 println("Wrote $blocked_reactions_filename")
-added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
-CSV.write(added_sink_ids_filename, added_sink_ids_df)
-println("Wrote $added_sink_ids_filename")
 prune_breaks_filename = joinpath("output", "ufba_prune_breaks.csv")
 CSV.write(prune_breaks_filename, prune_breaks_df)
 println("Wrote $prune_breaks_filename")

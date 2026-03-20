@@ -30,8 +30,8 @@ export sample_fluxes,
     display_jump_results,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
+    extract_sink_overview,
     map_reaction_ids_to_reaction_strings,
-    extract_sinks,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
@@ -594,7 +594,7 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_sinks(ufba_jobs)
+    extract_sink_overview(ufba_jobs)
 
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
 
@@ -607,7 +607,7 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 Returns two DataFrames:
 1. Status of unmeasured metabolite sinks for each uFBA job.
 """
-function extract_sinks(ufba_jobs)
+function extract_sink_overview(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         prune_method = ufba_job.prune_method
@@ -653,78 +653,6 @@ function extract_sinks(ufba_jobs)
         :direction
     )
     return sorted_df
-end
-
-"""
-    extract_added_sink_ids(jobs)
-
-Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
-
-# Arguments
-1. `jobs`: The result of the call to [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
-
-# Returns
-`DataFrame`
-
-Returns a DataFrame with the following columns:
-1. `pruning_method`: The pruning method (right now, always `:case1`)
-2. `additive`: The additive
-3. `final_time`: Final time of the model
-4. `metabolite_id`: The metabolite the sink is for
-5. `direction`: up or down depending on the direction of the sink.
-6. `added_sink_id`: The reaction id of the corresponding sink.
-
-The DataFrame is sorted by additive, final time. metabolite id, and direction.
-"""
-function extract_added_sink_ids(jobs)
-    rows = []
-    for job in jobs
-        additive = job.additive
-        final_time = job.final_time
-        prune_method = job.prune_method
-        added_sink_ids = job.added_sink_ids
-        if !isnothing(added_sink_ids)
-            for added_sink_id in job.added_sink_ids
-                direction = contains(added_sink_id, "UP") ? "up" : "down"
-                metabolite_id = replace(
-                    added_sink_id,
-                    "R_UNKNOWN_SK_UP_" => "",
-                    "R_UNKNOWN_SK_DOWN_" => "",
-                )
-                row = (
-                    prune_method = prune_method,
-                    additive = additive,
-                    final_time = final_time,
-                    metabolite_id = metabolite_id,
-                    direction = direction,
-                    added_sink_id = added_sink_id,
-                )
-                push!(rows, row)
-            end
-        end
-    end
-    if length(rows) > 0
-        unsorted_df = DataFrame(rows)
-        sorted_df = @orderby(
-            unsorted_df,
-            :prune_method,
-            :additive,
-            :final_time,
-            :metabolite_id,
-            :direction
-        )
-        return sorted_df
-    else
-        empty_df = DataFrame(
-            pruning_method = [],
-            additive = [],
-            final_time = [],
-            metabolite_id = [],
-            direction = [],
-            added_sink_id = [],
-        )
-        return empty_df
-    end
 end
 
 """
