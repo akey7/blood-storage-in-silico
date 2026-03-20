@@ -843,9 +843,11 @@ Use the `julia -p X...` -p command line option to set the number of workers for 
 4. `tolerance::Float64`: The tolerance bounds on the objective.
 
 # Returns
-`DataFrame`
+`Tuple{DataFrame,Union{Nothing,DataFrame}}`
 
-1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
+Returns a tuple with two elements:
+1. A `DataFrame` with each non-sink reaction as a column and each row a flux sample.
+2. `nothing` or a DataFrame with sink reaction ids in one column and median flux in another column.
 """
 function sample_fluxes(
     constraints,
