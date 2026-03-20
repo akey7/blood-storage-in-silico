@@ -128,10 +128,11 @@ Outputs the following files:
 3. `output/case3_sinks.csv`: The unmeasured metabolite sinks from the Case 3 analysis, and whether they had zero or non-zero flux.
 4. `output/fba_model_metabolites.csv`: Metabolite ids of the FBA models created for the uFBA runs.
 5. `output/ufba_blocked_reactions.csv`: Reaction ids of blocked reactions and their corresponding strings for each model.
-6. `output/ufba_added_sink_ids.csv`: Reaction ids of sinks added and their corresponding metabolites.
+6. `output/ufba_optimized_sinks.csv`: Reaction ids of sinks sampled, their corresponding metabolites and directions, and median fluxes.
 7. `output/debug_case1.lp` (if configured in the code): Diagnostic output from `optimize_case_1()` to assist in debugging Case 1 optimization runs.
 8. `output/ufba_prune_breaks.csv`: Constraints broken in pruning attempts across all uFBA models.
-9. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before 
+9. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before the uFBA runs.
+10. `output/ufba_sink_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 

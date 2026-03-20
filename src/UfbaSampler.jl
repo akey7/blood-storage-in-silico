@@ -13,6 +13,7 @@ using ThreadsX
 using OrderedCollections
 using Chain
 using ProgressMeter
+using Statistics
 
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
@@ -29,8 +30,8 @@ export sample_fluxes,
     display_jump_results,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
+    extract_sink_overview,
     map_reaction_ids_to_reaction_strings,
-    extract_sinks,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
@@ -272,7 +273,7 @@ function execute_ufba_job(job, n_chains = 10)
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
-            samples_df = sample_fluxes(
+            samples_df, sinks_df = sample_fluxes(
                 pruned_with_metabolite_bounds_ct,
                 workers_config;
                 n_chains = n_chains,
@@ -280,8 +281,34 @@ function execute_ufba_job(job, n_chains = 10)
             n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
+            if !isnothing(sinks_df)
+                sinks_df[!, :additive] .= additive
+                sinks_df[!, :final_time] .= final_time
+                @rtransform!(
+                    sinks_df,
+                    :metabolite = replace(
+                        string(:sink_id),
+                        "R_UNKNOWN_SK_UP_" => "",
+                        "R_UNKNOWN_SK_DOWN_" => "",
+                    )
+                )
+                @rtransform!(
+                    sinks_df,
+                    :direction = occursin("UP", string(:sink_id)) ? "up" : "down"
+                )
+                @select!(
+                    sinks_df,
+                    :additive,
+                    :final_time,
+                    :sink_id,
+                    :metabolite,
+                    :direction,
+                    :median_flux
+                )
+            end
             result = (
                 samples_df = samples_df,
+                sinks_df = sinks_df,
                 n_all_zero_fluxes = n_all_zero_fluxes,
                 blocked_reaction_ids = blocked_reaction_ids,
                 prune_status = prune_status,
@@ -295,6 +322,7 @@ function execute_ufba_job(job, n_chains = 10)
         # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
         result = (
             samples_df = nothing,
+            sinks_df = nothing,
             n_all_zero_fluxes = missing,
             blocked_reaction_ids = missing,
             prune_status = prune_status,
@@ -366,7 +394,11 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         job_result.samples_df for
         job_result in job_results if !isnothing(job_result.samples_df)
     ]
+    sinks_dfs = [
+        job_result.sinks_df for job_result in job_results if !isnothing(job_result.sinks_df)
+    ]
     sampling_df = vcat(sampling_dfs...)
+    sinks_df = length(sinks_dfs) > 0 ? vcat(sinks_dfs...) : nothing
     status_counts_df = @chain status_df begin
         @groupby(:job_status)
         combine(nrow => :Count)
@@ -379,6 +411,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     broken_constraints = extract_broken_constraints(jobs, job_results)
     result = (
         sampling_df = sampling_df,
+        sinks_df = sinks_df,
         status_df = status_df,
         status_counts_df = status_counts_df,
         joined_blocked_reaction_ids_df = joined_blocked_reaction_ids_df,
@@ -561,7 +594,7 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_sinks(ufba_jobs)
+    extract_sink_overview(ufba_jobs)
 
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
 
@@ -574,7 +607,7 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 Returns two DataFrames:
 1. Status of unmeasured metabolite sinks for each uFBA job.
 """
-function extract_sinks(ufba_jobs)
+function extract_sink_overview(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         prune_method = ufba_job.prune_method
@@ -620,78 +653,6 @@ function extract_sinks(ufba_jobs)
         :direction
     )
     return sorted_df
-end
-
-"""
-    extract_added_sink_ids(jobs)
-
-Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
-
-# Arguments
-1. `jobs`: The result of the call to [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
-
-# Returns
-`DataFrame`
-
-Returns a DataFrame with the following columns:
-1. `pruning_method`: The pruning method (right now, always `:case1`)
-2. `additive`: The additive
-3. `final_time`: Final time of the model
-4. `metabolite_id`: The metabolite the sink is for
-5. `direction`: up or down depending on the direction of the sink.
-6. `added_sink_id`: The reaction id of the corresponding sink.
-
-The DataFrame is sorted by additive, final time. metabolite id, and direction.
-"""
-function extract_added_sink_ids(jobs)
-    rows = []
-    for job in jobs
-        additive = job.additive
-        final_time = job.final_time
-        prune_method = job.prune_method
-        added_sink_ids = job.added_sink_ids
-        if !isnothing(added_sink_ids)
-            for added_sink_id in job.added_sink_ids
-                direction = contains(added_sink_id, "UP") ? "up" : "down"
-                metabolite_id = replace(
-                    added_sink_id,
-                    "R_UNKNOWN_SK_UP_" => "",
-                    "R_UNKNOWN_SK_DOWN_" => "",
-                )
-                row = (
-                    prune_method = prune_method,
-                    additive = additive,
-                    final_time = final_time,
-                    metabolite_id = metabolite_id,
-                    direction = direction,
-                    added_sink_id = added_sink_id,
-                )
-                push!(rows, row)
-            end
-        end
-    end
-    if length(rows) > 0
-        unsorted_df = DataFrame(rows)
-        sorted_df = @orderby(
-            unsorted_df,
-            :prune_method,
-            :additive,
-            :final_time,
-            :metabolite_id,
-            :direction
-        )
-        return sorted_df
-    else
-        empty_df = DataFrame(
-            pruning_method = [],
-            additive = [],
-            final_time = [],
-            metabolite_id = [],
-            direction = [],
-            added_sink_id = [],
-        )
-        return empty_df
-    end
 end
 
 """
@@ -882,9 +843,11 @@ Use the `julia -p X...` -p command line option to set the number of workers for 
 4. `tolerance::Float64`: The tolerance bounds on the objective.
 
 # Returns
-`DataFrame`
+`Tuple{DataFrame,Union{Nothing,DataFrame}}`
 
-1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
+Returns a tuple with two elements:
+1. A `DataFrame` with each non-sink reaction as a column and each row a flux sample.
+2. `nothing` or a DataFrame with sink reaction ids in one column and median flux in another column.
 """
 function sample_fluxes(
     constraints,
@@ -923,7 +886,7 @@ function sample_fluxes(
     )
 
     # I could use kwargs... in the following call but am not using that at
-    # this time.
+    # this time as I find kwargs to make the code a confusing mess.
 
     samples = sample_constraints(
         method,
@@ -938,14 +901,22 @@ function sample_fluxes(
 
     samples_dict = Dict()
     for reaction_id in keys(samples)
-        # TODO: Include sinks in sampling DataFrame?
         if !occursin("R_UNKNOWN_SK_", string(reaction_id))
             samples_dict[reaction_id] = samples[reaction_id]
         end
     end
-
     samples_df = DataFrame(samples_dict)
-    return samples_df
+
+    sinks_rows = [
+        (sink_id = sink_id, median_flux = median(samples[sink_id])) for
+        sink_id in keys(samples) if occursin("R_UNKNOWN_SK_", string(sink_id))
+    ]
+    if length(sinks_rows) > 0
+        sinks_df = DataFrame(sinks_rows)
+        return samples_df, sinks_df
+    else
+        return samples_df, nothing
+    end
 end
 
 end
