@@ -82,12 +82,16 @@ status_counts_df = ufba_jobs_result.status_counts_df
 joined_blocked_reaction_ids_df = ufba_jobs_result.joined_blocked_reaction_ids_df
 prune_breaks_df = ufba_jobs_result.prune_breaks_df
 fba_breaks_df = ufba_jobs_result.fba_breaks_df
+sinks_df = ufba_jobs_result.sinks_df
+
 @info "uFBA: Final status"
 display(status_df)
+display(status_counts_df)
+
+# Write all the files
 status_filename = joinpath("output", "ufba_sampling_status.csv")
 CSV.write(status_filename, status_df)
 println("Wrote $status_filename")
-display(status_counts_df)
 @info "Writing sampling results"
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
@@ -107,3 +111,10 @@ println("Wrote $prune_breaks_filename")
 fba_breaks_filename = joinpath("output", "ufba_fba_breaks.csv")
 CSV.write(fba_breaks_filename, fba_breaks_df)
 println("Wrote $fba_breaks_filename")
+if !isnothing(sinks_df)
+    sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
+    CSV.write(sinks_filename, sinks_df)
+    println("Wrote $sinks_filename")
+else
+    println("No sinks reported as optimized.")
+end

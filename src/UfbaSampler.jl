@@ -13,6 +13,7 @@ using ThreadsX
 using OrderedCollections
 using Chain
 using ProgressMeter
+using Statistics
 
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
@@ -272,7 +273,7 @@ function execute_ufba_job(job, n_chains = 10)
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
-            samples_df = sample_fluxes(
+            samples_df, sinks_df = sample_fluxes(
                 pruned_with_metabolite_bounds_ct,
                 workers_config;
                 n_chains = n_chains,
@@ -280,8 +281,13 @@ function execute_ufba_job(job, n_chains = 10)
             n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
+            if !isnothing(sinks_df)
+                sinks_df[!, :additive] .= additive
+                sinks_df[!, :final_time] .= final_time
+            end
             result = (
                 samples_df = samples_df,
+                sinks_df = sinks_df,
                 n_all_zero_fluxes = n_all_zero_fluxes,
                 blocked_reaction_ids = blocked_reaction_ids,
                 prune_status = prune_status,
@@ -295,6 +301,7 @@ function execute_ufba_job(job, n_chains = 10)
         # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
         result = (
             samples_df = nothing,
+            sinks_df = nothing,
             n_all_zero_fluxes = missing,
             blocked_reaction_ids = missing,
             prune_status = prune_status,
@@ -366,7 +373,12 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         job_result.samples_df for
         job_result in job_results if !isnothing(job_result.samples_df)
     ]
+    sinks_dfs = [
+        job_result.sinks_df for
+        job_result in job_results if !isnothing(job_result.sinks_df)
+    ]
     sampling_df = vcat(sampling_dfs...)
+    sinks_df = length(sinks_dfs) > 0 ? vcat(sinks_dfs...) : nothing
     status_counts_df = @chain status_df begin
         @groupby(:job_status)
         combine(nrow => :Count)
@@ -379,6 +391,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     broken_constraints = extract_broken_constraints(jobs, job_results)
     result = (
         sampling_df = sampling_df,
+        sinks_df = sinks_df,
         status_df = status_df,
         status_counts_df = status_counts_df,
         joined_blocked_reaction_ids_df = joined_blocked_reaction_ids_df,
@@ -923,7 +936,7 @@ function sample_fluxes(
     )
 
     # I could use kwargs... in the following call but am not using that at
-    # this time.
+    # this time as I find kwargs to make the code a confusing mess.
 
     samples = sample_constraints(
         method,
@@ -938,14 +951,23 @@ function sample_fluxes(
 
     samples_dict = Dict()
     for reaction_id in keys(samples)
-        # TODO: Include sinks in sampling DataFrame?
         if !occursin("R_UNKNOWN_SK_", string(reaction_id))
             samples_dict[reaction_id] = samples[reaction_id]
         end
     end
-
     samples_df = DataFrame(samples_dict)
-    return samples_df
+
+    sinks_rows = [
+        (sink_id = sink_id, median_flux = median(samples[sink_id]))
+        for sink_id in keys(samples)
+        if occursin("R_UNKNOWN_SK_", string(sink_id))
+    ]
+    if length(sinks_rows) > 0
+        sinks_df = DataFrame(sinks_rows)
+        return samples_df, sinks_df
+    else
+        return samples_df, nothing
+    end
 end
 
 end
