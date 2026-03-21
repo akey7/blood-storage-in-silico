@@ -38,6 +38,8 @@ Here are purposes of the input files:
 
 6. `Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`: Absolute quantification information, to be combined with relative quant data.
 
+7. `metabolite_measurement_opt_outs_template.csv`: An example template for metabolite measurements to ignore when setting up model constriants. See execution of `ufba_sampler.jl` for more information.
+
 ### Create the `output/` Folders
 
 There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:

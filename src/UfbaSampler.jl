@@ -13,6 +13,7 @@ using ThreadsX
 using OrderedCollections
 using Chain
 using ProgressMeter
+using Statistics
 
 include("FbaModelBuilder.jl")
 using .FbaModelBuilder
@@ -24,23 +25,22 @@ using .MetaboliteBounds
 export sample_fluxes,
     ufba_all_additives_all_times,
     histograms_for_reaction_in_additive,
-    plot_all_histograms,
-    fba,
     is_metabolite_in_exchange,
     list_objectives_in_model,
     display_jump_results,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
+    extract_sink_overview,
     map_reaction_ids_to_reaction_strings,
-    extract_sinks,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
     extract_added_sink_ids,
-    decompose_sink_id
-
+    decompose_sink_id,
+    optimize_constraint_tree,
+    extract_broken_constraints
 
 """
     init_workers!(; project=Base.active_project())
@@ -185,38 +185,6 @@ function save_ufba_model_sbml(
 end
 
 """
-    fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-
-Standard flux balance analysis of the given `model`. Returns samples of fluxes upon success, `nothing` for infeasible solutions.
-
-# Arguments
-1. `model::A.AbstractFBCModel`: The model to optimize.
-
-2. `n_chains::Int64 = 10`: Number of chains to sample. Must be a keyword and defaults to 10.
-
-# Returns
-`Union{Nothing,DataFrame}`
-
-Returns samples of fluxes upon success, `nothing` for infeasible solutions.
-"""
-function fba(model::A.AbstractFBCModel; n_chains::Int64 = 10)
-    @info "Standard FBA sampling, N chains $n_chains"
-    println("> Simple optimization attempt")
-    solution = flux_balance_analysis(model; optimizer = HiGHS.Optimizer)
-    if isnothing(solution)
-        println("Simple optimization failed")
-        return nothing, nothing
-    else
-        println("Simple optimization succeeded!")
-        display(solution.fluxes)
-        println("> Flux sampling")
-        workers_config = workers()
-        samples_df = sample_fluxes(model, workers_config; n_chains = n_chains)
-        return solution, samples_df
-    end
-end
-
-"""
     list_objectives_in_model(model::A.AbstractFBCModel)
 
 Lists all objectives in `model` to stdout.
@@ -271,39 +239,105 @@ Execute a uFBA job specified by the first argument with the given number of chai
 2. `n_chains`: Number of chains to sample. Defaults to 10.
 
 # Returns
-`Tuple{Union{Nothing,DataFrame},Union{Int64,Missing}}`
+`Tuple{Union{Nothing,DataFrame},Union{Int64,Missing}, Vector}`
 
-Returns a tuple of two items. First, a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed. Second, an Int64 of the number of fluxes that have zeros for all samples or missing if the sampling failed.
+Returns a tuple of three items: 
+1. First, a DataFrame of sampled fluxes if successful, or `nothing` is the optimization failed. 
+2. Second, an Int64 of the number of fluxes that have zeros for all samples or missing if the sampling failed.
+3. A vector of blocked reaction ids
+
+If the pruning optimization with [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) fails, returns `nothing, missing, []`.
 """
 function execute_ufba_job(job, n_chains = 10)
     additive = job.additive
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
-    @info "execute_ufba_job: additive: $additive, final_time: $final_time"
-    objective_flux =
-        optimized_values(pruned_with_metabolite_bounds_ct; optimizer = HiGHS.Optimizer)
-    if isnothing(objective_flux)
-        println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
-        return nothing, missing, missing
+    prune_status = job.prune_status
+    if prune_status == :ok
+        # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
+        objective_value = pruned_with_metabolite_bounds_ct.objective.value
+        fba_status, fba_breaks =
+            optimize_constraint_tree(pruned_with_metabolite_bounds_ct, objective_value)
+        if fba_status == :fail
+            # println("OH NO uFBA SIMPLE OPTIMIZATION FAILED!")
+            result = (
+                samples_df = nothing,
+                n_all_zero_fluxes = missing,
+                blocked_reaction_ids = missing,
+                prune_status = prune_status,
+                fba_status = fba_status,
+                fba_breaks = fba_breaks,
+                job_status = :prune_ok_fba_fail,
+            )
+            return result
+        else
+            # println("Simple optimization succeeded! Sampling fluxes...")
+            workers_config = workers()
+            samples_df, sinks_df = sample_fluxes(
+                pruned_with_metabolite_bounds_ct,
+                workers_config;
+                n_chains = n_chains,
+            )
+            n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
+            samples_df[!, :additive] .= additive
+            samples_df[!, :final_time] .= final_time
+            if !isnothing(sinks_df)
+                sinks_df[!, :additive] .= additive
+                sinks_df[!, :final_time] .= final_time
+                @rtransform!(
+                    sinks_df,
+                    :metabolite = replace(
+                        string(:sink_id),
+                        "R_UNKNOWN_SK_UP_" => "",
+                        "R_UNKNOWN_SK_DOWN_" => "",
+                    )
+                )
+                @rtransform!(
+                    sinks_df,
+                    :direction = occursin("UP", string(:sink_id)) ? "up" : "down"
+                )
+                @select!(
+                    sinks_df,
+                    :additive,
+                    :final_time,
+                    :sink_id,
+                    :metabolite,
+                    :direction,
+                    :median_flux
+                )
+            end
+            result = (
+                samples_df = samples_df,
+                sinks_df = sinks_df,
+                n_all_zero_fluxes = n_all_zero_fluxes,
+                blocked_reaction_ids = blocked_reaction_ids,
+                prune_status = prune_status,
+                fba_status = fba_status,
+                fba_breaks = fba_breaks,
+                job_status = :ok,
+            )
+            return result
+        end
     else
-        println("Simple optimization succeeded! Sampling fluxes...")
-        workers_config = workers()
-        samples_df = sample_fluxes(
-            pruned_with_metabolite_bounds_ct,
-            workers_config;
-            n_chains = n_chains,
+        # @error "execute_ufba_job(): optimize_case_1() failed for additive: $additive, final_time: $final_time, skipping"
+        result = (
+            samples_df = nothing,
+            sinks_df = nothing,
+            n_all_zero_fluxes = missing,
+            blocked_reaction_ids = missing,
+            prune_status = prune_status,
+            fba_status = missing,
+            fba_breaks = nothing,
+            job_status = :prune_fail_fba_fail,
         )
-        n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
-        samples_df[!, :additive] .= additive
-        samples_df[!, :final_time] .= final_time
-        return samples_df, n_all_zero_fluxes, blocked_reaction_ids
+        return result
     end
 end
 
 """
     execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
 
-Executes and aggregates results from all uFBA jobs specified.
+Executes and aggregates results from all uFBA jobs specified. For jobs returned as the failure case from [`execute_ufba_job`](@ref BloodStorageInSilico.UfbaSampler.execute_ufba_job), creates a row in the statuses of each sampling job DataFrame with `n_all_zero_fluxes` as a `missing` value. Displays a nice green status bar as it goes.
 
 # Arguments
 1. `jobs`: Vector of all jobs to be executed.
@@ -311,34 +345,35 @@ Executes and aggregates results from all uFBA jobs specified.
 3. `n_chains = 10`: The number of sampling chains for each job. Defaults to 10.
 
 # Returns
-`Tuple{DataFrame,DataFrame,DataFrame,DataFrame}`
+`NamedTuple`
 
-A tuple of the following four DataFrames: 
-1. All sampling results,
-2. Statuses of each attempted sampling job,
-3. Counts of statuses across all sampling jobs, and
-4. Per-model blocked reaction ids with reaction strings joined in.
+Returns a named tuple with the following four DataFrames: 
+1. `sampling_df`: All sampling results,
+2. `status_df`: Statuses of each attempted sampling job,
+3. `status_counts_df`: Counts of statuses across all sampling jobs, and
+4. `joined_blocked_reaction_ids_df`: Per-model blocked reaction ids with reaction strings joined in.
+5. `prune_breaks_df`: DataFrame of constraints conflicted during pruning, consolidated into one DataFrame.
+6. `fba_breaks_df`: DataFrame of constraints conflicted during initial FBA optimization, consolidated into one DataFrame.
 """
 function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
-    all_sampling_dfs_1 = map(jobs) do job
-        execute_ufba_job(job, n_chains)
+    n_jobs = length(jobs)
+    prog = Progress(n_jobs, "Optimizing and sampling uFBA jobs")
+    job_results = map(jobs) do job
+        job_result = execute_ufba_job(job, n_chains)
+        next!(prog)
+        return job_result
     end
-    all_results = [
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) for
-        (sdf, n_all_zero_fluxes, blocked_reaction_ids) in all_sampling_dfs_1
-    ]
-    status_rows = vcat(
-        eachrow([
-            (
-                additive = job.additive,
-                final_time = job.final_time,
-                status = isnothing(sdf) ? "fail" : "ok",
-                n_all_zero_fluxes = n_all_zero_fluxes,
-            ) for (job, (sdf, n_all_zero_fluxes, _)) in zip(jobs, all_results)
-        ])...,
-    )
+    status_rows = []
     blocked_reaction_ids_rows = []
-    for (job, (_, _, blocked_reaction_ids)) in zip(jobs, all_results)
+    for (job, job_result) in zip(jobs, job_results)
+        status_row = (
+            additive = job.additive,
+            final_time = job.final_time,
+            job_status = job_result.job_status,
+            n_all_zero_fluxes = job_result.n_all_zero_fluxes,
+        )
+        push!(status_rows, status_row)
+        blocked_reaction_ids = job_result.blocked_reaction_ids
         if !ismissing(blocked_reaction_ids)
             for blocked_reaction_id in blocked_reaction_ids
                 blocked_reaction_ids_row = (
@@ -350,23 +385,44 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             end
         end
     end
-    sampling_df = vcat([sdf for (sdf, _) in all_sampling_dfs_1 if !isnothing(sdf)]...)
-    status_df = DataFrame(status_rows)
-    status_counts_df = @chain status_df begin
-        @groupby(:status)
-        combine(nrow => :Count)
+    status_df = @chain status_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
     end
     blocked_reaction_ids_df = DataFrame(blocked_reaction_ids_rows)
-    joined_blocked_reaction_ids_df = innerjoin(
-        blocked_reaction_ids_df,
-        rxn_ids_to_strings_df,
-        on = :blocked_reaction_id => :reaction_id,
+    sampling_dfs = [
+        job_result.samples_df for
+        job_result in job_results if !isnothing(job_result.samples_df)
+    ]
+    sinks_dfs = [
+        job_result.sinks_df for job_result in job_results if !isnothing(job_result.sinks_df)
+    ]
+    sampling_df = vcat(sampling_dfs...)
+    sinks_df = length(sinks_dfs) > 0 ? vcat(sinks_dfs...) : nothing
+    status_counts_df = @chain status_df begin
+        @groupby(:job_status)
+        combine(nrow => :Count)
+        @orderby(:Count)
+    end
+    joined_blocked_reaction_ids_df = @chain blocked_reaction_ids_df begin
+        innerjoin(rxn_ids_to_strings_df, on = :blocked_reaction_id => :reaction_id)
+        @orderby(:additive, :final_time, :blocked_reaction_id)
+    end
+    broken_constraints = extract_broken_constraints(jobs, job_results)
+    result = (
+        sampling_df = sampling_df,
+        sinks_df = sinks_df,
+        status_df = status_df,
+        status_counts_df = status_counts_df,
+        joined_blocked_reaction_ids_df = joined_blocked_reaction_ids_df,
+        prune_breaks_df = broken_constraints.prune_breaks_df,
+        fba_breaks_df = broken_constraints.fba_breaks_df,
     )
-    return sampling_df, status_df, status_counts_df, joined_blocked_reaction_ids_df
+    return result
 end
 
 """
-    make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64)
+    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing)
 
 Create all models that represent each combination of additive and final time point.
 
@@ -374,6 +430,8 @@ Create all models that represent each combination of additive and final time poi
 1. `metabolite_bounds_df::DataFrame`: The bounds of rates of concentration change for the metabolites.
 2. `n_models::Int64`: Number of models to generate. If `-1`, all possible models are created.
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
+4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
+5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
 
 # Returns
 `Vector{NamedTuple}`
@@ -388,14 +446,17 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `zero_sinks`: Sinks that have zero flux that were pruned out
 7. `nonzero_sinks`: Sinks that have non-zero flux
 8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
-9. `pruning_method`: The pruning method, currently hardcoded to `:case1`
+9. `prune_method`: The pruning method, currently hardcoded to `:case1` because that is the only supported Case.
 10. `pruned_with_metabolite_bounds_ct`: A ConstraintTree with metabolite bounds and the pruned set of sinks added, ready for optimziation.
+11. `prune_optimize_status`: Either `:ok` (for a successful prune optimization) or `:fail` for a failed prune optimization.
+12. `prune_breaks_df`: If pruning was a `:fail` as indicated by `prune_optimize_status`, this field is populated with a DataFrame reporting the broken constraints. If the pruning was `:ok`, this field is `nothing`.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
     n_models::Int64;
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
+    metabolites_to_ignore::Vector{String} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -427,54 +488,84 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         case1_ct = flux_balance_constraints(full_model)
-        prune_optimize_result = optimize_case_1(case1_ct; write_lp_path = nothing)
-        # TODO: Add more robust error handling here.
-        # if isnothing(prune_optimize_result_ct)
-        #     @error "Failed to optimize case 3 for additive: $additive, final_time: $final_time"
-        # end
-        case_1_analysis = analyze_case_1_pruning_optimization(prune_optimize_result)
-        prune_zero_sinks = string.(case_1_analysis.prune)
-        nonzero_sinks = string.(case_1_analysis.keep)
-        pruned_model, _ = create_fba_model(
-            base_rbc_gem;
-            exchanges = exchanges,
-            flux_bounds_overrides_df = flux_bounds_overrides_df,
-        )
-        second_sink_specifications = (
-            metabolite_status_df = metabolite_status_df,
-            additive = additive,
-            prune_zero_sinks = prune_zero_sinks,
-            sink_opt_outs = nothing,
-        )
-        added_sink_ids = add_sinks_for_unmatched_metabolites!(
-            pruned_model,
-            second_sink_specifications,
-        )
-
-        # This SBML will have sinks (if added) but not metabolite bounds.
-        # For the graph analysis that is not important at this time.
-        save_ufba_model_sbml(pruned_model, additive, final_time)
-
-        pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
         add_metabolite_bounds_to_constraint_tree!(
-            pruned_with_metabolite_bounds_ct,
+            case1_ct,
             metabolite_bounds_df,
             additive_string,
-            final_time,
+            final_time;
+            metabolites_to_ignore = metabolites_to_ignore,
         )
-        next!(prog)
-        (
-            additive = additive,
-            final_time = final_time,
-            full_model = deepcopy(full_model),
-            pruned_model = deepcopy(pruned_model),
-            metabolite_bounds_df = deepcopy(metabolite_bounds_df),
-            zero_sinks = prune_zero_sinks,
-            nonzero_sinks = nonzero_sinks,
-            added_sink_ids = added_sink_ids,
-            pruning_method = :case1,
-            pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
-        )
+        prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
+        if prune_status == :ok
+            case_1_analysis = analyze_case_1_pruning_optimization(prune_result)
+            prune_zero_sinks = string.(case_1_analysis.prune)
+            nonzero_sinks = string.(case_1_analysis.keep)
+            pruned_model, _ = create_fba_model(
+                base_rbc_gem;
+                exchanges = exchanges,
+                flux_bounds_overrides_df = flux_bounds_overrides_df,
+            )
+            second_sink_specifications = (
+                metabolite_status_df = metabolite_status_df,
+                additive = additive,
+                prune_zero_sinks = prune_zero_sinks,
+                sink_opt_outs = nothing,
+            )
+            added_sink_ids = add_sinks_for_unmatched_metabolites!(
+                pruned_model,
+                second_sink_specifications,
+            )
+
+            # This SBML will have sinks (if added) but not metabolite bounds.
+            # For the graph analysis that is not important at this time.
+            save_ufba_model_sbml(pruned_model, additive, final_time)
+
+            pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
+            add_metabolite_bounds_to_constraint_tree!(
+                pruned_with_metabolite_bounds_ct,
+                metabolite_bounds_df,
+                additive_string,
+                final_time;
+                metabolites_to_ignore = metabolites_to_ignore,
+            )
+            next!(prog)
+            return (
+                additive = additive,
+                final_time = final_time,
+                full_model = deepcopy(full_model),
+                pruned_model = deepcopy(pruned_model),
+                metabolite_bounds_df = deepcopy(metabolite_bounds_df),
+                zero_sinks = prune_zero_sinks,
+                nonzero_sinks = nonzero_sinks,
+                added_sink_ids = added_sink_ids,
+                prune_method = :case1,
+                pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
+                prune_status = prune_status,
+                prune_breaks_df = nothing,
+            )
+        else
+            prune_breaks_df = DataFrame(
+                prune_method = :case1,
+                additive = additive,
+                final_time = final_time,
+                broken_case_1_constraint = prune_result,
+            )
+            next!(prog)
+            return (
+                additive = additive,
+                final_time = final_time,
+                full_model = deepcopy(full_model),
+                pruned_model = nothing,
+                metabolite_bounds_df = deepcopy(metabolite_bounds_df),
+                zero_sinks = nothing,
+                nonzero_sinks = nothing,
+                added_sink_ids = nothing,
+                prune_method = :case1,
+                pruned_with_metabolite_bounds_ct = nothing,
+                prune_status = prune_status,
+                prune_breaks_df = prune_breaks_df,
+            )
+        end
     end
     return result
 end
@@ -503,7 +594,7 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_sinks(ufba_jobs)
+    extract_sink_overview(ufba_jobs)
 
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
 
@@ -516,100 +607,225 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 Returns two DataFrames:
 1. Status of unmeasured metabolite sinks for each uFBA job.
 """
-function extract_sinks(ufba_jobs)
+function extract_sink_overview(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
-        pruning_method = ufba_job.pruning_method
-        for zero_sink in ufba_job.zero_sinks
-            metabolite_id, direction = decompose_sink_id(zero_sink)
-            row = (
-                pruning_method = pruning_method,
-                additive = ufba_job.additive,
-                final_time = ufba_job.final_time,
-                status = "zero",
-                metabolite_id = metabolite_id,
-                direction = direction,
-                sink = zero_sink,
-            )
-            push!(status_rows, row)
-        end
-        for nonzero_sink in ufba_job.nonzero_sinks
-            metabolite_id, direction = decompose_sink_id(nonzero_sink)
-            row = (
-                pruning_method = pruning_method,
-                additive = ufba_job.additive,
-                final_time = ufba_job.final_time,
-                status = "nonzero",
-                metabolite_id = metabolite_id,
-                direction = direction,
-                sink = nonzero_sink,
-            )
-            push!(status_rows, row)
+        prune_method = ufba_job.prune_method
+        zero_sinks = ufba_job.zero_sinks
+        nonzero_sinks = ufba_job.nonzero_sinks
+        if !isnothing(zero_sinks) && !isnothing(nonzero_sinks)
+            for zero_sink in ufba_job.zero_sinks
+                metabolite_id, direction = decompose_sink_id(zero_sink)
+                row = (
+                    prune_method = prune_method,
+                    additive = ufba_job.additive,
+                    final_time = ufba_job.final_time,
+                    status = "zero",
+                    metabolite_id = metabolite_id,
+                    direction = direction,
+                    sink = zero_sink,
+                )
+                push!(status_rows, row)
+            end
+            for nonzero_sink in ufba_job.nonzero_sinks
+                metabolite_id, direction = decompose_sink_id(nonzero_sink)
+                row = (
+                    prune_method = prune_method,
+                    additive = ufba_job.additive,
+                    final_time = ufba_job.final_time,
+                    status = "nonzero",
+                    metabolite_id = metabolite_id,
+                    direction = direction,
+                    sink = nonzero_sink,
+                )
+                push!(status_rows, row)
+            end
         end
     end
     status_df = DataFrame(status_rows)
-    sorted_df =
-        @orderby(status_df, :additive, :final_time, :status, :metabolite_id, :direction)
+    sorted_df = @orderby(
+        status_df,
+        :prune_method,
+        :additive,
+        :final_time,
+        :status,
+        :metabolite_id,
+        :direction
+    )
     return sorted_df
 end
 
 """
-    extract_added_sink_ids(jobs)
+    extract_broken_constraints(jobs, job_results)
 
-Extract and return a DataFrame of the sinks added to each uFBA model from the finished uFBA jobs.
+Called by [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs) to find all broken pruning and simple FBA optimization constraints during execution of all uFBA jobs.
 
 # Arguments
-1. `jobs`: The result of the call to [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+1. `jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+2. `job_results`: Results of executed uFBA jobs from a local variable in [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs)
 
 # Returns
-`DataFrame`
+`NamedTuple`
 
-Returns a DataFrame with the following columns:
-1. `pruning_method`: The pruning method (either `:case1` or `:case3`)
-2. `additive`: The additive
-3. `final_time`: Final time of the model
-4. `metabolite_id`: The metabolite the sink is for
-5. `direction`: up or down depending on the direction of the sink.
-6. `added_sink_id`: The reaction id of the corresponding sink.
-
-The DataFrame is sorted by additive, final time. metabolite id, and direction.
+Returns a named tuple with the following fields
+1. `prune_breaks_df`: DataFrame with constraints broken in the pruning optimizations. Has columns `additive`, `final_time`, `prune_break`.
+2. `fba_breaks_df`: DataFrame with constraints broken in the simple FBA optimizations. Has columns `additive`, `final_time`, `fba_break`.
 """
-function extract_added_sink_ids(jobs)
-    rows = []
-    for job in jobs
+function extract_broken_constraints(jobs, job_results)
+    prune_breaks_dfs = []
+    fba_breaks_dfs = []
+    for (job, job_result) in zip(jobs, job_results)
         additive = job.additive
         final_time = job.final_time
-        pruning_method = job.pruning_method
-        for added_sink_id in job.added_sink_ids
-            direction = contains(added_sink_id, "UP") ? "up" : "down"
-            metabolite_id =
-                replace(added_sink_id, "R_UNKNOWN_SK_UP_" => "", "R_UNKNOWN_SK_DOWN_" => "")
-            row = (
-                pruning_method = pruning_method,
-                additive = additive,
-                final_time = final_time,
-                metabolite_id = metabolite_id,
-                direction = direction,
-                added_sink_id = added_sink_id,
-            )
-            push!(rows, row)
+        prune_status = job.prune_status
+        fba_status = job_result.fba_status
+        if prune_status == :fail
+            single_prune_breaks_df = job.prune_breaks_df
+            push!(prune_breaks_dfs, single_prune_breaks_df)
+        end
+        if !ismissing(fba_status) && fba_status == :fail
+            fba_breaks = job_result.fba_breaks
+            if !isnothing(fba_breaks)
+                single_fba_break_df = DataFrame(
+                    additive = additive,
+                    final_time = final_time,
+                    fba_break = fba_breaks,
+                )
+                push!(fba_breaks_dfs, single_fba_break_df)
+            end
         end
     end
-    if length(rows) > 0
-        unsorted_df = DataFrame(rows)
-        sorted_df =
-            @orderby(unsorted_df, :additive, :final_time, :metabolite_id, :direction)
-        return sorted_df
+    unsorted_prune_breaks_df =
+        length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
+        DataFrame(additive = [], final_time = [], broken_case_1_constraint = [])
+    prune_breaks_df = @orderby(
+        unsorted_prune_breaks_df,
+        :additive,
+        :final_time,
+        :broken_case_1_constraint
+    )
+    unsorted_fba_breaks_df =
+        length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
+        DataFrame(additive = [], final_time = [], fba_break = [])
+    fba_breaks_df = @orderby(unsorted_fba_breaks_df, :additive, :final_time, :fba_break)
+    result = (prune_breaks_df = prune_breaks_df, fba_breaks_df = fba_breaks_df)
+    return result
+end
+
+"""
+    substitute_jump(val::C.LinearValue, vars)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Copied from `substitute_jump` in COBREXA.jl. Used to assemble a `C.LinearValue` into a `JuMP.AffExpr` to create JuMP constraints and objective from `ConstraintTrees`
+
+# Arguments
+1. `val::C.LinearValue`: The `LinearValue` from which to construct the expression.
+2. `vars`: The JuMP variable(s) used to create the expression.
+
+# Returns
+`JuMP.AffExpr`
+
+The `AffrExpr` for incorporation in the JuMP model.
+"""
+function substitute_jump(val::C.LinearValue, vars)
+    e = JuMP.AffExpr()
+    for (i, w) in zip(val.idxs, val.weights)
+        if i == 0
+            JuMP.add_to_expression!(e, w)
+        else
+            JuMP.add_to_expression!(e, w, vars[i])
+        end
+    end
+    return e
+end
+
+"""
+    constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Mutates the given JuMP model to add a constriant from an expression and given `C.EqualTo` bound. Also accepts a string used to name the objective (the suffix `_eq` is added to this string).
+
+# Arguments
+1. `jump_model`: The JuMP model to mutate.
+2. `expr`: Expression of the constraint.
+3. `b::C.EqualTo`: The bound of the constraint.
+4. `base_name::String`: The base name of the constraint. `_eq` is appended to the base name.
+"""
+function constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+    JuMP.@constraint(jump_model, expr == b.equal_to, base_name = "$(base_name)_eq")
+end
+
+"""
+    constraint_jump!(jump_model, expr, b::C.EqualTo; base_name::String)
+
+Called by [`optimize_constraint_tree`](@ref BloodStorageInSilico.UfbaSampler.optimize_constraint_tree) to create JuMP models.
+
+Mutates the given JuMP model to add a constriant from an expression and given `C.Between` bound. Also accepts a string used to name the objective (the suffixes `_lb` and `_ub` are added to this string).
+
+# Arguments
+1. `jump_model`: The JuMP model to mutate.
+2. `expr`: Expression of the constraint.
+3. `b::C.Between`: The bound of the constraint.
+4. `base_name::String`: The base name of the constraint. `_lb` or `_ub` is appended to the base name depending on the side of the constraint.
+"""
+function constraint_jump!(jump_model, expr, b::C.Between; base_name::String)
+    isinf(b.lower) ||
+        JuMP.@constraint(jump_model, expr >= b.lower, base_name = "$(base_name)_lb")
+    isinf(b.upper) ||
+        JuMP.@constraint(jump_model, expr <= b.upper, base_name = "$(base_name)_ub")
+end
+
+"""
+    optimize_constraint_tree(ct::C.ConstraintTree, objective_value::Union{Nothing,C.Value} = nothing; silent::Bool = true)
+
+Creates a JuMP model from the given `ConstraintTree` and optimizes it. Draws inspiration from `optimization_model()` in COBREXA.jl and adds functionality to name constraints and debug broken models using those constraint names upon optimization failure.
+
+# Arguments
+1. `ct::C.ConstraintTree`: Tree containing the constraints.
+2. `objective_value::Union{Nothing,C.Value} = nothing`: Objective value to use in the optimization. If in doubt, using the `ConstraintTree` to be optimized, pass `ct.objective.value`
+3. `silent::Bool = true`: If `true`, silences JuMP during optimization to clean up script outputs.
+
+# Returns
+`Tuple{Symbol,Union{C.ConstraintTree,Vector{String}}}`
+
+Returns a tuple with two elements.
+1. `:ok` or `:fail`: The status of the optimization.
+2. `C.ConstraintTree` of the optimized values OR `Vector{String}` of conflicted constraints that broke the optimization
+"""
+function optimize_constraint_tree(
+    ct::C.ConstraintTree,
+    objective_value::Union{Nothing,C.Value} = nothing;
+    silent::Bool = true,
+)
+    jump_model = JuMP.Model(HiGHS.Optimizer)
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    isnothing(objective_value) ||
+        JuMP.@objective(jump_model, JuMP.MAX_SENSE, substitute_jump(objective_value, x))
+    C.itraverse(ct) do path, con
+        ct_path = join(path, ".")
+        if ct_path != "objective"
+            isnothing(con.bound) || constraint_jump!(
+                jump_model,
+                substitute_jump(con.value, x),
+                con.bound;
+                base_name = ct_path,
+            )
+        end
+    end
+    silent && JuMP.set_silent(jump_model)
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        solved_values = JuMP.value.(x)
+        solution_tree = C.substitute_values(ct, solved_values)
+        return :ok, solution_tree
+    elseif status == JuMP.MOI.INFEASIBLE
+        conflicted_constraints = optimization_failure_analysis(jump_model)
+        return :fail, conflicted_constraints
     else
-        empty_df = DataFrame(
-            pruning_method = [],
-            additive = [],
-            final_time = [],
-            metabolite_id = [],
-            direction = [],
-            added_sink_id = [],
-        )
-        return empty_df
+        return :fail, ["No further information is available."]
     end
 end
 
@@ -627,9 +843,11 @@ Use the `julia -p X...` -p command line option to set the number of workers for 
 4. `tolerance::Float64`: The tolerance bounds on the objective.
 
 # Returns
-`DataFrame`
+`Tuple{DataFrame,Union{Nothing,DataFrame}}`
 
-1. Returns a `DataFrame` with each reaction as a column and each row a flux sample.
+Returns a tuple with two elements:
+1. A `DataFrame` with each non-sink reaction as a column and each row a flux sample.
+2. `nothing` or a DataFrame with sink reaction ids in one column and median flux in another column.
 """
 function sample_fluxes(
     constraints,
@@ -668,7 +886,7 @@ function sample_fluxes(
     )
 
     # I could use kwargs... in the following call but am not using that at
-    # this time.
+    # this time as I find kwargs to make the code a confusing mess.
 
     samples = sample_constraints(
         method,
@@ -683,11 +901,22 @@ function sample_fluxes(
 
     samples_dict = Dict()
     for reaction_id in keys(samples)
-        samples_dict[reaction_id] = samples[reaction_id]
+        if !occursin("R_UNKNOWN_SK_", string(reaction_id))
+            samples_dict[reaction_id] = samples[reaction_id]
+        end
     end
-
     samples_df = DataFrame(samples_dict)
-    return samples_df
+
+    sinks_rows = [
+        (sink_id = sink_id, median_flux = median(samples[sink_id])) for
+        sink_id in keys(samples) if occursin("R_UNKNOWN_SK_", string(sink_id))
+    ]
+    if length(sinks_rows) > 0
+        sinks_df = DataFrame(sinks_rows)
+        return samples_df, sinks_df
+    else
+        return samples_df, nothing
+    end
 end
 
 end

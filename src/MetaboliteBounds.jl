@@ -16,7 +16,8 @@ export load_metabolite_bounds,
     print_metabolite_bounds_on_constraint_tree,
     add_sinks_for_unmatched_metabolites!,
     find_metabolites_with_exchanges,
-    does_manual_prune_list_match_sink_name
+    does_manual_prune_list_match_sink_name,
+    load_metabolite_measurement_opt_outs
 
 """
     load_metabolite_bounds()
@@ -34,6 +35,26 @@ function load_metabolite_bounds()
     metabolite_bounds_filename = joinpath("output", "concentration_rates.csv")
     metabolite_bounds_df = CSV.read(metabolite_bounds_filename, DataFrame)
     return metabolite_bounds_df
+end
+
+"""
+    load_metabolite_measurement_opt_outs()
+
+Load the metabolite opt-out list from `input/metabolite_measurement_opt_outs.csv`. This list is used to ignore absolute quant estimations in model construction.
+
+# Returns
+`Vector{String}`
+
+Vector of strings of metabolite ids (without the leading `M_`) to opt out of.
+"""
+function load_metabolite_measurement_opt_outs()
+    filename = joinpath("input", "metabolite_measurement_opt_outs.csv")
+    if isfile(filename)
+        df = CSV.read(filename, DataFrame)
+        return String.(sort(unique(df.disabled_metabolite_id)))
+    else
+        return String[]
+    end
 end
 
 """
@@ -248,7 +269,8 @@ function add_metabolite_bounds_to_constraint_tree!(
                 ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
             end
         else
-            println("Skipping bounds for metabolite id $short_metabolite_id")
+            # println("Skipping bounds for metabolite id $short_metabolite_id")
+            continue
         end
     end
 

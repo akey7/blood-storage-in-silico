@@ -38,7 +38,7 @@ julia --project=. plot_metabolite_timelines.jl
 
 Output will be saved to `output/normalized_abundance_correlations.csv` and `output/plots`
 
-### (2) `raw_relative_intensities.jl`: 3D PCA Plots of Relative Quant Data
+### (2) `raw_relative_intensities.jl`: PCA Plots of Relative Quant Data
 
 Uses `src/RawRelativeIntensities.jl` to make PCA plots reducing relative metabolite abundances down to fewer features.
 
@@ -119,14 +119,20 @@ Which would sample all models with 10 chains, run all models, and use 32 concurr
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
 
+In addition to input files from prior steps, there is an input file of note
+1. `input/metabolite_measurement_opt_outs.csv`: A file of metabolite ids of absolute quant measurements (without the leading `M_`) to ignore when building all models. Used for diagnostic purposes for failing models.
+
 Outputs the following files:
 1. `output/ufba_sampling_status.csv`: That statuses of each uFBA sampling job (fail or ok)
 2. `output/ufba_sampling.csv`: The samplings of the fluxes. Used by next step.
 3. `output/case3_sinks.csv`: The unmeasured metabolite sinks from the Case 3 analysis, and whether they had zero or non-zero flux.
 4. `output/fba_model_metabolites.csv`: Metabolite ids of the FBA models created for the uFBA runs.
 5. `output/ufba_blocked_reactions.csv`: Reaction ids of blocked reactions and their corresponding strings for each model.
-6. `output/ufba_added_sink_ids.csv`: Reaction ids of sinks added and their corresponding metabolites.
-7. `output/debug_case1.lp`: Diagnostic output from `optimize_case_1()` to assist in debugging Case 1 optimization runs.
+6. `output/ufba_optimized_sinks.csv`: Reaction ids of sinks sampled, their corresponding metabolites and directions, and median fluxes.
+7. `output/debug_case1.lp` (if configured in the code): Diagnostic output from `optimize_case_1()` to assist in debugging Case 1 optimization runs.
+8. `output/ufba_prune_breaks.csv`: Constraints broken in pruning attempts across all uFBA models.
+9. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before the uFBA runs.
+10. `output/ufba_sink_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 

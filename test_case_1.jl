@@ -22,14 +22,21 @@ metabolite_bounds_df = load_metabolite_bounds()
 @info "Loading flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
+@info "Loading metabolite measurement opt outs"
+metabolites_to_ignore = load_metabolite_measurement_opt_outs()
+
 @info "Create FBA model and map metabolites onto that model"
 fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
+
+@info "Setting up the following model"
 additive = "01-Ctrl AS3"
 final_time = 2
+println("additive: $additive, final_time: $final_time")
+
 metabolite_status_df =
     find_metabolite_matches(fba_model, metabolite_bounds_df, additive, final_time)
 first_sink_specifications = (
@@ -44,28 +51,33 @@ first_added_sink_ids =
 # Ensure sinks were added by printing them
 print_sinks_in_model(fba_model)
 
-@info "Case 1: Add metabolite bounds to ConstraintTree"
+@info "Add metabolite bounds to ConstraintTree"
 case1_ct = flux_balance_constraints(fba_model)
 # case1_metabolites_to_ignore = ["g6p_c", "glc__D_c", "pyr_e", "lac__L_e"]
 add_metabolite_bounds_to_constraint_tree!(
     case1_ct,
     metabolite_bounds_df,
     additive,
-    final_time,
+    final_time;
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 # print_metabolite_bounds_on_constraint_tree(case1_ct)
 
-@info "Case 1: Optimize constraint tree"
-optimize_case_1_result = optimize_case_1(
-    case1_ct;
-    force_first_sink_on = true,
-    force_first_sink_lb = 0.1,
-    print_objective_value = true,
-)
-# optimize_case_1_result = optimize_case_1(case1_ct)
+@info "Optimize constraint tree"
+# optimize_case_1_result = optimize_case_1(
+#     case1_ct;
+#     force_first_sink_on = true,
+#     force_first_sink_lb = 0.1,
+#     print_objective_value = true,
+# )
+optimize_case_1_ok_fail, optimize_case_1_result = optimize_case_1(case1_ct)
+if optimize_case_1_ok_fail == :fail
+    display(optimize_case_1_result)
+    error("Case 1 optimization failed. Conflicting constraints are listed above. Stopping.")
+end
 case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
 
-@info "Case 1: Prune zero sinks"
+@info "Prune zero sinks"
 second_fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
@@ -87,61 +99,13 @@ add_metabolite_bounds_to_constraint_tree!(
     second_ct,
     metabolite_bounds_df,
     additive,
-    final_time,
+    final_time;
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
-@info "Case 1: FBA of pruned model"
-second_ct_solution_tree = optimized_values(second_ct; optimizer = HiGHS.Optimizer)
-if isnothing(second_ct_solution_tree)
-    println("Simple optimization failed")
-else
-    println("Simple optimization succeeded!")
-    display(second_ct_solution_tree.fluxes)
+@info "Custom FBA of pruned and bounded ConstraintTree"
+result = optimize_constraint_tree(second_ct, second_ct.objective.value)
+if !isnothing(result)
+    display(result)
 end
-
-# Case 3 comparison code to be removed after next release
-# inspect_results(case1_optimization_tree)
-# nonzero_indicator_ids = check_case_1_optimization_results(case1_optimization_tree)
-# display(first(nonzero_indicator_ids, 10))
-# case1_zero_sinks, case1_nonzero_sinks, case1_sink_status_df =
-#     analyze_pruning_optimization(case1_optimization_tree)
-# case1_sink_status_filename = joinpath("output", "case1_vs_case3", "case1_sinks.csv")
-# CSV.write(case1_sink_status_filename, case1_sink_status_df)
-# println("Wrote $case1_sink_status_filename")
-
-# @info "Case 3 optimization"
-# case3_additive = "01-Ctrl AS3"
-# case3_ct = case_3_constraint_tree(fba_model, metabolite_status_df, case3_additive)
-# add_metabolite_bounds_to_constraint_tree!(
-#     case3_ct,
-#     metabolite_bounds_df,
-#     additive,
-#     final_time,
-# )
-# case3_pruning_optimization_result = optimize_case_3(case3_ct, case3_ct.objective.value)
-# case3_zero_sinks, case3_nonzero_sinks, case3_sink_status_df =
-#     analyze_pruning_optimization(case3_pruning_optimization_result)
-# case3_sink_status_filename = joinpath("output", "case1_vs_case3", "case3_sinks.csv")
-# CSV.write(case3_sink_status_filename, case3_sink_status_df)
-# println("Wrote $case3_sink_status_filename")
-
-# @info "Comparing Case 1 vs Case 3 sinks"
-# left_df = @chain case1_sink_status_df begin
-#     @rename(:case1_non_zero = :is_non_zero)
-#     @rtransform(:sink_name = replace(string(:sink), "R_UNKNOWN_" => ""))
-#     @select(:sink_name, :case1_non_zero)
-# end
-# right_df = @chain case3_sink_status_df begin
-#     @rename(:case3_non_zero = :is_non_zero)
-#     @rtransform(:sink_name = replace(string(:sink), "R_UNKNOWN_" => ""))
-#     @select(:sink_name, :case3_non_zero)
-# end
-# comparison_df = @chain left_df begin
-#     outerjoin(right_df; on = :sink_name)
-#     @rtransform(:case1_case3_different = :case1_non_zero != :case3_non_zero)
-#     @orderby(:sink_name)
-# end
-# comparison_filename = joinpath("output", "case1_vs_case3", "case1_vs_case3_comparison.csv")
-# CSV.write(comparison_filename, comparison_df)
-# println("Wrote $comparison_filename")
