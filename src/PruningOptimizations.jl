@@ -142,7 +142,7 @@ function optimize_case_1(
     silent && JuMP.set_silent(jump_model)
     x = Vector{JuMP.VariableRef}(undef, C.variable_count(ct))
     for i in eachindex(x)
-        x[i] = @variable(jump_model, base_name = "x_$i")
+        x[i] = JuMP.@variable(jump_model, base_name = "x_$i")
     end
     C.itraverse(ct) do path, con
         ct_path = join(path, ".")
@@ -161,15 +161,15 @@ function optimize_case_1(
     for id in sink_ids
         v_expr = C.substitute(ct.fluxes[id].value, x)
         M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
-        @constraint(jump_model, v_expr <= M_i * z[id], base_name = "big_m_$(id)_ub")
-        @constraint(jump_model, v_expr >= -M_i * z[id], base_name = "big_m_$(id)_lb")
+        JuMP.@constraint(jump_model, v_expr <= M_i * z[id], base_name = "big_m_$(id)_ub")
+        JuMP.@constraint(jump_model, v_expr >= -M_i * z[id], base_name = "big_m_$(id)_lb")
     end
     if force_first_sink_on
         forced_id = sink_ids[1]
         forced_v = C.substitute(ct.fluxes[forced_id].value, x)
-        @constraint(jump_model, forced_v >= force_first_sink_lb)
+        JuMP.@constraint(jump_model, forced_v >= force_first_sink_lb)
     end
-    @objective(jump_model, Min, sum(z[id] for id in sink_ids))
+    JuMP.@objective(jump_model, Min, sum(z[id] for id in sink_ids))
     if !isnothing(write_lp_path)
         mkpath(dirname(write_lp_path))
         write_to_file(jump_model, write_lp_path)
