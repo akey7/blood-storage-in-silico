@@ -14,30 +14,63 @@ export optimize_case_1,
     analyze_case_1_pruning_optimization, print_sinks_in_model, optimization_failure_analysis
 
 """
-    jump_constraint(m, x, v::C.Value, b::C.EqualTo)
+    jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
 
-Attach a ConstraintTrees equality bound to a JuMP model.
+Returns a constraint based off a ConstraintTrees equality bound to a JuMP model.
+
+# Arguments
+1. `m`: JuMP model onto which the
+2. `x`: JuMP variable(s)
+3. `v`: `ConstraintTree` value
+4. `b::C.EqualTo`: Equality bound
+5. `base_name::String`: The base name to use for the variable(s)
+
+# Returns
+`JuMP.ConstraintRef`
+
+Returns the new constraint to attach to the JuMP model.
 """
 function jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
-    @constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
+    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
 end
 
 """
-    jump_constraint(m, x, v::C.Value, b::C.Between)
+    jump_constraint(m, x, v::C.Value, b::C.Between; base_name::String)
 
-Attach a ConstraintTrees interval bound to a JuMP model.
+Returns a constraint based off a ConstraintTrees interval bound to a JuMP model.
+
+# Arguments
+1. `m`: JuMP model onto which the
+2. `x`: JuMP variable(s)
+3. `v`: `ConstraintTree` value
+4. `b::C.Between`: Between bounds
+5. `base_name::String`: The base name to use for the variable(s)
+
+# Returns
+`JuMP.ConstraintRef`
+
+Returns the new constraint to attach to the JuMP model.
 """
 function jump_constraint(m, x, v::C.Value, b::C.Between; base_name::String)
     isinf(b.lower) ||
-        @constraint(m, C.substitute(v, x) >= b.lower, base_name = "$(base_name)_lb")
+        JuMP.@constraint(m, C.substitute(v, x) >= b.lower, base_name = "$(base_name)_lb")
     isinf(b.upper) ||
-        @constraint(m, C.substitute(v, x) <= b.upper, base_name = "$(base_name)_ub")
+        JuMP.@constraint(m, C.substitute(v, x) <= b.upper, base_name = "$(base_name)_ub")
 end
 
 """
     bound_big_m(bound; fallback = 1000.0)
 
-Choose a big-M from a sink bound when possible, otherwise use `fallback`.
+Choose a big-M from a sink bound when possible, otherwise use `fallback`. Only support `C.Between` and `C.EqualTo` bounds.
+
+# Arguments
+1. `bound`: The bound of the sink.
+2. `fallback`: In case the bound is not `C.Between` or `C.EqualTo`, this is what is returned.
+
+# Returns
+`Float64`
+
+The bound to use as big-M in the coupling constraint.
 """
 function bound_big_m(bound; fallback::Float64 = 1000.0)
     if bound isa C.Between
