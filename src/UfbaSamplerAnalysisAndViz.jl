@@ -17,14 +17,12 @@ export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
-    map_metabolites_to_sinks,
     net_sink_fluxes,
     net_flux_from_up_and_down,
     calc_median_flux_df,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
     prepare_measurements_and_sinks_report_df
-
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
@@ -161,37 +159,6 @@ function diagnose_flux_stats(sampling_df)
         )
     end
     return descriptions_df
-end
-
-"""
-    map_metabolites_to_sinks(long_df, additive, final_time)
-
-Extracts the sink from the given samples and maps unmeasured metabolite ids to their corresponding sinks.
-
-# Arguments
-1. `long_df`: The long sampling DataFrame.
-2. `additive`: The additive of interest
-3. `final_time`: The final time of interest
-
-# Returns
-`Dict{String,String}`
-
-Returns a dictionary mapping strings (metabolite_ids) to their sink ids.
-"""
-function map_metabolites_to_sinks(long_df, additive, final_time)
-    filtered_df = @rsubset(long_df, :additive == additive, :final_time == final_time)
-    reaction_ids = sort(unique(filtered_df.reaction_id))
-    sink_ids = [
-        reaction_id for reaction_id in reaction_ids if contains(reaction_id, "R_REVSK")
-    ]
-    sink_metabolite_ids =
-        sort(unique([join(split(sink_id, "_")[3:end], "_") for sink_id in sink_ids]))
-    metabolite_id_sink_map::Dict{String,Dict{Symbol,String}} = Dict()
-    for sink_metabolite_id in sink_metabolite_ids
-        sink_id = "R_REVSK_$sink_metabolite_id"
-        metabolite_id_sink_map[sink_metabolite_id] = sink_id
-    end
-    return metabolite_id_sink_map
 end
 
 """
