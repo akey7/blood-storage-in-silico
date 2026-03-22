@@ -21,11 +21,11 @@ diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
 CSV.write(diagnostic_filename, diagnostic_df)
 println("Wrote $diagnostic_filename")
 
-@info "Mapping metabolites to sinks"
-net_sink_fluxes_df = net_sink_fluxes(sampling_df)
-net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
-CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
-println("Wrote $net_sink_flux_filename")
+# @info "Mapping metabolites to sinks"
+# net_sink_fluxes_df = net_sink_fluxes(sampling_df)
+# net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
+# CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
+# println("Wrote $net_sink_flux_filename")
 
 @info "Writing median flux DataFrame"
 median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
@@ -44,13 +44,18 @@ absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
 absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
 fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
 fba_model_metabolites_df = CSV.read(fba_model_metabolites_filename, DataFrame)
-ufba_added_sink_ids_filename = joinpath("output", "ufba_added_sink_ids.csv")
-ufba_added_sink_ids_df = CSV.read(ufba_added_sink_ids_filename, DataFrame)
+
+# ufba_optimized_filename = joinpath("output", "ufba_added_sink_ids.csv")
+# ufba_added_sink_ids_df = CSV.read(ufba_added_sink_ids_filename, DataFrame)
+
+ufba_optimized_sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
+ufba_optimized_sinks_df = CSV.read(ufba_optimized_sinks_filename, DataFrame)
+
 measurements_and_sinks_report_df, measurements_and_sinks_report_by_model_df =
     prepare_measurements_and_sinks_report_df(
         absolute_quant_long_df,
         fba_model_metabolites_df,
-        ufba_added_sink_ids_df,
+        ufba_optimized_sinks_df,
         sampling_df,
     )
 measurements_and_sinks_report_filename =
@@ -65,5 +70,5 @@ CSV.write(
 )
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
-@info "Plotting uFBA histograms"
-plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+# @info "Plotting uFBA histograms"
+# plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)

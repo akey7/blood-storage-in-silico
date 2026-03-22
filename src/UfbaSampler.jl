@@ -286,14 +286,14 @@ function execute_ufba_job(job, n_chains = 10)
                 sinks_df[!, :final_time] .= final_time
                 @rtransform!(
                     sinks_df,
-                    :metabolite = replace(string(:sink_id), "R_REVSK_" => "")
+                    :metabolite_id = replace(string(:sink_id), "R_REVSK_" => "")
                 )
                 @select!(
                     sinks_df,
                     :additive,
                     :final_time,
                     :sink_id,
-                    :metabolite,
+                    :metabolite_id,
                     :median_flux
                 )
             end
