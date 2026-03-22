@@ -257,7 +257,7 @@ This is a diagnostic helper function to print the reaction ids of sinks in the g
 """
 function print_sinks_in_model(fba_model::A.AbstractFBCModel)
     for (rxn_id, rxn) in fba_model.reactions
-        if occursin("R_REVSK_", rxn_id)
+        if occursin("R_REVSK", rxn_id)
             println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
         end
     end
