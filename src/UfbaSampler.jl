@@ -286,23 +286,14 @@ function execute_ufba_job(job, n_chains = 10)
                 sinks_df[!, :final_time] .= final_time
                 @rtransform!(
                     sinks_df,
-                    :metabolite = replace(
-                        string(:sink_id),
-                        "R_UNKNOWN_SK_UP_" => "",
-                        "R_UNKNOWN_SK_DOWN_" => "",
-                    )
-                )
-                @rtransform!(
-                    sinks_df,
-                    :direction = occursin("UP", string(:sink_id)) ? "up" : "down"
+                    :metabolite_id = replace(string(:sink_id), "R_REVSK_" => "")
                 )
                 @select!(
                     sinks_df,
                     :additive,
                     :final_time,
                     :sink_id,
-                    :metabolite,
-                    :direction,
+                    :metabolite_id,
                     :median_flux
                 )
             end
@@ -573,24 +564,20 @@ end
 """
     decompose_sink_id(sink_id)
 
-Extract the direction and metabolite id from a given sink id/name.
+Extract the metabolite id from a given sink id.
 
 # Arguments
 1. `sink_id`: The id of the sink.
 
 # Returns
-`Tuple{String,String}`
+`String`
 
-Returns a tuple of metabolite id and direction.
+Returns the metabolite id associated with the sink id.
 """
 function decompose_sink_id(sink_id)
     sink_str = String(sink_id)
-    metabolite_id = @chain sink_str begin
-        replace("R_UNKNOWN_SK_DOWN_" => "")
-        replace("R_UNKNOWN_SK_UP_" => "")
-    end
-    direction = occursin(sink_str, "UP") ? "up" : "down"
-    return metabolite_id, direction
+    metabolite_id = replace(sink_str, "R_REVSK_" => "")
+    return metabolite_id
 end
 
 """
@@ -615,27 +602,25 @@ function extract_sink_overview(ufba_jobs)
         nonzero_sinks = ufba_job.nonzero_sinks
         if !isnothing(zero_sinks) && !isnothing(nonzero_sinks)
             for zero_sink in ufba_job.zero_sinks
-                metabolite_id, direction = decompose_sink_id(zero_sink)
+                metabolite_id = decompose_sink_id(zero_sink)
                 row = (
                     prune_method = prune_method,
                     additive = ufba_job.additive,
                     final_time = ufba_job.final_time,
                     status = "zero",
                     metabolite_id = metabolite_id,
-                    direction = direction,
                     sink = zero_sink,
                 )
                 push!(status_rows, row)
             end
             for nonzero_sink in ufba_job.nonzero_sinks
-                metabolite_id, direction = decompose_sink_id(nonzero_sink)
+                metabolite_id = decompose_sink_id(nonzero_sink)
                 row = (
                     prune_method = prune_method,
                     additive = ufba_job.additive,
                     final_time = ufba_job.final_time,
                     status = "nonzero",
                     metabolite_id = metabolite_id,
-                    direction = direction,
                     sink = nonzero_sink,
                 )
                 push!(status_rows, row)
@@ -643,15 +628,8 @@ function extract_sink_overview(ufba_jobs)
         end
     end
     status_df = DataFrame(status_rows)
-    sorted_df = @orderby(
-        status_df,
-        :prune_method,
-        :additive,
-        :final_time,
-        :status,
-        :metabolite_id,
-        :direction
-    )
+    sorted_df =
+        @orderby(status_df, :prune_method, :additive, :final_time, :status, :metabolite_id,)
     return sorted_df
 end
 
@@ -901,7 +879,7 @@ function sample_fluxes(
 
     samples_dict = Dict()
     for reaction_id in keys(samples)
-        if !occursin("R_UNKNOWN_SK_", string(reaction_id))
+        if !occursin("R_REVSK_", string(reaction_id))
             samples_dict[reaction_id] = samples[reaction_id]
         end
     end
@@ -909,7 +887,7 @@ function sample_fluxes(
 
     sinks_rows = [
         (sink_id = sink_id, median_flux = median(samples[sink_id])) for
-        sink_id in keys(samples) if occursin("R_UNKNOWN_SK_", string(sink_id))
+        sink_id in keys(samples) if occursin("R_REVSK_", string(sink_id))
     ]
     if length(sinks_rows) > 0
         sinks_df = DataFrame(sinks_rows)

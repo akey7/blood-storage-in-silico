@@ -14,30 +14,63 @@ export optimize_case_1,
     analyze_case_1_pruning_optimization, print_sinks_in_model, optimization_failure_analysis
 
 """
-    jump_constraint(m, x, v::C.Value, b::C.EqualTo)
+    jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
 
-Attach a ConstraintTrees equality bound to a JuMP model.
+Returns a constraint based off a ConstraintTrees equality bound to a JuMP model.
+
+# Arguments
+1. `m`: JuMP model onto which the
+2. `x`: JuMP variable(s)
+3. `v`: `ConstraintTree` value
+4. `b::C.EqualTo`: Equality bound
+5. `base_name::String`: The base name to use for the variable(s)
+
+# Returns
+`JuMP.ConstraintRef`
+
+Returns the new constraint to attach to the JuMP model.
 """
 function jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
-    @constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
+    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
 end
 
 """
-    jump_constraint(m, x, v::C.Value, b::C.Between)
+    jump_constraint(m, x, v::C.Value, b::C.Between; base_name::String)
 
-Attach a ConstraintTrees interval bound to a JuMP model.
+Returns a constraint based off a ConstraintTrees interval bound to a JuMP model.
+
+# Arguments
+1. `m`: JuMP model onto which the
+2. `x`: JuMP variable(s)
+3. `v`: `ConstraintTree` value
+4. `b::C.Between`: Between bounds
+5. `base_name::String`: The base name to use for the variable(s)
+
+# Returns
+`JuMP.ConstraintRef`
+
+Returns the new constraint to attach to the JuMP model.
 """
 function jump_constraint(m, x, v::C.Value, b::C.Between; base_name::String)
     isinf(b.lower) ||
-        @constraint(m, C.substitute(v, x) >= b.lower, base_name = "$(base_name)_lb")
+        JuMP.@constraint(m, C.substitute(v, x) >= b.lower, base_name = "$(base_name)_lb")
     isinf(b.upper) ||
-        @constraint(m, C.substitute(v, x) <= b.upper, base_name = "$(base_name)_ub")
+        JuMP.@constraint(m, C.substitute(v, x) <= b.upper, base_name = "$(base_name)_ub")
 end
 
 """
     bound_big_m(bound; fallback = 1000.0)
 
-Choose a big-M from a sink bound when possible, otherwise use `fallback`.
+Choose a big-M from a sink bound when possible, otherwise use `fallback`. Only support `C.Between` and `C.EqualTo` bounds.
+
+# Arguments
+1. `bound`: The bound of the sink.
+2. `fallback`: In case the bound is not `C.Between` or `C.EqualTo`, this is what is returned.
+
+# Returns
+`Float64`
+
+The bound to use as big-M in the coupling constraint.
 """
 function bound_big_m(bound; fallback::Float64 = 1000.0)
     if bound isa C.Between
@@ -103,13 +136,13 @@ function optimize_case_1(
     write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
     print_objective_value::Bool = false,
 )
-    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
-    isempty(sink_ids) && error("No sink reactions matching `R_UNKNOWN_SK` were found.")
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK", string(id))]
+    isempty(sink_ids) && error("No sink reactions matching `R_REVSK`` were found.")
     jump_model = JuMP.Model(optimizer)
     silent && JuMP.set_silent(jump_model)
     x = Vector{JuMP.VariableRef}(undef, C.variable_count(ct))
     for i in eachindex(x)
-        x[i] = @variable(jump_model, base_name = "x_$i")
+        x[i] = JuMP.@variable(jump_model, base_name = "x_$i")
     end
     C.itraverse(ct) do path, con
         ct_path = join(path, ".")
@@ -128,15 +161,15 @@ function optimize_case_1(
     for id in sink_ids
         v_expr = C.substitute(ct.fluxes[id].value, x)
         M_i = bound_big_m(ct.fluxes[id].bound; fallback = fallback_M)
-        @constraint(jump_model, v_expr <= M_i * z[id], base_name = "big_m_$(id)_ub")
-        @constraint(jump_model, v_expr >= -M_i * z[id], base_name = "big_m_$(id)_lb")
+        JuMP.@constraint(jump_model, v_expr <= M_i * z[id], base_name = "big_m_$(id)_ub")
+        JuMP.@constraint(jump_model, v_expr >= -M_i * z[id], base_name = "big_m_$(id)_lb")
     end
     if force_first_sink_on
         forced_id = sink_ids[1]
         forced_v = C.substitute(ct.fluxes[forced_id].value, x)
-        @constraint(jump_model, forced_v >= force_first_sink_lb)
+        JuMP.@constraint(jump_model, forced_v >= force_first_sink_lb)
     end
-    @objective(jump_model, Min, sum(z[id] for id in sink_ids))
+    JuMP.@objective(jump_model, Min, sum(z[id] for id in sink_ids))
     if !isnothing(write_lp_path)
         mkpath(dirname(write_lp_path))
         write_to_file(jump_model, write_lp_path)
@@ -257,7 +290,7 @@ This is a diagnostic helper function to print the reaction ids of sinks in the g
 """
 function print_sinks_in_model(fba_model::A.AbstractFBCModel)
     for (rxn_id, rxn) in fba_model.reactions
-        if occursin("R_UNKNOWN_SK", rxn_id)
+        if occursin("R_REVSK", rxn_id)
             println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
         end
     end

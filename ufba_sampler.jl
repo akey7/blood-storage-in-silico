@@ -88,10 +88,10 @@ display(status_df)
 display(status_counts_df)
 
 # Write all the files
+@info "Writing sampling results"
 status_filename = joinpath("output", "ufba_sampling_status.csv")
 CSV.write(status_filename, status_df)
 println("Wrote $status_filename")
-@info "Writing sampling results"
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 CSV.write(sampling_filename, sampling_df)
 println("Wrote $sampling_filename")
