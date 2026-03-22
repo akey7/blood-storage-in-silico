@@ -37,19 +37,23 @@ additive = "01-Ctrl AS3"
 final_time = 2
 println("additive: $additive, final_time: $final_time")
 
-# @info "Adding sinks to model"
-# metabolite_status_df =
-#     find_metabolite_matches(fba_model, metabolite_bounds_df, additive, final_time)
-# first_sink_specifications = (
-#     metabolite_status_df = metabolite_status_df,
-#     additive = additive,
-#     prune_zero_sinks = nothing,
-#     sink_opt_outs = nothing,
-# )
-# first_added_sink_ids =
-#     add_sinks_for_unmatched_metabolites!(fba_model, first_sink_specifications)
-
-# print_sinks_in_model(fba_model)
+@info "Adding sinks to model"
+first_model, _ = create_fba_model(
+    base_rbc_gem;
+    exchanges = default_exchanges(),
+    flux_bounds_overrides_df = flux_bounds_overrides_df,
+)
+metabolite_status_df =
+    find_metabolite_matches(first_model, metabolite_bounds_df, additive, final_time)
+first_sink_specifications = (
+    metabolite_status_df = metabolite_status_df,
+    additive = additive,
+    prune_zero_sinks = nothing,
+    sink_opt_outs = nothing,
+)
+first_added_sink_ids =
+    add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
+print_sinks_in_model(first_model)
 
 # @info "Add metabolite bounds to ConstraintTree"
 # case1_ct = flux_balance_constraints(fba_model)
@@ -116,11 +120,11 @@ function find_zero_fluxes(solution_tree)
     return zero_fluxes, n_zero_fluxes
 end
 
-@info "First test case: no sinks, no metabolite bounds"
+@info "Zeroth test case: no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
 zeroth_status, zeroth_solution_tree =
     optimize_constraint_tree(zeroth_ct, zeroth_ct.objective.value)
-println("First result: $zeroth_status")
+println("Zeroth result: $zeroth_status")
 if !isnothing(zeroth_solution_tree)
     zeroth_zero_fluxes, zeroth_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
     println("n_zero_fluxes: $zeroth_n_zero_fluxes")
