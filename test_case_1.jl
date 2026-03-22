@@ -3,6 +3,7 @@ using DataFrames
 using DataFramesMeta
 using COBREXA
 using HiGHS
+using Distributed
 
 include("src/UfbaSampler.jl")
 using .UfbaSampler
@@ -12,6 +13,26 @@ include("src/PruningOptimizations.jl")
 using .PruningOptimizations
 include("src/MetaboliteBounds.jl")
 using .MetaboliteBounds
+
+function init_workers!(; project::AbstractString = Base.active_project())
+    for p in workers()
+        Distributed.remotecall_eval(
+            Main,
+            p,
+            quote
+                import Pkg
+                Pkg.activate($project)
+                using COBREXA, HiGHS, JuMP, MathOptInterface
+                # include("src/UfbaSampler.jl")
+                # using .UfbaSampler
+            end,
+        )
+    end
+    return nothing
+end
+
+init_workers!()
+workers_config = workers()
 
 @info "Loading base RBC-GEM"
 base_rbc_gem = load_base_rbc_gem()
@@ -53,7 +74,7 @@ first_sink_specifications = (
 )
 first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
-print_sinks_in_model(first_model)
+# print_sinks_in_model(first_model)
 
 @info "Add metabolite bounds to ConstraintTree"
 second_ct = flux_balance_constraints(first_model)
@@ -97,8 +118,8 @@ third_sink_specifications = (
 )
 third_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(third_fba_model, third_sink_specifications)
-println("Added the following sinks")
-display(third_added_sink_ids)
+# println("Added the following sinks")
+# display(third_added_sink_ids)
 third_ct = flux_balance_constraints(third_fba_model)
 add_metabolite_bounds_to_constraint_tree!(
     third_ct,
@@ -107,61 +128,55 @@ add_metabolite_bounds_to_constraint_tree!(
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
 )
-print_metabolite_bounds_on_constraint_tree(third_ct)
+# print_metabolite_bounds_on_constraint_tree(third_ct)
 
-function find_zero_fluxes(solution_tree)
-    zero_fluxes = []
-    for (reaction_id, flux) in solution_tree.fluxes
-        if isapprox(flux, 0.0)
-            push!(zero_fluxes, reaction_id)
-        end
-    end
-    n_zero_fluxes = length(zero_fluxes)
-    return zero_fluxes, n_zero_fluxes
-end
+# function find_zero_fluxes(solution_tree)
+#     zero_fluxes = []
+#     for (reaction_id, flux) in solution_tree.fluxes
+#         if isapprox(flux, 0.0)
+#             push!(zero_fluxes, reaction_id)
+#         end
+#     end
+#     n_zero_fluxes = length(zero_fluxes)
+#     return zero_fluxes, n_zero_fluxes
+# end
 
-@info "Zeroth test case: no sinks, no metabolite bounds"
+@info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
-zeroth_status, zeroth_solution_tree =
-    optimize_constraint_tree(zeroth_ct, zeroth_ct.objective.value)
-println("Zeroth result: $zeroth_status")
-if !isnothing(zeroth_solution_tree)
-    zeroth_zero_fluxes, zeroth_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-    println("zeroth_n_zero_fluxes: $zeroth_n_zero_fluxes")
-else
-    println("Failed so no values to display")
-end
+zeroth_samples, _ = sample_fluxes(zeroth_ct, workers_config; n_chains = 5)
+zeroth_n_zero_fluxes, _ = count_n_all_zero_fluxes(zeroth_samples)
+println("zeroth_n_zero_fluxes: $zeroth_n_zero_fluxes")
 
-@info "First test case: all sinks (no pruning), no metabolite bounds"
-first_ct = flux_balance_constraints(first_model)
-first_status, first_solution_tree =
-    optimize_constraint_tree(first_ct, first_ct.objective.value)
-println("First result: $first_status")
-if !isnothing(first_solution_tree)
-    first_zero_fluxes, first_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-    println("first_n_zero_fluxes: $first_n_zero_fluxes")
-else
-    println("Failed so no values to display")
-end
+# @info "First test case: all sinks (no pruning), no metabolite bounds"
+# first_ct = flux_balance_constraints(first_model)
+# first_status, first_solution_tree =
+#     optimize_constraint_tree(first_ct, first_ct.objective.value)
+# println("First result: $first_status")
+# if !isnothing(first_solution_tree)
+#     first_zero_fluxes, first_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
+#     println("first_n_zero_fluxes: $first_n_zero_fluxes")
+# else
+#     println("Failed so no values to display")
+# end
 
-@info "Second test case: all sinks (no pruning), all metabolite bounds"
-second_status, second_solution_tree =
-    optimize_constraint_tree(second_ct, second_ct.objective.value)
-println("First result: $second_status")
-if !isnothing(second_solution_tree)
-    second_zero_fluxes, second_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-    println("second_n_zero_fluxes: $second_n_zero_fluxes")
-else
-    println("Failed so no values to display")
-end
+# @info "Second test case: all sinks (no pruning), all metabolite bounds"
+# second_status, second_solution_tree =
+#     optimize_constraint_tree(second_ct, second_ct.objective.value)
+# println("First result: $second_status")
+# if !isnothing(second_solution_tree)
+#     second_zero_fluxes, second_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
+#     println("second_n_zero_fluxes: $second_n_zero_fluxes")
+# else
+#     println("Failed so no values to display")
+# end
 
-@info "Third test case: Pruned sinks, all metabolite bounds"
-third_status, third_solution_tree =
-    optimize_constraint_tree(third_ct, third_ct.objective.value)
-println("First result: $third_status")
-if !isnothing(third_solution_tree)
-    third_zero_fluxes, third_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-    println("third_n_zero_fluxes: $third_n_zero_fluxes")
-else
-    println("Failed so no values to display")
-end
+# @info "Third test case: Pruned sinks, all metabolite bounds"
+# third_status, third_solution_tree =
+#     optimize_constraint_tree(third_ct, third_ct.objective.value)
+# println("First result: $third_status")
+# if !isnothing(third_solution_tree)
+#     third_zero_fluxes, third_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
+#     println("third_n_zero_fluxes: $third_n_zero_fluxes")
+# else
+#     println("Failed so no values to display")
+# end
