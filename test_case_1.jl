@@ -130,17 +130,6 @@ add_metabolite_bounds_to_constraint_tree!(
 )
 # print_metabolite_bounds_on_constraint_tree(third_ct)
 
-# function find_zero_fluxes(solution_tree)
-#     zero_fluxes = []
-#     for (reaction_id, flux) in solution_tree.fluxes
-#         if isapprox(flux, 0.0)
-#             push!(zero_fluxes, reaction_id)
-#         end
-#     end
-#     n_zero_fluxes = length(zero_fluxes)
-#     return zero_fluxes, n_zero_fluxes
-# end
-
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
 zeroth_samples, _ = sample_fluxes(zeroth_ct, workers_config; n_chains = 5)
@@ -149,29 +138,16 @@ println("zeroth_n_zero_fluxes: $zeroth_n_zero_fluxes")
 
 @info "First test case: Sampling, all sinks (no pruning), no metabolite bounds"
 first_ct = flux_balance_constraints(first_model)
-first_ct = flux_balance_constraints(fba_model)
 first_samples, _ = sample_fluxes(first_ct, workers_config; n_chains = 5)
 first_n_zero_fluxes, _ = count_n_all_zero_fluxes(first_samples)
 println("first_n_zero_fluxes: $first_n_zero_fluxes")
 
-# @info "Second test case: all sinks (no pruning), all metabolite bounds"
-# second_status, second_solution_tree =
-#     optimize_constraint_tree(second_ct, second_ct.objective.value)
-# println("First result: $second_status")
-# if !isnothing(second_solution_tree)
-#     second_zero_fluxes, second_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-#     println("second_n_zero_fluxes: $second_n_zero_fluxes")
-# else
-#     println("Failed so no values to display")
-# end
+@info "Second test case: all sinks (no pruning), all metabolite bounds"
+second_samples, _ = sample_fluxes(second_ct, workers_config; n_chains = 5)
+second_n_zero_fluxes, _ = count_n_all_zero_fluxes(second_samples)
+println("second_n_zero_fluxes: $second_n_zero_fluxes")
 
-# @info "Third test case: Pruned sinks, all metabolite bounds"
-# third_status, third_solution_tree =
-#     optimize_constraint_tree(third_ct, third_ct.objective.value)
-# println("First result: $third_status")
-# if !isnothing(third_solution_tree)
-#     third_zero_fluxes, third_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-#     println("third_n_zero_fluxes: $third_n_zero_fluxes")
-# else
-#     println("Failed so no values to display")
-# end
+@info "Third test case: Pruned sinks, all metabolite bounds"
+third_samples, _ = sample_fluxes(third_ct, workers_config; n_chains = 5)
+third_n_zero_fluxes, _ = count_n_all_zero_fluxes(third_samples)
+println("third_n_zero_fluxes: $third_n_zero_fluxes")
