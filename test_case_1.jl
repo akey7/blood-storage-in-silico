@@ -107,7 +107,7 @@ println("additive: $additive, final_time: $final_time")
 
 function find_zero_fluxes(solution_tree)
     zero_fluxes = []
-    for (reaction_id, flux) in first_solution_tree.fluxes
+    for (reaction_id, flux) in solution_tree.fluxes
         if isapprox(flux, 0.0)
             push!(zero_fluxes, reaction_id)
         end
@@ -117,13 +117,13 @@ function find_zero_fluxes(solution_tree)
 end
 
 @info "First test case: no sinks, no metabolite bounds"
-first_ct = flux_balance_constraints(fba_model)
-first_status, first_solution_tree =
-    optimize_constraint_tree(first_ct, first_ct.objective.value)
-println("First result: $first_status")
-if !isnothing(first_solution_tree)
-    first_zero_fluxes, first_n_zero_fluxes = find_zero_fluxes(first_solution_tree)
-    println("n_zero_fluxes: $first_n_zero_fluxes")
+zeroth_ct = flux_balance_constraints(fba_model)
+zeroth_status, zeroth_solution_tree =
+    optimize_constraint_tree(zeroth_ct, zeroth_ct.objective.value)
+println("First result: $zeroth_status")
+if !isnothing(zeroth_solution_tree)
+    zeroth_zero_fluxes, zeroth_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
+    println("n_zero_fluxes: $zeroth_n_zero_fluxes")
 else
     println("Failed so no values to display")
 end
