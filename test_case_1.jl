@@ -55,18 +55,18 @@ first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
 print_sinks_in_model(first_model)
 
-# @info "Add metabolite bounds to ConstraintTree"
-# case1_ct = flux_balance_constraints(fba_model)
+@info "Add metabolite bounds to ConstraintTree"
+second_ct = flux_balance_constraints(first_model)
 # metabolites_to_ignore = ["g6p_c", "glc__D_c", "pyr_e", "lac__L_e"]
-# metabolites_to_ignore = nothing
-# add_metabolite_bounds_to_constraint_tree!(
-#     case1_ct,
-#     metabolite_bounds_df,
-#     additive,
-#     final_time;
-#     metabolites_to_ignore = metabolites_to_ignore,
-# )
-# print_metabolite_bounds_on_constraint_tree(case1_ct)
+metabolites_to_ignore = nothing
+add_metabolite_bounds_to_constraint_tree!(
+    second_ct,
+    metabolite_bounds_df,
+    additive,
+    final_time;
+    metabolites_to_ignore = metabolites_to_ignore,
+)
+print_metabolite_bounds_on_constraint_tree(second_ct)
 
 # @info "Optimize for Case 1"
 # optimize_case_1_result = optimize_case_1(
@@ -144,8 +144,13 @@ else
     println("Failed so no values to display")
 end
 
-# @info "Test basic FBA with no sinks and no metabolite bounds"
-# result = optimize_constraint_tree(second_ct, second_ct.objective.value)
-# if !isnothing(result)
-#     display(result)
-# end
+@info "Second test case: all sinks (no pruning), all metabolite bounds"
+second_status, second_solution_tree =
+    optimize_constraint_tree(second_ct, second_ct.objective.value)
+println("First result: $second_status")
+if !isnothing(second_solution_tree)
+    second_zero_fluxes, second_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
+    println("second_n_zero_fluxes: $second_n_zero_fluxes")
+else
+    println("Failed so no values to display")
+end
