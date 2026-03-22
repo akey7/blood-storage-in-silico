@@ -147,17 +147,12 @@ zeroth_samples, _ = sample_fluxes(zeroth_ct, workers_config; n_chains = 5)
 zeroth_n_zero_fluxes, _ = count_n_all_zero_fluxes(zeroth_samples)
 println("zeroth_n_zero_fluxes: $zeroth_n_zero_fluxes")
 
-# @info "First test case: all sinks (no pruning), no metabolite bounds"
-# first_ct = flux_balance_constraints(first_model)
-# first_status, first_solution_tree =
-#     optimize_constraint_tree(first_ct, first_ct.objective.value)
-# println("First result: $first_status")
-# if !isnothing(first_solution_tree)
-#     first_zero_fluxes, first_n_zero_fluxes = find_zero_fluxes(zeroth_solution_tree)
-#     println("first_n_zero_fluxes: $first_n_zero_fluxes")
-# else
-#     println("Failed so no values to display")
-# end
+@info "First test case: Sampling, all sinks (no pruning), no metabolite bounds"
+first_ct = flux_balance_constraints(first_model)
+first_ct = flux_balance_constraints(fba_model)
+first_samples, _ = sample_fluxes(first_ct, workers_config; n_chains = 5)
+first_n_zero_fluxes, _ = count_n_all_zero_fluxes(first_samples)
+println("first_n_zero_fluxes: $first_n_zero_fluxes")
 
 # @info "Second test case: all sinks (no pruning), all metabolite bounds"
 # second_status, second_solution_tree =
