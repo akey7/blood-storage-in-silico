@@ -234,7 +234,7 @@ function prepare_median_flux_vector_matrix(sampling_df)
 end
 
 """
-    prepare_measurements_and_sinks_report_df(absolute_quant_long_df, fba_model_metabolites_df, ufba_added_sink_ids_df, sampling_df)
+    prepare_measurements_and_sinks_report_df(absolute_quant_long_df, fba_model_metabolites_df, ufba_optimized_sinks_df, sampling_df)
 
 Prepares two DataFrames detailing the number of metabolites in each model and how many sinks there are.
 
@@ -245,7 +245,7 @@ The second DataFrame aggregates these per-metabolite rows into per-model rows, o
 # Arguments
 1. `absolute_quant_long_df`: The absolute quant measurements from `output/absolute_quant_long.csv`
 2. `fba_model_metabolites_df`: The FBA model metabolites from `output/fba_model_metabolites.csv`
-3. `ufba_added_sink_ids_df`: The sinks added to models during the uFBA process from `output/ufba_added_sink_ids.csv`
+3. `ufba_optimized_sinks_df`: The sinks added to models during the uFBA process from `output/ufba_optimized_sinks_df.csv`
 4. `sampling_df`: The wide sampling DataFrame from all uFBA runs.
 
 # Returns
@@ -258,15 +258,14 @@ The first DataFrame contains the following columns
 2. `final_time`: Final time of the model
 3. `fba_metabolite_id`: Metabolite id from the FBA model
 4. `is_measured`: `true` if the metabolite was measured
-5. `has_up_sink`: `true` if there is an up sink for the metabolite
-6. `has_down_sink`: `true` if there is a down sink for the metabolite
+5. `has_sink`: `true` if there is a sink for the metabolite
 
 The second DataFrame contains the following columns:
 1. `additive`: Additive of the model
 2. `final_time`: Final time of the model
 3. `n_fba_metabolites`: Number of metabolites in the model
 4. `n_measured`: The number of metabolites that have absolute quant approximations.
-5. `n_at_least_one_sink`: The number of metabolites that have one or both sinks.
+5. `n_with_sink`: The number of metabolites that have a sink.
 6. `n_no_measure_no_sink`: The number of metabolites that have neither an absolute quant approximation nor any sinks.
 """
 function prepare_measurements_and_sinks_report_df(

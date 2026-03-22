@@ -564,15 +564,15 @@ end
 """
     decompose_sink_id(sink_id)
 
-Extract the direction and metabolite id from a given sink id/name.
+Extract the metabolite id from a given sink id.
 
 # Arguments
 1. `sink_id`: The id of the sink.
 
 # Returns
-`Tuple{String,String}`
+`String`
 
-Returns a tuple of metabolite id and direction.
+Returns the metabolite id associated with the sink id.
 """
 function decompose_sink_id(sink_id)
     sink_str = String(sink_id)
