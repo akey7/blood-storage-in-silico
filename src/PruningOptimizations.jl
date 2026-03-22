@@ -103,8 +103,8 @@ function optimize_case_1(
     write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
     print_objective_value::Bool = false,
 )
-    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_UNKNOWN_SK", string(id))]
-    isempty(sink_ids) && error("No sink reactions matching `R_UNKNOWN_SK` were found.")
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK", string(id))]
+    isempty(sink_ids) && error("No sink reactions matching `R_REVSK`` were found.")
     jump_model = JuMP.Model(optimizer)
     silent && JuMP.set_silent(jump_model)
     x = Vector{JuMP.VariableRef}(undef, C.variable_count(ct))
@@ -257,7 +257,7 @@ This is a diagnostic helper function to print the reaction ids of sinks in the g
 """
 function print_sinks_in_model(fba_model::A.AbstractFBCModel)
     for (rxn_id, rxn) in fba_model.reactions
-        if occursin("R_UNKNOWN_SK", rxn_id)
+        if occursin("R_REVSK_", rxn_id)
             println(rxn_id, ": ", rxn.lower_bound, ", ", rxn.upper_bound)
         end
     end
