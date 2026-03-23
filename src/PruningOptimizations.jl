@@ -17,11 +17,8 @@ export optimize_case_1,
     find_unmeasured_metabolites_on_ct,
     optimize_case_4,
     optimize_case_3,
-    find_sinks_on_ct
-
-function jump_constraint(m, x, v::C.QuadraticValue, b::C.EqualTo; base_name::String)
-    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
-end
+    find_sinks_on_ct,
+    find_problematic_metabolite_between_bounds
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
@@ -296,6 +293,39 @@ function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
         (id, c) in ct.flux_stoichiometry if !isnothing(c.bound) && c.bound isa C.EqualTo
     ]
     return unmeasured_metabolite_ids
+end
+
+"""
+    find_problematic_metabolite_between_bounds(ct::C.ConstraintTree)
+
+Return a DataFrame showing measured metabolites that have upper and lower bounds that are of oppostie sign, meaning that steady state might be feasible. All constraints are taken from the `flux_stoichiometry` branch of the tree.
+
+# Arguments
+1. `ct::C.ConstraintTree`: The ConstraintTree containing measured metabolite bounds.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the paths in the ConstraintTree and bounds that are opposite sign, sorted by constraint path. 
+"""
+function find_problematic_metabolite_between_bounds(ct::C.ConstraintTree)
+    rows = []
+    C.itraverse(ct.flux_stoichiometry) do path, con
+        ct_path = join(path, ".")
+        b = con.bound
+        isnothing(b) && return
+        if b isa C.Between
+            lb = b.lower
+            ub = b.upper
+            if sign(lb) != sign(ub)
+                row = (ct_path = ct_path, lb = lb, ub = ub)
+                push!(rows, row)
+            end
+        end
+    end
+    unsorted_df = DataFrame(rows)
+    result_df = @orderby(unsorted_df, :ct_path)
+    return result_df
 end
 
 function optimize_case_4(
