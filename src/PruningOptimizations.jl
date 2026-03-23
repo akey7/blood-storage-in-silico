@@ -285,8 +285,8 @@ end
 
 function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
     unmeasured_metabolite_ids = [
-        id for
-        (id, c) in ct.flux_stoichiometry if !isnothing(c.bound) && c.bound isa C.EqualTo
+        id for (id, c) in ct.flux_stoichiometry if
+        !isnothing(c.bound) && c.bound isa C.EqualTo && isapprox(c.bound.equal_to, 0.0)
     ]
     return unmeasured_metabolite_ids
 end
