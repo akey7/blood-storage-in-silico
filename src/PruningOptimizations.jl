@@ -14,7 +14,6 @@ export optimize_case_1,
     analyze_pruning_optimization,
     print_sinks_in_model,
     optimization_failure_analysis,
-    find_unmeasured_metabolites_on_ct,
     optimize_case_4,
     optimize_case_3,
     find_sinks_on_ct
@@ -286,16 +285,9 @@ function analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-
     return (prune = prune, keep = keep)
 end
 
-function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
-    unmeasured_metabolite_ids = [
-        id for
-        (id, c) in ct.flux_stoichiometry if !isnothing(c.bound) && c.bound isa C.EqualTo
-    ]
-    return unmeasured_metabolite_ids
-end
-
 function optimize_case_4(
-    original_ct::C.ConstraintTree;
+    original_ct::C.ConstraintTree,
+    unmeasured_metabolite_ids::Vector{Symbol};
     optimizer = HiGHS.Optimizer,
     silent::Bool = true,
     write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
@@ -303,7 +295,6 @@ function optimize_case_4(
     n_threads::Union{Nothing,Int} = nothing,
 )
     ct = deepcopy(original_ct)
-    unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
     isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
     objective_value = C.sum(
         (
