@@ -101,7 +101,6 @@ if optimize_case_3_ok_fail == :fail
     display(optimize_case_3_result)
     error("Case 3 optimization failed.")
 end
-display(optimize_case_3_result)
 
 @info "Case 3: Prune zero sinks"
 third_fba_model, _ = create_fba_model(
@@ -127,6 +126,9 @@ add_metabolite_bounds_to_constraint_tree!(
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
 )
+n_pruned_sinks = length(case_3_analysis.prune)
+n_kept_sinks = length(case_3_analysis.keep)
+println("Pruned $n_pruned_sinks, kept $n_kept_sinks")
 
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
