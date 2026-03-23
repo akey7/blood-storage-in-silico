@@ -101,7 +101,7 @@ if optimize_case_1_ok_fail == :fail
     display(optimize_case_1_result)
     error("Case 1 optimization failed. Conflicting constraints are listed above. Stopping.")
 end
-case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
+case_1_analysis = analyze_pruning_optimization(optimize_case_1_result)
 
 @info "Prune zero sinks according to Case 1"
 third_fba_model, _ = create_fba_model(

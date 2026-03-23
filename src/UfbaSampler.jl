@@ -488,7 +488,7 @@ function make_ufba_models_for_additives_and_times(
         )
         prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
         if prune_status == :ok
-            case_1_analysis = analyze_case_1_pruning_optimization(prune_result)
+            case_1_analysis = analyze_pruning_optimization(prune_result)
             prune_zero_sinks = string.(case_1_analysis.prune)
             nonzero_sinks = string.(case_1_analysis.keep)
             pruned_model, _ = create_fba_model(

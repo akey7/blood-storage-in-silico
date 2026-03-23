@@ -11,7 +11,7 @@ using Printf
 import MathOptInterface as MOI
 
 export optimize_case_1,
-    analyze_case_1_pruning_optimization,
+    analyze_pruning_optimization,
     print_sinks_in_model,
     optimization_failure_analysis,
     find_unmeasured_metabolites_on_ct,
@@ -252,12 +252,12 @@ function optimization_failure_analysis(jump_model::JuMP.Model)
 end
 
 """
-    analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
+    analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-6)
 
-Classify sinks from the Case 1 optimization result.
+Classify sinks from an optimization result.
 
 # Arguments
-1. `optimize_case_1_result`: Result from [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1)
+1. `optimize_case_1_result`: Result from one of the optimization functions.
 2. `atol::Float64 = 1e-9`: Tolerance for approximate zero comparisons.
 
 # Returns
@@ -266,9 +266,9 @@ Named tuple with fields:
 1. `prune::Vector{Symbol}`: Sinks to be pruned because the carry no flux.
 2. `keep::Vector{Symbol}`: Sinks to keep because they carry flux.
 """
-function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
-    solution_tree = optimize_case_1_result.solution_tree
-    sink_ids = optimize_case_1_result.sink_ids
+function analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-6)
+    solution_tree = optimization_result.solution_tree
+    sink_ids = optimization_result.sink_ids
     prune = []
     keep = []
     for sink_id in sink_ids
