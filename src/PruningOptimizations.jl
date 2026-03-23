@@ -11,7 +11,17 @@ using Printf
 import MathOptInterface as MOI
 
 export optimize_case_1,
-    analyze_case_1_pruning_optimization, print_sinks_in_model, optimization_failure_analysis
+    analyze_pruning_optimization,
+    print_sinks_in_model,
+    optimization_failure_analysis,
+    find_unmeasured_metabolites_on_ct,
+    optimize_case_4,
+    optimize_case_3,
+    find_sinks_on_ct
+
+function jump_constraint(m, x, v::C.QuadraticValue, b::C.EqualTo; base_name::String)
+    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
+end
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
@@ -244,12 +254,12 @@ function optimization_failure_analysis(jump_model::JuMP.Model)
 end
 
 """
-    analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
+    analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-6)
 
-Classify sinks from the Case 1 optimization result.
+Classify sinks from an optimization result.
 
 # Arguments
-1. `optimize_case_1_result`: Result from [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1)
+1. `optimize_case_1_result`: Result from one of the optimization functions.
 2. `atol::Float64 = 1e-9`: Tolerance for approximate zero comparisons.
 
 # Returns
@@ -258,9 +268,9 @@ Named tuple with fields:
 1. `prune::Vector{Symbol}`: Sinks to be pruned because the carry no flux.
 2. `keep::Vector{Symbol}`: Sinks to keep because they carry flux.
 """
-function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float64 = 1.0e-6)
-    solution_tree = optimize_case_1_result.solution_tree
-    sink_ids = optimize_case_1_result.sink_ids
+function analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-6)
+    solution_tree = optimization_result.solution_tree
+    sink_ids = optimization_result.sink_ids
     prune = []
     keep = []
     for sink_id in sink_ids
@@ -278,6 +288,174 @@ function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float
     # end
 
     return (prune = prune, keep = keep)
+end
+
+function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
+    unmeasured_metabolite_ids = [
+        id for
+        (id, c) in ct.flux_stoichiometry if !isnothing(c.bound) && c.bound isa C.EqualTo
+    ]
+    return unmeasured_metabolite_ids
+end
+
+function optimize_case_4(
+    original_ct::C.ConstraintTree;
+    optimizer = HiGHS.Optimizer,
+    silent::Bool = true,
+    write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
+    print_objective_value::Bool = false,
+    n_threads::Union{Nothing,Int} = nothing,
+)
+    ct = deepcopy(original_ct)
+    unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
+    isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
+    objective_value = C.sum(
+        (
+            C.squared(ct.flux_stoichiometry[met_id].value) for
+            met_id in unmeasured_metabolite_ids
+        );
+        init = 0.0,
+    )
+    if haskey(ct, :objective)
+        ct.objective = C.Constraint(objective_value)
+    else
+        ct *= :objective^C.Constraint(objective_value)
+    end
+    jump_model = JuMP.Model(optimizer)
+    if !isnothing(n_threads)
+        JuMP.set_attribute(jump_model, MOI.NumberOfThreads(), n_threads)
+    end
+    silent && JuMP.set_silent(jump_model)
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(ct.objective.value, x))
+    C.itraverse(ct) do path, con
+        ct_path = join(path, ".")
+        b = con.bound
+        isnothing(b) && return
+        val = C.substitute(con.value, x)
+        if b isa C.EqualTo
+            JuMP.@constraint(jump_model, val == b.equal_to, base_name = ct_path)
+        elseif b isa C.Between
+            if !isinf(b.lower)
+                JuMP.@constraint(jump_model, val >= b.lower, base_name = ct_path)
+            end
+            if !isinf(b.upper)
+                JuMP.@constraint(jump_model, val <= b.upper, base_name = ct_path)
+            end
+        else
+            throw(ArgumentError("Unsupported bound type: $(typeof(b))"))
+        end
+    end
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    primal = JuMP.primal_status(jump_model)
+    if status != MOI.OPTIMAL
+        error("Optimization failed: termination_status = $status, primal_status = $primal")
+    end
+    solved_ct = C.substitute_values(work_ct, JuMP.value.(jump_model[:x]))
+    return :ok, solved_ct
+end
+
+function find_sinks_on_ct(ct::C.ConstraintTree)
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK_", string(id))]
+    return sink_ids
+end
+
+function optimize_case_3(
+    original_ct::C.ConstraintTree;
+    optimizer = HiGHS.Optimizer,
+    silent::Bool = true,
+    write_lp_path::Union{Nothing,String} = "output/debug_case3.lp",
+    print_objective_value::Bool = false,
+)
+    ct = deepcopy(original_ct)
+    unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
+    isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
+    sink_flux_ids = find_sinks_on_ct(ct)
+    isempty(sink_flux_ids) && error("No sink fluxes were found")
+    jump_model = JuMP.Model(optimizer)
+    silent && JuMP.set_silent(jump_model)
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    JuMP.@variable(jump_model, t_dx[1:length(unmeasured_metabolite_ids)] >= 0)
+    JuMP.@variable(jump_model, t_sink[1:length(sink_flux_ids)] >= 0)
+    delta_x_exprs = [
+        C.substitute(ct.flux_stoichiometry[met_id].value, x) for
+        met_id in unmeasured_metabolite_ids
+    ]
+    sink_flux_exprs =
+        [C.substitute(ct.fluxes[sink_id].value, x) for sink_id in sink_flux_ids]
+    for i in eachindex(delta_x_exprs)
+        met_id = unmeasured_metabolite_ids[i]
+        base = "abs_dx_" * string(met_id)
+        JuMP.@constraint(
+            jump_model,
+            t_dx[i] >= delta_x_exprs[i],
+            base_name = base * "_pos",
+        )
+        JuMP.@constraint(
+            jump_model,
+            t_dx[i] >= -delta_x_exprs[i],
+            base_name = base * "_neg",
+        )
+    end
+    for j in eachindex(sink_flux_exprs)
+        sink_id = sink_flux_ids[j]
+        base = "abs_sink_" * string(sink_id)
+        JuMP.@constraint(
+            jump_model,
+            t_sink[j] >= sink_flux_exprs[j],
+            base_name = base * "_pos",
+        )
+        JuMP.@constraint(
+            jump_model,
+            t_sink[j] >= -sink_flux_exprs[j],
+            base_name = base * "_neg",
+        )
+    end
+    C.itraverse(ct) do path, con
+        ct_path = join(string.(path), ".")
+        b = con.bound
+        isnothing(b) && return
+        val = C.substitute(con.value, x)
+        if b isa C.EqualTo
+            JuMP.@constraint(jump_model, val == b.equal_to, base_name = ct_path)
+        elseif b isa C.Between
+            if !isinf(b.lower)
+                JuMP.@constraint(jump_model, val >= b.lower, base_name = ct_path * "_lb")
+            end
+            if !isinf(b.upper)
+                JuMP.@constraint(jump_model, val <= b.upper, base_name = ct_path * "_ub")
+            end
+        else
+            throw(ArgumentError("Unsupported bound type: $(typeof(b))"))
+        end
+    end
+    JuMP.@objective(jump_model, Min, sum(t_dx) + sum(t_sink),)
+    if print_objective_value
+        println("Case 3 objective: min sum(abs(Δx_i)) + sum(abs(v_j))")
+        println("n_unmeasured_metabolites = $(length(unmeasured_metabolite_ids))")
+        println("n_sink_fluxes = $(length(sink_flux_ids))")
+    end
+    if !isnothing(write_lp_path)
+        try
+            JuMP.write_to_file(jump_model, write_lp_path)
+        catch err
+            @warn "Could not write model to file $write_lp_path" exception = err
+        end
+    end
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    primal = JuMP.primal_status(jump_model)
+    if status != MOI.OPTIMAL
+        error("Optimization failed: termination_status = $status, primal_status = $primal")
+    end
+    solution_tree = C.substitute_values(ct, JuMP.value.(jump_model[:x]))
+    result = (
+        solution_tree = solution_tree,
+        sink_ids = sink_flux_ids,
+        jump_model = jump_model,
+    )
+    return :ok, result
 end
 
 """
