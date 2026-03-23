@@ -707,15 +707,16 @@ Regresses the concentration vs time to find the rate of metabolite concentration
 # Returns
 `DataFrame`
 
-Returns a DataFrame with the concentration rate regression results. The DataFrame is sorted by additive, metabolite, and final_time. The following columns are available:
+Returns a DataFrame with the concentration rate regression results. The DataFrame is sorted by additive, final_time, and metabolite. The following columns are available:
 
-1. `:additive`: The additive the data for the regression is from.
-2. `:metabolite`: Metabolite id of the row.
-3. `:final_time`: Final time point of the regression. The timespan of the regression is final_time - 1 to final_time.
-4. `:intercept`: Intercept of the regression
-5. `:rate`: Slope of the regression.
-6. `:lb`: Lower bound of the 95% confidence interval of the slope.
-7. `:ub`: Upper bound of the 95% confidence interval of the slope.
+1. `additive`: The additive the data for the regression is from.
+2. `metabolite`: Metabolite id of the row.
+3. `final_time`: Final time point of the regression. The timespan of the regression is final_time - 1 to final_time.
+4. `intercept`: Intercept of the regression
+5. `rate`: Slope of the regression.
+6. `lb`: Lower bound of the 95% confidence interval of the slope.
+7. `ub`: Upper bound of the 95% confidence interval of the slope.
+8. `lb_ub_different_sign`: `true` if the lower bound and upper bound are different signs.
 """
 function regress_concentration_vs_time(long_df)
     Random.seed!(123)
@@ -745,11 +746,22 @@ function regress_concentration_vs_time(long_df)
             ub = ub,
         )
     end
-    result_df = @chain rows begin
+    regressions_df = @chain rows begin
         DataFrame()
-        @orderby(:additive, :metabolite, :final_time)
+        @rtransform(:lb_ub_different_sign = sign(:lb) != sign(:ub))
+        @orderby(:additive, :final_time, :metabolite)
+        @select(
+            :additive,
+            :final_time,
+            :metabolite,
+            :intercept,
+            :rate,
+            :lb,
+            :ub,
+            :lb_ub_different_sign
+        )
     end
-    return result_df
+    return regressions_df
 end
 
 """
