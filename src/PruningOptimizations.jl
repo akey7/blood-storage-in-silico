@@ -19,10 +19,6 @@ export optimize_case_1,
     optimize_case_3,
     find_sinks_on_ct
 
-function jump_constraint(m, x, v::C.QuadraticValue, b::C.EqualTo; base_name::String)
-    JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
-end
-
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
 
