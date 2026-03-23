@@ -85,7 +85,7 @@ add_metabolite_bounds_to_constraint_tree!(
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
 )
-print_metabolite_bounds_on_constraint_tree(second_ct)
+# print_metabolite_bounds_on_constraint_tree(second_ct)
 
 @info "Case 3: Unmeasured metabolites list"
 unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(second_ct)

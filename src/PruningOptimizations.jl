@@ -295,6 +295,19 @@ function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
     return unmeasured_metabolite_ids
 end
 
+"""
+    find_problematic_metabolite_between_bounds(ct::C.ConstraintTree)
+
+Return a DataFrame showing measured metabolites that have upper and lower bounds that are of oppostie sign, meaning that steady state might be feasible. All constraints are taken from the `flux_stoichiometry` branch of the tree.
+
+# Arguments
+1. `ct::C.ConstraintTree`: The ConstraintTree containing measured metabolite bounds.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the paths in the ConstraintTree and bounds that are opposite sign, sorted by constraint path. 
+"""
 function find_problematic_metabolite_between_bounds(ct::C.ConstraintTree)
     rows = []
     C.itraverse(ct.flux_stoichiometry) do path, con
