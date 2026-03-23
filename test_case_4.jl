@@ -91,13 +91,12 @@ print_metabolite_bounds_on_constraint_tree(second_ct)
 unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(second_ct)
 display(first(unmeasured_metabolite_ids, 10))
 
-# @info "Optimize for Case 1 and create pruned model"
-# optimize_case_1_ok_fail, optimize_case_1_result = optimize_case_1(second_ct)
-# if optimize_case_1_ok_fail == :fail
-#     display(optimize_case_1_result)
-#     error("Case 1 optimization failed. Conflicting constraints are listed above. Stopping.")
-# end
-# case_1_analysis = analyze_case_1_pruning_optimization(optimize_case_1_result)
+@info "Optimize for Case 4"
+optimize_case_4_ok_fail, optimize_case_4_result = optimize_case_4(second_ct)
+if optimize_case_4_ok_fail == :fail
+    display(optimize_case_4_result)
+    error("Case 4 optimization failed.")
+end
 
 # @info "Prune zero sinks according to Case 1"
 # third_fba_model, _ = create_fba_model(
