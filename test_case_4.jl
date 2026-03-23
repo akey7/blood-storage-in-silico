@@ -87,6 +87,10 @@ add_metabolite_bounds_to_constraint_tree!(
 )
 print_metabolite_bounds_on_constraint_tree(second_ct)
 
+@info "Case 4: Unmeasured metabolites list"
+unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(second_ct)
+display(first(unmeasured_metabolite_ids, 10))
+
 # @info "Optimize for Case 1 and create pruned model"
 # optimize_case_1_ok_fail, optimize_case_1_result = optimize_case_1(second_ct)
 # if optimize_case_1_ok_fail == :fail

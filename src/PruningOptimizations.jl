@@ -11,7 +11,10 @@ using Printf
 import MathOptInterface as MOI
 
 export optimize_case_1,
-    analyze_case_1_pruning_optimization, print_sinks_in_model, optimization_failure_analysis
+    analyze_case_1_pruning_optimization,
+    print_sinks_in_model,
+    optimization_failure_analysis,
+    find_unmeasured_metabolites_on_ct
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
@@ -278,6 +281,14 @@ function analyze_case_1_pruning_optimization(optimize_case_1_result; atol::Float
     # end
 
     return (prune = prune, keep = keep)
+end
+
+function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
+    unmeasured_metabolite_ids = [
+        id for
+        (id, c) in ct.flux_stoichiometry if !isnothing(c.bound) && c.bound isa C.EqualTo
+    ]
+    return unmeasured_metabolite_ids
 end
 
 """
