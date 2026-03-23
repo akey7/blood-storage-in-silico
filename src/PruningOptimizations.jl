@@ -450,11 +450,8 @@ function optimize_case_3(
         error("Optimization failed: termination_status = $status, primal_status = $primal")
     end
     solution_tree = C.substitute_values(ct, JuMP.value.(jump_model[:x]))
-    result = (
-        solution_tree = solution_tree,
-        sink_ids = sink_flux_ids,
-        jump_model = jump_model,
-    )
+    result =
+        (solution_tree = solution_tree, sink_ids = sink_flux_ids, jump_model = jump_model)
     return :ok, result
 end
 
