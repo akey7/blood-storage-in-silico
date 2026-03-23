@@ -130,6 +130,10 @@ n_pruned_sinks = length(case_3_analysis.prune)
 n_kept_sinks = length(case_3_analysis.keep)
 println("Pruned $n_pruned_sinks, kept $n_kept_sinks")
 
+@info "Case 3: Problematic metabolite bounds"
+problematic_metabolite_bounds_df = find_problematic_metabolite_between_bounds(third_ct)
+display(problematic_metabolite_bounds_df)
+
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
 zeroth_samples, _ = sample_fluxes(zeroth_ct, workers_config; n_chains = 5)

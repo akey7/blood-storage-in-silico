@@ -17,7 +17,8 @@ export optimize_case_1,
     find_unmeasured_metabolites_on_ct,
     optimize_case_4,
     optimize_case_3,
-    find_sinks_on_ct
+    find_sinks_on_ct,
+    find_problematic_metabolite_between_bounds
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)
@@ -292,6 +293,26 @@ function find_unmeasured_metabolites_on_ct(ct::C.ConstraintTree)
         (id, c) in ct.flux_stoichiometry if !isnothing(c.bound) && c.bound isa C.EqualTo
     ]
     return unmeasured_metabolite_ids
+end
+
+function find_problematic_metabolite_between_bounds(ct::C.ConstraintTree)
+    rows = []
+    C.itraverse(ct.flux_stoichiometry) do path, con
+        ct_path = join(path, ".")
+        b = con.bound
+        isnothing(b) && return
+        if b isa C.Between
+            lb = b.lower
+            ub = b.upper
+            if sign(lb) != sign(ub)
+                row = (ct_path = ct_path, lb = lb, ub = ub)
+                push!(rows, row)
+            end
+        end
+    end
+    unsorted_df = DataFrame(rows)
+    result_df = @orderby(unsorted_df, :ct_path)
+    return result_df
 end
 
 function optimize_case_4(
