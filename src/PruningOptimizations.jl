@@ -392,14 +392,15 @@ function find_sinks_on_ct(ct::C.ConstraintTree)
 end
 
 function optimize_case_3(
-    original_ct::C.ConstraintTree;
+    original_ct::C.ConstraintTree,
+    unmeasured_metabolite_ids::Vector{Symbol};
     optimizer = HiGHS.Optimizer,
     silent::Bool = true,
     write_lp_path::Union{Nothing,String} = "output/debug_case3.lp",
     print_objective_value::Bool = false,
 )
     ct = deepcopy(original_ct)
-    unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
+    # unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
     isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
     sink_flux_ids = find_sinks_on_ct(ct)
     isempty(sink_flux_ids) && error("No sink fluxes were found")

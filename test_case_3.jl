@@ -78,25 +78,28 @@ first_added_sink_ids =
 @info "Add metabolite bounds to ConstraintTree"
 second_ct = flux_balance_constraints(first_model)
 metabolites_to_ignore = nothing
-add_metabolite_bounds_to_constraint_tree!(
+measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     second_ct,
     metabolite_bounds_df,
     additive,
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
 )
+unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
+display(unmeasured_metabolite_ids)
 # print_metabolite_bounds_on_constraint_tree(second_ct)
 
-@info "Case 3: Unmeasured metabolites list"
-unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(second_ct)
-display(first(unmeasured_metabolite_ids, 10))
+# @info "Case 3: Unmeasured metabolites list"
+# unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(second_ct)
+# display(first(unmeasured_metabolite_ids, 10))
 
 @info "Case 3: Sinks list"
 sink_ids = find_sinks_on_ct(second_ct)
 display(first(sink_ids, 10))
 
 @info "Case 3: Optimize"
-optimize_case_3_ok_fail, optimize_case_3_result = optimize_case_3(second_ct)
+optimize_case_3_ok_fail, optimize_case_3_result =
+    optimize_case_3(second_ct, unmeasured_metabolite_ids)
 if optimize_case_3_ok_fail == :fail
     display(optimize_case_3_result)
     error("Case 3 optimization failed.")

@@ -8,6 +8,7 @@ import ConstraintTrees as C
 using COBREXA
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using Statistics
 
 export load_metabolite_bounds,
     query_metabolite_bounds,
@@ -226,6 +227,24 @@ function find_metabolite_matches(
     return metabolite_status_df
 end
 
+function suggested_unmeasured_metabolite_bounds(
+    metabolite_bounds_df::DataFrame,
+    additive::String,
+    final_time::Int64,
+)
+    selection_df =
+        @rsubset(metabolite_bounds_df, :additive == additive, :final_time == final_time)
+    abs_bounds = []
+    for lb in selection_df.lb
+        push!(abs_bounds, abs(lb))
+    end
+    for ub in selection_df.ub
+        push!(abs_bounds, abs(ub))
+    end
+    median_abs_bound = median(abs_bounds)
+    return -median_abs_bound, median_abs_bound
+end
+
 """
     add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing)
 
@@ -251,7 +270,11 @@ function add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
-    n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
+    default_lb, default_ub =
+        suggested_unmeasured_metabolite_bounds(metabolite_bounds_df, additive, final_time)
+    unmeasured_metabolites = Symbol[]
+    measured_metabolites = Symbol[]
+    # n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
     # @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
@@ -263,19 +286,24 @@ function add_metabolite_bounds_to_constraint_tree!(
                 final_time,
             )
             if isnothing(bounds)
-                ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+                # ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+                ct.flux_stoichiometry[k].bound = C.Between(default_lb, default_ub)
+                push!(unmeasured_metabolites, k)
             else
                 lb, ub = bounds
                 ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+                push!(measured_metabolites, k)
             end
         else
             # println("Skipping bounds for metabolite id $short_metabolite_id")
             continue
         end
     end
-
-    # Just return something, even though this was modified in place.
-    return ct
+    result = (
+        unmeasured_metabolites = unmeasured_metabolites,
+        measured_metabolites = measured_metabolites,
+    )
+    return result
 end
 
 """
