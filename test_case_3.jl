@@ -86,12 +86,6 @@ measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore = metabolites_to_ignore,
 )
 unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
-display(unmeasured_metabolite_ids)
-# print_metabolite_bounds_on_constraint_tree(second_ct)
-
-# @info "Case 3: Unmeasured metabolites list"
-# unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(second_ct)
-# display(first(unmeasured_metabolite_ids, 10))
 
 @info "Case 3: Sinks list"
 sink_ids = find_sinks_on_ct(second_ct)
@@ -132,10 +126,6 @@ add_metabolite_bounds_to_constraint_tree!(
 n_pruned_sinks = length(case_3_analysis.prune)
 n_kept_sinks = length(case_3_analysis.keep)
 println("Pruned $n_pruned_sinks, kept $n_kept_sinks")
-
-@info "Case 3: Problematic metabolite bounds"
-problematic_metabolite_bounds_df = find_problematic_metabolite_between_bounds(third_ct)
-display(problematic_metabolite_bounds_df)
 
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
