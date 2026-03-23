@@ -16,7 +16,8 @@ export optimize_case_1,
     optimization_failure_analysis,
     find_unmeasured_metabolites_on_ct,
     optimize_case_4,
-    optimize_case_3
+    optimize_case_3,
+    find_sinks_on_ct
 
 function jump_constraint(m, x, v::C.QuadraticValue, b::C.EqualTo; base_name::String)
     JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
@@ -355,15 +356,102 @@ function optimize_case_4(
     return :ok, solved_ct
 end
 
-# function optimize_case_3(
-#     original_ct::C.ConstraintTree;
-#     optimizer = HiGHS.Optimizer,
-#     silent::Bool = true,
-#     write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
-#     print_objective_value::Bool = false,
-# )()
-    
-# end
+function find_sinks_on_ct(ct::C.ConstraintTree)
+    sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK_", string(id))]
+    return sink_ids
+end
+
+function optimize_case_3(
+    original_ct::C.ConstraintTree;
+    optimizer = HiGHS.Optimizer,
+    silent::Bool = true,
+    write_lp_path::Union{Nothing,String} = "output/debug_case3.lp",
+    print_objective_value::Bool = false,
+)
+    ct = deepcopy(original_ct)
+    unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
+    isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
+    sink_flux_ids = find_sinks_on_ct(ct)
+    isempty(sink_flux_ids) && error("No sink fluxes were found")
+    jump_model = JuMP.Model(optimizer)
+    silent && JuMP.set_silent(jump_model)
+    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
+    JuMP.@variable(jump_model, t_dx[1:length(unmeasured_metabolite_ids)] >= 0)
+    JuMP.@variable(jump_model, t_sink[1:length(sink_flux_ids)] >= 0)
+    delta_x_exprs = [
+        C.substitute(ct.flux_stoichiometry[met_id].value, x) for
+        met_id in unmeasured_metabolite_ids
+    ]
+    sink_flux_exprs =
+        [C.substitute(ct.fluxes[sink_id].value, x) for sink_id in sink_flux_ids]
+    for i in eachindex(delta_x_exprs)
+        met_id = unmeasured_metabolite_ids[i]
+        base = "abs_dx_" * string(met_id)
+        JuMP.@constraint(
+            jump_model,
+            t_dx[i] >= delta_x_exprs[i],
+            base_name = base * "_pos",
+        )
+        JuMP.@constraint(
+            jump_model,
+            t_dx[i] >= -delta_x_exprs[i],
+            base_name = base * "_neg",
+        )
+    end
+    for j in eachindex(sink_flux_exprs)
+        sink_id = sink_flux_ids[j]
+        base = "abs_sink_" * string(sink_id)
+        JuMP.@constraint(
+            jump_model,
+            t_sink[j] >= sink_flux_exprs[j],
+            base_name = base * "_pos",
+        )
+        JuMP.@constraint(
+            jump_model,
+            t_sink[j] >= -sink_flux_exprs[j],
+            base_name = base * "_neg",
+        )
+    end
+    C.itraverse(ct) do path, con
+        ct_path = join(string.(path), ".")
+        b = con.bound
+        isnothing(b) && return
+        val = C.substitute(con.value, x)
+        if b isa C.EqualTo
+            JuMP.@constraint(jump_model, val == b.equal_to, base_name = ct_path)
+        elseif b isa C.Between
+            if !isinf(b.lower)
+                JuMP.@constraint(jump_model, val >= b.lower, base_name = ct_path * "_lb")
+            end
+            if !isinf(b.upper)
+                JuMP.@constraint(jump_model, val <= b.upper, base_name = ct_path * "_ub")
+            end
+        else
+            throw(ArgumentError("Unsupported bound type: $(typeof(b))"))
+        end
+    end
+    JuMP.@objective(jump_model, Min, sum(t_dx) + sum(t_sink),)
+    if print_objective_value
+        println("Case 3 objective: min sum(abs(Δx_i)) + sum(abs(v_j))")
+        println("n_unmeasured_metabolites = $(length(unmeasured_metabolite_ids))")
+        println("n_sink_fluxes = $(length(sink_flux_ids))")
+    end
+    if !isnothing(write_lp_path)
+        try
+            JuMP.write_to_file(jump_model, write_lp_path)
+        catch err
+            @warn "Could not write model to file $write_lp_path" exception = err
+        end
+    end
+    JuMP.optimize!(jump_model)
+    status = JuMP.termination_status(jump_model)
+    primal = JuMP.primal_status(jump_model)
+    if status != MOI.OPTIMAL
+        error("Optimization failed: termination_status = $status, primal_status = $primal")
+    end
+    solved_ct = C.substitute_values(ct, JuMP.value.(jump_model[:x]))
+    return :ok, solved_ct
+end
 
 """
     print_sinks_in_model(fba_model::A.AbstractFBCModel)
