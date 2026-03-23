@@ -15,7 +15,8 @@ export optimize_case_1,
     print_sinks_in_model,
     optimization_failure_analysis,
     find_unmeasured_metabolites_on_ct,
-    optimize_case_4
+    optimize_case_4,
+    optimize_case_3
 
 function jump_constraint(m, x, v::C.QuadraticValue, b::C.EqualTo; base_name::String)
     JuMP.@constraint(m, C.substitute(v, x) == b.equal_to, base_name = "$(base_name)_eq")
@@ -302,6 +303,7 @@ function optimize_case_4(
     silent::Bool = true,
     write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
     print_objective_value::Bool = false,
+    n_threads::Union{Nothing,Int} = nothing,
 )
     ct = deepcopy(original_ct)
     unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
@@ -319,6 +321,9 @@ function optimize_case_4(
         ct *= :objective^C.Constraint(objective_value)
     end
     jump_model = JuMP.Model(optimizer)
+    if !isnothing(n_threads)
+        JuMP.set_attribute(jump_model, MOI.NumberOfThreads(), n_threads)
+    end
     silent && JuMP.set_silent(jump_model)
     JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
     JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(ct.objective.value, x))
@@ -349,6 +354,16 @@ function optimize_case_4(
     solved_ct = C.substitute_values(work_ct, JuMP.value.(jump_model[:x]))
     return :ok, solved_ct
 end
+
+# function optimize_case_3(
+#     original_ct::C.ConstraintTree;
+#     optimizer = HiGHS.Optimizer,
+#     silent::Bool = true,
+#     write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
+#     print_objective_value::Bool = false,
+# )()
+    
+# end
 
 """
     print_sinks_in_model(fba_model::A.AbstractFBCModel)
