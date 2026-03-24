@@ -395,11 +395,10 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         combine(nrow => :Count)
         @orderby(:Count)
     end
-    joined_blocked_reaction_ids_df = @chain blocked_reaction_ids_df begin
-        innerjoin(rxn_ids_to_strings_df, on = :blocked_reaction_id => :reaction_id)
-        @orderby(:additive, :final_time, :blocked_reaction_id)
-    end
     broken_constraints = extract_broken_constraints(jobs, job_results)
+    display(blocked_reaction_ids_df)
+    joined_blocked_reaction_ids_df =
+        join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_df)
     result = (
         sampling_df = sampling_df,
         sinks_df = sinks_df,
@@ -410,6 +409,18 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         fba_breaks_df = broken_constraints.fba_breaks_df,
     )
     return result
+end
+
+function join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_df)
+    if nrow(blocked_reaction_ids_df) > 0
+        result = @chain blocked_reaction_ids_df begin
+            innerjoin(rxn_ids_to_strings_df, on = :blocked_reaction_id => :reaction_id)
+            @orderby(:additive, :final_time, :blocked_reaction_id)
+        end
+        return result
+    else
+        return DataFrame(additive = [], final_time = [], blocked_reaction_id = [])
+    end
 end
 
 """
@@ -452,6 +463,7 @@ function make_ufba_models_for_additives_and_times(
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
     additives = sort(unique(metabolite_bounds_df.additive))
+    relax_percentile = 0.1
     pairs =
         n_models == -1 ? collect(product(additives, final_times)) :
         collect(product(additives, final_times))[1:n_models]
@@ -478,15 +490,21 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        case1_ct = flux_balance_constraints(full_model)
-        add_metabolite_bounds_to_constraint_tree!(
-            case1_ct,
+        case_3_ct = flux_balance_constraints(full_model)
+        measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
+            case_3_ct,
             metabolite_bounds_df,
             additive_string,
             final_time;
             metabolites_to_ignore = metabolites_to_ignore,
+            relax_percentile = relax_percentile,
         )
-        prune_status, prune_result = optimize_case_1(case1_ct; write_lp_path = nothing)
+        unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
+        prune_status, prune_result = optimize_case_3(
+            case_3_ct,
+            unmeasured_metabolite_ids;
+            write_lp_path = nothing,
+        )
         if prune_status == :ok
             case_1_analysis = analyze_pruning_optimization(prune_result)
             prune_zero_sinks = string.(case_1_analysis.prune)
@@ -512,12 +530,13 @@ function make_ufba_models_for_additives_and_times(
             save_ufba_model_sbml(pruned_model, additive, final_time)
 
             pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
-            add_metabolite_bounds_to_constraint_tree!(
+            pruned_metabolite_bounds_result = add_metabolite_bounds_to_constraint_tree!(
                 pruned_with_metabolite_bounds_ct,
                 metabolite_bounds_df,
                 additive_string,
                 final_time;
                 metabolites_to_ignore = metabolites_to_ignore,
+                relax_percentile = relax_percentile,
             )
             next!(prog)
             return (
@@ -533,6 +552,11 @@ function make_ufba_models_for_additives_and_times(
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = nothing,
+                pruned_default_lb = pruned_metabolite_bounds_result.default_lb,
+                pruned_default_ub = pruned_metabolite_bounds_result.default_ub,
+                pruned_unmeasured_metabolites = pruned_metabolite_bounds_result.unmeasured_metabolites,
+                pruned_measured_metabolites = pruned_metabolite_bounds_result.measured_metabolites,
+                relax_percentile = relax_percentile,
             )
         else
             prune_breaks_df = DataFrame(
@@ -555,6 +579,11 @@ function make_ufba_models_for_additives_and_times(
                 pruned_with_metabolite_bounds_ct = nothing,
                 prune_status = prune_status,
                 prune_breaks_df = prune_breaks_df,
+                pruned_default_lb = nothing,
+                pruned_default_ub = nothing,
+                pruned_unmeasured_metabolites = nothing,
+                pruned_measured_metabolites = nothing,
+                relax_percentile = relax_percentile,
             )
         end
     end

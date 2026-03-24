@@ -434,7 +434,11 @@ function optimize_case_3(
     status = JuMP.termination_status(jump_model)
     if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
         solution_tree = C.substitute_values(ct, JuMP.value.(jump_model[:x]))
-        result = (solution_tree = solution_tree, sink_ids = sink_flux_ids, jump_model = jump_model)
+        result = (
+            solution_tree = solution_tree,
+            sink_ids = sink_flux_ids,
+            jump_model = jump_model,
+        )
         return :ok, result
     elseif status == JuMP.MOI.INFEASIBLE
         conflicted_constraints = optimization_failure_analysis(jump_model)
