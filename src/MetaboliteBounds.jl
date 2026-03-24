@@ -8,6 +8,7 @@ import ConstraintTrees as C
 using COBREXA
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using Statistics
 
 export load_metabolite_bounds,
     query_metabolite_bounds,
@@ -227,9 +228,46 @@ function find_metabolite_matches(
 end
 
 """
+    suggested_unmeasured_metabolite_bounds(metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; p::Float64 = 0.5)
+
+Suggest upper and lower bounds for unmeasured metabolites for appropriate model relaxation. It does this by looking at the absolute values of the lower and upper bounds and finding the given percentile within that vector.
+
+# Arguments
+1. `metabolite_bounds_df::DataFrame`: Bounds of measured metabolites.
+2. `additive::String`: Additive to search within the metabolite bounds.
+3. `final_time::Int64`: Final time to search within the metabolite bounds.
+4. `p::Float64 = 0.5`: Percentile of the measured absolute values to base the bounds off of. Defaults to searching for the median.
+
+# Returns
+`Tuple{Float64,Float64}`
+
+Suggested lower and upper bounds for unmeasured metabolites.
+"""
+function suggested_unmeasured_metabolite_bounds(
+    metabolite_bounds_df::DataFrame,
+    additive::String,
+    final_time::Int64;
+    p::Float64 = 0.5,
+)
+    selection_df =
+        @rsubset(metabolite_bounds_df, :additive == additive, :final_time == final_time)
+    abs_bounds = []
+    for lb in selection_df.lb
+        push!(abs_bounds, abs(lb))
+    end
+    for ub in selection_df.ub
+        push!(abs_bounds, abs(ub))
+    end
+    percentile_value = quantile(abs_bounds, p)
+    return -percentile_value, percentile_value
+end
+
+"""
     add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing)
 
-Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Mutates the given ConstraintTree in place.
+Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Unmeasured metabolites have upper and lower bounds set to percentile measurement suggested by [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds)
+
+Mutates the given ConstraintTree in place.
 
 # Arguments
 1. `ct::C.ConstraintTree`: ConstraintTree to modify
@@ -237,11 +275,16 @@ Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The con
 3. `additive::String`: Additive to find in the bounds DataFrame
 4. `final_time::Int64`: Final time to find in the DataFrame.
 5. `metabolites_to_ignore::Union{Vector{String},Nothing} = nothing`: If `nothing`, incorporates constraints for all metabolites in the DataFrame. If specified, ignores the metabolites specified (omit the leading `M_` in this list).
+6 `relax_percentile::Float64 = 0.5`: The percentile of the metabolite measurements to set upper and lower bounds of unmeasured to. If unspecified, defaults to 0.5.
 
 # Returns
-`ConstraintTree`
+`NamedTuple`
 
-Returns the mutated ConstraintTree, though capturing this return value after invocation is not necessary as the given ConstraintTree is modified in place.
+Returns a named tuple with the following fields:
+1. `unmeasured_metabolites`: Vector of symbols of metabolites that did not have measurements that were incorporated into the constraint tree.
+2. `measured_metabolites`: Vector of symbols of metabolites that have measurements that were incorporated into the constraint tree.
+3. `default_ub`: The default upper bound of unmeasured metabolites.
+4. `default_lb`: The default lower bound of unmeasured metabolites.
 """
 function add_metabolite_bounds_to_constraint_tree!(
     ct::C.ConstraintTree,
@@ -249,9 +292,18 @@ function add_metabolite_bounds_to_constraint_tree!(
     additive::String,
     final_time::Int64;
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
+    relax_percentile::Float64 = 0.5,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
-    n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
+    default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
+        metabolite_bounds_df,
+        additive,
+        final_time;
+        p = relax_percentile,
+    )
+    unmeasured_metabolites = Symbol[]
+    measured_metabolites = Symbol[]
+    # n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
     # @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
@@ -263,19 +315,26 @@ function add_metabolite_bounds_to_constraint_tree!(
                 final_time,
             )
             if isnothing(bounds)
-                ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+                # ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+                ct.flux_stoichiometry[k].bound = C.Between(default_lb, default_ub)
+                push!(unmeasured_metabolites, k)
             else
                 lb, ub = bounds
                 ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+                push!(measured_metabolites, k)
             end
         else
             # println("Skipping bounds for metabolite id $short_metabolite_id")
             continue
         end
     end
-
-    # Just return something, even though this was modified in place.
-    return ct
+    result = (
+        unmeasured_metabolites = unmeasured_metabolites,
+        measured_metabolites = measured_metabolites,
+        default_lb = default_lb,
+        default_ub = default_ub,
+    )
+    return result
 end
 
 """
