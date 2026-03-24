@@ -258,12 +258,12 @@ function suggested_unmeasured_metabolite_bounds(
     for ub in selection_df.ub
         push!(abs_bounds, abs(ub))
     end
-    percentile_value = quantile(abs_bounds, p)
-    return -percentile_value, percentile_value
+    quantile_value = quantile(abs_bounds, p)
+    return -quantile_value, quantile_value
 end
 
 """
-    add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing)
+    add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing, relax_quantile::Float64 = 0.5)
 
 Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Unmeasured metabolites have upper and lower bounds set to percentile measurement suggested by [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds)
 
@@ -275,7 +275,7 @@ Mutates the given ConstraintTree in place.
 3. `additive::String`: Additive to find in the bounds DataFrame
 4. `final_time::Int64`: Final time to find in the DataFrame.
 5. `metabolites_to_ignore::Union{Vector{String},Nothing} = nothing`: If `nothing`, incorporates constraints for all metabolites in the DataFrame. If specified, ignores the metabolites specified (omit the leading `M_` in this list).
-6 `relax_percentile::Float64 = 0.5`: The percentile of the metabolite measurements to set upper and lower bounds of unmeasured to. If unspecified, defaults to 0.5.
+6 `relax_quantile::Float64 = 0.5`: The percentile of the metabolite measurements to set upper and lower bounds of unmeasured to. If unspecified, defaults to 0.5.
 
 # Returns
 `NamedTuple`
@@ -292,14 +292,14 @@ function add_metabolite_bounds_to_constraint_tree!(
     additive::String,
     final_time::Int64;
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
-    relax_percentile::Float64 = 0.5,
+    relax_quantile::Float64 = 0.5,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
     default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
         metabolite_bounds_df,
         additive,
         final_time;
-        p = relax_percentile,
+        p = relax_quantile,
     )
     unmeasured_metabolites = Symbol[]
     measured_metabolites = Symbol[]

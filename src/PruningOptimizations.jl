@@ -357,7 +357,6 @@ function optimize_case_3(
     print_objective_value::Bool = false,
 )
     ct = deepcopy(original_ct)
-    # unmeasured_metabolite_ids = find_unmeasured_metabolites_on_ct(ct)
     isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
     sink_flux_ids = find_sinks_on_ct(ct)
     isempty(sink_flux_ids) && error("No sink fluxes were found")
@@ -433,14 +432,20 @@ function optimize_case_3(
     end
     JuMP.optimize!(jump_model)
     status = JuMP.termination_status(jump_model)
-    primal = JuMP.primal_status(jump_model)
-    if status != MOI.OPTIMAL
-        error("Optimization failed: termination_status = $status, primal_status = $primal")
+    if status in [JuMP.MOI.OPTIMAL, JuMP.MOI.ALMOST_OPTIMAL]
+        solution_tree = C.substitute_values(ct, JuMP.value.(jump_model[:x]))
+        result = (
+            solution_tree = solution_tree,
+            sink_ids = sink_flux_ids,
+            jump_model = jump_model,
+        )
+        return :ok, result
+    elseif status == JuMP.MOI.INFEASIBLE
+        conflicted_constraints = optimization_failure_analysis(jump_model)
+        return :fail, conflicted_constraints
+    else
+        return :fail, ["status=$status No further information is available."]
     end
-    solution_tree = C.substitute_values(ct, JuMP.value.(jump_model[:x]))
-    result =
-        (solution_tree = solution_tree, sink_ids = sink_flux_ids, jump_model = jump_model)
-    return :ok, result
 end
 
 """
