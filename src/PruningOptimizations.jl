@@ -290,6 +290,35 @@ function find_sinks_on_ct(ct::C.ConstraintTree)
     return sink_ids
 end
 
+"""
+    optimize_case_3(original_ct::C.ConstraintTree, unmeasured_metabolite_ids::Vector{Symbol}; optimizer = HiGHS.Optimizer, silent::Bool = true, write_lp_path::Union{Nothing,String} = "output/debug_case3.lp", print_objective_value::Bool = false)
+
+Optimize a constraint tree for Case 3 pruning as described in the Bordbar (2016) paper. That means using JuMP to optimize for the following objective:
+
+``\\min \\sum_{i=1}^{m} \\lvert \\Delta x_i \\rvert + \\sum_{j=1}^{n} \\lvert v_j \\rvert``
+
+Where ``|\\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured metabolites and ``|v_j|`` is the magnitude of the reaction fluxes in the network.
+
+# Arguments
+1. `original_ct::C.ConstraintTree`: The constraint tree to be optimized.
+2. `unmeasured_metabolite_ids::Vector{Symbol}`: Metabolite ids that are unmeasured.
+3. `optimizer = HiGHS.Optimizer`: Reference to an optimizer which defaults to HiGHS
+4. `silent::Bool = true`: If left at the default of `true`, suppresses optimizer logging. Note: this logging is generally unnecessary since comprehensive diagnostics are performed in the event of an error.
+5. `write_lp_path::Union{Nothing,String} = "output/debug_case3.lp"`
+6. `print_objective_value::Bool = false`: If `true`, prints a logging message of the objective value after optimization.
+
+# Returns
+`Tuple{Symbol,Union{Vector{String},NamedTuple}}`
+
+Returns a tuple with two fields:
+1. `:ok` or `:fail`: The status of the optimization.
+2. If first element is `:ok`, this is another named tuple as specified below. If `:fail`, this is a vector of strings with either (1) the names of broken constraints or (2) an error message with as much detail as possible.
+
+Upon success, the named tuple returned as the second element has the following fields:
+1. `solution_tree`: A constraint tree with the optimized values in it. These optimized values can be used for sink pruning.
+2. `sink_ids`: The ids of the reactions that were optimized as sinks.
+3. `jump_model`: The JuMP model that was optimized or failed to optimize.
+"""
 function optimize_case_3(
     original_ct::C.ConstraintTree,
     unmeasured_metabolite_ids::Vector{Symbol};
