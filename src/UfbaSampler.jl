@@ -647,8 +647,13 @@ function extract_sink_overview(ufba_jobs)
         prune_method = ufba_job.prune_method
         zero_sinks = ufba_job.zero_sinks
         nonzero_sinks = ufba_job.nonzero_sinks
-        if !isnothing(zero_sinks) && !isnothing(nonzero_sinks)
-            for zero_sink in ufba_job.zero_sinks
+        # n_zero_sinks = length(zero_sinks)
+        # n_nonzero_sinks = length(nonzero_sinks)
+        # println("n_zero_sinks=$n_zero_sinks n_nonzero_sinks=$n_nonzero_sinks")
+        println("zero_sinks: ", zero_sinks)
+        println("nonzero_sinks: ", nonzero_sinks)
+        if !isnothing(zero_sinks)
+            for zero_sink in zero_sinks
                 metabolite_id = decompose_sink_id(zero_sink)
                 row = (
                     prune_method = prune_method,
@@ -660,7 +665,9 @@ function extract_sink_overview(ufba_jobs)
                 )
                 push!(status_rows, row)
             end
-            for nonzero_sink in ufba_job.nonzero_sinks
+        end
+        if !isnothing(nonzero_sinks)
+            for nonzero_sink in nonzero_sinks
                 metabolite_id = decompose_sink_id(nonzero_sink)
                 row = (
                     prune_method = prune_method,
@@ -676,7 +683,7 @@ function extract_sink_overview(ufba_jobs)
     end
     status_df = DataFrame(status_rows)
     sorted_df =
-        @orderby(status_df, :prune_method, :additive, :final_time, :status, :metabolite_id,)
+        @orderby(status_df, :prune_method, :additive, :final_time, :status, :metabolite_id)
     return sorted_df
 end
 
