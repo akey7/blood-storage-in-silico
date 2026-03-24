@@ -230,7 +230,8 @@ end
 function suggested_unmeasured_metabolite_bounds(
     metabolite_bounds_df::DataFrame,
     additive::String,
-    final_time::Int64,
+    final_time::Int64;
+    p::Float64 = 0.5,
 )
     selection_df =
         @rsubset(metabolite_bounds_df, :additive == additive, :final_time == final_time)
@@ -241,8 +242,8 @@ function suggested_unmeasured_metabolite_bounds(
     for ub in selection_df.ub
         push!(abs_bounds, abs(ub))
     end
-    median_abs_bound = median(abs_bounds)
-    return -median_abs_bound, median_abs_bound
+    percentile_value = quantile(abs_bounds, p)
+    return -percentile_value, percentile_value
 end
 
 """
@@ -268,10 +269,15 @@ function add_metabolite_bounds_to_constraint_tree!(
     additive::String,
     final_time::Int64;
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
+    relax_percentile::Float64,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
-    default_lb, default_ub =
-        suggested_unmeasured_metabolite_bounds(metabolite_bounds_df, additive, final_time)
+    default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
+        metabolite_bounds_df,
+        additive,
+        final_time;
+        p = relax_percentile,
+    )
     unmeasured_metabolites = Symbol[]
     measured_metabolites = Symbol[]
     # n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
