@@ -91,16 +91,7 @@ function bound_big_m(bound; fallback::Float64 = 1000.0)
 end
 
 """
-    optimize_case_1(
-        ct::A.ConstraintTree;
-        optimizer = HiGHS.Optimizer,
-        fallback_M::Float64 = 1000.0,
-        force_first_sink_on::Bool = false,
-        force_first_sink_lb::Float64 = 0.1,
-        silent::Bool = true,
-        write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
-        print_objective_value::Bool = false,
-    )
+    optimize_case_1(ct::A.ConstraintTree; optimizer = HiGHS.Optimizer, fallback_M::Float64 = 1000.0, force_first_sink_on::Bool = false, force_first_sink_lb::Float64 = 0.1, silent::Bool = true, write_lp_path::Union{Nothing,String} = "output/debug_case1.lp", print_objective_value::Bool = false)
 
 JuMP MILP for Bordbar (2016) Case 1:
 
@@ -127,7 +118,7 @@ Returns a tuple with two elements
 
 Elements of the successful named tuple:
 1. `solution_tree`: base ConstraintTree with continuous variables substituted
-2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
+2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id to binary value
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
 """
@@ -251,7 +242,7 @@ end
 """
     analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-6)
 
-Classify sinks from an optimization result.
+Classify sinks from an optimization result. This is the second element of the tuple returned from one of the optimization functions.
 
 # Arguments
 1. `optimize_case_1_result`: Result from one of the optimization functions.
@@ -285,69 +276,53 @@ function analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-
     return (prune = prune, keep = keep)
 end
 
-function optimize_case_4(
-    original_ct::C.ConstraintTree,
-    unmeasured_metabolite_ids::Vector{Symbol};
-    optimizer = HiGHS.Optimizer,
-    silent::Bool = true,
-    write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
-    print_objective_value::Bool = false,
-    n_threads::Union{Nothing,Int} = nothing,
-)
-    ct = deepcopy(original_ct)
-    isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
-    objective_value = C.sum(
-        (
-            C.squared(ct.flux_stoichiometry[met_id].value) for
-            met_id in unmeasured_metabolite_ids
-        );
-        init = 0.0,
-    )
-    if haskey(ct, :objective)
-        ct.objective = C.Constraint(objective_value)
-    else
-        ct *= :objective^C.Constraint(objective_value)
-    end
-    jump_model = JuMP.Model(optimizer)
-    if !isnothing(n_threads)
-        JuMP.set_attribute(jump_model, MOI.NumberOfThreads(), n_threads)
-    end
-    silent && JuMP.set_silent(jump_model)
-    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
-    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(ct.objective.value, x))
-    C.itraverse(ct) do path, con
-        ct_path = join(path, ".")
-        b = con.bound
-        isnothing(b) && return
-        val = C.substitute(con.value, x)
-        if b isa C.EqualTo
-            JuMP.@constraint(jump_model, val == b.equal_to, base_name = ct_path)
-        elseif b isa C.Between
-            if !isinf(b.lower)
-                JuMP.@constraint(jump_model, val >= b.lower, base_name = ct_path)
-            end
-            if !isinf(b.upper)
-                JuMP.@constraint(jump_model, val <= b.upper, base_name = ct_path)
-            end
-        else
-            throw(ArgumentError("Unsupported bound type: $(typeof(b))"))
-        end
-    end
-    JuMP.optimize!(jump_model)
-    status = JuMP.termination_status(jump_model)
-    primal = JuMP.primal_status(jump_model)
-    if status != MOI.OPTIMAL
-        error("Optimization failed: termination_status = $status, primal_status = $primal")
-    end
-    solved_ct = C.substitute_values(work_ct, JuMP.value.(jump_model[:x]))
-    return :ok, solved_ct
-end
+"""
+    find_sinks_on_ct(ct::C.ConstraintTree)
 
+Find the sink reactions on the given constraint tree.
+
+# Arguments
+1. `ct::C.ConstraintTree`: Constraint tree to search.
+
+# Returns
+`Vector{Symbol}`
+
+A vector of sink reaction ids.
+"""
 function find_sinks_on_ct(ct::C.ConstraintTree)
     sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK_", string(id))]
     return sink_ids
 end
 
+"""
+    optimize_case_3(original_ct::C.ConstraintTree, unmeasured_metabolite_ids::Vector{Symbol}; optimizer = HiGHS.Optimizer, silent::Bool = true, write_lp_path::Union{Nothing,String} = "output/debug_case3.lp", print_objective_value::Bool = false)
+
+Optimize a constraint tree for Case 3 pruning as described in the Bordbar (2016) paper. That means using JuMP to optimize for the following objective:
+
+``\\min \\sum_{i=1}^{m} \\lvert \\Delta x_i \\rvert + \\sum_{j=1}^{n} \\lvert v_j \\rvert``
+
+Where ``|\\Delta x_i|`` denotes magnitude of the rate of change of the unmeasured metabolites and ``|v_j|`` is the magnitude of the reaction fluxes in the network.
+
+# Arguments
+1. `original_ct::C.ConstraintTree`: The constraint tree to be optimized.
+2. `unmeasured_metabolite_ids::Vector{Symbol}`: Metabolite ids that are unmeasured.
+3. `optimizer = HiGHS.Optimizer`: Reference to an optimizer which defaults to HiGHS
+4. `silent::Bool = true`: If left at the default of `true`, suppresses optimizer logging. Note: this logging is generally unnecessary since comprehensive diagnostics are performed in the event of an error.
+5. `write_lp_path::Union{Nothing,String} = "output/debug_case3.lp"`
+6. `print_objective_value::Bool = false`: If `true`, prints a logging message of the objective value after optimization.
+
+# Returns
+`Tuple{Symbol,Union{Vector{String},NamedTuple}}`
+
+Returns a tuple with two fields:
+1. `:ok` or `:fail`: The status of the optimization.
+2. If first element is `:ok`, this is another named tuple as specified below. If `:fail`, this is a vector of strings with either (1) the names of broken constraints or (2) an error message with as much detail as possible.
+
+Upon success, the named tuple returned as the second element has the following fields:
+1. `solution_tree`: A constraint tree with the optimized values in it. These optimized values can be used for sink pruning.
+2. `sink_ids`: The ids of the reactions that were optimized as sinks.
+3. `jump_model`: The JuMP model that was optimized or failed to optimize.
+"""
 function optimize_case_3(
     original_ct::C.ConstraintTree,
     unmeasured_metabolite_ids::Vector{Symbol};
