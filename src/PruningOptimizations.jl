@@ -127,7 +127,7 @@ Returns a tuple with two elements
 
 Elements of the successful named tuple:
 1. `solution_tree`: base ConstraintTree with continuous variables substituted
-2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id => binary value
+2. `indicator_values`: `Dict{Symbol,Float64}` mapping sink id to binary value
 3. `sink_ids`: Sink ids
 4. `jump_model`: JuMP model
 """
@@ -251,7 +251,7 @@ end
 """
     analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-6)
 
-Classify sinks from an optimization result.
+Classify sinks from an optimization result. This is the second element of the tuple returned from one of the optimization functions.
 
 # Arguments
 1. `optimize_case_1_result`: Result from one of the optimization functions.
@@ -285,6 +285,19 @@ function analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-
     return (prune = prune, keep = keep)
 end
 
+"""
+    find_sinks_on_ct(ct::C.ConstraintTree)
+
+Find the sink reactions on the given constraint tree.
+
+# Arguments
+1. `ct::C.ConstraintTree`: Constraint tree to search.
+
+# Returns
+`Vector{Symbol}`
+
+A vector of sink reaction ids.
+"""
 function find_sinks_on_ct(ct::C.ConstraintTree)
     sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK_", string(id))]
     return sink_ids
