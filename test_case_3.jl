@@ -54,8 +54,8 @@ fba_model, _ = create_fba_model(
 @info "Reference additive, time point, and relaxation percentile"
 additive = "01-Ctrl AS3"
 final_time = 2
-relax_percentile = 0.01
-println("additive: $additive, final_time: $final_time, relax_percentile: $relax_percentile")
+relax_quantile = 0.01
+println("additive: $additive, final_time: $final_time, relax_quantile: $relax_quantile")
 
 @info "Adding sinks to model"
 first_model, _ = create_fba_model(
@@ -83,7 +83,7 @@ measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     additive,
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
-    relax_percentile = relax_percentile,
+    relax_quantile = relax_quantile,
 )
 unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
 
@@ -122,7 +122,7 @@ add_metabolite_bounds_to_constraint_tree!(
     additive,
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
-    relax_percentile = relax_percentile,
+    relax_quantile = relax_quantile,
 )
 n_pruned_sinks = length(case_3_analysis.prune)
 n_kept_sinks = length(case_3_analysis.keep)
