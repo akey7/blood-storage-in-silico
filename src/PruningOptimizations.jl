@@ -91,16 +91,7 @@ function bound_big_m(bound; fallback::Float64 = 1000.0)
 end
 
 """
-    optimize_case_1(
-        ct::A.ConstraintTree;
-        optimizer = HiGHS.Optimizer,
-        fallback_M::Float64 = 1000.0,
-        force_first_sink_on::Bool = false,
-        force_first_sink_lb::Float64 = 0.1,
-        silent::Bool = true,
-        write_lp_path::Union{Nothing,String} = "output/debug_case1.lp",
-        print_objective_value::Bool = false,
-    )
+    optimize_case_1(ct::A.ConstraintTree; optimizer = HiGHS.Optimizer, fallback_M::Float64 = 1000.0, force_first_sink_on::Bool = false, force_first_sink_lb::Float64 = 0.1, silent::Bool = true, write_lp_path::Union{Nothing,String} = "output/debug_case1.lp", print_objective_value::Bool = false)
 
 JuMP MILP for Bordbar (2016) Case 1:
 
