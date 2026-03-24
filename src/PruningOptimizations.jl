@@ -285,64 +285,6 @@ function analyze_pruning_optimization(optimization_result; atol::Float64 = 1.0e-
     return (prune = prune, keep = keep)
 end
 
-function optimize_case_4(
-    original_ct::C.ConstraintTree,
-    unmeasured_metabolite_ids::Vector{Symbol};
-    optimizer = HiGHS.Optimizer,
-    silent::Bool = true,
-    write_lp_path::Union{Nothing,String} = "output/debug_case4.lp",
-    print_objective_value::Bool = false,
-    n_threads::Union{Nothing,Int} = nothing,
-)
-    ct = deepcopy(original_ct)
-    isempty(unmeasured_metabolite_ids) && error("No unmeasured metabolites were found")
-    objective_value = C.sum(
-        (
-            C.squared(ct.flux_stoichiometry[met_id].value) for
-            met_id in unmeasured_metabolite_ids
-        );
-        init = 0.0,
-    )
-    if haskey(ct, :objective)
-        ct.objective = C.Constraint(objective_value)
-    else
-        ct *= :objective^C.Constraint(objective_value)
-    end
-    jump_model = JuMP.Model(optimizer)
-    if !isnothing(n_threads)
-        JuMP.set_attribute(jump_model, MOI.NumberOfThreads(), n_threads)
-    end
-    silent && JuMP.set_silent(jump_model)
-    JuMP.@variable(jump_model, x[1:C.variable_count(ct)])
-    JuMP.@objective(jump_model, JuMP.MIN_SENSE, C.substitute(ct.objective.value, x))
-    C.itraverse(ct) do path, con
-        ct_path = join(path, ".")
-        b = con.bound
-        isnothing(b) && return
-        val = C.substitute(con.value, x)
-        if b isa C.EqualTo
-            JuMP.@constraint(jump_model, val == b.equal_to, base_name = ct_path)
-        elseif b isa C.Between
-            if !isinf(b.lower)
-                JuMP.@constraint(jump_model, val >= b.lower, base_name = ct_path)
-            end
-            if !isinf(b.upper)
-                JuMP.@constraint(jump_model, val <= b.upper, base_name = ct_path)
-            end
-        else
-            throw(ArgumentError("Unsupported bound type: $(typeof(b))"))
-        end
-    end
-    JuMP.optimize!(jump_model)
-    status = JuMP.termination_status(jump_model)
-    primal = JuMP.primal_status(jump_model)
-    if status != MOI.OPTIMAL
-        error("Optimization failed: termination_status = $status, primal_status = $primal")
-    end
-    solved_ct = C.substitute_values(work_ct, JuMP.value.(jump_model[:x]))
-    return :ok, solved_ct
-end
-
 function find_sinks_on_ct(ct::C.ConstraintTree)
     sink_ids = [id for (id, _) in ct.fluxes if occursin("R_REVSK_", string(id))]
     return sink_ids
