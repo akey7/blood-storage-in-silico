@@ -396,7 +396,6 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
         @orderby(:Count)
     end
     broken_constraints = extract_broken_constraints(jobs, job_results)
-    display(blocked_reaction_ids_df)
     joined_blocked_reaction_ids_df =
         join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_df)
     result = (
@@ -411,6 +410,20 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     return result
 end
 
+"""
+    join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_df)
+
+Joins the blocked reaction ids to their reaction strings. If there are no blocked reactions, returns an empty DataFrame.
+
+# Arguments
+1. `blocked_reaction_ids_df`: DataFrame of blocked reactions ids
+2. `rxn_ids_to_strings_df`: DataFrame mapping blocked reaction ids to strings.
+
+# Returns
+`DataFrame`
+
+Blocked reaction ids joined to their reaction strings.
+"""
 function join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_df)
     if nrow(blocked_reaction_ids_df) > 0
         result = @chain blocked_reaction_ids_df begin
@@ -452,6 +465,11 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 10. `pruned_with_metabolite_bounds_ct`: A ConstraintTree with metabolite bounds and the pruned set of sinks added, ready for optimziation.
 11. `prune_optimize_status`: Either `:ok` (for a successful prune optimization) or `:fail` for a failed prune optimization.
 12. `prune_breaks_df`: If pruning was a `:fail` as indicated by `prune_optimize_status`, this field is populated with a DataFrame reporting the broken constraints. If the pruning was `:ok`, this field is `nothing`.
+13. `pruned_default_lb`: Default lower bound for unmeasured metabolites in pruned model.
+14. `pruned_default_ub`: Default upper bound for unmeasured metabolites in pruned model.
+15. `pruned_unmeasured_metabolites`: Metabolites that were not measured.
+16. `pruned_measured_metabolites`: Metabolites that were measured.
+17. `relax_quantile`: The quantile of absolute value sof bounds on measured metabolites that was used for unmeasured metabolites.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
