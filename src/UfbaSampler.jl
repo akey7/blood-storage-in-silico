@@ -461,7 +461,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `zero_sinks`: Sinks that have zero flux that were pruned out
 7. `nonzero_sinks`: Sinks that have non-zero flux
 8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
-9. `prune_method`: The pruning method, currently hardcoded to `:case3` because that is the only supported case.
+9. `prune_method`: The pruning method.
 10. `pruned_with_metabolite_bounds_ct`: A ConstraintTree with metabolite bounds and the pruned set of sinks added, ready for optimziation.
 11. `prune_optimize_status`: Either `:ok` (for a successful prune optimization) or `:fail` for a failed prune optimization.
 12. `prune_breaks_df`: If pruning was a `:fail` as indicated by `prune_optimize_status`, this field is populated with a DataFrame reporting the broken constraints. If the pruning was `:ok`, this field is `nothing`.
@@ -477,6 +477,7 @@ function make_ufba_models_for_additives_and_times(
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
     metabolites_to_ignore::Vector{String} = nothing,
+    prune_method::Symbol = :case3,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -566,7 +567,7 @@ function make_ufba_models_for_additives_and_times(
                 zero_sinks = prune_zero_sinks,
                 nonzero_sinks = nonzero_sinks,
                 added_sink_ids = added_sink_ids,
-                prune_method = :case3,
+                prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = nothing,
@@ -578,7 +579,7 @@ function make_ufba_models_for_additives_and_times(
             )
         else
             prune_breaks_df = DataFrame(
-                prune_method = :case3,
+                prune_method = prune_method,
                 additive = additive,
                 final_time = final_time,
                 broken_case_1_constraint = prune_result,
@@ -593,7 +594,7 @@ function make_ufba_models_for_additives_and_times(
                 zero_sinks = nothing,
                 nonzero_sinks = nothing,
                 added_sink_ids = nothing,
-                prune_method = :case3,
+                prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = nothing,
                 prune_status = prune_status,
                 prune_breaks_df = prune_breaks_df,
