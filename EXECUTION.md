@@ -103,16 +103,18 @@ The command line arguments to the Julia environment and script are the following
 
 3. `--nmodels`: Number of uFBA models to analyze (-1 for all possible models).
 
-On a macOS or Linux machine with 14 cores, an example command to set the number of workers and threads on the same line would be:
+4. `--prune-method`: The pruning method to use. Cane be either `case1` or `case3`. See Bordbar (2016) or `PruningOptimizations.jl` for more information.
+
+On a macOS or Linux machine with 14 cores, an example command to set the number of workers and threads on the same line would be (while executing all models with 5 chains and case3 pruning):
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. -p 7 ufba_sampler.jl --nchains 5 --nmodels -1
+JULIA_NUM_THREADS=7 julia --project=. -p 7 ufba_sampler.jl --nchains 5 --nmodels -1 --prune-method case3
 ```
 
-On a Windows machine with 64 cores, an example to work with your previously set `JULIA_NUM_THREADS` environment variable would be:
+On a Windows machine with 64 cores, an example to work with your previously set `JULIA_NUM_THREADS` environment variable would be (again while executing all models with 5 chains and case3 pruning):
 
 ```
-julia --project=. -p 32 .\ufba_sampler.jl --nchains 5 --nmodels -1
+julia --project=. -p 32 .\ufba_sampler.jl --nchains 5 --nmodels -1 --prune-method case3
 ```
 
 Which would sample all models with 10 chains, run all models, and use 32 concurrent workers.
