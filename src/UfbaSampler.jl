@@ -253,6 +253,7 @@ function execute_ufba_job(job, n_chains = 10)
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
     prune_status = job.prune_status
+    prune_method = job.prune_method
     if prune_status == :ok
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
         objective_value = pruned_with_metabolite_bounds_ct.objective.value
@@ -282,6 +283,7 @@ function execute_ufba_job(job, n_chains = 10)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
             if !isnothing(sinks_df)
+                sinks_df[!, :prune_method] .= prune_method
                 sinks_df[!, :additive] .= additive
                 sinks_df[!, :final_time] .= final_time
                 @rtransform!(
@@ -290,6 +292,7 @@ function execute_ufba_job(job, n_chains = 10)
                 )
                 @select!(
                     sinks_df,
+                    :prune_method,
                     :additive,
                     :final_time,
                     :sink_id,
