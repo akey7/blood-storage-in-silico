@@ -40,7 +40,8 @@ export sample_fluxes,
     extract_added_sink_ids,
     decompose_sink_id,
     optimize_constraint_tree,
-    extract_broken_constraints
+    extract_broken_constraints,
+    extract_unmeasured_relaxations
 
 """
     init_workers!(; project=Base.active_project())
@@ -700,6 +701,38 @@ function extract_sink_overview(ufba_jobs)
         )
         return sorted_df
     end
+end
+
+function extract_unmeasured_relaxations(ufba_jobs)
+    status_rows = []
+    for ufba_job in ufba_jobs
+        additive = ufba_job.additive
+        final_time = ufba_job.final_time
+        pruned_default_lb = ufba_job.pruned_default_lb
+        pruned_default_ub = ufba_job.pruned_default_ub
+        if !isnothing(pruned_default_lb) && !isnothing(pruned_default_ub)
+            status_row = (
+                additive = additive,
+                final_time = final_time,
+                pruned_default_lb = pruned_default_lb,
+                pruned_default_ub = pruned_default_ub,
+            )
+            push!(status_rows, status_row)
+        else
+            status_row = (
+                additive = additive,
+                final_time = final_time,
+                pruned_default_lb = missing,
+                pruned_default_ub = missing,
+            )
+            push!(status_rows, status_row)
+        end
+    end
+    result_df = @chain status_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
+    end
+    return result_df
 end
 
 """

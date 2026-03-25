@@ -81,6 +81,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 )
 
 sink_overview_df = extract_sink_overview(ufba_jobs)
+unmeasured_relaxations_df = extract_unmeasured_relaxations(ufba_jobs)
 ufba_jobs_result =
     execute_all_ufba_jobs(ufba_jobs, rxn_ids_to_strings_df; n_chains = n_chains)
 sampling_df = ufba_jobs_result.sampling_df
@@ -115,6 +116,9 @@ println("Wrote $prune_breaks_filename")
 fba_breaks_filename = joinpath("output", "ufba_fba_breaks.csv")
 CSV.write(fba_breaks_filename, fba_breaks_df)
 println("Wrote $fba_breaks_filename")
+unmeasured_relaxations_filename = joinpath("output", "ufba_unmeasured_relaxations.csv")
+CSV.write(unmeasured_relaxations_filename, unmeasured_relaxations_df)
+println("Wrote $unmeasured_relaxations_filename")
 if !isnothing(sinks_df)
     sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
     CSV.write(sinks_filename, sinks_df)
