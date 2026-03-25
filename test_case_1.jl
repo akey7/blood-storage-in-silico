@@ -23,8 +23,6 @@ function init_workers!(; project::AbstractString = Base.active_project())
                 import Pkg
                 Pkg.activate($project)
                 using COBREXA, HiGHS, JuMP, MathOptInterface
-                # include("src/UfbaSampler.jl")
-                # using .UfbaSampler
             end,
         )
     end
@@ -56,7 +54,8 @@ fba_model, _ = create_fba_model(
 @info "Reference additive and time point"
 additive = "01-Ctrl AS3"
 final_time = 2
-println("additive: $additive, final_time: $final_time")
+relax_quantile = 0.1
+println("additive: $additive, final_time: $final_time, relax_quantile: $relax_quantile")
 
 @info "Adding sinks to model"
 first_model, _ = create_fba_model(
@@ -78,8 +77,6 @@ first_added_sink_ids =
 
 @info "Add metabolite bounds to ConstraintTree"
 second_ct = flux_balance_constraints(first_model)
-# metabolites_to_ignore = ["g6p_c", "glc__D_c", "pyr_e", "lac__L_e"]
-metabolites_to_ignore = nothing
 add_metabolite_bounds_to_constraint_tree!(
     second_ct,
     metabolite_bounds_df,
@@ -87,9 +84,9 @@ add_metabolite_bounds_to_constraint_tree!(
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
 )
-print_metabolite_bounds_on_constraint_tree(second_ct)
+# print_metabolite_bounds_on_constraint_tree(second_ct)
 
-@info "Optimize for Case 1 and create pruned model"
+@info "Case 1: Optimize"
 # optimize_case_1_result = optimize_case_1(
 #     case1_ct;
 #     force_first_sink_on = true,
@@ -103,7 +100,7 @@ if optimize_case_1_ok_fail == :fail
 end
 case_1_analysis = analyze_pruning_optimization(optimize_case_1_result)
 
-@info "Prune zero sinks according to Case 1"
+@info "Case 1: Prune zero sinks"
 third_fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
@@ -121,14 +118,15 @@ third_added_sink_ids =
 # println("Added the following sinks")
 # display(third_added_sink_ids)
 third_ct = flux_balance_constraints(third_fba_model)
-add_metabolite_bounds_to_constraint_tree!(
+measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     third_ct,
     metabolite_bounds_df,
     additive,
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
+    relax_quantile = relax_quantile,
 )
-# print_metabolite_bounds_on_constraint_tree(third_ct)
+unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
 
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
