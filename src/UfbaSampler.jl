@@ -361,6 +361,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     blocked_reaction_ids_rows = []
     for (job, job_result) in zip(jobs, job_results)
         status_row = (
+            prune_method = job.prune_method,
             additive = job.additive,
             final_time = job.final_time,
             job_status = job_result.job_status,
