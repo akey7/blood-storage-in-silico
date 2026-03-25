@@ -14,9 +14,38 @@ export optimize_case_1,
     analyze_pruning_optimization,
     print_sinks_in_model,
     optimization_failure_analysis,
-    optimize_case_4,
     optimize_case_3,
-    find_sinks_on_ct
+    find_sinks_on_ct,
+    optimize_for_pruning
+
+"""
+    optimize_for_pruning(prune_method::Symbol, original_ct::C.ConstraintTree, unmeasured_metabolite_ids::Vector{Symbol})
+
+Dispatches a pruning optimization to the appropriate optimization as specified by the first argument. This method leaves the keyword arguments for each pruning method at their defaults. For deeper diagnostics, call the optimization directly.
+
+# Arguments
+1. `prune_method::Symbol`: `:case1` or `:case3`, depending on prune method desired.
+2. `original_ct::C.ConstraintTree`: ConstraintTree for optimization.
+3. `unmeasured_metabolite_ids::Vector{Symbol}`: Metabolite ids of unmeasured metabolites. Not used by Case 1, but if this were unspecified, this would Case 3 to crash, so it is always required.
+
+# Returns
+`Tuple{Symbol,Union{ConstraintTree,Vector{String}}}`
+
+Returns whatever is returned by the underlying prune optimization function. See [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) or [`optimize_case_3`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_3) for on specifics for each pruning method.
+"""
+function optimize_for_pruning(
+    prune_method::Symbol,
+    original_ct::C.ConstraintTree,
+    unmeasured_metabolite_ids::Vector{Symbol},
+)
+    if prune_method == :case1
+        return optimize_case_1(original_ct)
+    elseif prune_method == :case3
+        return optimize_case_3(original_ct, unmeasured_metabolite_ids)
+    else
+        throw(ArgumentError("Prune $prune_method is unrecognized."))
+    end
+end
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)

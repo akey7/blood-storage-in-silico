@@ -26,8 +26,15 @@ end
     arg_type = Int64
     default = -1
 end
+@add_arg_table s begin
+    "--prune-method"
+    help = "Prune method, case1 or case3"
+    arg_type = Symbol
+    default = :case3
+end
 n_chains = parse_args(s)["nchains"]
 n_models = parse_args(s)["nmodels"]
+prune_method = parse_args(s)["prune-method"]
 
 init_workers!()
 
@@ -70,6 +77,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
     metabolites_to_ignore = metabolites_to_ignore,
+    prune_method = prune_method,
 )
 
 sink_overview_df = extract_sink_overview(ufba_jobs)

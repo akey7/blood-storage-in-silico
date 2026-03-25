@@ -253,6 +253,7 @@ function execute_ufba_job(job, n_chains = 10)
     final_time = job.final_time
     pruned_with_metabolite_bounds_ct = job.pruned_with_metabolite_bounds_ct
     prune_status = job.prune_status
+    prune_method = job.prune_method
     if prune_status == :ok
         # @info "execute_ufba_job(): additive: $additive, final_time: $final_time"
         objective_value = pruned_with_metabolite_bounds_ct.objective.value
@@ -282,6 +283,7 @@ function execute_ufba_job(job, n_chains = 10)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
             if !isnothing(sinks_df)
+                sinks_df[!, :prune_method] .= prune_method
                 sinks_df[!, :additive] .= additive
                 sinks_df[!, :final_time] .= final_time
                 @rtransform!(
@@ -290,6 +292,7 @@ function execute_ufba_job(job, n_chains = 10)
                 )
                 @select!(
                     sinks_df,
+                    :prune_method,
                     :additive,
                     :final_time,
                     :sink_id,
@@ -358,6 +361,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
     blocked_reaction_ids_rows = []
     for (job, job_result) in zip(jobs, job_results)
         status_row = (
+            prune_method = job.prune_method,
             additive = job.additive,
             final_time = job.final_time,
             job_status = job_result.job_status,
@@ -437,7 +441,7 @@ function join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_d
 end
 
 """
-    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing)
+    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing, prune_method::Symbol = :case3, relax_quantile::Float64 = 0.1)
 
 Create all models that represent each combination of additive and final time point.
 
@@ -447,6 +451,8 @@ Create all models that represent each combination of additive and final time poi
 3. `exchanges::Union{Nothing,Vector{String}} = nothing`: Passed to `create_fba_model`. If specified, a list of exchanges to add to all uFBA models. If not specified, no exchanges are added to uFBA models.
 4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
 5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
+6. `prune_method::Symbol = :case3`: Prune method to use. Can be either `:case1` or `:case3`.
+7. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
 
 # Returns
 `Vector{NamedTuple}`
@@ -461,7 +467,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 6. `zero_sinks`: Sinks that have zero flux that were pruned out
 7. `nonzero_sinks`: Sinks that have non-zero flux
 8. `added_sink_ids`: Sinks that were added to the model according to the call to [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!). More direct than inferring from zero_sinks and non_zero_sinks.
-9. `prune_method`: The pruning method, currently hardcoded to `:case3` because that is the only supported case.
+9. `prune_method`: The pruning method.
 10. `pruned_with_metabolite_bounds_ct`: A ConstraintTree with metabolite bounds and the pruned set of sinks added, ready for optimziation.
 11. `prune_optimize_status`: Either `:ok` (for a successful prune optimization) or `:fail` for a failed prune optimization.
 12. `prune_breaks_df`: If pruning was a `:fail` as indicated by `prune_optimize_status`, this field is populated with a DataFrame reporting the broken constraints. If the pruning was `:ok`, this field is `nothing`.
@@ -477,11 +483,12 @@ function make_ufba_models_for_additives_and_times(
     exchanges::Union{Nothing,Vector{String}} = nothing,
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
     metabolites_to_ignore::Vector{String} = nothing,
+    prune_method::Symbol = :case3,
+    relax_quantile::Float64 = 0.1,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
     additives = sort(unique(metabolite_bounds_df.additive))
-    relax_quantile = 0.1
     pairs =
         n_models == -1 ? collect(product(additives, final_times)) :
         collect(product(additives, final_times))[1:n_models]
@@ -508,9 +515,9 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        case_3_ct = flux_balance_constraints(full_model)
+        prune_ct = flux_balance_constraints(full_model)
         measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
-            case_3_ct,
+            prune_ct,
             metabolite_bounds_df,
             additive_string,
             final_time;
@@ -518,15 +525,12 @@ function make_ufba_models_for_additives_and_times(
             relax_quantile = relax_quantile,
         )
         unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
-        prune_status, prune_result = optimize_case_3(
-            case_3_ct,
-            unmeasured_metabolite_ids;
-            write_lp_path = nothing,
-        )
+        prune_status, prune_result =
+            optimize_for_pruning(prune_method, prune_ct, unmeasured_metabolite_ids)
         if prune_status == :ok
-            case_1_analysis = analyze_pruning_optimization(prune_result)
-            prune_zero_sinks = string.(case_1_analysis.prune)
-            nonzero_sinks = string.(case_1_analysis.keep)
+            prune_analysis = analyze_pruning_optimization(prune_result)
+            prune_zero_sinks = string.(prune_analysis.prune)
+            nonzero_sinks = string.(prune_analysis.keep)
             pruned_model, _ = create_fba_model(
                 base_rbc_gem;
                 exchanges = exchanges,
@@ -566,7 +570,7 @@ function make_ufba_models_for_additives_and_times(
                 zero_sinks = prune_zero_sinks,
                 nonzero_sinks = nonzero_sinks,
                 added_sink_ids = added_sink_ids,
-                prune_method = :case3,
+                prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = nothing,
@@ -578,7 +582,7 @@ function make_ufba_models_for_additives_and_times(
             )
         else
             prune_breaks_df = DataFrame(
-                prune_method = :case3,
+                prune_method = prune_method,
                 additive = additive,
                 final_time = final_time,
                 broken_case_1_constraint = prune_result,
@@ -593,7 +597,7 @@ function make_ufba_models_for_additives_and_times(
                 zero_sinks = nothing,
                 nonzero_sinks = nothing,
                 added_sink_ids = nothing,
-                prune_method = :case3,
+                prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = nothing,
                 prune_status = prune_status,
                 prune_breaks_df = prune_breaks_df,
