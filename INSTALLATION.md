@@ -21,6 +21,7 @@ input
 ├── RBC-GEM.json
 ├── RBC-GEM.xml
 ├── flux_bounds_overrides.csv
+├── metabolite_measurement_opt_outs_template.csv
 └── Subsystem Category Map.csv
 ```
 
