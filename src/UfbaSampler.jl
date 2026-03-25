@@ -478,11 +478,11 @@ function make_ufba_models_for_additives_and_times(
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
     metabolites_to_ignore::Vector{String} = nothing,
     prune_method::Symbol = :case3,
+    relax_quantile::Float64 = 0.1,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
     additives = sort(unique(metabolite_bounds_df.additive))
-    relax_quantile = 0.1
     pairs =
         n_models == -1 ? collect(product(additives, final_times)) :
         collect(product(additives, final_times))[1:n_models]
