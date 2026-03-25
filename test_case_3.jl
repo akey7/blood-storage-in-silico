@@ -54,7 +54,7 @@ fba_model, _ = create_fba_model(
 @info "Reference additive, time point, and relaxation percentile"
 additive = "01-Ctrl AS3"
 final_time = 2
-relax_quantile = 0.01
+relax_quantile = 0.1
 println("additive: $additive, final_time: $final_time, relax_quantile: $relax_quantile")
 
 @info "Adding sinks to model"

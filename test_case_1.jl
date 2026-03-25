@@ -86,7 +86,7 @@ add_metabolite_bounds_to_constraint_tree!(
 )
 # print_metabolite_bounds_on_constraint_tree(second_ct)
 
-@info "Optimize for Case 1 and create pruned model"
+@info "Case 1: Optimize"
 # optimize_case_1_result = optimize_case_1(
 #     case1_ct;
 #     force_first_sink_on = true,
@@ -100,7 +100,7 @@ if optimize_case_1_ok_fail == :fail
 end
 case_1_analysis = analyze_pruning_optimization(optimize_case_1_result)
 
-@info "Prune zero sinks according to Case 1"
+@info "Case 1: Prune zero sinks"
 third_fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
