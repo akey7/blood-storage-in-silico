@@ -638,7 +638,7 @@ end
 Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
 
 # Arguments
-1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, and `zero_sinks` properties.
+1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, `nonzero_sinks`, and `zero_sinks` properties.
 
 # Returns
 `DataFrame`
@@ -703,6 +703,23 @@ function extract_sink_overview(ufba_jobs)
     end
 end
 
+"""
+    extract_unmeasured_relaxations(ufba_jobs)
+
+Extracts the relaxation bounds used for unmeasured metabolites in all models into a DataFrame.
+
+# Arguments
+1. `ufba_jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the following columns:
+1. `additive`
+2. `final_time`
+3. `pruned_default_lb`: Default lower bound. `missing` if the model failed to prune.
+4. `pruned_default_ub`: Default upper bound. `missing` if the model failed to prune.
+"""
 function extract_unmeasured_relaxations(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
@@ -739,6 +756,8 @@ end
     extract_broken_constraints(jobs, job_results)
 
 Called by [`execute_all_ufba_jobs`](@ref BloodStorageInSilico.UfbaSampler.execute_all_ufba_jobs) to find all broken pruning and simple FBA optimization constraints during execution of all uFBA jobs.
+
+TODO: Revisit in the future if I need to capture relaxation values that are attempted in a failed prune job.
 
 # Arguments
 1. `jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
