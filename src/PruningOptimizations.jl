@@ -14,9 +14,23 @@ export optimize_case_1,
     analyze_pruning_optimization,
     print_sinks_in_model,
     optimization_failure_analysis,
-    optimize_case_4,
     optimize_case_3,
-    find_sinks_on_ct
+    find_sinks_on_ct,
+    optimize_for_pruning
+
+function optimize_for_pruning(
+    prune_method::Symbol,
+    original_ct::C.ConstraintTree,
+    unmeasured_metabolite_ids::Vector{Symbol},
+)
+    if prune_method == :case1
+        return optimize_case_1(original_ct)
+    elseif prune_method == :case3
+        return optimize_case_3(original_ct, unmeasured_metabolite_ids)
+    else
+        throw(ArgumentError("Prune $prune_method is unrecognized."))
+    end
+end
 
 """
     jump_constraint(m, x, v::C.Value, b::C.EqualTo; base_name::String)

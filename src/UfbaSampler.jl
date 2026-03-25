@@ -509,9 +509,9 @@ function make_ufba_models_for_additives_and_times(
             sink_opt_outs = nothing,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        case_3_ct = flux_balance_constraints(full_model)
+        prune_ct = flux_balance_constraints(full_model)
         measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
-            case_3_ct,
+            prune_ct,
             metabolite_bounds_df,
             additive_string,
             final_time;
@@ -519,15 +519,12 @@ function make_ufba_models_for_additives_and_times(
             relax_quantile = relax_quantile,
         )
         unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
-        prune_status, prune_result = optimize_case_3(
-            case_3_ct,
-            unmeasured_metabolite_ids;
-            write_lp_path = nothing,
-        )
+        prune_status, prune_result =
+            optimize_for_pruning(prune_method, prune_ct, unmeasured_metabolite_ids)
         if prune_status == :ok
-            case_1_analysis = analyze_pruning_optimization(prune_result)
-            prune_zero_sinks = string.(case_1_analysis.prune)
-            nonzero_sinks = string.(case_1_analysis.keep)
+            prune_analysis = analyze_pruning_optimization(prune_result)
+            prune_zero_sinks = string.(prune_analysis.prune)
+            nonzero_sinks = string.(prune_analysis.keep)
             pruned_model, _ = create_fba_model(
                 base_rbc_gem;
                 exchanges = exchanges,
