@@ -18,6 +18,21 @@ export optimize_case_1,
     find_sinks_on_ct,
     optimize_for_pruning
 
+"""
+    optimize_for_pruning(prune_method::Symbol, original_ct::C.ConstraintTree, unmeasured_metabolite_ids::Vector{Symbol})
+
+Dispatches a pruning optimization to the appropriate optimization as specified by the first argument. This method leaves the keyword arguments for each pruning method at their defaults. For deeper diagnostics, call the optimization directly.
+
+# Arguments
+1. `prune_method::Symbol`: `:case1` or `:case3`, depending on prune method desired.
+2. `original_ct::C.ConstraintTree`: ConstraintTree for optimization.
+3. `unmeasured_metabolite_ids::Vector{Symbol}`: Metabolite ids of unmeasured metabolites. Not used by Case 1, but if this were unspecified, this would Case 3 to crash, so it is always required.
+
+# Returns
+`Tuple{Symbol,Union{ConstraintTree,Vector{String}}}`
+
+Returns whatever is returned by the underlying prune optimization function. See [`optimize_case_1`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_1) or [`optimize_case_3`](@ref BloodStorageInSilico.UfbaSampler.PruningOptimizations.optimize_case_3) for on specifics for each pruning method.
+"""
 function optimize_for_pruning(
     prune_method::Symbol,
     original_ct::C.ConstraintTree,
