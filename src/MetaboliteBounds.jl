@@ -249,7 +249,7 @@ function suggested_unmeasured_metabolite_bounds(
     additive::String,
     final_time::Int64;
     p::Float64 = 0.1,
-    strategy::Symbol,
+    strategy::Symbol = :q,
 )
     selection_df = @rsubset(
         metabolite_bounds_df,
