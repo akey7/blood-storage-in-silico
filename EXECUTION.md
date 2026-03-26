@@ -198,15 +198,13 @@ julia --project=. model_graph.jl
 
 There are other scripts that you can run in this project. They are outside of the main uFBA workflow, and are thus optional. They are documented here for completeness.
 
-### `fba_model_builder.jl`: Sanity check on a single FBA model
+### `test_case_1.jl` and `test_case_3.jl`: Test Case 1 and Case 3 sink pruning
 
-This script creates a single FBA model and samples the fluxes as a quick sanity check when building models in `FbaModelBuilder.jl`. If it doesn't report any errors, that is good news! However, try the models in the uFBA workflow to check for errors before you run the victory lap.
+I built this script to test Case 1 and Case 3 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
 
-### `test_case_1.jl`: Test Case 1 sink pruning
+#### Special test for Case 1
 
-I built this script to test Case 1 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
-
-As a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
+For  Case 1 only, as a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
 
 ```
 optimize_case_1_result = optimize_case_1(case1_ct)
