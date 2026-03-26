@@ -71,4 +71,4 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Plotting uFBA histograms"
-plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)

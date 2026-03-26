@@ -25,7 +25,7 @@ export histograms_for_reaction_v2,
     prepare_measurements_and_sinks_report_df
 
 """
-    histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
+    histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
 
 Plots histograms for a single reaction, with time points as separate panels and additives layered on top of each other in different colors. Draws a thick black dashed vertical line at the 0 point on all rows.
 
@@ -33,13 +33,19 @@ Plots histograms for a single reaction, with time points as separate panels and 
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
+4: `bins`: Number of bins in the histograms.
 
 # Returns
 `Figure`
 
 Returns a Makie `Figure` to display or save.
 """
-function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
+function histograms_for_reaction_v2(
+    long_sampling_df,
+    reaction_id,
+    reaction_string;
+    bins = 20,
+)
     plt_df = @chain long_sampling_df begin
         @rsubset(:reaction_id == reaction_id)
         @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
@@ -56,7 +62,7 @@ function histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_stri
     hist_layer =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
-        histogram(bins = 20) *
+        histogram(bins = bins) *
         visual(alpha = 0.5)
     zero_line_layer =
         data((flux = [0],)) *
@@ -99,16 +105,16 @@ function pivot_sampling_df_long(sampling_df)
 end
 
 """
-    plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+    plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
 
 Plots version 2 of all histograms (with time points for all additives on the same figure). This function saves each figure as they are made to the `output/uFBA_histograms_v2` folder. Displays a progress meter as the plots are made.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of uFBA sampling results.
-
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
+3. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
+function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
     if nrow(sampling_df) == 0
         @info "uFBA: Nothing to plot"
     else
@@ -119,7 +125,12 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings)
         prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
         for reaction_id in reaction_ids
             reaction_string = rxn_ids_to_strings[reaction_id]
-            fig = histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string)
+            fig = histograms_for_reaction_v2(
+                long_sampling_df,
+                reaction_id,
+                reaction_string;
+                bins = bins,
+            )
             filename = joinpath("output", "uFBA_histograms_v2", "$reaction_id.png")
             save(filename, fig)
             next!(prog)
