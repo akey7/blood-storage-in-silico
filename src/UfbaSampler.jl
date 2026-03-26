@@ -562,6 +562,7 @@ function make_ufba_models_for_additives_and_times(
                 additive_string,
                 final_time;
                 metabolites_to_ignore = metabolites_to_ignore,
+                relax_strategy = relax_strategy,
                 relax_quantile = relax_quantile,
             )
             next!(prog)

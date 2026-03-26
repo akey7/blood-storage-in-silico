@@ -248,11 +248,16 @@ function suggested_unmeasured_metabolite_bounds(
     metabolite_bounds_df::DataFrame,
     additive::String,
     final_time::Int64;
-    strategy::Symbol = :q,
     p::Float64 = 0.1,
+    strategy::Symbol,
 )
-    selection_df =
-        @rsubset(metabolite_bounds_df, :additive == additive, :final_time == final_time)
+    selection_df = @rsubset(
+        metabolite_bounds_df,
+        :additive == additive,
+        :final_time == final_time,
+        !isapprox(:lb, 0.0),
+        !isapprox(:ub, 0.0)
+    )
     if strategy == :tenth_minimum
         min_lb_abs = minimum(abs.(selection_df.lb))
         min_ub_abs = minimum(abs.(selection_df.ub))
