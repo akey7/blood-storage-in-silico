@@ -78,6 +78,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     flux_bounds_overrides_df = flux_bounds_overrides_df,
     metabolites_to_ignore = metabolites_to_ignore,
     prune_method = prune_method,
+    relax_strategy = :tenth_minimum,
 )
 
 sink_overview_df = extract_sink_overview(ufba_jobs)

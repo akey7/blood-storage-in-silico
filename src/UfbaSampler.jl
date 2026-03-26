@@ -453,7 +453,8 @@ Create all models that represent each combination of additive and final time poi
 4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
 5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
 6. `prune_method::Symbol = :case3`: Prune method to use. Can be either `:case1` or `:case3`.
-7. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
+7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:tenth_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
+8. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
 
 # Returns
 `Vector{NamedTuple}`
@@ -485,6 +486,7 @@ function make_ufba_models_for_additives_and_times(
     flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing,
     metabolites_to_ignore::Vector{String} = nothing,
     prune_method::Symbol = :case3,
+    relax_strategy::Symbol = :q,
     relax_quantile::Float64 = 0.1,
 )
     base_rbc_gem = load_base_rbc_gem()
@@ -523,6 +525,7 @@ function make_ufba_models_for_additives_and_times(
             additive_string,
             final_time;
             metabolites_to_ignore = metabolites_to_ignore,
+            relax_strategy = relax_strategy,
             relax_quantile = relax_quantile,
         )
         unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
