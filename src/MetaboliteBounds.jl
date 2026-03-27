@@ -401,8 +401,7 @@ The named tuple needs the following elements
 1. `metabolite_status_df`: The metabolite status DataFrame that specifies which metabolites have measurements and therefore do not need sinks.
 2. `additive`: The additive to search for measurements in.
 3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 optimization. If `nothing`, no sinks are removed from this process.
-4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
-5. `sink_opt_ins`: The manually defind vector of metabolite ids that must have sinks.
+4. `sink_opt_ins`: The manually defind vector of metabolite ids that must have sinks.
 
 The order of precedence for opt-ins, opt-out, and pruning is:
 1. `sink_opt_ins`: If a sink is opted-in, this takes first priority.
