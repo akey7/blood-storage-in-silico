@@ -23,8 +23,10 @@ export load_metabolite_bounds,
 
 function load_sink_opt_ins()
     sink_opt_ins_filename = joinpath("input", "sink_opt_ins.csv")
-    return isfile(sink_opt_ins_filename) ? CSV.read(sink_opt_ins_filename, DataFrame) :
-           nothing
+    opt_ins_df = isfile(sink_opt_ins_filename) ? CSV.read(sink_opt_ins_filename, DataFrame) :
+           DataFrame(metabolite_id_of_enabled_sink = [])
+    result = sort(unique(opt_ins_df.metabolite_id_of_enabled_sink))
+    return result
 end
 
 """
@@ -399,6 +401,12 @@ The named tuple needs the following elements
 2. `additive`: The additive to search for measurements in.
 3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 optimization. If `nothing`, no sinks are removed from this process.
 4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
+5. `sink_opt_ins`: The manually defind vector of metabolite ids that must have sinks.
+
+The order of precedence for opt-ins, opt-out, and pruning is:
+1. `sink_opt_ins`: If a sink is opted-in, this takes first priority.
+2. `sink_opt_outs`: If a sink is opted out, this takes second priority.
+3. `prune_zero_sinks`: If a sink is pruned algorithmically, this takes last priority.
 
 # Returns
 `Vector{String}`
@@ -413,6 +421,7 @@ function add_sinks_for_unmatched_metabolites!(
     additive = sink_specifications.additive
     prune_zero_sinks = sink_specifications.prune_zero_sinks
     sink_opt_outs = sink_specifications.sink_opt_outs
+    sink_opt_ins = sink_specifications.sink_opt_ins
 
     # if isnothing(prune_zero_sinks)
     #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"

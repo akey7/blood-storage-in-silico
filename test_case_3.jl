@@ -43,8 +43,11 @@ metabolite_bounds_df = load_metabolite_bounds()
 @info "Loading flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
-@info "Loading metabolite measurement opt outs"
+@info "Loading metabolite measurement opt-outs (if available)"
 metabolites_to_ignore = load_metabolite_measurement_opt_outs()
+
+@info "Loading sink opt-ins (if available)"
+sink_opt_ins = load_sink_opt_ins()
 
 @info "Create FBA model and map metabolites onto that model"
 fba_model, _ = create_fba_model(
@@ -72,6 +75,7 @@ first_sink_specifications = (
     additive = additive,
     prune_zero_sinks = nothing,
     sink_opt_outs = nothing,
+    sink_opt_ins = sink_opt_ins,
 )
 first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
@@ -114,6 +118,7 @@ third_sink_specifications = (
     additive = additive,
     prune_zero_sinks = prune_zero_sinks,
     sink_opt_outs = nothing,
+    sink_opt_ins = sink_opt_ins,
 )
 third_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(third_fba_model, third_sink_specifications)
