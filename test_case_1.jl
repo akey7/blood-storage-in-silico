@@ -23,6 +23,8 @@ function init_workers!(; project::AbstractString = Base.active_project())
                 import Pkg
                 Pkg.activate($project)
                 using COBREXA, HiGHS, JuMP, MathOptInterface
+                include("src/UfbaSampler.jl")
+                using .UfbaSampler
             end,
         )
     end
