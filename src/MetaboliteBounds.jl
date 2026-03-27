@@ -17,7 +17,7 @@ export load_metabolite_bounds,
     print_metabolite_bounds_on_constraint_tree,
     add_sinks_for_unmatched_metabolites!,
     find_metabolites_with_exchanges,
-    does_manual_prune_list_match_sink_name,
+    does_sink_id_match_list,
     load_metabolite_measurement_opt_outs,
     load_sink_opt_ins
 
@@ -101,28 +101,28 @@ function query_metabolite_bounds(metabolite_bounds_df, additive, metabolite, fin
 end
 
 """
-    does_manual_prune_list_match_sink_name(sink_name::String, sink_opt_outs::Union{Vector{String},Nothing} = nothing)
+    does_manual_prune_list_match_sink_name(sink_id::String, matching_sink_ids::Union{Vector{String},Nothing} = nothing)
 
 Determines if the given sink name contains any of the substrings in the given sink opt-outs list.
 
 # Arguments
-1. `sink_name::String`: The name of the sink.
-2. `sink_opt_outs::Union{Vector{String},Nothing} = nothing`: If specified, contains a list of substrings that are matched against the given sink name.
+1. `sink_id::String`: The name of the sink.
+2. `matching_sink_ids::Union{Vector{String},Nothing} = nothing`: If specified, contains a list of substrings that are matched against the given sink name.
 
 # Returns
 `Bool`
 
 Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
 """
-function does_manual_prune_list_match_sink_name(
-    sink_name::String,
-    sink_opt_outs::Union{Vector{String},Nothing} = nothing,
+function does_sink_id_match_list(
+    sink_id::String,
+    matching_sink_ids::Union{Vector{String},Nothing} = nothing,
 )
-    if isnothing(sink_opt_outs)
+    if isnothing(matching_sink_ids)
         return false
     else
-        for sink_opt_out in sink_opt_outs
-            if contains(sink_name, sink_opt_out)
+        for matching_sink_id in matching_sink_ids
+            if contains(sink_id, matching_sink_id)
                 return true
             end
         end
@@ -388,6 +388,23 @@ function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
     return metabolite_ids
 end
 
+function should_sink_id_be_included(
+    sink_id;
+    unfound_metabolite_ids,
+    sink_opt_ins,
+    prune_zero_sinks,
+)
+    if does_sink_id_match_list(sink_id, sink_opt_ins)
+        return true
+    elseif does_sink_id_match_list(sink_id, prune_zero_sinks)
+        return false
+    elseif does_sink_id_match_list(sink_id, unfound_metabolite_ids)
+        return true
+    else
+        return false
+    end
+end
+
 """
     add_sinks_for_unmatched_metabolites!(model::A.AbstractFBCModel, NamedTuple)
 
@@ -405,8 +422,7 @@ The named tuple needs the following elements
 
 The order of precedence for opt-ins, opt-out, and pruning is:
 1. `sink_opt_ins`: If a sink is opted-in, this takes first priority.
-2. `sink_opt_outs`: If a sink is opted out, this takes second priority.
-3. `prune_zero_sinks`: If a sink is pruned algorithmically, this takes last priority.
+2. `prune_zero_sinks`: If a sink is pruned algorithmically, this takes last priority.
 
 # Returns
 `Vector{String}`
@@ -421,47 +437,58 @@ function add_sinks_for_unmatched_metabolites!(
     additive = sink_specifications.additive
     prune_zero_sinks = sink_specifications.prune_zero_sinks
     sink_opt_ins = sink_specifications.sink_opt_ins
-
-    # if isnothing(prune_zero_sinks)
-    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks automatically"
-    # else
-    #     @info "Add sinks for unmatched metabolites, automatic pruning of $(length(prune_zero_sinks))"
-    # end
-    # if isnothing(sink_opt_outs)
-    #     @info "Add sinks for unmatched metabolites, DO NOT prune sinks manually"
-    # else
-    #     @info "Add sinks for unmatched metabolites, manual pruning of $(length(prune_zero_sinks))"
-    # end
-
     metabolites_with_exchanges = find_metabolites_with_exchanges(model)
-    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? [] : string.(prune_zero_sinks)
+    prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? String[] : string.(prune_zero_sinks)
     not_found_df = @chain metabolite_status_df begin
         @rsubset(:status == "not found", :additive == additive)
         @select(:metabolite)
     end
-    added_sink_ids = []
-    unfound_metabolite_ids = sort(unique(not_found_df.metabolite))
-    for metabolite_id in unfound_metabolite_ids
-        if metabolite_id in metabolites_with_exchanges
-            # println("Skipping sinks for $metabolite_id which has an exchange.")
-            continue
-        end
-        sink_name = "R_REVSK_$metabolite_id"
-        if does_manual_prune_list_match_sink_name(sink_name, sink_opt_ins) ||
-           sink_name ∉ prune_zero_sinks_2
-            sink = Reaction(
-                name = sink_name,
-                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
-                lower_bound = -1000.0,
-                upper_bound = 1000.0,
-            )
-            model.reactions[sink_name] = sink
-            push!(added_sink_ids, sink_name)
-        else
-            # println("Skipping zero flux sink $sink_name")
-        end
+    unfound_metabolite_ids = String.(sort(unique(not_found_df.metabolite)))
+    all_metabolite_ids = String.(sort(unique(metabolite_status_df.metabolite)))
+
+    # for metabolite_id in unfound_metabolite_ids
+    #     if metabolite_id in metabolites_with_exchanges
+    #         # println("Skipping sinks for $metabolite_id which has an exchange.")
+    #         continue
+    #     end
+    #     sink_name = "R_REVSK_$metabolite_id"
+    #     if does_manual_prune_list_match_sink_name(sink_name, sink_opt_ins) ||
+    #        sink_name ∉ prune_zero_sinks_2
+    #         sink = Reaction(
+    #             name = sink_name,
+    #             stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
+    #             lower_bound = -1000.0,
+    #             upper_bound = 1000.0,
+    #         )
+    #         model.reactions[sink_name] = sink
+    #         push!(added_sink_ids, sink_name)
+    #     else
+    #         # println("Skipping zero flux sink $sink_name")
+    #     end
+    # end
+
+    sink_ids_to_add = [
+        (metabolite_id, "R_REVSK_$metabolite_id") for
+        metabolite_id in all_metabolite_ids if should_sink_id_be_included(
+            "R_REVSK_$metabolite_id";
+            unfound_metabolite_ids = unfound_metabolite_ids,
+            sink_opt_ins = sink_opt_ins,
+            prune_zero_sinks = prune_zero_sinks_2,
+        )
+    ]
+
+    final_added_sink_ids = []
+    for (metabolite_id, sink_id) in sink_ids_to_add
+        sink = Reaction(
+            name = sink_id,
+            stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
+            lower_bound = -1000.0,
+            upper_bound = 1000.0,
+        )
+        model.reactions[sink_id] = sink
+        push!(final_added_sink_ids, sink_id)
     end
-    return added_sink_ids
+    return final_added_sink_ids
 end
 
 """
