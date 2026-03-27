@@ -1,6 +1,5 @@
 module PruningOptimizations
 
-using CSV
 using DataFrames
 using DataFramesMeta
 using JuMP
@@ -17,14 +16,7 @@ export optimize_case_1,
     optimization_failure_analysis,
     optimize_case_3,
     find_sinks_on_ct,
-    optimize_for_pruning,
-    load_sink_opt_ins
-
-function load_sink_opt_ins()
-    sink_opt_ins_filename = joinpath("input", "sink_opt_ins.csv")
-    return isfile(sink_opt_ins_filename) ? CSV.read(sink_opt_ins_filename, DataFrame) :
-           nothing
-end
+    optimize_for_pruning
 
 """
     optimize_for_pruning(prune_method::Symbol, original_ct::C.ConstraintTree, unmeasured_metabolite_ids::Vector{Symbol})

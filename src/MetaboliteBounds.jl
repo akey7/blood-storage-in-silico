@@ -18,7 +18,14 @@ export load_metabolite_bounds,
     add_sinks_for_unmatched_metabolites!,
     find_metabolites_with_exchanges,
     does_manual_prune_list_match_sink_name,
-    load_metabolite_measurement_opt_outs
+    load_metabolite_measurement_opt_outs,
+    load_sink_opt_ins
+
+function load_sink_opt_ins()
+    sink_opt_ins_filename = joinpath("input", "sink_opt_ins.csv")
+    return isfile(sink_opt_ins_filename) ? CSV.read(sink_opt_ins_filename, DataFrame) :
+           nothing
+end
 
 """
     load_metabolite_bounds()
