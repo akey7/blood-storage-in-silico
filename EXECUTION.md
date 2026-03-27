@@ -103,16 +103,18 @@ The command line arguments to the Julia environment and script are the following
 
 3. `--nmodels`: Number of uFBA models to analyze (-1 for all possible models).
 
-On a macOS or Linux machine with 14 cores, an example command to set the number of workers and threads on the same line would be:
+4. `--prune-method`: The pruning method to use. Cane be either `case1` or `case3`. See Bordbar (2016) or `PruningOptimizations.jl` for more information.
+
+On a macOS or Linux machine with 14 cores, an example command to set the number of workers and threads on the same line would be (while executing all models with 5 chains and case3 pruning):
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. -p 7 ufba_sampler.jl --nchains 5 --nmodels -1
+JULIA_NUM_THREADS=7 julia --project=. -p 4 ufba_sampler.jl --nchains 5 --nmodels -1 --prune-method case3
 ```
 
-On a Windows machine with 64 cores, an example to work with your previously set `JULIA_NUM_THREADS` environment variable would be:
+On a Windows machine, an example to work with your previously set `JULIA_NUM_THREADS` environment variable would be (again while executing all models with 5 chains and case3 pruning):
 
 ```
-julia --project=. -p 32 .\ufba_sampler.jl --nchains 5 --nmodels -1
+julia --project=. -p 4 ufba_sampler.jl --nchains 5 --nmodels -1 --prune-method case3
 ```
 
 Which would sample all models with 10 chains, run all models, and use 32 concurrent workers.
@@ -125,14 +127,14 @@ In addition to input files from prior steps, there is an input file of note
 Outputs the following files:
 1. `output/ufba_sampling_status.csv`: That statuses of each uFBA sampling job (fail or ok)
 2. `output/ufba_sampling.csv`: The samplings of the fluxes. Used by next step.
-3. `output/case3_sinks.csv`: The unmeasured metabolite sinks from the Case 3 analysis, and whether they had zero or non-zero flux.
 4. `output/fba_model_metabolites.csv`: Metabolite ids of the FBA models created for the uFBA runs.
 5. `output/ufba_blocked_reactions.csv`: Reaction ids of blocked reactions and their corresponding strings for each model.
 6. `output/ufba_optimized_sinks.csv`: Reaction ids of sinks sampled, their corresponding metabolites and directions, and median fluxes.
 7. `output/debug_case1.lp` (if configured in the code): Diagnostic output from `optimize_case_1()` to assist in debugging Case 1 optimization runs.
-8. `output/ufba_prune_breaks.csv`: Constraints broken in pruning attempts across all uFBA models.
-9. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before the uFBA runs.
-10. `output/ufba_sink_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
+8. `output/debug_case3.lp` (if configured in the code): Diagnostic output from `optimize_case_3()` to assist in debugging Case 1 optimization runs.
+9. `output/ufba_prune_breaks.csv`: Constraints broken in pruning attempts across all uFBA models.
+10. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before the uFBA runs.
+11. `output/ufba_sink_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
@@ -196,15 +198,37 @@ julia --project=. model_graph.jl
 
 There are other scripts that you can run in this project. They are outside of the main uFBA workflow, and are thus optional. They are documented here for completeness.
 
-### `fba_model_builder.jl`: Sanity check on a single FBA model
+### `test_case_1.jl` and `test_case_3.jl`: Test Case 1 and Case 3 sink pruning
 
-This script creates a single FBA model and samples the fluxes as a quick sanity check when building models in `FbaModelBuilder.jl`. If it doesn't report any errors, that is good news! However, try the models in the uFBA workflow to check for errors before you run the victory lap.
+I built this script to test Case 1 and Case 3 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
 
-### `test_case_1.jl`: Test Case 1 sink pruning
+Case 1 on macOS:
 
-I built this script to test Case 1 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
+```
+JULIA_NUM_THREADS=7 julia --project=. -p 4 test_case_1.jl
+```
 
-As a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
+Case 1 on Windows:
+
+```
+julia --project=. -p 4 test_case_1.jl
+```
+
+Case 3 on macOS:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. -p 4 test_case_3.jl
+```
+
+Case 3 on Windows:
+
+```
+julia --project=. -p 4 test_case_3.jl
+```
+
+#### Special test for Case 1
+
+For  Case 1 only, as a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
 
 ```
 optimize_case_1_result = optimize_case_1(case1_ct)

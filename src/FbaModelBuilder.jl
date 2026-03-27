@@ -252,8 +252,8 @@ function create_fba_model(
     pyrimdine_reaction_ids = ["R_NTDUMP"]
 
     # println("> Sodium-Potassium Pump Transporters")
-    # na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
-    na_k_pump_reaction_ids = []
+    na_k_pump_reaction_ids = ["R_NaKt", "R_NAt"]
+    # na_k_pump_reaction_ids = []
 
     # println("> Other reactions")
     other_reaction_ids = ["R_GUAPRT"]
@@ -414,9 +414,8 @@ function create_fba_model(
 
     # println(model.reactions["R_LOAD_NADPH"])
 
-    # println("> Skipping NaKt load")
     # println("> Setting NaKt load")
-    # model.reactions["R_NaKt"].objective_coefficient = 1.0
+    model.reactions["R_NaKt"].objective_coefficient = 1.0
 
     metabolite_ids =
         [replace(metabolite_id, "M_" => "") for (metabolite_id, _) in model.metabolites]

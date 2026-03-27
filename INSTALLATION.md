@@ -21,6 +21,7 @@ input
 ├── RBC-GEM.json
 ├── RBC-GEM.xml
 ├── flux_bounds_overrides.csv
+├── metabolite_measurement_opt_outs_template.csv
 └── Subsystem Category Map.csv
 ```
 
@@ -55,7 +56,6 @@ output
 ├── uFBA_histograms_v2
 ├── gem_dfs
 ├── ufba_models
-├── case1_vs_case3
 ```
 
 ### Install Dependencies

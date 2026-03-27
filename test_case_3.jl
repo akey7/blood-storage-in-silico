@@ -53,7 +53,7 @@ fba_model, _ = create_fba_model(
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
 
-@info "Reference additive and time point"
+@info "Reference additive, time point, and relaxation percentile"
 additive = "01-Ctrl AS3"
 final_time = 2
 relax_quantile = 0.1
@@ -75,40 +75,40 @@ first_sink_specifications = (
 )
 first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
-# print_sinks_in_model(first_model)
 
 @info "Add metabolite bounds to ConstraintTree"
 second_ct = flux_balance_constraints(first_model)
-add_metabolite_bounds_to_constraint_tree!(
+metabolites_to_ignore = nothing
+measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     second_ct,
     metabolite_bounds_df,
     additive,
     final_time;
     metabolites_to_ignore = metabolites_to_ignore,
+    relax_quantile = relax_quantile,
 )
-# print_metabolite_bounds_on_constraint_tree(second_ct)
+unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
 
-@info "Case 1: Optimize"
-# optimize_case_1_result = optimize_case_1(
-#     case1_ct;
-#     force_first_sink_on = true,
-#     force_first_sink_lb = 0.1,
-#     print_objective_value = true,
-# )
-optimize_case_1_ok_fail, optimize_case_1_result = optimize_case_1(second_ct)
-if optimize_case_1_ok_fail == :fail
-    display(optimize_case_1_result)
-    error("Case 1 optimization failed. Conflicting constraints are listed above. Stopping.")
+@info "Case 3: Sinks list"
+sink_ids = find_sinks_on_ct(second_ct)
+display(first(sink_ids, 10))
+
+@info "Case 3: Optimize"
+optimize_case_3_ok_fail, optimize_case_3_result =
+    optimize_case_3(second_ct, unmeasured_metabolite_ids)
+if optimize_case_3_ok_fail == :fail
+    display(optimize_case_3_result)
+    error("Case 3 optimization failed.")
 end
-case_1_analysis = analyze_pruning_optimization(optimize_case_1_result)
 
-@info "Case 1: Prune zero sinks"
+@info "Case 3: Prune zero sinks"
 third_fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
-prune_zero_sinks = case_1_analysis.prune
+case_3_analysis = analyze_pruning_optimization(optimize_case_3_result)
+prune_zero_sinks = case_3_analysis.prune
 third_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
     additive = additive,
@@ -117,10 +117,8 @@ third_sink_specifications = (
 )
 third_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(third_fba_model, third_sink_specifications)
-# println("Added the following sinks")
-# display(third_added_sink_ids)
 third_ct = flux_balance_constraints(third_fba_model)
-measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
+add_metabolite_bounds_to_constraint_tree!(
     third_ct,
     metabolite_bounds_df,
     additive,
@@ -128,7 +126,9 @@ measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore = metabolites_to_ignore,
     relax_quantile = relax_quantile,
 )
-unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
+n_pruned_sinks = length(case_3_analysis.prune)
+n_kept_sinks = length(case_3_analysis.keep)
+println("Pruned $n_pruned_sinks, kept $n_kept_sinks")
 
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)

@@ -8,6 +8,7 @@ import ConstraintTrees as C
 using COBREXA
 import AbstractFBCModels: stoichiometry
 import AbstractFBCModels.CanonicalModel: Model, Reaction, Metabolite, Gene, Coupling
+using Statistics
 
 export load_metabolite_bounds,
     query_metabolite_bounds,
@@ -227,9 +228,63 @@ function find_metabolite_matches(
 end
 
 """
-    add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing)
+    suggested_unmeasured_metabolite_bounds(metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; p::Float64 = 0.5)
 
-Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Mutates the given ConstraintTree in place.
+Suggest upper and lower bounds for unmeasured metabolites for appropriate model relaxation. It does this by looking at the absolute values of the lower and upper bounds and finding the given percentile within that vector.
+
+# Arguments
+1. `metabolite_bounds_df::DataFrame`: Bounds of measured metabolites.
+2. `additive::String`: Additive to search within the metabolite bounds.
+3. `final_time::Int64`: Final time to search within the metabolite bounds.
+4. `strategy::Symbol = :q`: If `:q`, looks for the value of the quantile noted in `p` parameter. If `:tenth_minimum`, 0.1x of the minimum absolute value of measure metabolite abundances.
+5. `p::Float64 = 0.1`: Percentile of the measured absolute values to base the bounds off of. Defaults to searching for the median.
+
+# Returns
+`Tuple{Float64,Float64}`
+
+Suggested lower and upper bounds for unmeasured metabolites.
+"""
+function suggested_unmeasured_metabolite_bounds(
+    metabolite_bounds_df::DataFrame,
+    additive::String,
+    final_time::Int64;
+    p::Float64 = 0.1,
+    strategy::Symbol = :q,
+)
+    selection_df = @rsubset(
+        metabolite_bounds_df,
+        :additive == additive,
+        :final_time == final_time,
+        !isapprox(:lb, 0.0),
+        !isapprox(:ub, 0.0)
+    )
+    if strategy == :tenth_minimum
+        min_lb_abs = minimum(abs.(selection_df.lb))
+        min_ub_abs = minimum(abs.(selection_df.ub))
+        min_abs = minimum([min_lb_abs, min_ub_abs])
+        overall = 0.1 * min_abs
+        return -overall, overall
+    elseif strategy == :q
+        abs_bounds = []
+        for lb in selection_df.lb
+            push!(abs_bounds, abs(lb))
+        end
+        for ub in selection_df.ub
+            push!(abs_bounds, abs(ub))
+        end
+        quantile_value = quantile(abs_bounds, p)
+        return -quantile_value, quantile_value
+    else
+        throw(ArgumentError("Unknown strategy $strategy"))
+    end
+end
+
+"""
+    add_metabolite_bounds_to_constraint_tree!(ct::C.ConstraintTree, metabolite_bounds_df::DataFrame, additive::String, final_time::Int64; metabolites_to_ignore::Union{Vector{String},Nothing} = nothing, relax_quantile::Float64 = 0.5)
+
+Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The constraint tree should come from `flux_balance_constraints()`. The bounds are created by replacing `C.EqualTo(0.0)` constraints on the `:flux_stoichiometry` branch with `C.Between(lb, ub)` constraints. Unmeasured metabolites have upper and lower bounds set to percentile measurement suggested by [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds)
+
+Mutates the given ConstraintTree in place.
 
 # Arguments
 1. `ct::C.ConstraintTree`: ConstraintTree to modify
@@ -237,11 +292,17 @@ Adds dx/dt metabolite rate of change bounds to the given ConstraintTree. The con
 3. `additive::String`: Additive to find in the bounds DataFrame
 4. `final_time::Int64`: Final time to find in the DataFrame.
 5. `metabolites_to_ignore::Union{Vector{String},Nothing} = nothing`: If `nothing`, incorporates constraints for all metabolites in the DataFrame. If specified, ignores the metabolites specified (omit the leading `M_` in this list).
+6. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:tenth_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
+7. `relax_quantile::Float64 = 0.5`: The percentile of the metabolite measurements to set upper and lower bounds of unmeasured to. If unspecified, defaults to 0.5.
 
 # Returns
-`ConstraintTree`
+`NamedTuple`
 
-Returns the mutated ConstraintTree, though capturing this return value after invocation is not necessary as the given ConstraintTree is modified in place.
+Returns a named tuple with the following fields:
+1. `unmeasured_metabolites`: Vector of symbols of metabolites that did not have measurements that were incorporated into the constraint tree.
+2. `measured_metabolites`: Vector of symbols of metabolites that have measurements that were incorporated into the constraint tree.
+3. `default_ub`: The default upper bound of unmeasured metabolites.
+4. `default_lb`: The default lower bound of unmeasured metabolites.
 """
 function add_metabolite_bounds_to_constraint_tree!(
     ct::C.ConstraintTree,
@@ -249,9 +310,20 @@ function add_metabolite_bounds_to_constraint_tree!(
     additive::String,
     final_time::Int64;
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
+    relax_strategy::Symbol = :q,
+    relax_quantile::Float64 = 0.1,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
-    n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
+    default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
+        metabolite_bounds_df,
+        additive,
+        final_time;
+        strategy = relax_strategy,
+        p = relax_quantile,
+    )
+    unmeasured_metabolites = Symbol[]
+    measured_metabolites = Symbol[]
+    # n_metabolites_to_ignore_2 = length(metabolites_to_ignore_2)
     # @info "add_metabolite_bounds_to_constraint_tree!(): Ignoring $n_metabolites_to_ignore_2 metabolites"
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
@@ -263,19 +335,26 @@ function add_metabolite_bounds_to_constraint_tree!(
                 final_time,
             )
             if isnothing(bounds)
-                ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+                # ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
+                ct.flux_stoichiometry[k].bound = C.Between(default_lb, default_ub)
+                push!(unmeasured_metabolites, k)
             else
                 lb, ub = bounds
                 ct.flux_stoichiometry[k].bound = C.Between(lb, ub)
+                push!(measured_metabolites, k)
             end
         else
             # println("Skipping bounds for metabolite id $short_metabolite_id")
             continue
         end
     end
-
-    # Just return something, even though this was modified in place.
-    return ct
+    result = (
+        unmeasured_metabolites = unmeasured_metabolites,
+        measured_metabolites = measured_metabolites,
+        default_lb = default_lb,
+        default_ub = default_ub,
+    )
+    return result
 end
 
 """
@@ -311,7 +390,7 @@ Add sinks for unmeasured (umatched) metabolites in the model UNLESS those metabo
 The named tuple needs the following elements
 1. `metabolite_status_df`: The metabolite status DataFrame that specifies which metabolites have measurements and therefore do not need sinks.
 2. `additive`: The additive to search for measurements in.
-3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 / Case 3 optimization. If `nothing`, no sinks are removed from this process.
+3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 optimization. If `nothing`, no sinks are removed from this process.
 4. `sink_opt_outs`: The manually defined vector of sinks to remove from the model.
 
 # Returns
@@ -346,42 +425,27 @@ function add_sinks_for_unmatched_metabolites!(
         @select(:metabolite)
     end
     added_sink_ids = []
-    for metabolite_id in sort(unique(not_found_df.metabolite))
+    unfound_metabolite_ids = sort(unique(not_found_df.metabolite))
+    for metabolite_id in unfound_metabolite_ids
         if metabolite_id in metabolites_with_exchanges
             # println("Skipping sinks for $metabolite_id which has an exchange.")
             continue
         end
-        sink_up_name = "R_UNKNOWN_SK_UP_$metabolite_id"
+        sink_name = "R_REVSK_$metabolite_id"
         if !(
-            does_manual_prune_list_match_sink_name(sink_up_name, sink_opt_outs) ||
-            sink_up_name in prune_zero_sinks_2
+            does_manual_prune_list_match_sink_name(sink_name, sink_opt_outs) ||
+            sink_name in prune_zero_sinks_2
         )
             sink_up = Reaction(
-                name = sink_up_name,
+                name = sink_name,
                 stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
                 lower_bound = -1000.0,
-                upper_bound = 0.0,
-            )
-            model.reactions[sink_up_name] = sink_up
-            push!(added_sink_ids, sink_up_name)
-        else
-            # println("Skipping zero flux sink $sink_up_name")
-        end
-        sink_down_name = "R_UNKNOWN_SK_DOWN_$metabolite_id"
-        if !(
-            does_manual_prune_list_match_sink_name(sink_down_name, sink_opt_outs) ||
-            sink_down_name in prune_zero_sinks_2
-        )
-            sink_down = Reaction(
-                name = sink_down_name,
-                stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
-                lower_bound = 0.0,
                 upper_bound = 1000.0,
             )
-            model.reactions[sink_down_name] = sink_down
-            push!(added_sink_ids, sink_down_name)
+            model.reactions[sink_name] = sink_up
+            push!(added_sink_ids, sink_name)
         else
-            # println("Skipping zero flux sink $sink_down_name")
+            # println("Skipping zero flux sink $sink_name")
         end
     end
     return added_sink_ids
