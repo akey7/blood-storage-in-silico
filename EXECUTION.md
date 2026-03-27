@@ -202,6 +202,30 @@ There are other scripts that you can run in this project. They are outside of th
 
 I built this script to test Case 1 and Case 3 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
 
+Case 1 on macOS:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. -p 4 test_case_1.jl
+```
+
+Case 1 on Windows:
+
+```
+julia --project=. -p 4 test_case_1.jl
+```
+
+Case 3 on macOS:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. -p 4 test_case_3.jl
+```
+
+Case 3 on Windows:
+
+```
+julia --project=. -p 4 test_case_3.jl
+```
+
 #### Special test for Case 1
 
 For  Case 1 only, as a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
