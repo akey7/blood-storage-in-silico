@@ -23,9 +23,10 @@ export load_metabolite_bounds,
 
 function load_sink_opt_ins()
     sink_opt_ins_filename = joinpath("input", "sink_opt_ins.csv")
-    opt_ins_df = isfile(sink_opt_ins_filename) ? CSV.read(sink_opt_ins_filename, DataFrame) :
-           DataFrame(metabolite_id_of_enabled_sink = [])
-    result = sort(unique(opt_ins_df.metabolite_id_of_enabled_sink))
+    opt_ins_df =
+        isfile(sink_opt_ins_filename) ? CSV.read(sink_opt_ins_filename, DataFrame) :
+        DataFrame(metabolite_id_of_enabled_sink = [])
+    result = String.(sort(unique(opt_ins_df.metabolite_id_of_enabled_sink)))
     return result
 end
 
@@ -420,7 +421,6 @@ function add_sinks_for_unmatched_metabolites!(
     metabolite_status_df = sink_specifications.metabolite_status_df
     additive = sink_specifications.additive
     prune_zero_sinks = sink_specifications.prune_zero_sinks
-    sink_opt_outs = sink_specifications.sink_opt_outs
     sink_opt_ins = sink_specifications.sink_opt_ins
 
     # if isnothing(prune_zero_sinks)
@@ -448,17 +448,15 @@ function add_sinks_for_unmatched_metabolites!(
             continue
         end
         sink_name = "R_REVSK_$metabolite_id"
-        if !(
-            does_manual_prune_list_match_sink_name(sink_name, sink_opt_outs) ||
-            sink_name in prune_zero_sinks_2
-        )
-            sink_up = Reaction(
+        if does_manual_prune_list_match_sink_name(sink_name, sink_opt_ins) ||
+           sink_name ∉ prune_zero_sinks_2
+            sink = Reaction(
                 name = sink_name,
                 stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
                 lower_bound = -1000.0,
                 upper_bound = 1000.0,
             )
-            model.reactions[sink_name] = sink_up
+            model.reactions[sink_name] = sink
             push!(added_sink_ids, sink_name)
         else
             # println("Skipping zero flux sink $sink_name")

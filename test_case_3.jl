@@ -74,7 +74,6 @@ first_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
     additive = additive,
     prune_zero_sinks = nothing,
-    sink_opt_outs = nothing,
     sink_opt_ins = sink_opt_ins,
 )
 first_added_sink_ids =
@@ -93,9 +92,9 @@ measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
 )
 unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
 
-@info "Case 3: Sinks list"
-sink_ids = find_sinks_on_ct(second_ct)
-display(first(sink_ids, 10))
+# @info "Case 3: Sinks list"
+# sink_ids = find_sinks_on_ct(second_ct)
+# display(first(sink_ids, 10))
 
 @info "Case 3: Optimize"
 optimize_case_3_ok_fail, optimize_case_3_result =
@@ -105,19 +104,23 @@ if optimize_case_3_ok_fail == :fail
     error("Case 3 optimization failed.")
 end
 
-@info "Case 3: Prune zero sinks"
+@info "Case 3: Pruning results"
 third_fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
 case_3_analysis = analyze_pruning_optimization(optimize_case_3_result)
+n_pruned_sinks = length(case_3_analysis.prune)
+n_kept_sinks = length(case_3_analysis.keep)
+println("Case 3 pruned $n_pruned_sinks, kept $n_kept_sinks")
+
+@info "Case 3: Taking sink opt-ins into account"
 prune_zero_sinks = case_3_analysis.prune
 third_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
     additive = additive,
     prune_zero_sinks = prune_zero_sinks,
-    sink_opt_outs = nothing,
     sink_opt_ins = sink_opt_ins,
 )
 third_added_sink_ids =
@@ -131,9 +134,8 @@ add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore = metabolites_to_ignore,
     relax_quantile = relax_quantile,
 )
-n_pruned_sinks = length(case_3_analysis.prune)
-n_kept_sinks = length(case_3_analysis.keep)
-println("Pruned $n_pruned_sinks, kept $n_kept_sinks")
+println("List of sinks added:")
+display(third_added_sink_ids)
 
 @info "Zeroth test case: Sampling, no sinks, no metabolite bounds"
 zeroth_ct = flux_balance_constraints(fba_model)
