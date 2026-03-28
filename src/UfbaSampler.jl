@@ -30,7 +30,7 @@ export sample_fluxes,
     display_jump_results,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
-    extract_sink_overview,
+    extract_pruning_overview,
     map_reaction_ids_to_reaction_strings,
     init_workers!,
     execute_ufba_job,
@@ -641,9 +641,9 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_sink_overview(ufba_jobs)
+    extract_pruning_overview(ufba_jobs)
 
-Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
+Extracts the status of sink pruning for metabolites for all jobs given and gathers the result into a DataFrame.
 
 # Arguments
 1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, `nonzero_sinks`, and `zero_sinks` properties.
@@ -651,10 +651,9 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 # Returns
 `DataFrame`
 
-Returns two DataFrames:
-1. Status of unmeasured metabolite sinks for each uFBA job.
+Status of metabolite sinks for each uFBA job.
 """
-function extract_sink_overview(ufba_jobs)
+function extract_pruning_overview(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         prune_method = ufba_job.prune_method
