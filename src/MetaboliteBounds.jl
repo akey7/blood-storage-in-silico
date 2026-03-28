@@ -393,9 +393,12 @@ function should_sink_id_be_included(
     unfound_metabolite_ids,
     sink_opt_ins,
     prune_zero_sinks,
+    metabolites_with_exchanges,
 )
     if does_sink_id_match_list(sink_id, sink_opt_ins)
         return true
+    elseif does_sink_id_match_list(sink_id, metabolites_with_exchanges)
+        return false
     elseif does_sink_id_match_list(sink_id, prune_zero_sinks)
         return false
     elseif does_sink_id_match_list(sink_id, unfound_metabolite_ids)
@@ -474,6 +477,7 @@ function add_sinks_for_unmatched_metabolites!(
             unfound_metabolite_ids = unfound_metabolite_ids,
             sink_opt_ins = sink_opt_ins,
             prune_zero_sinks = prune_zero_sinks_2,
+            metabolites_with_exchanges = metabolites_with_exchanges,
         )
     ]
 
