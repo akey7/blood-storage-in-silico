@@ -21,6 +21,16 @@ export load_metabolite_bounds,
     load_metabolite_measurement_opt_outs,
     load_sink_opt_ins
 
+"""
+    load_sink_opt_ins()
+
+Loads the sink opt-ins file (if it exists) and returns a vector of the metabolites opted-in to sinks.
+
+# Returns
+`Vector{String}`
+
+Metabolite ids for which sinks are requested.
+"""
 function load_sink_opt_ins()
     sink_opt_ins_filename = joinpath("input", "sink_opt_ins.csv")
     opt_ins_df =
@@ -388,6 +398,21 @@ function find_metabolites_with_exchanges(model::A.AbstractFBCModel)
     return metabolite_ids
 end
 
+"""
+    should_sink_id_be_included(sink_id; unfound_metabolite_ids, sink_opt_ins, prune_zero_sinks, metabolites_with_exchanges, metabolites_to_ignore)
+
+Decides if a particular `sink_id` for the metabolite specified in the `sink_id` should be included while adding sinks to the model. It considers the following circumstances in this order:
+1. Is the sink opted-in?
+2. Is the metabolite already handled by an exchagne?
+3. Is the sink specified to be pruned by one of the pruning cases?
+4. Has the measurement for the metabolite been ignored?
+5. Is no measurement for a particular `metabolite_id` not found?
+
+# Returns
+`Bool`
+
+Returns `true` for sink ids that should be included, `false` for sink ids that should be excluded.
+"""
 function should_sink_id_be_included(
     sink_id;
     unfound_metabolite_ids,
@@ -427,9 +452,7 @@ The named tuple needs the following elements
 4. `sink_opt_ins`: The manually defind vector of metabolite ids that must have sinks.
 5. `metabolites_to_ignore`: These are metabolites whose measurements are ignored by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!), and therefore might need sinks.
 
-The order of precedence for opt-ins, opt-out, and pruning is:
-1. `sink_opt_ins`: If a sink is opted-in, this takes first priority.
-2. `prune_zero_sinks`: If a sink is pruned algorithmically, this takes last priority.
+See [`should_sink_id_be_included`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.should_sink_id_be_included) for the rules deciding which sinks should be included.
 
 # Returns
 `Vector{String}`
