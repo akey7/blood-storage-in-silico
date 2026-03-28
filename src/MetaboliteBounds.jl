@@ -394,6 +394,7 @@ function should_sink_id_be_included(
     sink_opt_ins,
     prune_zero_sinks,
     metabolites_with_exchanges,
+    metabolites_to_ignore,
 )
     if does_sink_id_match_list(sink_id, sink_opt_ins)
         return true
@@ -401,6 +402,8 @@ function should_sink_id_be_included(
         return false
     elseif does_sink_id_match_list(sink_id, prune_zero_sinks)
         return false
+    elseif does_sink_id_match_list(sink_id, metabolites_to_ignore)
+        return true
     elseif does_sink_id_match_list(sink_id, unfound_metabolite_ids)
         return true
     else
@@ -422,6 +425,7 @@ The named tuple needs the following elements
 2. `additive`: The additive to search for measurements in.
 3. `prune_zero_sinks`: The vector of sinks to remove as determined by analyzing the Case 1 optimization. If `nothing`, no sinks are removed from this process.
 4. `sink_opt_ins`: The manually defind vector of metabolite ids that must have sinks.
+5. `metabolites_to_ignore`: These are metabolites whose measurements are ignored by [`add_sinks_for_unmatched_metabolites!`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.add_sinks_for_unmatched_metabolites!), and therefore might need sinks.
 
 The order of precedence for opt-ins, opt-out, and pruning is:
 1. `sink_opt_ins`: If a sink is opted-in, this takes first priority.
@@ -440,6 +444,7 @@ function add_sinks_for_unmatched_metabolites!(
     additive = sink_specifications.additive
     prune_zero_sinks = sink_specifications.prune_zero_sinks
     sink_opt_ins = sink_specifications.sink_opt_ins
+    metabolites_to_ignore = sink_specifications.metabolites_to_ignore
     metabolites_with_exchanges = find_metabolites_with_exchanges(model)
     prune_zero_sinks_2 = isnothing(prune_zero_sinks) ? String[] : string.(prune_zero_sinks)
     not_found_df = @chain metabolite_status_df begin
@@ -456,6 +461,7 @@ function add_sinks_for_unmatched_metabolites!(
             sink_opt_ins = sink_opt_ins,
             prune_zero_sinks = prune_zero_sinks_2,
             metabolites_with_exchanges = metabolites_with_exchanges,
+            metabolites_to_ignore = metabolites_to_ignore,
         )
     ]
     final_added_sink_ids = []

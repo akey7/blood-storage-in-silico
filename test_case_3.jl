@@ -75,6 +75,7 @@ first_sink_specifications = (
     additive = additive,
     prune_zero_sinks = nothing,
     sink_opt_ins = sink_opt_ins,
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
@@ -122,6 +123,7 @@ third_sink_specifications = (
     additive = additive,
     prune_zero_sinks = prune_zero_sinks,
     sink_opt_ins = sink_opt_ins,
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 third_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(third_fba_model, third_sink_specifications)
