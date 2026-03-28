@@ -123,6 +123,7 @@ Customize workers, threads, number of chains, and number of models your use case
 
 In addition to input files from prior steps, there is an input file of note
 1. `input/metabolite_measurement_opt_outs.csv`: A file of metabolite ids of absolute quant measurements (without the leading `M_`) to ignore when building all models. Used for diagnostic purposes for failing models.
+2. `input/sink_opt_ins.csv`: Metabolite ids that should have sinks. This list overrides pruning decisions. If this file is missing and you need a template for it, see `input/sink_opt_ins_template.csv`, which is tracked in source control.
 
 Outputs the following files:
 1. `output/ufba_sampling_status.csv`: That statuses of each uFBA sampling job (fail or ok)
@@ -134,7 +135,7 @@ Outputs the following files:
 8. `output/debug_case3.lp` (if configured in the code): Diagnostic output from `optimize_case_3()` to assist in debugging Case 1 optimization runs.
 9. `output/ufba_prune_breaks.csv`: Constraints broken in pruning attempts across all uFBA models.
 10. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before the uFBA runs.
-11. `output/ufba_sink_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
+11. `output/ufba_pruning_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
 
 ### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
 
@@ -148,7 +149,7 @@ Uses the following input file:
 
 Outputs the following files:
 
-1. writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
+1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
 2. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
 3. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
 4. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
