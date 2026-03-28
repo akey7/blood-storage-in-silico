@@ -448,28 +448,6 @@ function add_sinks_for_unmatched_metabolites!(
     end
     unfound_metabolite_ids = String.(sort(unique(not_found_df.metabolite)))
     all_metabolite_ids = String.(sort(unique(metabolite_status_df.metabolite)))
-
-    # for metabolite_id in unfound_metabolite_ids
-    #     if metabolite_id in metabolites_with_exchanges
-    #         # println("Skipping sinks for $metabolite_id which has an exchange.")
-    #         continue
-    #     end
-    #     sink_name = "R_REVSK_$metabolite_id"
-    #     if does_manual_prune_list_match_sink_name(sink_name, sink_opt_ins) ||
-    #        sink_name ∉ prune_zero_sinks_2
-    #         sink = Reaction(
-    #             name = sink_name,
-    #             stoichiometry = Dict("M_$(metabolite_id)" => -1.0),
-    #             lower_bound = -1000.0,
-    #             upper_bound = 1000.0,
-    #         )
-    #         model.reactions[sink_name] = sink
-    #         push!(added_sink_ids, sink_name)
-    #     else
-    #         # println("Skipping zero flux sink $sink_name")
-    #     end
-    # end
-
     sink_ids_to_add = [
         (metabolite_id, "R_REVSK_$metabolite_id") for
         metabolite_id in all_metabolite_ids if should_sink_id_be_included(
@@ -480,7 +458,6 @@ function add_sinks_for_unmatched_metabolites!(
             metabolites_with_exchanges = metabolites_with_exchanges,
         )
     ]
-
     final_added_sink_ids = []
     for (metabolite_id, sink_id) in sink_ids_to_add
         sink = Reaction(
