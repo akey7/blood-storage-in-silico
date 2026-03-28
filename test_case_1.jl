@@ -46,6 +46,9 @@ flux_bounds_overrides_df = load_flux_bounds_overrides()
 @info "Loading metabolite measurement opt outs"
 metabolites_to_ignore = load_metabolite_measurement_opt_outs()
 
+@info "Loading sink opt-ins (if available)"
+sink_opt_ins = load_sink_opt_ins()
+
 @info "Create FBA model and map metabolites onto that model"
 fba_model, _ = create_fba_model(
     base_rbc_gem;
@@ -71,7 +74,8 @@ first_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
     additive = additive,
     prune_zero_sinks = nothing,
-    sink_opt_outs = nothing,
+    sink_opt_ins = sink_opt_ins,
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 first_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(first_model, first_sink_specifications)
@@ -101,8 +105,11 @@ if optimize_case_1_ok_fail == :fail
     error("Case 1 optimization failed. Conflicting constraints are listed above. Stopping.")
 end
 case_1_analysis = analyze_pruning_optimization(optimize_case_1_result)
+n_pruned_sinks = length(case_1_analysis.prune)
+n_kept_sinks = length(case_1_analysis.keep)
+println("Case 1 pruned $n_pruned_sinks, kept $n_kept_sinks")
 
-@info "Case 1: Prune zero sinks"
+@info "Case 1: Finalizing sink specifications"
 third_fba_model, _ = create_fba_model(
     base_rbc_gem;
     exchanges = default_exchanges(),
@@ -113,12 +120,13 @@ third_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
     additive = additive,
     prune_zero_sinks = prune_zero_sinks,
-    sink_opt_outs = nothing,
+    sink_opt_ins = sink_opt_ins,
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 third_added_sink_ids =
     add_sinks_for_unmatched_metabolites!(third_fba_model, third_sink_specifications)
-# println("Added the following sinks")
-# display(third_added_sink_ids)
+println("Added the following sinks")
+display(third_added_sink_ids)
 third_ct = flux_balance_constraints(third_fba_model)
 measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
     third_ct,
