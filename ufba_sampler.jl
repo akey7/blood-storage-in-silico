@@ -41,8 +41,11 @@ init_workers!()
 @info "Load flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
 
-@info "Load metabolite measurement opt-outs"
+@info "Load metabolite measurement opt-outs (if available)"
 metabolites_to_ignore = load_metabolite_measurement_opt_outs()
+
+@info "Loading sink opt-ins (if available)"
+sink_opt_ins = load_sink_opt_ins()
 
 @info "Create reaction ids to strings mapping and save FBA model metabolites"
 fba_model, fba_model_metabolites_df = create_fba_model(
@@ -57,7 +60,8 @@ mapping_sink_specifications = (
     metabolite_status_df = metabolite_status_df,
     additive = mapping_additive,
     prune_zero_sinks = nothing,
-    sink_opt_outs = nothing,
+    sink_opt_ins = sink_opt_ins,
+    metabolites_to_ignore = metabolites_to_ignore,
 )
 add_sinks_for_unmatched_metabolites!(fba_model, mapping_sink_specifications)
 rxn_ids_to_strings_dict, rxn_ids_to_strings_df =
@@ -79,6 +83,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_to_ignore = metabolites_to_ignore,
     prune_method = prune_method,
     relax_strategy = :tenth_minimum,
+    sink_opt_ins = sink_opt_ins,
 )
 
 sink_overview_df = extract_sink_overview(ufba_jobs)
