@@ -21,12 +21,6 @@ diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
 CSV.write(diagnostic_filename, diagnostic_df)
 println("Wrote $diagnostic_filename")
 
-# @info "Mapping metabolites to sinks"
-# net_sink_fluxes_df = net_sink_fluxes(sampling_df)
-# net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
-# CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
-# println("Wrote $net_sink_flux_filename")
-
 @info "Writing median flux DataFrame"
 median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_flux_df = calc_median_flux_df(sampling_df)
@@ -70,5 +64,12 @@ CSV.write(
 )
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
-@info "Plotting uFBA histograms"
-plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+@info "Compating control vs. treatment fluxes"
+control_vs_treatments_df = compare_flux_distributions(sampling_df)
+display(first(control_vs_treatments_df, 10))
+# control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
+# CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
+# println("Wrote $control_vs_treatments_filename")
+
+# @info "Plotting uFBA histograms"
+# plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)

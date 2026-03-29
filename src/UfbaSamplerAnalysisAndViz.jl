@@ -12,6 +12,7 @@ using ProgressMeter
 using HypothesisTests
 using MultipleTesting
 using Chain
+using ThreadsX
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -22,7 +23,8 @@ export histograms_for_reaction_v2,
     calc_median_flux_df,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
-    prepare_measurements_and_sinks_report_df
+    prepare_measurements_and_sinks_report_df,
+    compare_flux_distributions
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -331,6 +333,44 @@ function prepare_measurements_and_sinks_report_df(
         @orderby(:additive, :final_time)
     end
     return report_df, report_by_model_df
+end
+
+function compare_flux_distributions(sampling_df; control_additive = "01-Ctrl AS3")
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
+    final_times = sort(unique(long_sampling_df.final_time))
+    reaction_ids = sort(unique(long_sampling_df.reaction_id))
+    treatments_df = @rsubset(long_sampling_df, :additive != control_additive)
+    treatment_additives = sort(unique(treatments_df.additive))
+    control_df = @rsubset(long_sampling_df, :additive == control_additive)
+    tasks = product(treatment_additives, reaction_ids, final_times)
+    n_tasks = length(tasks)
+    println("Begining n_tasks: $n_tasks")
+    unadjusted_rows = ThreadsX.map(tasks) do t
+        treatment_additive, reaction_id, final_time = t
+        control_reaction_df =
+            @rsubset(control_df, :final_time == final_time, :reaction_id == reaction_id)
+        treatment_reaction_df = @rsubset(
+            treatments_df,
+            :additive == treatment_additive,
+            :final_time == final_time,
+            :reaction_id == reaction_id
+        )
+        control_fluxes = control_reaction_df.flux
+        treatment_fluxes = treatment_reaction_df.flux
+        test = UnequalVarianceTTest(control_fluxes, treatment_fluxes)
+        p_value = pvalue(test)
+        unadjusted_row = (
+            treatment_additive = treatment_additive,
+            reaction_id = reaction_id,
+            final_time = final_time,
+            p_value = p_value,
+        )
+        print(".")
+        return unadjusted_row
+    end
+    println("done")
+    unadjusted_df = DataFrame(unadjusted_rows)
+    return unadjusted_df
 end
 
 end
