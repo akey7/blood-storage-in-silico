@@ -345,7 +345,7 @@ function compare_flux_distributions(sampling_df; control_additive = "01-Ctrl AS3
     tasks = product(treatment_additives, reaction_ids, final_times)
     n_tasks = length(tasks)
     println("Begining n_tasks: $n_tasks")
-    unadjusted_rows = ThreadsX.map(tasks) do t
+    test_rows = ThreadsX.map(tasks) do t
         treatment_additive, reaction_id, final_time = t
         control_reaction_df =
             @rsubset(control_df, :final_time == final_time, :reaction_id == reaction_id)
@@ -369,8 +369,11 @@ function compare_flux_distributions(sampling_df; control_additive = "01-Ctrl AS3
         return unadjusted_row
     end
     println("done")
-    unadjusted_df = DataFrame(unadjusted_rows)
-    return unadjusted_df
+    test_df = DataFrame(test_rows)
+    adj_p_values = adjust(test_df.p_value, BenjaminiHochberg())
+    test_df[!, :adj_p_value] = adj_p_values
+    sorted_df = @orderby(test_df, :treatment_additive, :final_time, :adj_p_value)
+    return sorted_df
 end
 
 end
