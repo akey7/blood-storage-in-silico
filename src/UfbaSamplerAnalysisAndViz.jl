@@ -429,9 +429,6 @@ function compare_flux_distributions(
         @transform(:reaction_cohen_effect_z = zscore(:raw_cohen_effect))
         @select(:treatment_additive, :final_time, :reaction_id, :reaction_cohen_effect_z)
     end
-    n_cohen_effect_z = nrow(cohen_effect_z_df)
-    println("n_cohen_effect_z: $n_cohen_effect_z")
-    display(first(cohen_effect_z_df, 10))
     interesting_df = @chain test_df begin
         leftjoin(cohen_effect_z_df; on = [:treatment_additive, :final_time, :reaction_id])
         @rtransform(
