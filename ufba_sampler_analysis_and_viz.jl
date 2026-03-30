@@ -65,10 +65,11 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Compating control vs. treatment fluxes"
-control_vs_treatments_df = compare_flux_distributions(sampling_df)
-control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
-CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
-println("Wrote $control_vs_treatments_filename")
+control_vs_treatments_df = compare_flux_distributions(sampling_df, samples = 25)
+display(first(control_vs_treatments_df, 100))
+# control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
+# CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
+# println("Wrote $control_vs_treatments_filename")
 
 # @info "Plotting uFBA histograms"
 # plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)

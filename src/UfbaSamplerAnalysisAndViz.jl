@@ -13,6 +13,7 @@ using HypothesisTests
 using MultipleTesting
 using Chain
 using ThreadsX
+using Random
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -335,7 +336,12 @@ function prepare_measurements_and_sinks_report_df(
     return report_df, report_by_model_df
 end
 
-function compare_flux_distributions(sampling_df; control_additive = "01-Ctrl AS3")
+function compare_flux_distributions(
+    sampling_df;
+    control_additive = "01-Ctrl AS3",
+    samples = nothing,
+)
+    Random.seed!(123)
     long_sampling_df = pivot_sampling_df_long(sampling_df)
     final_times = sort(unique(long_sampling_df.final_time))
     reaction_ids = sort(unique(long_sampling_df.reaction_id))
@@ -355,8 +361,14 @@ function compare_flux_distributions(sampling_df; control_additive = "01-Ctrl AS3
             :final_time == final_time,
             :reaction_id == reaction_id
         )
-        control_fluxes = control_reaction_df.flux
-        treatment_fluxes = treatment_reaction_df.flux
+        control_fluxes_0 = control_reaction_df.flux
+        treatment_fluxes_0 = treatment_reaction_df.flux
+        control_fluxes =
+            isnothing(samples) ? control_fluxes_0 :
+            sample(control_fluxes_0, samples, replace = false)
+        treatment_fluxes =
+            isnothing(samples) ? treatment_fluxes_0 :
+            sample(treatment_fluxes_0, samples, replace = false)
         test = UnequalVarianceTTest(control_fluxes, treatment_fluxes)
         p_value = pvalue(test)
         unadjusted_row = (
