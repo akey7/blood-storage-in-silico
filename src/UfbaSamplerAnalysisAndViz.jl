@@ -341,7 +341,7 @@ function compare_flux_distributions(
     sampling_df;
     control_additive = "01-Ctrl AS3",
     samples = nothing,
-    alpha = 0.05,
+    alpha = 0.01,
     interesting_cohen_effect_z = 2.0,
 )
     Random.seed!(123)
