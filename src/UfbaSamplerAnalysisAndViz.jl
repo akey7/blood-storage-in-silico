@@ -342,6 +342,7 @@ function compare_flux_distributions(
     control_additive = "01-Ctrl AS3",
     samples = nothing,
     alpha = 0.05,
+    interesting_effect_threshold = 0.5,
 )
     Random.seed!(123)
     ci_quantile = 1.0 - alpha
@@ -372,35 +373,44 @@ function compare_flux_distributions(
         treatment_fluxes =
             isnothing(samples) ? treatment_fluxes_0 :
             sample(treatment_fluxes_0, samples, replace = false)
-
         t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
         t_test_p = pvalue(t_test)
         mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
         mw_p = pvalue(mw_test)
-        cohen_effect_size = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
-        cohen_effect_size_ci = confint(cohen_effect_size)
-
+        cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
+        cohen_effect = effectsize(cohen_d)
+        cohen_effect_size_ci = confint(cohen_d)
         unadjusted_row = (
             treatment_additive = treatment_additive,
             reaction_id = reaction_id,
             final_time = final_time,
             t_test_p = t_test_p,
             mw_p = mw_p,
-            cohen_effect_low = cohen_effect_size_ci[1],
-            cohen_effect_high = cohen_effect_size_ci[2],
+            cohen_effect = cohen_effect,
+            cohen_effect_low = lower(cohen_effect_size_ci),
+            cohen_effect_high = upper(cohen_effect_size_ci),
         )
         print(".")
         return unadjusted_row
     end
     println("done")
     test_df = DataFrame(test_rows)
-
     adj_t_test_p = adjust(test_df.t_test_p, BenjaminiHochberg())
     adj_mw_p = adjust(test_df.mw_p, BenjaminiHochberg())
     test_df[!, :adj_t_test_p] = adj_t_test_p
     test_df[!, :adj_mw_p] = adj_mw_p
-
-    return test_df
+    result_df = @chain test_df begin
+        @rtransform(
+            :t_test_significant = :adj_t_test_p <= alpha,
+            :mw_significant = :adj_mw_p <= alpha,
+            :large_effect = abs(:cohen_effect) >= interesting_effect_threshold
+        )
+        @rtransform(
+            :all_interesting = :t_test_significant && :mw_significant && :large_effect
+        )
+        @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
+    end
+    return result_df
 end
 
 end
