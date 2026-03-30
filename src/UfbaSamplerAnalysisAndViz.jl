@@ -337,10 +337,35 @@ function prepare_measurements_and_sinks_report_df(
     return report_df, report_by_model_df
 end
 
+"""
+    compare_flux_distributions(
+        sampling_df;
+        control_additive = "01-Ctrl AS3",
+        n_samples = nothing,
+        alpha = 0.01,
+        interesting_cohen_effect_z = 2.0,
+    )
+
+For each (non-control) additive, time point, and reaction, compare all additives to the control to find statistical differences that point to interesting histograms and reactions to investigate.
+
+# Arguments
+1. `sampling_df`: The wide formatted sampling DataFrame
+2. `control_additive = "01-Ctrl AS3"`: The name of the additive to use as the "control".
+3. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
+4. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
+5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns a tuple of two DataFrames:
+1. The first DataFrame looks for interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
+2. An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
+"""
 function compare_flux_distributions(
     sampling_df;
     control_additive = "01-Ctrl AS3",
-    samples = nothing,
+    n_samples = nothing,
     alpha = 0.01,
     interesting_cohen_effect_z = 2.0,
 )
@@ -368,11 +393,11 @@ function compare_flux_distributions(
         control_fluxes_0 = control_reaction_df.flux
         treatment_fluxes_0 = treatment_reaction_df.flux
         control_fluxes =
-            isnothing(samples) ? control_fluxes_0 :
-            sample(control_fluxes_0, samples, replace = false)
+            isnothing(n_samples) ? control_fluxes_0 :
+            sample(control_fluxes_0, n_samples, replace = false)
         treatment_fluxes =
-            isnothing(samples) ? treatment_fluxes_0 :
-            sample(treatment_fluxes_0, samples, replace = false)
+            isnothing(n_samples) ? treatment_fluxes_0 :
+            sample(treatment_fluxes_0, n_samples, replace = false)
         t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
         t_test_p = pvalue(t_test)
         mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
