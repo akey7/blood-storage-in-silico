@@ -12,6 +12,9 @@ using ProgressMeter
 using HypothesisTests
 using MultipleTesting
 using Chain
+using ThreadsX
+using Random
+using EffectSizes
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -22,7 +25,8 @@ export histograms_for_reaction_v2,
     calc_median_flux_df,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
-    prepare_measurements_and_sinks_report_df
+    prepare_measurements_and_sinks_report_df,
+    compare_flux_distributions
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -331,6 +335,120 @@ function prepare_measurements_and_sinks_report_df(
         @orderby(:additive, :final_time)
     end
     return report_df, report_by_model_df
+end
+
+"""
+    compare_flux_distributions(
+        sampling_df;
+        control_additive = "01-Ctrl AS3",
+        n_samples = nothing,
+        alpha = 0.01,
+        interesting_cohen_effect_z = 2.0,
+    )
+
+For each (non-control) additive, time point, and reaction, compare all additives to the control to find statistical differences that point to interesting histograms and reactions to investigate.
+
+# Arguments
+1. `sampling_df`: The wide formatted sampling DataFrame
+2. `control_additive = "01-Ctrl AS3"`: The name of the additive to use as the "control".
+3. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
+4. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
+5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
+
+# Returns
+`Tuple{DataFrame,DataFrame}`
+
+Returns a tuple of two DataFrames:
+1. The first DataFrame looks for interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
+2. An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
+"""
+function compare_flux_distributions(
+    sampling_df;
+    control_additive = "01-Ctrl AS3",
+    n_samples = nothing,
+    alpha = 0.01,
+    interesting_cohen_effect_z = 2.0,
+)
+    Random.seed!(123)
+    ci_quantile = 1.0 - alpha
+    long_sampling_df = pivot_sampling_df_long(sampling_df)
+    final_times = sort(unique(long_sampling_df.final_time))
+    reaction_ids = sort(unique(long_sampling_df.reaction_id))
+    treatments_df = @rsubset(long_sampling_df, :additive != control_additive)
+    treatment_additives = sort(unique(treatments_df.additive))
+    control_df = @rsubset(long_sampling_df, :additive == control_additive)
+    tasks = product(treatment_additives, reaction_ids, final_times)
+    n_tasks = length(tasks)
+    println("Begining n_tasks: $n_tasks")
+    test_rows = ThreadsX.map(tasks) do t
+        treatment_additive, reaction_id, final_time = t
+        control_reaction_df =
+            @rsubset(control_df, :final_time == final_time, :reaction_id == reaction_id)
+        treatment_reaction_df = @rsubset(
+            treatments_df,
+            :additive == treatment_additive,
+            :final_time == final_time,
+            :reaction_id == reaction_id
+        )
+        control_fluxes_0 = control_reaction_df.flux
+        treatment_fluxes_0 = treatment_reaction_df.flux
+        control_fluxes =
+            isnothing(n_samples) ? control_fluxes_0 :
+            sample(control_fluxes_0, n_samples, replace = false)
+        treatment_fluxes =
+            isnothing(n_samples) ? treatment_fluxes_0 :
+            sample(treatment_fluxes_0, n_samples, replace = false)
+        t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
+        t_test_p = pvalue(t_test)
+        mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
+        mw_p = pvalue(mw_test)
+        raw_cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
+        raw_cohen_effect = effectsize(raw_cohen_d)
+        raw_cohen_effect_size_ci = confint(raw_cohen_d)
+        unadjusted_row = (
+            treatment_additive = treatment_additive,
+            reaction_id = reaction_id,
+            final_time = final_time,
+            t_test_p = t_test_p,
+            mw_p = mw_p,
+            raw_cohen_effect = raw_cohen_effect,
+            raw_cohen_effect_low = lower(raw_cohen_effect_size_ci),
+            raw_cohen_effect_high = upper(raw_cohen_effect_size_ci),
+        )
+        print(".")
+        return unadjusted_row
+    end
+    println("done")
+    test_df = DataFrame(test_rows)
+    adj_t_test_p = adjust(test_df.t_test_p, BenjaminiHochberg())
+    adj_mw_p = adjust(test_df.mw_p, BenjaminiHochberg())
+    test_df[!, :adj_t_test_p] = adj_t_test_p
+    test_df[!, :adj_mw_p] = adj_mw_p
+    cohen_effect_z_df = @chain test_df begin
+        @groupby(:reaction_id)
+        @transform(:reaction_cohen_effect_z = zscore(:raw_cohen_effect))
+        @select(:treatment_additive, :final_time, :reaction_id, :reaction_cohen_effect_z)
+    end
+    n_cohen_effect_z = nrow(cohen_effect_z_df)
+    println("n_cohen_effect_z: $n_cohen_effect_z")
+    display(first(cohen_effect_z_df, 10))
+    interesting_df = @chain test_df begin
+        leftjoin(cohen_effect_z_df; on = [:treatment_additive, :final_time, :reaction_id])
+        @rtransform(
+            :t_test_significant = :adj_t_test_p <= alpha,
+            :mw_significant = :adj_mw_p <= alpha,
+            :large_effect = abs(:reaction_cohen_effect_z) >= interesting_cohen_effect_z
+        )
+        @rtransform(
+            :all_interesting = :t_test_significant && :mw_significant && :large_effect
+        )
+        @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
+    end
+    interesting_vs_uninteresting_df = @chain interesting_df begin
+        @groupby(:all_interesting)
+        DataFrames.combine(nrow => :count)
+    end
+    return interesting_df, interesting_vs_uninteresting_df
 end
 
 end
