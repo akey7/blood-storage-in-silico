@@ -155,10 +155,17 @@ Outputs the following files:
 4. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
 5. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
 6. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
+7. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
 
 There are no threads or workers in this script, so execution is simple.
 
-On macOS or Windows:
+On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_analysis_and_viz.jl
+```
+
+On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 
 ```
 julia --project=. ufba_sampler_analysis_and_viz.jl
