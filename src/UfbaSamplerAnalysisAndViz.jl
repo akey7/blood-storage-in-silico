@@ -14,6 +14,7 @@ using MultipleTesting
 using Chain
 using ThreadsX
 using Random
+using EffectSizes
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -340,8 +341,10 @@ function compare_flux_distributions(
     sampling_df;
     control_additive = "01-Ctrl AS3",
     samples = nothing,
+    alpha = 0.05,
 )
     Random.seed!(123)
+    ci_quantile = 1.0 - alpha
     long_sampling_df = pivot_sampling_df_long(sampling_df)
     final_times = sort(unique(long_sampling_df.final_time))
     reaction_ids = sort(unique(long_sampling_df.reaction_id))
@@ -369,23 +372,35 @@ function compare_flux_distributions(
         treatment_fluxes =
             isnothing(samples) ? treatment_fluxes_0 :
             sample(treatment_fluxes_0, samples, replace = false)
-        test = UnequalVarianceTTest(control_fluxes, treatment_fluxes)
-        p_value = pvalue(test)
+
+        t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
+        t_test_p = pvalue(t_test)
+        mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
+        mw_p = pvalue(mw_test)
+        cohen_effect_size = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
+        cohen_effect_size_ci = confint(cohen_effect_size)
+
         unadjusted_row = (
             treatment_additive = treatment_additive,
             reaction_id = reaction_id,
             final_time = final_time,
-            p_value = p_value,
+            t_test_p = t_test_p,
+            mw_p = mw_p,
+            cohen_effect_low = cohen_effect_size_ci[1],
+            cohen_effect_high = cohen_effect_size_ci[2],
         )
         print(".")
         return unadjusted_row
     end
     println("done")
     test_df = DataFrame(test_rows)
-    adj_p_values = adjust(test_df.p_value, BenjaminiHochberg())
-    test_df[!, :adj_p_value] = adj_p_values
-    sorted_df = @orderby(test_df, :treatment_additive, :final_time, :adj_p_value)
-    return sorted_df
+
+    adj_t_test_p = adjust(test_df.t_test_p, BenjaminiHochberg())
+    adj_mw_p = adjust(test_df.mw_p, BenjaminiHochberg())
+    test_df[!, :adj_t_test_p] = adj_t_test_p
+    test_df[!, :adj_mw_p] = adj_mw_p
+
+    return test_df
 end
 
 end
