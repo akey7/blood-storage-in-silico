@@ -6,6 +6,9 @@ using YAML
 include("src/UfbaSamplerAnalysisAndViz.jl")
 using .UfbaSamplerAnalysisAndViz
 
+num_threads = Threads.nthreads()
+println("Num threads $num_threads")
+
 @info "Loading reaction ids to strings..."
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
@@ -61,12 +64,18 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
-control_vs_treatments_df, interesting_vs_uninteresting_df =
+comparison_result =
     compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
+interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
+control_vs_treatments_df = comparison_result.interesting_df
+ranked_df = comparison_result.ranked_df
 display(interesting_vs_uninteresting_df)
 control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
 CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
 println("Wrote $control_vs_treatments_filename")
+ranked_filename = joinpath("output", "control_vs_treatment_ranked.csv")
+CSV.write(ranked_filename, ranked_df)
+println("Wrote $ranked_filename")
 
 @info "Plotting uFBA histograms"
 plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)

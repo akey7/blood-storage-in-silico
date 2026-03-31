@@ -356,11 +356,12 @@ For each (non-control) additive, time point, and reaction, compare all additives
 5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
-`Tuple{DataFrame,DataFrame}`
+`NamedTuple`
 
 Returns a tuple of two DataFrames:
-1. The first DataFrame looks for interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
-2. An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
+1. `interesting_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
+2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
+3. `ranked_df`: Ranking reactions by their most influential treatment additive and time point.
 """
 function compare_flux_distributions(
     sampling_df;
@@ -379,7 +380,7 @@ function compare_flux_distributions(
     control_df = @rsubset(long_sampling_df, :additive == control_additive)
     tasks = product(treatment_additives, reaction_ids, final_times)
     n_tasks = length(tasks)
-    println("Begining n_tasks: $n_tasks")
+    println("n_tasks: $n_tasks")
     test_rows = ThreadsX.map(tasks) do t
         treatment_additive, reaction_id, final_time = t
         control_reaction_df =
@@ -402,35 +403,40 @@ function compare_flux_distributions(
         t_test_p = pvalue(t_test)
         mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
         mw_p = pvalue(mw_test)
-        raw_cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
-        raw_cohen_effect = effectsize(raw_cohen_d)
-        raw_cohen_effect_size_ci = confint(raw_cohen_d)
+        cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
+        cohen_effect = effectsize(cohen_d)
+        # cohen_effect_size_ci = confint(cohen_d)
         unadjusted_row = (
             treatment_additive = treatment_additive,
             reaction_id = reaction_id,
             final_time = final_time,
             t_test_p = t_test_p,
             mw_p = mw_p,
-            raw_cohen_effect = raw_cohen_effect,
-            raw_cohen_effect_low = lower(raw_cohen_effect_size_ci),
-            raw_cohen_effect_high = upper(raw_cohen_effect_size_ci),
+            cohen_effect = cohen_effect,
+            # cohen_effect_low = lower(cohen_effect_size_ci),
+            # cohen_effect_high = upper(cohen_effect_size_ci),
         )
         print(".")
         return unadjusted_row
     end
     println("done")
-    test_df = DataFrame(test_rows)
-    adj_t_test_p = adjust(test_df.t_test_p, BenjaminiHochberg())
-    adj_mw_p = adjust(test_df.mw_p, BenjaminiHochberg())
-    test_df[!, :adj_t_test_p] = adj_t_test_p
-    test_df[!, :adj_mw_p] = adj_mw_p
-    cohen_effect_z_df = @chain test_df begin
+    test_df = @chain test_rows begin
+        DataFrame()
+        @transform(
+            :adj_t_test_p = adjust(:t_test_p, BenjaminiHochberg()),
+            :adj_mw_p = adjust(:mw_p, BenjaminiHochberg())
+        )
+    end
+    reaction_cohen_effect_z_df = @chain test_df begin
         @groupby(:reaction_id)
-        @transform(:reaction_cohen_effect_z = zscore(:raw_cohen_effect))
+        @transform(:reaction_cohen_effect_z = zscore(:cohen_effect))
         @select(:treatment_additive, :final_time, :reaction_id, :reaction_cohen_effect_z)
     end
     interesting_df = @chain test_df begin
-        leftjoin(cohen_effect_z_df; on = [:treatment_additive, :final_time, :reaction_id])
+        leftjoin(
+            reaction_cohen_effect_z_df;
+            on = [:treatment_additive, :final_time, :reaction_id],
+        )
         @rtransform(
             :t_test_significant = :adj_t_test_p <= alpha,
             :mw_significant = :adj_mw_p <= alpha,
@@ -445,7 +451,33 @@ function compare_flux_distributions(
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
     end
-    return interesting_df, interesting_vs_uninteresting_df
+    log_p_max = 2.0
+    ranked_df = @chain test_df begin
+        leftjoin(
+            reaction_cohen_effect_z_df;
+            on = [:treatment_additive, :final_time, :reaction_id],
+        )
+        @rtransform(
+            :score =
+                abs(:reaction_cohen_effect_z) * min(-log10(:adj_t_test_p), log_p_max)
+        )
+        @groupby(:reaction_id)
+        @combine @astable begin
+            idx = argmax(:score)
+            :treatment_additive = :treatment_additive[idx]
+            :final_time = :final_time[idx]
+            :max_score = :score[idx]
+            :reaction_cohen_effect_z = :reaction_cohen_effect_z[idx]
+            :adj_t_test_p = :adj_t_test_p[idx]
+        end
+        @orderby(-:max_score)
+    end
+    result = (
+        interesting_df = interesting_df,
+        interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
+        ranked_df = ranked_df,
+    )
+    return result
 end
 
 end

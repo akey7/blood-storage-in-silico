@@ -117,7 +117,7 @@ On a Windows machine, an example to work with your previously set `JULIA_NUM_THR
 julia --project=. -p 4 ufba_sampler.jl --nchains 5 --nmodels -1 --prune-method case3
 ```
 
-Which would sample all models with 10 chains, run all models, and use 32 concurrent workers.
+Which would sample all models with 5 chains, run all models, and use 4 concurrent workers.
 
 Customize workers, threads, number of chains, and number of models your use case. For quick runs, set the number of models and chains to be small numbers.
 
