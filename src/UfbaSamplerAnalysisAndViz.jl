@@ -379,7 +379,7 @@ function compare_flux_distributions(
     control_df = @rsubset(long_sampling_df, :additive == control_additive)
     tasks = product(treatment_additives, reaction_ids, final_times)
     n_tasks = length(tasks)
-    println("Begining n_tasks: $n_tasks")
+    println("n_tasks: $n_tasks")
     test_rows = ThreadsX.map(tasks) do t
         treatment_additive, reaction_id, final_time = t
         control_reaction_df =
@@ -419,11 +419,13 @@ function compare_flux_distributions(
         return unadjusted_row
     end
     println("done")
-    test_df = DataFrame(test_rows)
-    adj_t_test_p = adjust(test_df.t_test_p, BenjaminiHochberg())
-    adj_mw_p = adjust(test_df.mw_p, BenjaminiHochberg())
-    test_df[!, :adj_t_test_p] = adj_t_test_p
-    test_df[!, :adj_mw_p] = adj_mw_p
+    test_df = @chain test_rows begin
+        DataFrame()
+        @transform(
+            :adj_t_test_p = adjust(:t_test_p, BenjaminiHochberg()),
+            :adj_mw_p = adjust(:mw_p, BenjaminiHochberg())
+        )
+    end
     reaction_cohen_effect_z_df = @chain test_df begin
         @groupby(:reaction_id)
         @transform(:reaction_cohen_effect_z = zscore(:cohen_effect))
