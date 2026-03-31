@@ -446,7 +446,11 @@ function compare_flux_distributions(
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
     end
-    return interesting_df, interesting_vs_uninteresting_df
+    result = (
+        interesting_df = interesting_df,
+        interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
+    )
+    return result
 end
 
 end

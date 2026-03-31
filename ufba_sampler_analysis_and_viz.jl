@@ -61,8 +61,10 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
-control_vs_treatments_df, interesting_vs_uninteresting_df =
+comparison_result =
     compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
+interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
+control_vs_treatments_df = comparison_result.interesting_df
 display(interesting_vs_uninteresting_df)
 control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
 CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
