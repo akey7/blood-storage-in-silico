@@ -6,6 +6,9 @@ using YAML
 include("src/UfbaSamplerAnalysisAndViz.jl")
 using .UfbaSamplerAnalysisAndViz
 
+num_threads = Threads.nthreads()
+println("Num threads $num_threads")
+
 @info "Loading reaction ids to strings..."
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
@@ -20,12 +23,6 @@ diagnostic_df = diagnose_flux_stats(sampling_df)
 diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
 CSV.write(diagnostic_filename, diagnostic_df)
 println("Wrote $diagnostic_filename")
-
-# @info "Mapping metabolites to sinks"
-# net_sink_fluxes_df = net_sink_fluxes(sampling_df)
-# net_sink_flux_filename = joinpath("output", "net_sink_fluxes.csv")
-# CSV.write(net_sink_flux_filename, net_sink_fluxes_df)
-# println("Wrote $net_sink_flux_filename")
 
 @info "Writing median flux DataFrame"
 median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
@@ -44,10 +41,6 @@ absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
 absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
 fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
 fba_model_metabolites_df = CSV.read(fba_model_metabolites_filename, DataFrame)
-
-# ufba_optimized_filename = joinpath("output", "ufba_added_sink_ids.csv")
-# ufba_added_sink_ids_df = CSV.read(ufba_added_sink_ids_filename, DataFrame)
-
 ufba_optimized_sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
 ufba_optimized_sinks_df = CSV.read(ufba_optimized_sinks_filename, DataFrame)
 
@@ -69,6 +62,20 @@ CSV.write(
     measurements_and_sinks_report_by_model_df,
 )
 println("Wrote $measurements_and_sinks_report_by_model_filename")
+
+@info "Comparing control vs. treatment fluxes"
+comparison_result =
+    compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
+interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
+control_vs_treatments_df = comparison_result.interesting_df
+ranked_df = comparison_result.ranked_df
+display(interesting_vs_uninteresting_df)
+control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
+CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
+println("Wrote $control_vs_treatments_filename")
+ranked_filename = joinpath("output", "control_vs_treatment_ranked.csv")
+CSV.write(ranked_filename, ranked_df)
+println("Wrote $ranked_filename")
 
 @info "Plotting uFBA histograms"
 plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)

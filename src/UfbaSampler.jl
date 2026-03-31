@@ -30,14 +30,13 @@ export sample_fluxes,
     display_jump_results,
     make_ufba_models_for_additives_and_times,
     execute_all_ufba_jobs,
-    extract_sink_overview,
+    extract_pruning_overview,
     map_reaction_ids_to_reaction_strings,
     init_workers!,
     execute_ufba_job,
     count_n_all_zero_fluxes,
     load_flux_bounds_overrides,
     sbml_add_constant_to_selfclosing_parameters!,
-    extract_added_sink_ids,
     decompose_sink_id,
     optimize_constraint_tree,
     extract_broken_constraints,
@@ -442,7 +441,7 @@ function join_blocked_reaction_ids(blocked_reaction_ids_df, rxn_ids_to_strings_d
 end
 
 """
-    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing, prune_method::Symbol = :case3, relax_quantile::Float64 = 0.1)
+    function make_ufba_models_for_additives_and_times(metabolite_bounds_df::DataFrame, n_models::Int64; exchanges::Union{Nothing,Vector{String}} = nothing; flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing, metabolites_to_ignore::Vector{String} = nothing, prune_method::Symbol = :case3, relax_quantile::Float64 = 0.1, sink_opt_ins::Vector{String})
 
 Create all models that represent each combination of additive and final time point.
 
@@ -455,6 +454,7 @@ Create all models that represent each combination of additive and final time poi
 6. `prune_method::Symbol = :case3`: Prune method to use. Can be either `:case1` or `:case3`.
 7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:tenth_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
 8. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
+9. `sink_opt_ins::Vector{String}`
 
 # Returns
 `Vector{NamedTuple}`
@@ -488,10 +488,12 @@ function make_ufba_models_for_additives_and_times(
     prune_method::Symbol = :case3,
     relax_strategy::Symbol = :q,
     relax_quantile::Float64 = 0.1,
+    sink_opt_ins::Vector{String} = nothing,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
     additives = sort(unique(metabolite_bounds_df.additive))
+    sink_opt_ins_2 = isnothing(sink_opt_ins) ? String[] : sink_opt_ins
     pairs =
         n_models == -1 ? collect(product(additives, final_times)) :
         collect(product(additives, final_times))[1:n_models]
@@ -515,7 +517,8 @@ function make_ufba_models_for_additives_and_times(
             metabolite_status_df = metabolite_status_df,
             additive = additive,
             prune_zero_sinks = nothing,
-            sink_opt_outs = nothing,
+            sink_opt_ins = sink_opt_ins,
+            metabolites_to_ignore = metabolites_to_ignore,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         prune_ct = flux_balance_constraints(full_model)
@@ -544,7 +547,8 @@ function make_ufba_models_for_additives_and_times(
                 metabolite_status_df = metabolite_status_df,
                 additive = additive,
                 prune_zero_sinks = prune_zero_sinks,
-                sink_opt_outs = nothing,
+                sink_opt_ins = sink_opt_ins,
+                metabolites_to_ignore = metabolites_to_ignore,
             )
             added_sink_ids = add_sinks_for_unmatched_metabolites!(
                 pruned_model,
@@ -637,9 +641,9 @@ function decompose_sink_id(sink_id)
 end
 
 """
-    extract_sink_overview(ufba_jobs)
+    extract_pruning_overview(ufba_jobs)
 
-Extracts the status of the sinks for unmeasured metabolites for all jobs given and gathers the result into a DataFrame.
+Extracts the status of sink pruning for metabolites for all jobs given and gathers the result into a DataFrame.
 
 # Arguments
 1. `ufba_jobs`: The finished ufba_jobs. Each job is a `NamedTuple` with `additive`, `final_time`, `nonzero_sinks`, and `zero_sinks` properties.
@@ -647,10 +651,9 @@ Extracts the status of the sinks for unmeasured metabolites for all jobs given a
 # Returns
 `DataFrame`
 
-Returns two DataFrames:
-1. Status of unmeasured metabolite sinks for each uFBA job.
+Status of metabolite sinks for each uFBA job.
 """
-function extract_sink_overview(ufba_jobs)
+function extract_pruning_overview(ufba_jobs)
     status_rows = []
     for ufba_job in ufba_jobs
         prune_method = ufba_job.prune_method
