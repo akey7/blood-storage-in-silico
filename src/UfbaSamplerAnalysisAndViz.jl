@@ -289,6 +289,7 @@ function prepare_measurements_and_sinks_report_df(
     ufba_optimized_sinks_df,
     sampling_df,
 )
+    display(first(ufba_optimized_sinks_df, 5))
     long_sampling_df = pivot_sampling_df_long(sampling_df)
     additives = sort(unique(long_sampling_df.additive))
     final_times = sort(unique(long_sampling_df.final_time))
