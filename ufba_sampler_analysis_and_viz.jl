@@ -6,6 +6,9 @@ using YAML
 include("src/UfbaSamplerAnalysisAndViz.jl")
 using .UfbaSamplerAnalysisAndViz
 
+num_threads = Threads.nthreads()
+println("Num threads $num_threads")
+
 @info "Loading reaction ids to strings..."
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =

@@ -356,11 +356,12 @@ For each (non-control) additive, time point, and reaction, compare all additives
 5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
-`Tuple{DataFrame,DataFrame}`
+`NamedTuple`
 
 Returns a tuple of two DataFrames:
-1. The first DataFrame looks for interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
-2. An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
+1. `interesting_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
+2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
+3. `ranked_df`: Ranking reactions by their most influential treatment additive and time point.
 """
 function compare_flux_distributions(
     sampling_df;
