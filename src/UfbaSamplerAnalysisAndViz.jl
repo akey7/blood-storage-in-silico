@@ -448,13 +448,16 @@ function compare_flux_distributions(
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
     end
-    log_p_min = 5.0
+    log_p_max = 2.0
     ranked_df = @chain test_df begin
         leftjoin(
             reaction_cohen_effect_z_df;
             on = [:treatment_additive, :final_time, :reaction_id],
         )
-        @rtransform(:score = abs(:reaction_cohen_effect_z) * min(-log10(:adj_t_test_p), log_p_min))
+        @rtransform(
+            :score =
+                abs(:reaction_cohen_effect_z) * min(-log10(:adj_t_test_p), log_p_max)
+        )
         @groupby(:reaction_id)
         @combine @astable begin
             idx = argmax(:score)
