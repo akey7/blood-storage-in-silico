@@ -703,6 +703,8 @@ function enrich_visited_reactions_df(
             :reaction_string
         )
     end
+    adnk1_df = @rsubset(visited_reactions_df, :reaction_id == "R_ADNK1")
+    display(adnk1_df)
     return result_df
 end
 
