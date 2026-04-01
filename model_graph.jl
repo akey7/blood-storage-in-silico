@@ -11,13 +11,14 @@ using .ModelGraph
 include("src/UfbaSamplerAnalysisAndViz.jl")
 using .UfbaSamplerAnalysisAndViz
 
+@info "Not traversing the following metabolite ids!"
 # Common metabolites not to be traversed
 common_metabolite_ids = [
     "M_pi_c",
     "M_h_c",
-    "M_atp_c",
-    "M_amp_c",
-    "M_adp_c",
+    # "M_atp_c",
+    # "M_amp_c",
+    # "M_adp_c",
     "M_nad_c",
     "M_nadh_c",
     "M_nadp_c",
@@ -40,6 +41,7 @@ common_metabolite_ids = [
     "M_co2_c",
     "M_co2_e",
 ]
+display(common_metabolite_ids)
 
 @info "Loading uFBA models"
 ufba_models = load_ufba_models()

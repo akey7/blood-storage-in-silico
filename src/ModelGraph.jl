@@ -434,17 +434,19 @@ function dfs_from_metabolite_id(
         path_metabolite_id = [ints_to_metabolite_ids[index] for index ∈ path]
         push!(paths_metabolite_ids, path_metabolite_id)
         path_reaction_id::Vector{String} = []
-        if length(path_metabolite_id) > 1
+        n_path_metabolite_id = length(path_metabolite_id)
+        if n_path_metabolite_id > 1
             for i ∈ 1:(length(path_metabolite_id)-1)
                 pair = (path_metabolite_id[i], path_metabolite_id[i+1])
                 push!(path_reaction_id, metabolite_pairs_to_reactions[pair])
             end
             push!(paths_reaction_ids, path_reaction_id)
+        else
+            # @warn "path_metabolite_id length $n_path_metabolite_id, contents $path_metabolite_id, this could cause a reaction to be skipped. Check ignored metabolite ids!"
         end
     end
     all_visited_reactions = unique(reduce(vcat, paths_reaction_ids))
-
-    Dict(
+    result = Dict(
         :metabolite_id => metabolite_id,
         :max_depth => max_depth,
         :all_visited => all_visited,
@@ -452,6 +454,7 @@ function dfs_from_metabolite_id(
         :paths_metabolite_ids => paths_metabolite_ids,
         :paths_reaction_ids => paths_reaction_ids,
     )
+    return result
 end
 
 """
@@ -528,7 +531,7 @@ function run_dfs_plan(
     max_depths = dfs_plan[!, :max_depth]
     results::Vector{Dict{Symbol,Any}} = []
     for (metabolite_id, max_depth) ∈ zip(metabolite_ids, max_depths)
-        # println("run_dfs_plan() Search from $metabolite_id for max_depth of $max_depth")
+        # println("run_dfs_plan(): Search from $metabolite_id for max_depth of $max_depth")
         result = dfs_from_metabolite_id(
             graph_data,
             String(metabolite_id),
@@ -537,7 +540,7 @@ function run_dfs_plan(
         )
         push!(results, result)
     end
-    results
+    return results
 end
 
 """
@@ -631,6 +634,7 @@ function run_all_dfs_plans(
     end
     visited_metabolite_df = DataFrame(visited_metabolite_rows)
     visited_reaction_df = DataFrame(visited_reaction_rows)
+    println("run_all_dfs_plans()")
     return (
         visited_metabolite_df = @orderby(
             visited_metabolite_df,
