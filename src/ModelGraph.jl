@@ -631,6 +631,9 @@ function run_all_dfs_plans(
     end
     visited_metabolite_df = DataFrame(visited_metabolite_rows)
     visited_reaction_df = DataFrame(visited_reaction_rows)
+    println("run_all_dfs_plans()")
+    adnk1_df = @rsubset(visited_reaction_df, :reaction_id == "R_ADNK1")
+    display(adnk1_df)
     return (
         visited_metabolite_df = @orderby(
             visited_metabolite_df,
@@ -703,6 +706,7 @@ function enrich_visited_reactions_df(
             :reaction_string
         )
     end
+    println("enrich_visited_reactions_df()")
     adnk1_df = @rsubset(visited_reactions_df, :reaction_id == "R_ADNK1")
     display(adnk1_df)
     return result_df
