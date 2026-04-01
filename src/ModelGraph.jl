@@ -402,7 +402,6 @@ function dfs_from_metabolite_id(
     adj_matrix = graph_data[:adj_matrix]
     paths::Vector{Vector{Int64}} = []
     start_vertex = metabolite_ids_to_ints[metabolite_id]
-    println("dfs_from_metabolite_id(): $metabolite_id has start vertex $start_vertex")
 
     function dfs(vertex::Int64, hop::Int64, current_path::Vector{Any})
         if hop > max_depth
@@ -443,7 +442,7 @@ function dfs_from_metabolite_id(
             end
             push!(paths_reaction_ids, path_reaction_id)
         else
-            @error "path_metabolite_id length $n_path_metabolite_id, contents $path_metabolite_id"
+            # @warn "path_metabolite_id length $n_path_metabolite_id, contents $path_metabolite_id, this could cause a reaction to be skipped. Check ignored metabolite ids!"
         end
     end
     all_visited_reactions = unique(reduce(vcat, paths_reaction_ids))
@@ -541,7 +540,7 @@ function run_dfs_plan(
         )
         push!(results, result)
     end
-    results
+    return results
 end
 
 """
@@ -636,8 +635,6 @@ function run_all_dfs_plans(
     visited_metabolite_df = DataFrame(visited_metabolite_rows)
     visited_reaction_df = DataFrame(visited_reaction_rows)
     println("run_all_dfs_plans()")
-    adnk1_df = @rsubset(visited_reaction_df, :reaction_id == "R_ADNK1")
-    display(adnk1_df)
     return (
         visited_metabolite_df = @orderby(
             visited_metabolite_df,
@@ -710,9 +707,6 @@ function enrich_visited_reactions_df(
             :reaction_string
         )
     end
-    println("enrich_visited_reactions_df()")
-    adnk1_df = @rsubset(visited_reactions_df, :reaction_id == "R_ADNK1")
-    display(adnk1_df)
     return result_df
 end
 
