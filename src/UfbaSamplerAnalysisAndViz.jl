@@ -17,6 +17,7 @@ using Random
 using EffectSizes
 using CategoricalArrays
 using MixedModels
+using MixedModels: likelihoodratiotest
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -504,7 +505,45 @@ function additive_time_mixed_model(sampling_df)
         end
         @select(:reaction_id, :additive_cat, :final_time_cat, :flux)
     end
-    display(first(long_cat_df, 10))
+    m_null = fit(MixedModel, @formula(flux ~ 1 + (1 | reaction_id)), long_cat_df)
+    m_additive =
+        fit(MixedModel, @formula(flux ~ additive_cat + (1 | reaction_id)), long_cat_df)
+    m_time =
+        fit(MixedModel, @formula(flux ~ final_time_cat + (1 | reaction_id)), long_cat_df)
+    m_additive_time = fit(
+        MixedModel,
+        @formula(flux ~ additive_cat + final_time_cat + (1 | reaction_id)),
+        long_cat_df,
+    )
+    m_full = fit(
+        MixedModel,
+        @formula(flux ~ additive_cat * final_time_cat + (1 | reaction_id)),
+        long_cat_df,
+    )
+    println("========== FULL MODEL ==========")
+    println(m_full)
+
+    println("\n========== HYPOTHESIS TESTS ==========")
+
+    println("\nMain effect of additive (controlling for time):")
+    println(likelihoodratiotest(m_time, m_additive_time))
+
+    println("\nMain effect of time (controlling for additive):")
+    println(likelihoodratiotest(m_additive, m_additive_time))
+
+    println("\nAdditive x time interaction:")
+    println(likelihoodratiotest(m_additive_time, m_full))
+
+    result = (
+        long_cat_df = long_cat_df,
+        m_null = m_null,
+        m_additive = m_additive,
+        m_time = m_time,
+        m_additive_time = m_additive_time,
+        m_full = m_full,
+    )
+
+    return result
 end
 
 end
