@@ -15,6 +15,8 @@ using Chain
 using ThreadsX
 using Random
 using EffectSizes
+using CategoricalArrays
+using MixedModels
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -26,7 +28,8 @@ export histograms_for_reaction_v2,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
     prepare_measurements_and_sinks_report_df,
-    compare_flux_distributions
+    compare_flux_distributions,
+    additive_time_mixed_model
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -483,6 +486,25 @@ function compare_flux_distributions(
         ranked_df = ranked_df,
     )
     return result
+end
+
+function additive_time_mixed_model(sampling_df)
+    # NOTE: Assume that control is "01-Ctrl AS3" and that it is what all other
+    # additives are compared to. This is imoportant for categorical variables.
+
+    long_cat_df = @chain sampling_df begin
+        stack(Not([:additive, :final_time]), variable_name = :reaction_id, value_name = :flux)
+        @transform begin
+            :additive_cat = categorical(:additive; levels = sort(unique(:additive)))
+            :final_time_cat = categorical(
+                :final_time;
+                levels = sort(unique(:final_time)),
+                ordered = true,
+            )
+        end
+        @select(:reaction_id, :additive_cat, :final_time_cat, :flux)
+    end
+    display(first(long_cat_df, 10))
 end
 
 end
