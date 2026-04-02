@@ -75,7 +75,11 @@ function histograms_for_reaction_v2(
     plt = hist_layer + zero_line_layer
     return draw(
         plt,
-        scales(Color = (; palette = additive_palette));
+        scales(
+            Color = (; palette = additive_palette),
+            X = (; label = "Flux (mM/week)"),
+            Y = (; label = "Sample Count"),
+        );
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
     )
