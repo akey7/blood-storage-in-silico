@@ -30,7 +30,7 @@ export histograms_for_reaction_v2,
     prepare_median_flux_vector_matrix,
     prepare_measurements_and_sinks_report_df,
     compare_flux_distributions,
-    additive_time_mixed_model
+    global_mixed_model_test
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -489,7 +489,7 @@ function compare_flux_distributions(
     return result
 end
 
-function additive_time_mixed_model(sampling_df)
+function global_mixed_model_test(sampling_df)
     # NOTE: Assume that control is "01-Ctrl AS3" and that it is what all other
     # additives are compared to. This is imoportant for categorical variables.
 

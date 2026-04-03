@@ -19,7 +19,7 @@ sampling_filename = joinpath("output", "ufba_sampling.csv")
 sampling_df = CSV.read(sampling_filename, DataFrame)
 
 @info "Mixed model analysis"
-additive_time_mixed_model(sampling_df)
+global_mixed_model_test(sampling_df)
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)
