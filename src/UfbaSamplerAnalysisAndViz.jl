@@ -30,7 +30,8 @@ export histograms_for_reaction_v2,
     prepare_median_flux_vector_matrix,
     prepare_measurements_and_sinks_report_df,
     compare_flux_distributions,
-    global_mixed_model_test
+    global_mixed_model_test,
+    pivot_sampling_df_long_cat
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -489,10 +490,7 @@ function compare_flux_distributions(
     return result
 end
 
-function global_mixed_model_test(sampling_df)
-    # NOTE: Assume that control is "01-Ctrl AS3" and that it is what all other
-    # additives are compared to. This is imoportant for categorical variables.
-
+function pivot_sampling_df_long_cat(sampling_df)
     long_cat_df = @chain sampling_df begin
         stack(Not([:additive, :final_time]), variable_name = :reaction_id, value_name = :flux)
         @transform begin
@@ -505,6 +503,14 @@ function global_mixed_model_test(sampling_df)
         end
         @select(:reaction_id, :additive_cat, :final_time_cat, :flux)
     end
+    return long_cat_df
+end
+
+function global_mixed_model_test(sampling_df)
+    # NOTE: Assume that control is "01-Ctrl AS3" and that it is what all other
+    # additives are compared to. This is imoportant for categorical variables.
+
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
     m_null = fit(MixedModel, @formula(flux ~ 1 + (1 | reaction_id)), long_cat_df)
     m_additive =
         fit(MixedModel, @formula(flux ~ additive_cat + (1 | reaction_id)), long_cat_df)
