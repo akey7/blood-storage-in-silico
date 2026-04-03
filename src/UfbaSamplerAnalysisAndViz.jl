@@ -492,6 +492,19 @@ function compare_flux_distributions(
     return result
 end
 
+"""
+    pivot_sampling_df_long_cat(sampling_df)
+
+Pivots the sampling DataFrame long, with a twist: It transforms `additive` and `final_time` into categorical variables.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns the wide DataFrame pivoted long, with `additive` transformed to `additive_cat` and `final_time` transformed to `final_time_cat`.
+"""
 function pivot_sampling_df_long_cat(sampling_df)
     long_cat_df = @chain sampling_df begin
         stack(Not([:additive, :final_time]), variable_name = :reaction_id, value_name = :flux)
@@ -508,10 +521,22 @@ function pivot_sampling_df_long_cat(sampling_df)
     return long_cat_df
 end
 
-function global_mixed_model_test(sampling_df)
-    # NOTE: Assume that control is "01-Ctrl AS3" and that it is what all other
-    # additives are compared to. This is imoportant for categorical variables.
+"""
+    global_mixed_model_test(sampling_df)
 
+Performs a global test to answer a simple question: Does the additive treatment and time make any statistical difference whatsoever in any reactions? Since the outcome of this test is "yes", as supported by visual inspection of flux distributions, this function just prints the results of the test instead of gathering the results into a neater data structure.
+
+Note: Assumes that `01-Ctrl AS3` is the control group, and that in a sort of additive names, it will be placed first.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the results of the tests.
+"""
+function global_mixed_model_test(sampling_df)
     long_cat_df = pivot_sampling_df_long_cat(sampling_df)
     m_null = fit(MixedModel, @formula(flux ~ 1 + (1 | reaction_id)), long_cat_df)
     m_additive =
@@ -554,6 +579,19 @@ function global_mixed_model_test(sampling_df)
     return result
 end
 
+"""
+    per_reaction_additive_time_test(sampling_df)
+
+For each reaction, this function answers the question: are there any times and additives that make any difference on the fluxes for each individual reaction? This function tests time alone, additive alone, and time interacting with additive.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with a row per reaction and the results of F-tests and adjusted p-values for each reaction.
+"""
 function per_reaction_additive_time_test(sampling_df)
     long_cat_df = pivot_sampling_df_long_cat(sampling_df)
     reaction_ids = sort(unique(long_cat_df.reaction_id))
