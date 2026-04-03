@@ -33,7 +33,8 @@ export histograms_for_reaction_v2,
     compare_flux_distributions,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
-    per_reaction_additive_time_test
+    per_reaction_additive_time_test,
+    reaction_additive_across_time_df
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -640,6 +641,56 @@ function per_reaction_additive_time_test(sampling_df)
         @orderby(:reaction_id)
     end
     return sorted_and_adjusted_df
+end
+
+function reaction_additive_across_time_df(sampling_df; reference_additive = "01-Ctrl AS3")
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    all_additives = sort(unique(long_cat_df.additive_cat))
+    non_reference_additives =
+        [additive for additive in all_additives if additive != reference_additive]
+    reaction_ids = sort(unique(long_cat_df.reaction_id))
+    reactions_additives = product(reaction_ids, non_reference_additives)
+    n_reactions_additives = length(reactions_additives)
+    prog = Progress(n_reactions_additives, "Comparing additives to control, all reactions")
+    comparison_rows = []
+    for (reaction_id, non_reference_additive) in reactions_additives
+        comparison_additives = [reference_additive, non_reference_additive]
+        sub_df = @chain long_cat_df begin
+            @rsubset(:reaction_id == reaction_id, :additive_cat in comparison_additives)
+            @select(:additive_cat, :final_time_cat, :flux)
+        end
+        model = lm(@formula(flux ~ additive_cat + final_time_cat), sub_df)
+        ct = coeftable(model)
+        coef_df = DataFrame(
+            term = String.(ct.rownms),
+            estimate = ct.cols[1],
+            p_value = ct.cols[4],
+        )
+        additive_term_df = @rsubset(coef_df, occursin("additive_cat", :term))
+        if nrow(additive_term_df) != 1
+            throw(
+                ArgumentError(
+                    "Expected exactly one additive coefficient for reaction=$reaction_id additive=$additive_id, found $(nrow(additive_term_df))",
+                ),
+            )
+        end
+        estimate = additive_term_df.estimate[1]
+        p_value = additive_term_df.p_value[1]
+        comparison_row = (
+            reaction_id = reaction_id,
+            reference_additive = reference_additive,
+            additive = non_reference_additive,
+            estimate = estimate,
+            p_value = p_value,
+        )
+        push!(comparison_rows, comparison_row)
+        next!(prog)
+    end
+    comparisons_adj_df = @chain comparison_rows begin
+        DataFrame()
+        @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
+    end
+    return comparisons_adj_df
 end
 
 end
