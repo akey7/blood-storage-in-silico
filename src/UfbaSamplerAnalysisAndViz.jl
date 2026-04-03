@@ -18,6 +18,7 @@ using EffectSizes
 using CategoricalArrays
 using MixedModels
 using MixedModels: likelihoodratiotest
+using GLM
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -31,7 +32,8 @@ export histograms_for_reaction_v2,
     prepare_measurements_and_sinks_report_df,
     compare_flux_distributions,
     global_mixed_model_test,
-    pivot_sampling_df_long_cat
+    pivot_sampling_df_long_cat,
+    per_reaction_additive_time_test
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -550,6 +552,40 @@ function global_mixed_model_test(sampling_df)
     )
 
     return result
+end
+
+function per_reaction_additive_time_test(sampling_df)
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    reaction_ids = sort(unique(long_cat_df.reaction_id))
+    n_reaction_ids = length(reaction_ids)
+    prog = Progress(n_reaction_ids, "Per reaction additive/time test")
+    rows = map(reaction_ids) do reaction_id
+        reaction_df = @rsubset(long_cat_df, :reaction_id == reaction_id)
+        m_time = lm(@formula(flux ~ final_time_cat), reaction_df)
+        m_additive = lm(@formula(flux ~ additive_cat), reaction_df)
+        m_time_additive =
+            lm(@formula(flux ~ additive_cat + final_time_cat), reaction_df)
+        m_time_additive_interaction =
+            lm(@formula(flux ~ additive_cat * final_time_cat), reaction_df)
+        additive_ftest = GLM.ftest(m_time.model, m_time_additive.model)
+        time_ftest = GLM.ftest(m_additive.model, m_time_additive.model)
+        interaction_ftest =
+            GLM.ftest(m_time_additive.model, m_time_additive_interaction.model)
+        row = (
+            reaction_id = reaction_id,
+            additive_fstat = additive_ftest.fstat,
+            additive_p = additive_ftest.pval,
+            time_fstat = time_ftest.fstat,
+            time_p = time_ftest.pval,
+            interaction_fstat = interaction_ftest.fstat,
+            interaction_p = interaction_ftest.pval,
+        )
+        next!(prog)
+        return row
+    end
+    unsorted_df = DataFrame(rows)
+    sorted_df = @orderby(unsorted_df, :reaction_id)
+    return sorted_df
 end
 
 end
