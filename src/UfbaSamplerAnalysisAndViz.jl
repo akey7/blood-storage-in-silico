@@ -584,8 +584,24 @@ function per_reaction_additive_time_test(sampling_df)
         return row
     end
     unsorted_df = DataFrame(rows)
-    sorted_df = @orderby(unsorted_df, :reaction_id)
-    return sorted_df
+    sorted_and_adjusted_df = @chain unsorted_df begin
+        @transform begin
+            :additive_adj_p = adjust(:additive_p, BenjaminiHochberg())
+            :time_adj_p = adjust(:time_p, BenjaminiHochberg())
+            :interaction_adj_p = adjust(:interaction_p, BenjaminiHochberg())
+        end
+        @select(
+            :reaction_id,
+            :additive_fstat,
+            :additive_adj_p,
+            :time_fstat,
+            :time_adj_p,
+            :interaction_fstat,
+            :interaction_adj_p
+        )
+        @orderby(:reaction_id)
+    end
+    return sorted_and_adjusted_df
 end
 
 end
