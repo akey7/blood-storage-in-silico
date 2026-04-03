@@ -573,12 +573,12 @@ function per_reaction_additive_time_test(sampling_df)
             GLM.ftest(m_time_additive.model, m_time_additive_interaction.model)
         row = (
             reaction_id = reaction_id,
-            additive_fstat = additive_ftest.fstat,
-            additive_p = additive_ftest.pval,
-            time_fstat = time_ftest.fstat,
-            time_p = time_ftest.pval,
-            interaction_fstat = interaction_ftest.fstat,
-            interaction_p = interaction_ftest.pval,
+            additive_fstat = additive_ftest.fstat[2],
+            additive_p = additive_ftest.pval[2],
+            time_fstat = time_ftest.fstat[2],
+            time_p = time_ftest.pval[2],
+            interaction_fstat = interaction_ftest.fstat[2],
+            interaction_p = interaction_ftest.pval[2],
         )
         next!(prog)
         return row
