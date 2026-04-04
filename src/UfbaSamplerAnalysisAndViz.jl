@@ -689,6 +689,7 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     comparisons_adj_df = @chain comparison_rows begin
         DataFrame()
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
+        @orderby(:reaction_id, :reference_additive, :additive)
     end
     return comparisons_adj_df
 end
