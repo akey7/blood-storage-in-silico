@@ -649,43 +649,44 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     non_reference_additives =
         [additive for additive in all_additives if additive != reference_additive]
     reaction_ids = sort(unique(long_cat_df.reaction_id))
-    reactions_additives = product(reaction_ids, non_reference_additives)
+    reactions_additives = vec(collect(product(reaction_ids, non_reference_additives)))
     n_reactions_additives = length(reactions_additives)
-    prog = Progress(n_reactions_additives, "Comparing additives to control, all reactions")
-    comparison_rows = []
-    for (reaction_id, non_reference_additive) in reactions_additives
-        comparison_additives = [reference_additive, non_reference_additive]
-        sub_df = @chain long_cat_df begin
-            @rsubset(:reaction_id == reaction_id, :additive_cat in comparison_additives)
-            @select(:additive_cat, :final_time_cat, :flux)
-        end
-        model = lm(@formula(flux ~ additive_cat + final_time_cat), sub_df)
-        ct = coeftable(model)
-        coef_df = DataFrame(
-            term = String.(ct.rownms),
-            estimate = ct.cols[1],
-            p_value = ct.cols[4],
-        )
-        additive_term_df = @rsubset(coef_df, occursin("additive_cat", :term))
-        if nrow(additive_term_df) != 1
-            throw(
-                ArgumentError(
-                    "Expected exactly one additive coefficient for reaction=$reaction_id additive=$additive_id, found $(nrow(additive_term_df))",
-                ),
+    println("n_reactions_additives: $n_reactions_additives")
+    comparison_rows =
+        ThreadsX.map(reactions_additives) do (reaction_id, non_reference_additive)
+            comparison_additives = [reference_additive, non_reference_additive]
+            sub_df = @chain long_cat_df begin
+                @rsubset(:reaction_id == reaction_id, :additive_cat in comparison_additives)
+                @select(:additive_cat, :final_time_cat, :flux)
+            end
+            model = lm(@formula(flux ~ additive_cat + final_time_cat), sub_df)
+            ct = coeftable(model)
+            coef_df = DataFrame(
+                term = String.(ct.rownms),
+                estimate = ct.cols[1],
+                p_value = ct.cols[4],
             )
+            additive_term_df = @rsubset(coef_df, occursin("additive_cat", :term))
+            if nrow(additive_term_df) != 1
+                throw(
+                    ArgumentError(
+                        "Expected exactly one additive coefficient for reaction=$reaction_id additive=$additive_id, found $(nrow(additive_term_df))",
+                    ),
+                )
+            end
+            estimate = additive_term_df.estimate[1]
+            p_value = additive_term_df.p_value[1]
+            comparison_row = (
+                reaction_id = reaction_id,
+                reference_additive = reference_additive,
+                additive = non_reference_additive,
+                estimate = estimate,
+                p_value = p_value,
+            )
+            print(".")
+            return comparison_row
         end
-        estimate = additive_term_df.estimate[1]
-        p_value = additive_term_df.p_value[1]
-        comparison_row = (
-            reaction_id = reaction_id,
-            reference_additive = reference_additive,
-            additive = non_reference_additive,
-            estimate = estimate,
-            p_value = p_value,
-        )
-        push!(comparison_rows, comparison_row)
-        next!(prog)
-    end
+    println("done")
     comparisons_adj_df = @chain comparison_rows begin
         DataFrame()
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
