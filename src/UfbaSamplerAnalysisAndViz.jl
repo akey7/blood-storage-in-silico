@@ -34,7 +34,8 @@ export histograms_for_reaction_v2,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    reaction_additive_across_time_df
+    reaction_additive_across_time_df,
+    reaction_additive_across_time_heatmap
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -693,6 +694,66 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
         @orderby(:reaction_id, :reference_additive, :additive)
     end
     return comparisons_adj_df
+end
+
+function prepare_reaction_additive_heatmap_df(
+    comparisons_adj_df;
+    top_n = 20,
+    adj_p_threshold = 0.05,
+)
+    heatmap_df = @chain comparisons_adj_df begin
+        @rsubset(:adj_p_value <= adj_p_threshold)
+        @orderby(:adj_p_value)
+        @select(:reaction_id, :additive, :estimate)
+        first(top_n)
+    end
+    additive_levels = unique(heatmap_df.additive)
+    reaction_levels = unique(heatmap_df.reaction_id)
+    additive_to_x = Dict(a => i for (i, a) in enumerate(additive_levels))
+    reaction_to_y = Dict(r => i for (i, r) in enumerate(reaction_levels))
+    heatmap_plot_df = @chain heatmap_df begin
+        @transform begin
+            :x = [additive_to_x[a] for a in :additive]
+            :y = [reaction_to_y[r] for r in :reaction_id]
+        end
+    end
+    return (
+        heatmap_plot_df = heatmap_plot_df,
+        additive_levels = additive_levels,
+        reaction_levels = reaction_levels,
+    )
+end
+
+function reaction_additive_across_time_heatmap(
+    comparisons_adj_df;
+    top_n = 20,
+    adj_p_threshold = 0.05,
+    figure_size = (900, 1200),
+)
+    prepared = prepare_reaction_additive_heatmap_df(
+        comparisons_adj_df;
+        top_n = top_n,
+        adj_p_threshold = adj_p_threshold,
+    )
+    heatmap_plot_df = prepared.heatmap_plot_df
+    additive_levels = prepared.additive_levels
+    reaction_levels = prepared.reaction_levels
+    plt = data(heatmap_plot_df) * mapping(:x, :y, :estimate) * visual(Heatmap)
+    fig = draw(
+        plt;
+        axis = (
+            xlabel = "Additive",
+            ylabel = "Reaction",
+            title = "Additive effect on reaction flux, adjusted for time",
+            xticks = (1:length(additive_levels), string.(additive_levels)),
+            yticks = (1:length(reaction_levels), string.(reaction_levels)),
+            xticklabelrotation = π / 4,
+            yreversed = true,
+        ),
+        figure = (size = figure_size,),
+        colorbar = (label = "Effect Size",),
+    )
+    return fig
 end
 
 end

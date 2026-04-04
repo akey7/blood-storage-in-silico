@@ -2,6 +2,7 @@ using CSV
 using DataFrames
 using OrderedCollections
 using YAML
+using CairoMakie
 
 include("src/UfbaSamplerAnalysisAndViz.jl")
 using .UfbaSamplerAnalysisAndViz
@@ -25,9 +26,14 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # per_reaction_df = per_reaction_additive_time_test(sampling_df)
 # display(first(per_reaction_df, 20))
 
-@info "Making heatmap"
+@info "Heatmap: reaction_additive_across_time_df()"
 heatmap_df = reaction_additive_across_time_df(sampling_df)
 display(first(heatmap_df, 20))
+println(minimum(heatmap_df.estimate), " ", maximum(heatmap_df.estimate))
+estimate_heatmap_fig = reaction_additive_across_time_heatmap(heatmap_df)
+estimate_heatmap_filename = joinpath("output", "uFBA_heatmaps", "estimate_heatmap.png")
+save(estimate_heatmap_filename, estimate_heatmap_fig)
+println("Wrote $estimate_heatmap_filename")
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)
