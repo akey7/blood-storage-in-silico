@@ -26,14 +26,13 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # per_reaction_df = per_reaction_additive_time_test(sampling_df)
 # display(first(per_reaction_df, 20))
 
-@info "Heatmap: reaction_additive_across_time_df()"
-heatmap_df = reaction_additive_across_time_df(sampling_df)
-display(first(heatmap_df, 20))
-println(minimum(heatmap_df.estimate), " ", maximum(heatmap_df.estimate))
-estimate_heatmap_fig = reaction_additive_across_time_heatmap(heatmap_df; top_n = 50)
-estimate_heatmap_filename = joinpath("output", "uFBA_heatmaps", "estimate_heatmap.png")
-save(estimate_heatmap_filename, estimate_heatmap_fig)
-println("Wrote $estimate_heatmap_filename")
+@info "Heatmaps!"
+comparisons_adj_df = reaction_additive_across_time_df(sampling_df)
+display(first(comparisons_adj_df, 20))
+heatmap_fig = reaction_additive_matched_heatmaps(comparisons_adj_df, top_n = 50)
+heatmap_filename = joinpath("output", "uFBA_heatmaps", "estimate_significance.png")
+save(heatmap_filename, heatmap_fig)
+println("Wrote $heatmap_filename")
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)

@@ -35,7 +35,8 @@ export histograms_for_reaction_v2,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
     reaction_additive_across_time_df,
-    reaction_additive_across_time_heatmap
+    reaction_additive_across_time_heatmap,
+    reaction_additive_matched_heatmaps
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -696,27 +697,66 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     return comparisons_adj_df
 end
 
-function prepare_reaction_additive_heatmap_df(
+function prepare_matched_reaction_additive_heatmap_df(
     comparisons_adj_df;
     top_n = 20,
-    adj_p_threshold = 0.05,
+    p_floor = 1e-300,
 )
-    heatmap_df = @chain comparisons_adj_df begin
-        @rsubset(:adj_p_value <= adj_p_threshold)
-        @orderby(:adj_p_value)
-        @select(:reaction_id, :additive, :estimate)
+    top_reactions_df = @chain comparisons_adj_df begin
+        groupby(:reaction_id)
+        @combine(:min_adj_p_value = minimum(:adj_p_value))
+        @orderby(:min_adj_p_value)
         first(top_n)
+        @select(:reaction_id)
     end
-    additive_levels = unique(heatmap_df.additive)
-    reaction_levels = unique(heatmap_df.reaction_id)
+
+    top_reactions = top_reactions_df.reaction_id
+
+    additive_df = @chain comparisons_adj_df begin
+        @select(:additive)
+        unique
+        sort(:additive)
+    end
+
+    reaction_df = DataFrame(reaction_id = top_reactions)
+
+    full_grid_df = crossjoin(reaction_df, additive_df)
+
+    top_reactions_data_df = @chain comparisons_adj_df begin
+        @rsubset(:reaction_id in Set(top_reactions))
+        @select(:reaction_id, :additive, :estimate, :adj_p_value)
+    end
+
+    heatmap_df = @chain full_grid_df begin
+        leftjoin(top_reactions_data_df; on = [:reaction_id, :additive])
+        @transform begin
+            :estimate = coalesce.(:estimate, 0.0)
+            :adj_p_value = coalesce.(:adj_p_value, 1.0)
+            :adj_p_value_clamped = max.(:adj_p_value, p_floor)
+        end
+        @transform(:neglog10_adj_p = -log10.(:adj_p_value_clamped))
+    end
+
+    reaction_order_df = @chain heatmap_df begin
+        @groupby(:reaction_id)
+        @combine(:min_adj_p_value = minimum(:adj_p_value))
+        @orderby(:min_adj_p_value)
+    end
+
+    additive_levels = additive_df.additive
+    reaction_levels = reaction_order_df.reaction_id
+
     additive_to_x = Dict(a => i for (i, a) in enumerate(additive_levels))
     reaction_to_y = Dict(r => i for (i, r) in enumerate(reaction_levels))
+
     heatmap_plot_df = @chain heatmap_df begin
         @transform begin
             :x = [additive_to_x[a] for a in :additive]
             :y = [reaction_to_y[r] for r in :reaction_id]
         end
+        sort([:y, :x])
     end
+
     return (
         heatmap_plot_df = heatmap_plot_df,
         additive_levels = additive_levels,
@@ -724,35 +764,61 @@ function prepare_reaction_additive_heatmap_df(
     )
 end
 
-function reaction_additive_across_time_heatmap(
+function reaction_additive_matched_heatmaps(
     comparisons_adj_df;
     top_n = 20,
-    adj_p_threshold = 0.05,
-    figure_size = (900, 1200),
+    figure_size = (1800, 1200),
 )
-    prepared = prepare_reaction_additive_heatmap_df(
+    prepared = prepare_matched_reaction_additive_heatmap_df(
         comparisons_adj_df;
         top_n = top_n,
-        adj_p_threshold = adj_p_threshold,
     )
-    heatmap_plot_df = prepared.heatmap_plot_df
+
+    df = prepared.heatmap_plot_df
     additive_levels = prepared.additive_levels
     reaction_levels = prepared.reaction_levels
-    plt = data(heatmap_plot_df) * mapping(:x, :y, :estimate) * visual(Heatmap)
-    fig = draw(
-        plt;
-        axis = (
-            xlabel = "Additive",
-            ylabel = "Reaction",
-            title = "Additive effect on reaction flux, adjusted for time",
-            xticks = (1:length(additive_levels), string.(additive_levels)),
-            yticks = (1:length(reaction_levels), string.(reaction_levels)),
-            xticklabelrotation = π / 4,
-            yreversed = true,
-        ),
-        figure = (size = figure_size,),
-        colorbar = (label = "Effect Size",),
+
+    n_x = length(additive_levels)
+    n_y = length(reaction_levels)
+
+    estimate_matrix = Matrix{Float64}(undef, n_y, n_x)
+    significance_matrix = Matrix{Float64}(undef, n_y, n_x)
+
+    for row in eachrow(df)
+        estimate_matrix[row.y, row.x] = row.estimate
+        significance_matrix[row.y, row.x] = row.neglog10_adj_p
+    end
+
+    fig = Figure(size = figure_size)
+
+    ax1 = Axis(
+        fig[1, 1];
+        title = "Effect size",
+        xlabel = "Additive",
+        ylabel = "Reaction",
+        xticks = (1:n_x, string.(additive_levels)),
+        yticks = (1:n_y, string.(reaction_levels)),
+        xticklabelrotation = π / 4,
+        yreversed = true,
     )
+
+    hm1 = heatmap!(ax1, 1:n_x, 1:n_y, estimate_matrix)
+    Colorbar(fig[1, 2], hm1; label = "Effect Size")
+
+    ax2 = Axis(
+        fig[1, 3];
+        title = "Evidence strength",
+        xlabel = "Additive",
+        ylabel = "Reaction",
+        xticks = (1:n_x, string.(additive_levels)),
+        yticks = (1:n_y, string.(reaction_levels)),
+        xticklabelrotation = π / 4,
+        yreversed = true,
+    )
+
+    hm2 = heatmap!(ax2, 1:n_x, 1:n_y, significance_matrix)
+    Colorbar(fig[1, 4], hm2; label = "-log10(adjusted p-value)")
+
     return fig
 end
 
