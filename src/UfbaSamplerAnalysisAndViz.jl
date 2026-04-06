@@ -690,11 +690,13 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     println("done")
     effects_adj_df = @chain effects_rows begin
         DataFrame()
+        # @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
-        @orderby(-:adj_p_value)
+        @transform(:neg_log10_p = -log10.(:adj_p_value))
+        @orderby(:neg_log10_p)
     end
     effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
-    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :adj_p_value)
+    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :neg_log10_p)
     result = (
         effects_adj_df = effects_adj_df,
         effects_wide_df = effects_wide_df,
@@ -706,7 +708,7 @@ end
 function reaction_additive_across_time_heatmap(
     effects_result;
     top_n = 20,
-    fig_size = (600, 400),
+    fig_size = (600, 800),
 )
     effects_wide_df = effects_result.effects_wide_df
     effects_plot_df = first(effects_wide_df, top_n)
