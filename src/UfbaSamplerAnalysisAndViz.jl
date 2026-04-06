@@ -769,10 +769,8 @@ function reaction_additive_matched_heatmaps(
     top_n = 20,
     figure_size = (1800, 1200),
 )
-    prepared = prepare_matched_reaction_additive_heatmap_df(
-        comparisons_adj_df;
-        top_n = top_n,
-    )
+    prepared =
+        prepare_matched_reaction_additive_heatmap_df(comparisons_adj_df; top_n = top_n)
 
     df = prepared.heatmap_plot_df
     additive_levels = prepared.additive_levels
@@ -819,7 +817,7 @@ function reaction_additive_matched_heatmaps(
     hm2 = heatmap!(ax2, 1:n_x, 1:n_y, significance_matrix)
     Colorbar(fig[1, 4], hm2; label = "-log10(adjusted p-value)")
 
-    return fig
+    return fig, df
 end
 
 end

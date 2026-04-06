@@ -29,10 +29,16 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 @info "Heatmaps!"
 comparisons_adj_df = reaction_additive_across_time_df(sampling_df)
 display(first(comparisons_adj_df, 20))
-heatmap_fig = reaction_additive_matched_heatmaps(comparisons_adj_df, top_n = 50)
+comparisons_adj_filename = joinpath("output", "uFBA_heatmaps", "comparisons_adj.csv")
+CSV.write(comparisons_adj_filename, comparisons_adj_df)
+println("Wrote $comparisons_adj_filename")
+heatmap_fig, heatmap_df = reaction_additive_matched_heatmaps(comparisons_adj_df, top_n = 50)
 heatmap_filename = joinpath("output", "uFBA_heatmaps", "estimate_significance.png")
 save(heatmap_filename, heatmap_fig)
 println("Wrote $heatmap_filename")
+heatmap_df_filename = joinpath("output", "uFBA_heatmaps", "heatmap_df.csv")
+CSV.write(heatmap_df_filename, heatmap_df)
+println("Wrote $heatmap_df_filename")
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)
