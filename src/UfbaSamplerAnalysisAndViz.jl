@@ -691,7 +691,7 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     effects_adj_df = @chain effects_rows begin
         DataFrame()
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
-        @orderby(:reaction_id, :reference_additive, :additive)
+        @orderby(-:adj_p_value)
     end
     effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
     significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :adj_p_value)
@@ -703,11 +703,12 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     return result
 end
 
-function reaction_additive_across_time_heatmap(effects_result)
+function reaction_additive_across_time_heatmap(effects_result; top_n = 20)
     effects_wide_df = effects_result.effects_wide_df
-    row_labels = effects_wide_df.reaction_id
-    col_labels = names(effects_wide_df)[2:end]
-    heatmap_data = Matrix(effects_wide_df[:, 2:end])
+    plot_df = first(effects_wide_df, top_n)
+    row_labels = plot_df.reaction_id
+    col_labels = names(plot_df)[2:end]
+    heatmap_mat = Matrix(plot_df[:, 2:end])
     fig = Figure(size = (600, 400))
     ax = Axis(
         fig[1, 1],
@@ -716,7 +717,7 @@ function reaction_additive_across_time_heatmap(effects_result)
         yticks = (1:length(row_labels), row_labels),
         xticklabelrotation = π/4,
     )
-    hm = heatmap!(ax, heatmap_data')
+    hm = heatmap!(ax, heatmap_mat')
     Colorbar(fig[1, 2], hm)
     return fig
 end
