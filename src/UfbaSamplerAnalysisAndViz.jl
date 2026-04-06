@@ -699,6 +699,7 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
     )
+    return result
 end
 
 end
