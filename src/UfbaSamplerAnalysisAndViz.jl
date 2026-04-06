@@ -703,21 +703,25 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     return result
 end
 
-function reaction_additive_across_time_heatmap(effects_result; top_n = 20)
+function reaction_additive_across_time_heatmap(
+    effects_result;
+    top_n = 20,
+    fig_size = (600, 400),
+)
     effects_wide_df = effects_result.effects_wide_df
-    plot_df = first(effects_wide_df, top_n)
-    row_labels = plot_df.reaction_id
-    col_labels = names(plot_df)[2:end]
-    heatmap_mat = Matrix(plot_df[:, 2:end])
-    fig = Figure(size = (600, 400))
-    ax = Axis(
+    effects_plot_df = first(effects_wide_df, top_n)
+    effects_row_labels = effects_plot_df.reaction_id
+    effects_col_labels = names(effects_plot_df)[2:end]
+    effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
+    fig = Figure(size = fig_size)
+    effects_ax = Axis(
         fig[1, 1],
         title = "Reaction Analysis",
-        xticks = (1:length(col_labels), col_labels),
-        yticks = (1:length(row_labels), row_labels),
+        xticks = (1:length(effects_col_labels), effects_col_labels),
+        yticks = (1:length(effects_row_labels), effects_row_labels),
         xticklabelrotation = π/4,
     )
-    hm = heatmap!(ax, heatmap_mat')
+    hm = heatmap!(effects_ax, effects_heatmap_mat')
     Colorbar(fig[1, 2], hm)
     return fig
 end
