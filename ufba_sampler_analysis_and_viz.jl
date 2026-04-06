@@ -27,11 +27,11 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # display(first(per_reaction_df, 20))
 
 @info "Heatmaps!"
-comparisons_adj_df = reaction_additive_across_time_df(sampling_df)
-display(first(comparisons_adj_df, 20))
-comparisons_adj_filename = joinpath("output", "uFBA_heatmaps", "comparisons_adj.csv")
-CSV.write(comparisons_adj_filename, comparisons_adj_df)
-println("Wrote $comparisons_adj_filename")
+effects_adj_df = reaction_additive_across_time_df(sampling_df)
+display(first(effects_adj_df, 20))
+effects_adj_filename = joinpath("output", "uFBA_heatmaps", "effects_adj.csv")
+CSV.write(effects_adj_filename, effects_adj_df)
+println("Wrote $effects_adj_filename")
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)

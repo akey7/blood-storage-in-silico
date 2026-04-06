@@ -652,7 +652,7 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     reactions_additives = vec(collect(product(reaction_ids, non_reference_additives)))
     n_reactions_additives = length(reactions_additives)
     println("n_reactions_additives: $n_reactions_additives")
-    comparison_rows =
+    effects_rows =
         ThreadsX.map(reactions_additives) do (reaction_id, non_reference_additive)
             comparison_additives = [reference_additive, non_reference_additive]
             sub_df = @chain long_cat_df begin
@@ -687,12 +687,12 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
             return comparison_row
         end
     println("done")
-    comparisons_adj_df = @chain comparison_rows begin
+    effects_adj_df = @chain effects_rows begin
         DataFrame()
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
         @orderby(:reaction_id, :reference_additive, :additive)
     end
-    return comparisons_adj_df
+    return effects_adj_df
 end
 
 end
