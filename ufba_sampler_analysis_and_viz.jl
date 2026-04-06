@@ -41,6 +41,7 @@ println("Wrote $effects_adj_filename")
 effects_heatmap = reaction_additive_across_time_heatmap(effects_result)
 effects_heatmap_filename = joinpath("output", "uFBA_heatmaps", "effects_heatmap.png")
 save(effects_heatmap_filename, effects_heatmap)
+println("Wrote $effects_heatmap_filename")
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)
