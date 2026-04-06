@@ -690,13 +690,16 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     println("done")
     effects_adj_df = @chain effects_rows begin
         DataFrame()
-        # @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
-        @transform(:neg_log10_p = -log10.(:adj_p_value))
-        @orderby(:neg_log10_p)
+        @transform(:neg_log1_p = -log1p.(:adj_p_value))
+
+        # TODO: Sorting on -log10(p) + pivoting may not sort the reactions
+        # properly after the pivot.
+
+        @orderby(:neg_log1_p)
     end
     effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
-    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :neg_log10_p)
+    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :neg_log1_p)
     result = (
         effects_adj_df = effects_adj_df,
         effects_wide_df = effects_wide_df,
@@ -708,7 +711,7 @@ end
 function reaction_additive_across_time_heatmap(
     effects_result;
     top_n = 20,
-    fig_size = (600, 800),
+    fig_size = (800, 800),
 )
     effects_wide_df = effects_result.effects_wide_df
     effects_plot_df = first(effects_wide_df, top_n)
@@ -716,6 +719,13 @@ function reaction_additive_across_time_heatmap(
     effects_col_labels = names(effects_plot_df)[2:end]
     effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
     effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
+    significance_wide_df = effects_result.significance_wide_df
+    significance_plot_df = first(significance_wide_df, top_n)
+    significance_row_labels = significance_plot_df.reaction_id
+    significance_col_labels = names(significance_plot_df)[2:end]
+    significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
+    significance_clims =
+        (-maximum(abs, significance_heatmap_mat), maximum(abs, significance_heatmap_mat))
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
@@ -724,13 +734,27 @@ function reaction_additive_across_time_heatmap(
         yticks = (1:length(effects_row_labels), effects_row_labels),
         xticklabelrotation = π/4,
     )
-    hm = heatmap!(
+    effects_hm = heatmap!(
         effects_ax,
         effects_heatmap_mat';
         colormap = :RdBu,
         colorrange = effects_clims,
     )
-    Colorbar(fig[1, 2], hm; label = "Estimate", labelsize = 14)
+    Colorbar(fig[1, 2], effects_hm; label = "Estimate", labelsize = 14)
+    significance_ax = Axis(
+        fig[1, 3],
+        title = "Significance",
+        xticks = (1:length(significance_col_labels), significance_col_labels),
+        yticks = (1:length(significance_row_labels), significance_row_labels),
+        xticklabelrotation = π/4,
+    )
+    significance_hm = heatmap!(
+        significance_ax,
+        significance_heatmap_mat';
+        colormap = :Blues,
+        colorrange = significance_clims,
+    )
+    Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
     return fig
 end
 
