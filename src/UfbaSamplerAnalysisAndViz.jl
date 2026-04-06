@@ -677,9 +677,9 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
             estimate = additive_term_df.estimate[1]
             p_value = additive_term_df.p_value[1]
             comparison_row = (
-                reaction_id = reaction_id,
-                reference_additive = reference_additive,
-                additive = non_reference_additive,
+                reaction_id = string(reaction_id),
+                reference_additive = string(reference_additive),
+                additive = string(non_reference_additive),
                 estimate = estimate,
                 p_value = p_value,
             )
@@ -692,7 +692,13 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
         @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
         @orderby(:reaction_id, :reference_additive, :additive)
     end
-    return effects_adj_df
+    effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
+    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :adj_p_value)
+    result = (
+        effects_adj_df = effects_adj_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+    )
 end
 
 end

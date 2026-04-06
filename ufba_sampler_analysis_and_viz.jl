@@ -1,4 +1,5 @@
 using CSV
+using XLSX
 using DataFrames
 using OrderedCollections
 using YAML
@@ -27,10 +28,15 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # display(first(per_reaction_df, 20))
 
 @info "Heatmaps!"
-effects_adj_df = reaction_additive_across_time_df(sampling_df)
-display(first(effects_adj_df, 20))
-effects_adj_filename = joinpath("output", "uFBA_heatmaps", "effects_adj.csv")
-CSV.write(effects_adj_filename, effects_adj_df)
+heatmap_dfs = reaction_additive_across_time_df(sampling_df)
+effects_adj_filename = joinpath("output", "uFBA_heatmaps", "reaction_additive_effects.xlsx")
+XLSX.writetable(
+    effects_adj_filename,
+    "effects" => heatmap_dfs.effects_adj_df,
+    "effects_wide" => heatmap_dfs.effects_wide_df,
+    "significance_wide" => heatmap_dfs.significance_wide_df;
+    overwrite = true,
+)
 println("Wrote $effects_adj_filename")
 
 # @info "Diagnosing uFBA run"
