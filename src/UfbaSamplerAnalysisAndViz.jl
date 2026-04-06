@@ -34,7 +34,8 @@ export histograms_for_reaction_v2,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    reaction_additive_across_time_df
+    reaction_additive_across_time_df,
+    reaction_additive_across_time_heatmap
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -700,6 +701,19 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
         significance_wide_df = significance_wide_df,
     )
     return result
+end
+
+function reaction_additive_across_time_heatmap(effects_result)
+    effects_adj_df = effects_result.effects_adj_df
+    effects_wide_df = effects_result.effects_wide_df
+    significance_wide_df = effects_result.significance_wide_df
+    effects_wide_mat = Matrix(effects_wide_df)
+    xs = eachcol(effects_wide_mat)
+    ys = eachrow(effects_wide_mat)
+    fig = Figure(; size = (1280, 720))
+    ax_heatmap = Axis(fig[1, 1])
+    heatmap!(ax_heatmap, xs, ys, effects_wide_mat)
+    return fig
 end
 
 end
