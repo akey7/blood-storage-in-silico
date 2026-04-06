@@ -716,13 +716,13 @@ function reaction_additive_across_time_heatmap(
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
-        title = "Reaction Analysis",
+        title = "Effect Estimate",
         xticks = (1:length(effects_col_labels), effects_col_labels),
         yticks = (1:length(effects_row_labels), effects_row_labels),
         xticklabelrotation = π/4,
     )
     hm = heatmap!(effects_ax, effects_heatmap_mat')
-    Colorbar(fig[1, 2], hm)
+    Colorbar(fig[1, 2], hm; label = "Estimate", labelsize = 14)
     return fig
 end
 
