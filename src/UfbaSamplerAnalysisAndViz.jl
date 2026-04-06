@@ -713,6 +713,7 @@ function reaction_additive_across_time_heatmap(
     effects_row_labels = effects_plot_df.reaction_id
     effects_col_labels = names(effects_plot_df)[2:end]
     effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
+    effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
@@ -721,7 +722,12 @@ function reaction_additive_across_time_heatmap(
         yticks = (1:length(effects_row_labels), effects_row_labels),
         xticklabelrotation = π/4,
     )
-    hm = heatmap!(effects_ax, effects_heatmap_mat')
+    hm = heatmap!(
+        effects_ax,
+        effects_heatmap_mat';
+        colormap = :RdBu,
+        colorrange = effects_clims,
+    )
     Colorbar(fig[1, 2], hm; label = "Estimate", labelsize = 14)
     return fig
 end
