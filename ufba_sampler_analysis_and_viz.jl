@@ -44,7 +44,7 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # println("Wrote $effects_heatmap_filename")
 
 @info "Testing: reaction_additive_timecourse_anova_heatmap_dfs"
-reaction_additive_timecourse_anova_heatmap_dfs(sampling_df)
+reaction_additive_timecourse_heatmap_dfs(sampling_df)
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)

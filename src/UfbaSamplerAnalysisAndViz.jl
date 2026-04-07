@@ -36,7 +36,7 @@ export histograms_for_reaction_v2,
     per_reaction_additive_time_test,
     reaction_additive_across_time_df,
     reaction_additive_across_time_heatmap,
-    reaction_additive_timecourse_anova_heatmap_dfs
+    reaction_additive_timecourse_heatmap_dfs
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -709,7 +709,7 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
     return result
 end
 
-function reaction_additive_timecourse_anova_heatmap_dfs(
+function reaction_additive_timecourse_heatmap_dfs(
     sampling_df;
     control_additive = "01-Ctrl AS3",
 )
@@ -774,9 +774,10 @@ function reaction_additive_timecourse_anova_heatmap_dfs(
         clamp.(-log10.(max.(results_long_df.adj_p_value, eps())), 0.0, 10.0)
 
     rank_df = @chain results_long_df begin
+        @rsubset(:adj_p_value < 0.05)
         @groupby(:reaction_id)
-        @combine(:max_significance = maximum(:significance_value))
-        @orderby(:max_significance)
+        @combine(:sort_order = maximum(:significance_value))
+        @orderby(-:sort_order)
     end
 
     effects_wide_df = @chain results_long_df begin
@@ -798,9 +799,19 @@ function reaction_additive_timecourse_anova_heatmap_dfs(
     effects_wide_df = select(effects_wide_df, :reaction_id, treatment_additives...)
     significance_wide_df =
         select(significance_wide_df, :reaction_id, treatment_additives...)
+    effects_wide_sorted_df = @chain effects_wide_df begin
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+    significance_wide_sorted_df = @chain significance_wide_df begin
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
     return (
-        effects_wide_df = effects_wide_df,
-        significance_wide_df = significance_wide_df,
+        effects_wide_df = effects_wide_sorted_df,
+        significance_wide_df = significance_wide_sorted_df,
         results_long_df = results_long_df,
         rank_df = rank_df,
     )
