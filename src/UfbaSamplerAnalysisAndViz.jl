@@ -15,6 +15,10 @@ using Chain
 using ThreadsX
 using Random
 using EffectSizes
+using CategoricalArrays
+using MixedModels
+using MixedModels: likelihoodratiotest
+using GLM
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
@@ -26,7 +30,12 @@ export histograms_for_reaction_v2,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
     prepare_measurements_and_sinks_report_df,
-    compare_flux_distributions
+    compare_flux_distributions,
+    global_mixed_model_test,
+    pivot_sampling_df_long_cat,
+    per_reaction_additive_time_test,
+    reaction_additive_across_time_df,
+    reaction_additive_across_time_heatmap
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -483,6 +492,270 @@ function compare_flux_distributions(
         ranked_df = ranked_df,
     )
     return result
+end
+
+"""
+    pivot_sampling_df_long_cat(sampling_df)
+
+Pivots the sampling DataFrame long, with a twist: It transforms `additive` and `final_time` into categorical variables.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns the wide DataFrame pivoted long, with `additive` transformed to `additive_cat` and `final_time` transformed to `final_time_cat`.
+"""
+function pivot_sampling_df_long_cat(sampling_df)
+    long_cat_df = @chain sampling_df begin
+        stack(Not([:additive, :final_time]), variable_name = :reaction_id, value_name = :flux)
+        @transform begin
+            :additive_cat = categorical(:additive; levels = sort(unique(:additive)))
+            :final_time_cat = categorical(
+                :final_time;
+                levels = sort(unique(:final_time)),
+                ordered = true,
+            )
+        end
+        @select(:reaction_id, :additive_cat, :final_time_cat, :flux)
+    end
+    return long_cat_df
+end
+
+"""
+    global_mixed_model_test(sampling_df)
+
+Performs a global test to answer a simple question: Does the additive treatment and time make any statistical difference whatsoever in any reactions? Since the outcome of this test is "yes", as supported by visual inspection of flux distributions, this function just prints the results of the test instead of gathering the results into a neater data structure.
+
+Note: Assumes that `01-Ctrl AS3` is the control group, and that in a sort of additive names, it will be placed first.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the results of the tests.
+"""
+function global_mixed_model_test(sampling_df)
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    m_null = fit(MixedModel, @formula(flux ~ 1 + (1 | reaction_id)), long_cat_df)
+    m_additive =
+        fit(MixedModel, @formula(flux ~ additive_cat + (1 | reaction_id)), long_cat_df)
+    m_time =
+        fit(MixedModel, @formula(flux ~ final_time_cat + (1 | reaction_id)), long_cat_df)
+    m_additive_time = fit(
+        MixedModel,
+        @formula(flux ~ additive_cat + final_time_cat + (1 | reaction_id)),
+        long_cat_df,
+    )
+    m_full = fit(
+        MixedModel,
+        @formula(flux ~ additive_cat * final_time_cat + (1 | reaction_id)),
+        long_cat_df,
+    )
+    println("========== FULL MODEL ==========")
+    println(m_full)
+
+    println("\n========== HYPOTHESIS TESTS ==========")
+
+    println("\nMain effect of additive (controlling for time):")
+    println(likelihoodratiotest(m_time, m_additive_time))
+
+    println("\nMain effect of time (controlling for additive):")
+    println(likelihoodratiotest(m_additive, m_additive_time))
+
+    println("\nAdditive x time interaction:")
+    println(likelihoodratiotest(m_additive_time, m_full))
+
+    result = (
+        long_cat_df = long_cat_df,
+        m_null = m_null,
+        m_additive = m_additive,
+        m_time = m_time,
+        m_additive_time = m_additive_time,
+        m_full = m_full,
+    )
+
+    return result
+end
+
+"""
+    per_reaction_additive_time_test(sampling_df)
+
+For each reaction, this function answers the question: are there any times and additives that make any difference on the fluxes for each individual reaction? This function tests time alone, additive alone, and time interacting with additive.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with a row per reaction and the results of F-tests and adjusted p-values for each reaction.
+"""
+function per_reaction_additive_time_test(sampling_df)
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    reaction_ids = sort(unique(long_cat_df.reaction_id))
+    n_reaction_ids = length(reaction_ids)
+    prog = Progress(n_reaction_ids, "Per reaction additive/time test")
+    rows = map(reaction_ids) do reaction_id
+        reaction_df = @rsubset(long_cat_df, :reaction_id == reaction_id)
+        m_time = lm(@formula(flux ~ final_time_cat), reaction_df)
+        m_additive = lm(@formula(flux ~ additive_cat), reaction_df)
+        m_time_additive =
+            lm(@formula(flux ~ additive_cat + final_time_cat), reaction_df)
+        m_time_additive_interaction =
+            lm(@formula(flux ~ additive_cat * final_time_cat), reaction_df)
+        additive_ftest = GLM.ftest(m_time.model, m_time_additive.model)
+        time_ftest = GLM.ftest(m_additive.model, m_time_additive.model)
+        interaction_ftest =
+            GLM.ftest(m_time_additive.model, m_time_additive_interaction.model)
+        row = (
+            reaction_id = reaction_id,
+            additive_fstat = additive_ftest.fstat[2],
+            additive_p = additive_ftest.pval[2],
+            time_fstat = time_ftest.fstat[2],
+            time_p = time_ftest.pval[2],
+            interaction_fstat = interaction_ftest.fstat[2],
+            interaction_p = interaction_ftest.pval[2],
+        )
+        next!(prog)
+        return row
+    end
+    unsorted_df = DataFrame(rows)
+    sorted_and_adjusted_df = @chain unsorted_df begin
+        @transform begin
+            :additive_adj_p = adjust(:additive_p, BenjaminiHochberg())
+            :time_adj_p = adjust(:time_p, BenjaminiHochberg())
+            :interaction_adj_p = adjust(:interaction_p, BenjaminiHochberg())
+        end
+        @select(
+            :reaction_id,
+            :additive_fstat,
+            :additive_adj_p,
+            :time_fstat,
+            :time_adj_p,
+            :interaction_fstat,
+            :interaction_adj_p
+        )
+        @orderby(:reaction_id)
+    end
+    return sorted_and_adjusted_df
+end
+
+function reaction_additive_across_time_df(sampling_df; reference_additive = "01-Ctrl AS3")
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    all_additives = sort(unique(long_cat_df.additive_cat))
+    non_reference_additives =
+        [additive for additive in all_additives if additive != reference_additive]
+    reaction_ids = sort(unique(long_cat_df.reaction_id))
+    reactions_additives = vec(collect(product(reaction_ids, non_reference_additives)))
+    n_reactions_additives = length(reactions_additives)
+    println("n_reactions_additives: $n_reactions_additives")
+    effects_rows =
+        ThreadsX.map(reactions_additives) do (reaction_id, non_reference_additive)
+            comparison_additives = [reference_additive, non_reference_additive]
+            sub_df = @chain long_cat_df begin
+                @rsubset(:reaction_id == reaction_id, :additive_cat in comparison_additives)
+                @select(:additive_cat, :final_time_cat, :flux)
+            end
+            model = lm(@formula(flux ~ additive_cat + final_time_cat), sub_df)
+            ct = coeftable(model)
+            coef_df = DataFrame(
+                term = String.(ct.rownms),
+                estimate = ct.cols[1],
+                p_value = ct.cols[4],
+            )
+            additive_term_df = @rsubset(coef_df, occursin("additive_cat", :term))
+            if nrow(additive_term_df) != 1
+                throw(
+                    ArgumentError(
+                        "Expected exactly one additive coefficient for reaction=$reaction_id additive=$additive_id, found $(nrow(additive_term_df))",
+                    ),
+                )
+            end
+            estimate = additive_term_df.estimate[1]
+            p_value = additive_term_df.p_value[1]
+            comparison_row = (
+                reaction_id = string(reaction_id),
+                reference_additive = string(reference_additive),
+                additive = string(non_reference_additive),
+                estimate = estimate,
+                p_value = p_value,
+            )
+            print(".")
+            return comparison_row
+        end
+    println("done")
+    effects_adj_df = @chain effects_rows begin
+        DataFrame()
+        @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
+        @transform(:neg_log1_p = -log1p.(:adj_p_value))
+
+        # TODO: Sorting on -log10(p) + pivoting may not sort the reactions
+        # properly after the pivot.
+
+        @orderby(:neg_log1_p)
+    end
+    effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
+    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :neg_log1_p)
+    result = (
+        effects_adj_df = effects_adj_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+    )
+    return result
+end
+
+function reaction_additive_across_time_heatmap(
+    effects_result;
+    top_n = 20,
+    fig_size = (800, 800),
+)
+    effects_wide_df = effects_result.effects_wide_df
+    effects_plot_df = first(effects_wide_df, top_n)
+    effects_row_labels = effects_plot_df.reaction_id
+    effects_col_labels = names(effects_plot_df)[2:end]
+    effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
+    effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
+    significance_wide_df = effects_result.significance_wide_df
+    significance_plot_df = first(significance_wide_df, top_n)
+    significance_row_labels = significance_plot_df.reaction_id
+    significance_col_labels = names(significance_plot_df)[2:end]
+    significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
+    significance_clims =
+        (-maximum(abs, significance_heatmap_mat), maximum(abs, significance_heatmap_mat))
+    fig = Figure(size = fig_size)
+    effects_ax = Axis(
+        fig[1, 1],
+        title = "Effect Estimate",
+        xticks = (1:length(effects_col_labels), effects_col_labels),
+        yticks = (1:length(effects_row_labels), effects_row_labels),
+        xticklabelrotation = π/4,
+    )
+    effects_hm = heatmap!(
+        effects_ax,
+        effects_heatmap_mat';
+        colormap = :RdBu,
+        colorrange = effects_clims,
+    )
+    Colorbar(fig[1, 2], effects_hm; label = "Estimate", labelsize = 14)
+    significance_ax = Axis(
+        fig[1, 3],
+        title = "Significance",
+        xticks = (1:length(significance_col_labels), significance_col_labels),
+        yticks = (1:length(significance_row_labels), significance_row_labels),
+        xticklabelrotation = π/4,
+    )
+    significance_hm = heatmap!(
+        significance_ax,
+        significance_heatmap_mat';
+        colormap = :Blues,
+        colorrange = significance_clims,
+    )
+    Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
+    return fig
 end
 
 end
