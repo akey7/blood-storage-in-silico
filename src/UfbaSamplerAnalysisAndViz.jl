@@ -770,7 +770,7 @@ function reaction_additive_timecourse_anova_heatmap_dfs(
         results_long_df.adj_p_value[valid_idx] =
             adjust(results_long_df.p_value[valid_idx], BenjaminiHochberg())
     end
-    results_long_df.significance_value = log1p.(results_long_df.adj_p_value)
+    results_long_df.significance_value = -log10.(max.(results_long_df.adj_p_value, eps()))
     effects_wide_df = @chain results_long_df begin
         @select(:reaction_id, :additive, :statistic)
         unstack(:reaction_id, :additive, :statistic)
