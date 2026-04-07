@@ -772,6 +772,13 @@ function reaction_additive_timecourse_anova_heatmap_dfs(
     end
     results_long_df.significance_value =
         clamp.(-log10.(max.(results_long_df.adj_p_value, eps())), 0.0, 10.0)
+
+    rank_df = @chain results_long_df begin
+        @groupby(:reaction_id)
+        @combine(:max_significance = maximum(:significance_value))
+        @orderby(:max_significance)
+    end
+
     effects_wide_df = @chain results_long_df begin
         @select(:reaction_id, :additive, :statistic)
         unstack(:reaction_id, :additive, :statistic)
@@ -795,6 +802,7 @@ function reaction_additive_timecourse_anova_heatmap_dfs(
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
         results_long_df = results_long_df,
+        rank_df = rank_df,
     )
 end
 
