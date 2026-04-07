@@ -27,21 +27,24 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # per_reaction_df = per_reaction_additive_time_test(sampling_df)
 # display(first(per_reaction_df, 20))
 
-@info "Heatmaps!"
-effects_result = reaction_additive_across_time_df(sampling_df)
-effects_adj_filename = joinpath("output", "uFBA_heatmaps", "reaction_additive_effects.xlsx")
-XLSX.writetable(
-    effects_adj_filename,
-    "effects" => effects_result.effects_adj_df,
-    "effects_wide" => effects_result.effects_wide_df,
-    "significance_wide" => effects_result.significance_wide_df;
-    overwrite = true,
-)
-println("Wrote $effects_adj_filename")
-effects_heatmap = reaction_additive_across_time_heatmap(effects_result)
-effects_heatmap_filename = joinpath("output", "uFBA_heatmaps", "effects_heatmap.png")
-save(effects_heatmap_filename, effects_heatmap)
-println("Wrote $effects_heatmap_filename")
+# @info "Heatmaps!"
+# effects_result = reaction_additive_across_time_df(sampling_df)
+# effects_adj_filename = joinpath("output", "uFBA_heatmaps", "reaction_additive_effects.xlsx")
+# XLSX.writetable(
+#     effects_adj_filename,
+#     "effects" => effects_result.effects_adj_df,
+#     "effects_wide" => effects_result.effects_wide_df,
+#     "significance_wide" => effects_result.significance_wide_df;
+#     overwrite = true,
+# )
+# println("Wrote $effects_adj_filename")
+# effects_heatmap = reaction_additive_across_time_heatmap(effects_result)
+# effects_heatmap_filename = joinpath("output", "uFBA_heatmaps", "effects_heatmap.png")
+# save(effects_heatmap_filename, effects_heatmap)
+# println("Wrote $effects_heatmap_filename")
+
+@info "Testing: reaction_additive_timecourse_anova_heatmap_dfs"
+reaction_additive_timecourse_anova_heatmap_dfs(sampling_df)
 
 # @info "Diagnosing uFBA run"
 # diagnostic_df = diagnose_flux_stats(sampling_df)

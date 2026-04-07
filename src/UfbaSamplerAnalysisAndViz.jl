@@ -35,7 +35,8 @@ export histograms_for_reaction_v2,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
     reaction_additive_across_time_df,
-    reaction_additive_across_time_heatmap
+    reaction_additive_across_time_heatmap,
+    reaction_additive_timecourse_anova_heatmap_dfs
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -706,6 +707,94 @@ function reaction_additive_across_time_df(sampling_df; reference_additive = "01-
         significance_wide_df = significance_wide_df,
     )
     return result
+end
+
+function reaction_additive_timecourse_anova_heatmap_dfs(
+    sampling_df;
+    control_additive = "01-Ctrl AS3",
+)
+    analysis_df = pivot_sampling_df_long(sampling_df)
+    reactions = unique(analysis_df.reaction_id)
+    additives = sort(unique(analysis_df.additive))
+    treatment_additives = [a for a in additives if a != control_additive]
+    isempty(treatment_additives) && throw(ArgumentError("No non-control additives found."))
+    jobs = [
+        (reaction_id, additive) for reaction_id in reactions for
+        additive in treatment_additives
+    ]
+    n_jobs = length(jobs)
+    println("n_jobs: $n_jobs")
+    result_rows = map(jobs) do (reaction_id, additive)
+        pair_df = @chain analysis_df begin
+            @rsubset(:reaction_id == reaction_id)
+            @rsubset(:additive == control_additive || :additive == additive)
+            @rtransform(:group = :additive == control_additive ? "control" : "treatment")
+        end
+        pair_df.group = categorical(pair_df.group)
+        pair_df.final_time = categorical(pair_df.final_time)
+        try
+            reduced_model = lm(@formula(flux ~ final_time), pair_df)
+            full_model =
+                lm(@formula(flux ~ final_time + group + final_time & group), pair_df)
+            ft = GLM.ftest(reduced_model.model, full_model.model)
+            statistic = Float64(ft.fstat[2])
+            p_value = Float64(ft.pval[2])
+            print(".")
+            return (
+                reaction_id = reaction_id,
+                additive = additive,
+                statistic = statistic,
+                p_value = p_value,
+                n_obs = nrow(pair_df),
+                model_ok = true,
+            )
+        catch err
+            @warn "ANOVA fit failed for reaction/additive pair" reaction_id additive exception =
+                (err, catch_backtrace())
+            print(".")
+            return (
+                reaction_id = reaction_id,
+                additive = additive,
+                statistic = NaN,
+                p_value = NaN,
+                n_obs = nrow(pair_df),
+                model_ok = false,
+            )
+        end
+    end
+    println("done")
+    results_long_df = DataFrame(result_rows)
+    results_long_df.adj_p_value = fill(NaN, nrow(results_long_df))
+    valid_idx = findall(x -> !isnan(x), results_long_df.p_value)
+    if !isempty(valid_idx)
+        results_long_df.adj_p_value[valid_idx] =
+            adjust(results_long_df.p_value[valid_idx], BenjaminiHochberg())
+    end
+    results_long_df.significance_value = log1p.(results_long_df.adj_p_value)
+    effects_wide_df = @chain results_long_df begin
+        @select(:reaction_id, :additive, :statistic)
+        unstack(:reaction_id, :additive, :statistic)
+    end
+    significance_wide_df = @chain results_long_df begin
+        @select(:reaction_id, :additive, :significance_value)
+        unstack(:reaction_id, :additive, :significance_value)
+    end
+    for additive in treatment_additives
+        if !(additive in names(effects_wide_df))
+            effects_wide_df[!, additive] = fill(NaN, nrow(effects_wide_df))
+        end
+        if !(additive in names(significance_wide_df))
+            significance_wide_df[!, additive] = fill(NaN, nrow(significance_wide_df))
+        end
+    end
+    effects_wide_df = select(effects_wide_df, :reaction_id, treatment_additives...)
+    significance_wide_df =
+        select(significance_wide_df, :reaction_id, treatment_additives...)
+    return (
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+        results_long_df = results_long_df,
+    )
 end
 
 function reaction_additive_across_time_heatmap(
