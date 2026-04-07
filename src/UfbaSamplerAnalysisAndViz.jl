@@ -770,8 +770,7 @@ function reaction_additive_timecourse_heatmap_dfs(
         results_long_df.adj_p_value[valid_idx] =
             adjust(results_long_df.p_value[valid_idx], BenjaminiHochberg())
     end
-    results_long_df.significance_value =
-        clamp.(-log10.(max.(results_long_df.adj_p_value, eps())), 0.0, 10.0)
+    results_long_df.significance_value = -log10.(max.(results_long_df.adj_p_value, eps()))
 
     rank_df = @chain results_long_df begin
         @rsubset(:adj_p_value < 0.05)
