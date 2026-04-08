@@ -467,7 +467,7 @@ function compare_flux_distributions(
     rank_df = @chain interesting_df begin
         @rsubset(:adj_t_test_p < alpha)
         @groupby(:reaction_id)
-        @combine(:sort_order = maximum(:reaction_cohen_effect_z))
+        @combine(:sort_order = maximum(abs.(:reaction_cohen_effect_z)))
         @orderby(-:sort_order)
     end
 
@@ -846,7 +846,7 @@ function reaction_additive_heatmap(effects_result; top_n = 20, fig_size = (800, 
     # TODO: Fix clims for intstances where so many 0.0 values give a tuple of (0.0, 0.0)
     significance_clims =
         (-maximum(abs, significance_heatmap_mat), maximum(abs, significance_heatmap_mat))
-    
+
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
