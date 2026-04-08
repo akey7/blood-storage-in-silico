@@ -644,6 +644,31 @@ function per_reaction_additive_time_test(sampling_df)
     return sorted_and_adjusted_df
 end
 
+"""
+    reaction_additive_timecourse_heatmap_dfs(
+        sampling_df;
+        control_additive = "01-Ctrl AS3",
+    )
+
+Splits the samples per reaction and additives into pairs of control and treatment groups. Then it fits models that (1) test the effect of time only vs (2) the effects of additive and time. It then does an f-test for the statistical difference between the models to determine if additive has additional explanatory power beyond just time alone.
+
+TODO: These tests are ridiculously overpowered. In order to prevent taking -log10(0.0), which many adjusted p-values are, the minimum adjusted p-value is clamped at `eps(Float64)` on the low end. This is higher than even the maximum adjusted p-values. This means that the `significance_value` for all reactions is fixed at approximately ~15. Perhaps thinning of the samples could be done in the future to fix this? Or sorting reactions not by significance but by order of magnitude of the F-statistic? I am keeping this here in case it is useful in the future, but am not generating the plot based on this in the current release.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+2. `control_additive`: The additive that is considered the "control" group for all the tests.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.reaction_additive_heatmap).
+
+Available fields are:
+1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.
+2. `significance_wide_df`: The wide format of `-log10.(max.(results_long_df.adj_p_value, eps(Float64)))`, with reactions on rows and additives on columns. See the TODO caveat above.
+3. `results_long_df`: Long format of the results of all tests.
+4. `rank_df`: DataFrame that controls the ranking of additives.
+"""
 function reaction_additive_timecourse_heatmap_dfs(
     sampling_df;
     control_additive = "01-Ctrl AS3",
@@ -752,6 +777,25 @@ function reaction_additive_timecourse_heatmap_dfs(
     )
 end
 
+"""
+    reaction_additive_heatmap(
+        effects_result;
+        top_n = 20,
+        fig_size = (800, 800),
+    )
+
+Plots a pair of heatmaps side-by-side, one with effect sizes and the other with significance values. Meant to be useful for a variety of tests.
+
+# Arguments
+1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
+2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
+3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
+
+# Returns
+`Figure`
+
+Returns a figure suitable for display or plotting.
+"""
 function reaction_additive_heatmap(
     effects_result;
     top_n = 20,
