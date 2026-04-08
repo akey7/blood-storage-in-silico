@@ -34,8 +34,8 @@ export histograms_for_reaction_v2,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    reaction_additive_across_time_df,
-    reaction_additive_across_time_heatmap
+    reaction_additive_heatmap,
+    reaction_additive_timecourse_heatmap_dfs
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -644,71 +644,159 @@ function per_reaction_additive_time_test(sampling_df)
     return sorted_and_adjusted_df
 end
 
-function reaction_additive_across_time_df(sampling_df; reference_additive = "01-Ctrl AS3")
-    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
-    all_additives = sort(unique(long_cat_df.additive_cat))
-    non_reference_additives =
-        [additive for additive in all_additives if additive != reference_additive]
-    reaction_ids = sort(unique(long_cat_df.reaction_id))
-    reactions_additives = vec(collect(product(reaction_ids, non_reference_additives)))
-    n_reactions_additives = length(reactions_additives)
-    println("n_reactions_additives: $n_reactions_additives")
-    effects_rows =
-        ThreadsX.map(reactions_additives) do (reaction_id, non_reference_additive)
-            comparison_additives = [reference_additive, non_reference_additive]
-            sub_df = @chain long_cat_df begin
-                @rsubset(:reaction_id == reaction_id, :additive_cat in comparison_additives)
-                @select(:additive_cat, :final_time_cat, :flux)
-            end
-            model = lm(@formula(flux ~ additive_cat + final_time_cat), sub_df)
-            ct = coeftable(model)
-            coef_df = DataFrame(
-                term = String.(ct.rownms),
-                estimate = ct.cols[1],
-                p_value = ct.cols[4],
-            )
-            additive_term_df = @rsubset(coef_df, occursin("additive_cat", :term))
-            if nrow(additive_term_df) != 1
-                throw(
-                    ArgumentError(
-                        "Expected exactly one additive coefficient for reaction=$reaction_id additive=$additive_id, found $(nrow(additive_term_df))",
-                    ),
-                )
-            end
-            estimate = additive_term_df.estimate[1]
-            p_value = additive_term_df.p_value[1]
-            comparison_row = (
-                reaction_id = string(reaction_id),
-                reference_additive = string(reference_additive),
-                additive = string(non_reference_additive),
-                estimate = estimate,
-                p_value = p_value,
-            )
-            print(".")
-            return comparison_row
-        end
-    println("done")
-    effects_adj_df = @chain effects_rows begin
-        DataFrame()
-        @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
-        @transform(:neg_log1_p = -log1p.(:adj_p_value))
-
-        # TODO: Sorting on -log10(p) + pivoting may not sort the reactions
-        # properly after the pivot.
-
-        @orderby(:neg_log1_p)
-    end
-    effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
-    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :neg_log1_p)
-    result = (
-        effects_adj_df = effects_adj_df,
-        effects_wide_df = effects_wide_df,
-        significance_wide_df = significance_wide_df,
+"""
+    reaction_additive_timecourse_heatmap_dfs(
+        sampling_df;
+        control_additive = "01-Ctrl AS3",
     )
-    return result
+
+Splits the samples per reaction and additives into pairs of control and treatment groups. Then it fits models that (1) test the effect of time only vs (2) the effects of additive and time. It then does an f-test for the statistical difference between the models to determine if additive has additional explanatory power beyond just time alone.
+
+TODO: These tests are ridiculously overpowered. In order to prevent taking -log10(0.0), which many adjusted p-values are, the minimum adjusted p-value is clamped at `eps(Float64)` on the low end. This is higher than even the maximum adjusted p-values. This means that the `significance_value` for all reactions is fixed at approximately ~15. Perhaps thinning of the samples could be done in the future to fix this? Or sorting reactions not by significance but by order of magnitude of the F-statistic? I am keeping this here in case it is useful in the future, but am not generating the plot based on this in the current release.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+2. `control_additive`: The additive that is considered the "control" group for all the tests.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.reaction_additive_heatmap).
+
+Available fields are:
+1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.
+2. `significance_wide_df`: The wide format of `-log10.(max.(results_long_df.adj_p_value, eps(Float64)))`, with reactions on rows and additives on columns. See the TODO caveat above.
+3. `results_long_df`: Long format of the results of all tests.
+4. `rank_df`: DataFrame that controls the ranking of additives.
+"""
+function reaction_additive_timecourse_heatmap_dfs(
+    sampling_df;
+    control_additive = "01-Ctrl AS3",
+)
+    analysis_df = pivot_sampling_df_long(sampling_df)
+    reactions = unique(analysis_df.reaction_id)
+    additives = sort(unique(analysis_df.additive))
+    treatment_additives = [a for a in additives if a != control_additive]
+    isempty(treatment_additives) && throw(ArgumentError("No non-control additives found."))
+    jobs = [
+        (reaction_id, additive) for reaction_id in reactions for
+        additive in treatment_additives
+    ]
+    n_jobs = length(jobs)
+    println("n_jobs: $n_jobs")
+    result_rows = ThreadsX.map(jobs) do (reaction_id, additive)
+        pair_df = @chain analysis_df begin
+            @rsubset(:reaction_id == reaction_id)
+            @rsubset(:additive == control_additive || :additive == additive)
+            @rtransform(:group = :additive == control_additive ? "control" : "treatment")
+        end
+        pair_df.group = categorical(pair_df.group)
+        pair_df.final_time = categorical(pair_df.final_time)
+        try
+            reduced_model = lm(@formula(flux ~ final_time), pair_df)
+            full_model =
+                lm(@formula(flux ~ final_time + group + final_time & group), pair_df)
+            ft = GLM.ftest(reduced_model.model, full_model.model)
+            statistic = Float64(ft.fstat[2])
+            p_value = Float64(ft.pval[2])
+            print(".")
+            return (
+                reaction_id = reaction_id,
+                additive = additive,
+                statistic = statistic,
+                p_value = p_value,
+                n_obs = nrow(pair_df),
+                model_ok = true,
+            )
+        catch err
+            @warn "ANOVA fit failed for reaction/additive pair" reaction_id additive exception =
+                (err, catch_backtrace())
+            print(".")
+            return (
+                reaction_id = reaction_id,
+                additive = additive,
+                statistic = NaN,
+                p_value = NaN,
+                n_obs = nrow(pair_df),
+                model_ok = false,
+            )
+        end
+    end
+    println("done")
+    results_long_df = DataFrame(result_rows)
+    results_long_df.adj_p_value = fill(NaN, nrow(results_long_df))
+    valid_idx = findall(x -> !isnan(x), results_long_df.p_value)
+    if !isempty(valid_idx)
+        results_long_df.adj_p_value[valid_idx] =
+            adjust(results_long_df.p_value[valid_idx], BenjaminiHochberg())
+    end
+    results_long_df.significance_value =
+        -log10.(max.(results_long_df.adj_p_value, eps(Float64)))
+
+    rank_df = @chain results_long_df begin
+        @rsubset(:adj_p_value < 0.05)
+        @groupby(:reaction_id)
+        @combine(:sort_order = maximum(:significance_value))
+        @orderby(-:sort_order)
+    end
+
+    effects_wide_df = @chain results_long_df begin
+        @select(:reaction_id, :additive, :statistic)
+        unstack(:reaction_id, :additive, :statistic)
+    end
+    significance_wide_df = @chain results_long_df begin
+        @select(:reaction_id, :additive, :significance_value)
+        unstack(:reaction_id, :additive, :significance_value)
+    end
+    for additive in treatment_additives
+        if !(additive in names(effects_wide_df))
+            effects_wide_df[!, additive] = fill(NaN, nrow(effects_wide_df))
+        end
+        if !(additive in names(significance_wide_df))
+            significance_wide_df[!, additive] = fill(NaN, nrow(significance_wide_df))
+        end
+    end
+    effects_wide_df = select(effects_wide_df, :reaction_id, treatment_additives...)
+    significance_wide_df =
+        select(significance_wide_df, :reaction_id, treatment_additives...)
+    effects_wide_sorted_df = @chain effects_wide_df begin
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+    significance_wide_sorted_df = @chain significance_wide_df begin
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+    return (
+        effects_wide_df = effects_wide_sorted_df,
+        significance_wide_df = significance_wide_sorted_df,
+        results_long_df = results_long_df,
+        rank_df = rank_df,
+    )
 end
 
-function reaction_additive_across_time_heatmap(
+"""
+    reaction_additive_heatmap(
+        effects_result;
+        top_n = 20,
+        fig_size = (800, 800),
+    )
+
+Plots a pair of heatmaps side-by-side, one with effect sizes and the other with significance values. Meant to be useful for a variety of tests.
+
+# Arguments
+1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
+2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
+3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
+
+# Returns
+`Figure`
+
+Returns a figure suitable for display or plotting.
+"""
+function reaction_additive_heatmap(
     effects_result;
     top_n = 20,
     fig_size = (800, 800),
