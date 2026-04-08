@@ -34,8 +34,7 @@ export histograms_for_reaction_v2,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    reaction_additive_across_time_df,
-    reaction_additive_across_time_heatmap,
+    reaction_additive_heatmap,
     reaction_additive_timecourse_heatmap_dfs
 
 """
@@ -645,70 +644,6 @@ function per_reaction_additive_time_test(sampling_df)
     return sorted_and_adjusted_df
 end
 
-function reaction_additive_across_time_df(sampling_df; reference_additive = "01-Ctrl AS3")
-    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
-    all_additives = sort(unique(long_cat_df.additive_cat))
-    non_reference_additives =
-        [additive for additive in all_additives if additive != reference_additive]
-    reaction_ids = sort(unique(long_cat_df.reaction_id))
-    reactions_additives = vec(collect(product(reaction_ids, non_reference_additives)))
-    n_reactions_additives = length(reactions_additives)
-    println("n_reactions_additives: $n_reactions_additives")
-    effects_rows =
-        ThreadsX.map(reactions_additives) do (reaction_id, non_reference_additive)
-            comparison_additives = [reference_additive, non_reference_additive]
-            sub_df = @chain long_cat_df begin
-                @rsubset(:reaction_id == reaction_id, :additive_cat in comparison_additives)
-                @select(:additive_cat, :final_time_cat, :flux)
-            end
-            model = lm(@formula(flux ~ additive_cat + final_time_cat), sub_df)
-            ct = coeftable(model)
-            coef_df = DataFrame(
-                term = String.(ct.rownms),
-                estimate = ct.cols[1],
-                p_value = ct.cols[4],
-            )
-            additive_term_df = @rsubset(coef_df, occursin("additive_cat", :term))
-            if nrow(additive_term_df) != 1
-                throw(
-                    ArgumentError(
-                        "Expected exactly one additive coefficient for reaction=$reaction_id additive=$additive_id, found $(nrow(additive_term_df))",
-                    ),
-                )
-            end
-            estimate = additive_term_df.estimate[1]
-            p_value = additive_term_df.p_value[1]
-            comparison_row = (
-                reaction_id = string(reaction_id),
-                reference_additive = string(reference_additive),
-                additive = string(non_reference_additive),
-                estimate = estimate,
-                p_value = p_value,
-            )
-            print(".")
-            return comparison_row
-        end
-    println("done")
-    effects_adj_df = @chain effects_rows begin
-        DataFrame()
-        @transform(:adj_p_value = adjust(:p_value, BenjaminiHochberg()))
-        @transform(:neg_log1_p = -log1p.(:adj_p_value))
-
-        # TODO: Sorting on -log10(p) + pivoting may not sort the reactions
-        # properly after the pivot.
-
-        @orderby(:neg_log1_p)
-    end
-    effects_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :estimate)
-    significance_wide_df = unstack(effects_adj_df, :reaction_id, :additive, :neg_log1_p)
-    result = (
-        effects_adj_df = effects_adj_df,
-        effects_wide_df = effects_wide_df,
-        significance_wide_df = significance_wide_df,
-    )
-    return result
-end
-
 function reaction_additive_timecourse_heatmap_dfs(
     sampling_df;
     control_additive = "01-Ctrl AS3",
@@ -817,7 +752,7 @@ function reaction_additive_timecourse_heatmap_dfs(
     )
 end
 
-function reaction_additive_across_time_heatmap(
+function reaction_additive_heatmap(
     effects_result;
     top_n = 20,
     fig_size = (800, 800),
