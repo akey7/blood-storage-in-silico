@@ -33,6 +33,7 @@ effects_adj_filename = joinpath("output", "uFBA_heatmaps", "reaction_additive_ef
 XLSX.writetable(
     effects_adj_filename,
     "results_long" => effects_result.results_long_df,
+    "rank" => effects_result.rank_df,
     "effects_wide" => effects_result.effects_wide_df,
     "significance_wide" => effects_result.significance_wide_df;
     overwrite = true,
