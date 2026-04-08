@@ -724,7 +724,7 @@ function reaction_additive_timecourse_heatmap_dfs(
     ]
     n_jobs = length(jobs)
     println("n_jobs: $n_jobs")
-    result_rows = map(jobs) do (reaction_id, additive)
+    result_rows = ThreadsX.map(jobs) do (reaction_id, additive)
         pair_df = @chain analysis_df begin
             @rsubset(:reaction_id == reaction_id)
             @rsubset(:additive == control_additive || :additive == additive)
