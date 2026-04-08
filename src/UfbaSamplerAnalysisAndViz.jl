@@ -473,7 +473,12 @@ function compare_flux_distributions(
 
     effects_wide_df = @chain interesting_df begin
         @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
-        unstack(:reaction_id, :treatment_additive, :reaction_cohen_effect_z; combine = maximum)
+        unstack(
+            :reaction_id,
+            :treatment_additive,
+            :reaction_cohen_effect_z;
+            combine = maximum,
+        )
         innerjoin(rank_df, on = :reaction_id)
         @orderby(-:sort_order)
         @select(Not(:sort_order))
@@ -825,11 +830,7 @@ Plots a pair of heatmaps side-by-side, one with effect sizes and the other with 
 
 Returns a figure suitable for display or plotting.
 """
-function reaction_additive_heatmap(
-    effects_result;
-    top_n = 20,
-    fig_size = (800, 800),
-)
+function reaction_additive_heatmap(effects_result; top_n = 20, fig_size = (800, 800))
     effects_wide_df = effects_result.effects_wide_df
     effects_plot_df = first(effects_wide_df, top_n)
     effects_row_labels = effects_plot_df.reaction_id
@@ -841,8 +842,11 @@ function reaction_additive_heatmap(
     significance_row_labels = significance_plot_df.reaction_id
     significance_col_labels = names(significance_plot_df)[2:end]
     significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
+
+    # TODO: Fix clims for intstances where so many 0.0 values give a tuple of (0.0, 0.0)
     significance_clims =
         (-maximum(abs, significance_heatmap_mat), maximum(abs, significance_heatmap_mat))
+    
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
@@ -858,20 +862,20 @@ function reaction_additive_heatmap(
         colorrange = effects_clims,
     )
     Colorbar(fig[1, 2], effects_hm; label = "Estimate", labelsize = 14)
-    significance_ax = Axis(
-        fig[1, 3],
-        title = "Significance",
-        xticks = (1:length(significance_col_labels), significance_col_labels),
-        yticks = (1:length(significance_row_labels), significance_row_labels),
-        xticklabelrotation = π/4,
-    )
-    significance_hm = heatmap!(
-        significance_ax,
-        significance_heatmap_mat';
-        colormap = :Blues,
-        colorrange = significance_clims,
-    )
-    Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
+    # significance_ax = Axis(
+    #     fig[1, 3],
+    #     title = "Significance",
+    #     xticks = (1:length(significance_col_labels), significance_col_labels),
+    #     yticks = (1:length(significance_row_labels), significance_row_labels),
+    #     xticklabelrotation = π/4,
+    # )
+    # significance_hm = heatmap!(
+    #     significance_ax,
+    #     significance_heatmap_mat';
+    #     colormap = :Blues,
+    #     colorrange = significance_clims,
+    # )
+    # Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
     return fig
 end
 
