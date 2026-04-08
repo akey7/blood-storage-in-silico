@@ -351,6 +351,8 @@ function prepare_measurements_and_sinks_report_df(
     return report_df, report_by_model_df
 end
 
+abs_maximum(xs) = xs[argmax(abs.(xs))]
+
 """
     compare_flux_distributions(
         sampling_df;
@@ -477,7 +479,7 @@ function compare_flux_distributions(
             :reaction_id,
             :treatment_additive,
             :reaction_cohen_effect_z;
-            combine = maximum,
+            combine = abs_maximum,
         )
         innerjoin(rank_df, on = :reaction_id)
         @orderby(-:sort_order)
