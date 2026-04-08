@@ -94,13 +94,13 @@ comparison_result =
     compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
 interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
 control_vs_treatments_df = comparison_result.interesting_df
-ranked_df = comparison_result.ranked_df
+score_ranking_df = comparison_result.score_ranking_df
 display(interesting_vs_uninteresting_df)
 control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
 CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
 println("Wrote $control_vs_treatments_filename")
-ranked_filename = joinpath("output", "control_vs_treatment_ranked.csv")
-CSV.write(ranked_filename, ranked_df)
+ranked_filename = joinpath("output", "control_vs_treatment_score_ranking_df.csv")
+CSV.write(ranked_filename, score_ranking_df)
 println("Wrote $ranked_filename")
 
 # @info "Plotting uFBA histograms"

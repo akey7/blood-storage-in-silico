@@ -461,12 +461,38 @@ function compare_flux_distributions(
         )
         @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
     end
+
+    # Needed: effects_wide_df and significance_wide_df 
+
+    rank_df = @chain interesting_df begin
+        @rsubset(:adj_t_test_p < alpha)
+        @groupby(:reaction_id)
+        @combine(:sort_order = maximum(:reaction_cohen_effect_z))
+        @orderby(-:sort_order)
+    end
+
+    effects_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
+        unstack(:reaction_id, :treatment_additive, :reaction_cohen_effect_z; combine = maximum)
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+
+    significance_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :adj_t_test_p)
+        unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+
     interesting_vs_uninteresting_df = @chain interesting_df begin
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
     end
     log_p_max = 2.0
-    ranked_df = @chain test_df begin
+    score_ranking_df = @chain test_df begin
         leftjoin(
             reaction_cohen_effect_z_df;
             on = [:treatment_additive, :final_time, :reaction_id],
@@ -489,7 +515,10 @@ function compare_flux_distributions(
     result = (
         interesting_df = interesting_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
-        ranked_df = ranked_df,
+        score_ranking_df = score_ranking_df,
+        rank_df = rank_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
     )
     return result
 end
