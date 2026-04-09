@@ -105,8 +105,17 @@ XLSX.writetable(
     overwrite = true,
 )
 println("Wrote $cohens_effect_filename")
-cohens_effects_heatmaps =
-    reaction_additive_heatmap(comparison_result; top_n = 50, fig_size = (800, 900))
+top_n = 50
+fig_size = (800, 900)
+effect_title = "Cohen's Effect Size, Top $top_n Reactions"
+effect_colorbar_label = "Standardized Cohen's Effect Size"
+cohens_effects_heatmaps = reaction_additive_heatmap(
+    comparison_result;
+    top_n = top_n,
+    fig_size = fig_size,
+    effect_title = effect_title,
+    effect_colorbar_label = effect_colorbar_label,
+)
 cohens_effect_heatmap_filename =
     joinpath("output", "uFBA_heatmaps", "cohens_effects_heatmaps.png")
 save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)

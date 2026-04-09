@@ -830,6 +830,8 @@ function reaction_additive_heatmap(
     top_n = 20,
     fig_size = (800, 800),
     include_significance = false,
+    effect_title = "Heatmap",
+    effect_colorbar_label = "Legend",
 )
     effects_wide_df = effects_result.effects_wide_df
     effects_plot_df = reverse(first(effects_wide_df, top_n))
@@ -840,7 +842,7 @@ function reaction_additive_heatmap(
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
-        title = "Effect Estimate",
+        title = effect_title,
         xticks = (1:length(effects_col_labels), effects_col_labels),
         yticks = (1:length(effects_row_labels), effects_row_labels),
         xticklabelrotation = π/4,
@@ -851,7 +853,7 @@ function reaction_additive_heatmap(
         colormap = Reverse(:RdBu_9),
         colorrange = effects_clims,
     )
-    Colorbar(fig[1, 2], effects_hm; label = "Estimate", labelsize = 14)
+    Colorbar(fig[1, 2], effects_hm; label = effect_colorbar_label, labelsize = 14)
     if include_significance
         significance_wide_df = effects_result.significance_wide_df
         significance_plot_df = reverse(first(significance_wide_df, top_n))
