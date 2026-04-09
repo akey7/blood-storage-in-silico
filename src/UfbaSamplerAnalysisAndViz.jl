@@ -351,6 +351,19 @@ function prepare_measurements_and_sinks_report_df(
     return report_df, report_by_model_df
 end
 
+"""
+    abs_maximum(xs)
+
+Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+
+# Arguments
+1. `xs`: The vector to search through.
+
+# Returns
+`Float64`
+
+Returns the value that has the maximum magnitude while preserving the sign.
+"""
 abs_maximum(xs) = xs[argmax(abs.(xs))]
 
 """
@@ -377,7 +390,10 @@ For each (non-control) additive, time point, and reaction, compare all additives
 Returns a tuple of two DataFrames:
 1. `interesting_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
 2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
-3. `ranked_df`: Ranking reactions by their most influential treatment additive and time point.
+3. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
+4. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
+5. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
+6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
     sampling_df;
@@ -819,6 +835,9 @@ Plots a pair of heatmaps side-by-side, one with effect sizes and the other with 
 1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
 2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
 3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
+4. `include_significance = false`: If true, includes the significance heatmap.
+5. `effect_title = "Heatmap"`: Plot title for the effect heatmap.
+6. `effect_colorbar_label = "Legend"`: Title for the colorbar legend.
 
 # Returns
 `Figure`
