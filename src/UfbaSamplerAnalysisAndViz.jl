@@ -352,6 +352,21 @@ function prepare_measurements_and_sinks_report_df(
 end
 
 """
+    abs_maximum(xs)
+
+Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+
+# Arguments
+1. `xs`: The vector to search through.
+
+# Returns
+`Float64`
+
+Returns the value that has the maximum magnitude while preserving the sign.
+"""
+abs_maximum(xs) = xs[argmax(abs.(xs))]
+
+"""
     compare_flux_distributions(
         sampling_df;
         control_additive = "01-Ctrl AS3",
@@ -375,7 +390,10 @@ For each (non-control) additive, time point, and reaction, compare all additives
 Returns a tuple of two DataFrames:
 1. `interesting_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
 2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
-3. `ranked_df`: Ranking reactions by their most influential treatment additive and time point.
+3. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
+4. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
+5. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
+6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
     sampling_df;
@@ -466,7 +484,7 @@ function compare_flux_distributions(
         DataFrames.combine(nrow => :count)
     end
     log_p_max = 2.0
-    ranked_df = @chain test_df begin
+    score_ranking_df = @chain test_df begin
         leftjoin(
             reaction_cohen_effect_z_df;
             on = [:treatment_additive, :final_time, :reaction_id],
@@ -486,10 +504,37 @@ function compare_flux_distributions(
         end
         @orderby(-:max_score)
     end
+    heatmap_rank_df = @chain score_ranking_df begin
+        @groupby(:reaction_id)
+        @combine(:max_max_score = maximum(:max_score))
+        @orderby(-:max_max_score)
+    end
+    effects_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
+        unstack(
+            :reaction_id,
+            :treatment_additive,
+            :reaction_cohen_effect_z;
+            combine = abs_maximum,
+        )
+        innerjoin(heatmap_rank_df, on = :reaction_id)
+        @orderby(-:max_max_score)
+        @select(Not(:max_max_score))
+    end
+    significance_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :adj_t_test_p)
+        unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
+        innerjoin(heatmap_rank_df, on = :reaction_id)
+        @orderby(-:max_max_score)
+        @select(Not(:max_max_score))
+    end
     result = (
         interesting_df = interesting_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
-        ranked_df = ranked_df,
+        score_ranking_df = score_ranking_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+        heatmap_rank_df = heatmap_rank_df,
     )
     return result
 end
@@ -790,6 +835,9 @@ Plots a pair of heatmaps side-by-side, one with effect sizes and the other with 
 1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
 2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
 3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
+4. `include_significance = false`: If true, includes the significance heatmap.
+5. `effect_title = "Heatmap"`: Plot title for the effect heatmap.
+6. `effect_colorbar_label = "Legend"`: Title for the colorbar legend.
 
 # Returns
 `Figure`
@@ -800,24 +848,20 @@ function reaction_additive_heatmap(
     effects_result;
     top_n = 20,
     fig_size = (800, 800),
+    include_significance = false,
+    effect_title = "Heatmap",
+    effect_colorbar_label = "Legend",
 )
     effects_wide_df = effects_result.effects_wide_df
-    effects_plot_df = first(effects_wide_df, top_n)
+    effects_plot_df = reverse(first(effects_wide_df, top_n))
     effects_row_labels = effects_plot_df.reaction_id
     effects_col_labels = names(effects_plot_df)[2:end]
     effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
     effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
-    significance_wide_df = effects_result.significance_wide_df
-    significance_plot_df = first(significance_wide_df, top_n)
-    significance_row_labels = significance_plot_df.reaction_id
-    significance_col_labels = names(significance_plot_df)[2:end]
-    significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
-    significance_clims =
-        (-maximum(abs, significance_heatmap_mat), maximum(abs, significance_heatmap_mat))
     fig = Figure(size = fig_size)
     effects_ax = Axis(
         fig[1, 1],
-        title = "Effect Estimate",
+        title = effect_title,
         xticks = (1:length(effects_col_labels), effects_col_labels),
         yticks = (1:length(effects_row_labels), effects_row_labels),
         xticklabelrotation = π/4,
@@ -825,24 +869,35 @@ function reaction_additive_heatmap(
     effects_hm = heatmap!(
         effects_ax,
         effects_heatmap_mat';
-        colormap = :RdBu,
+        colormap = Reverse(:RdBu_9),
         colorrange = effects_clims,
     )
-    Colorbar(fig[1, 2], effects_hm; label = "Estimate", labelsize = 14)
-    significance_ax = Axis(
-        fig[1, 3],
-        title = "Significance",
-        xticks = (1:length(significance_col_labels), significance_col_labels),
-        yticks = (1:length(significance_row_labels), significance_row_labels),
-        xticklabelrotation = π/4,
-    )
-    significance_hm = heatmap!(
-        significance_ax,
-        significance_heatmap_mat';
-        colormap = :Blues,
-        colorrange = significance_clims,
-    )
-    Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
+    Colorbar(fig[1, 2], effects_hm; label = effect_colorbar_label, labelsize = 14)
+    if include_significance
+        significance_wide_df = effects_result.significance_wide_df
+        significance_plot_df = reverse(first(significance_wide_df, top_n))
+        significance_row_labels = significance_plot_df.reaction_id
+        significance_col_labels = names(significance_plot_df)[2:end]
+        significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
+        significance_clims = (
+            -maximum(abs, significance_heatmap_mat),
+            maximum(abs, significance_heatmap_mat),
+        )
+        significance_ax = Axis(
+            fig[1, 3],
+            title = "Significance",
+            xticks = (1:length(significance_col_labels), significance_col_labels),
+            yticks = (1:length(significance_row_labels), significance_row_labels),
+            xticklabelrotation = π/4,
+        )
+        significance_hm = heatmap!(
+            significance_ax,
+            significance_heatmap_mat';
+            colormap = :Blues,
+            colorrange = significance_clims,
+        )
+        Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
+    end
     return fig
 end
 

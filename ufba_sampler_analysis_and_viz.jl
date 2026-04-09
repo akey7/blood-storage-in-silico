@@ -27,23 +27,6 @@ global_mixed_model_test(sampling_df)
 per_reaction_df = per_reaction_additive_time_test(sampling_df)
 display(first(per_reaction_df, 20))
 
-@info "Heatmaps!"
-effects_result = reaction_additive_timecourse_heatmap_dfs(sampling_df)
-effects_adj_filename = joinpath("output", "uFBA_heatmaps", "reaction_additive_effects.xlsx")
-XLSX.writetable(
-    effects_adj_filename,
-    "results_long" => effects_result.results_long_df,
-    "rank" => effects_result.rank_df,
-    "effects_wide" => effects_result.effects_wide_df,
-    "significance_wide" => effects_result.significance_wide_df;
-    overwrite = true,
-)
-println("Wrote $effects_adj_filename")
-effects_heatmap = reaction_additive_heatmap(effects_result)
-effects_heatmap_filename = joinpath("output", "uFBA_heatmaps", "effects_heatmap.png")
-save(effects_heatmap_filename, effects_heatmap)
-println("Wrote $effects_heatmap_filename")
-
 @info "Diagnosing uFBA run"
 diagnostic_df = diagnose_flux_stats(sampling_df)
 diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
@@ -93,15 +76,33 @@ println("Wrote $measurements_and_sinks_report_by_model_filename")
 comparison_result =
     compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
 interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
-control_vs_treatments_df = comparison_result.interesting_df
-ranked_df = comparison_result.ranked_df
 display(interesting_vs_uninteresting_df)
-control_vs_treatments_filename = joinpath("output", "control_vs_treatment.csv")
-CSV.write(control_vs_treatments_filename, control_vs_treatments_df)
-println("Wrote $control_vs_treatments_filename")
-ranked_filename = joinpath("output", "control_vs_treatment_ranked.csv")
-CSV.write(ranked_filename, ranked_df)
-println("Wrote $ranked_filename")
+cohens_effect_filename = joinpath("output", "uFBA_heatmaps", "cohens_effects.xlsx")
+XLSX.writetable(
+    cohens_effect_filename,
+    "control_vs_treatments" => comparison_result.interesting_df,
+    "score_ranking" => comparison_result.score_ranking_df,
+    "effects_wide" => comparison_result.effects_wide_df,
+    "significance_wide" => comparison_result.significance_wide_df,
+    "heatmap_rank" => comparison_result.heatmap_rank_df;
+    overwrite = true,
+)
+println("Wrote $cohens_effect_filename")
+top_n = 50
+fig_size = (800, 900)
+effect_title = "Cohen's Effect Size, Top $top_n Reactions"
+effect_colorbar_label = "Standardized Cohen's Effect Size"
+cohens_effects_heatmaps = reaction_additive_heatmap(
+    comparison_result;
+    top_n = top_n,
+    fig_size = fig_size,
+    effect_title = effect_title,
+    effect_colorbar_label = effect_colorbar_label,
+)
+cohens_effect_heatmap_filename =
+    joinpath("output", "uFBA_heatmaps", "cohens_effects_heatmaps.png")
+save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)
+println("Wrote $cohens_effect_heatmap_filename")
 
 @info "Plotting uFBA histograms"
 plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
