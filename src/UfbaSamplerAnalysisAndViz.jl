@@ -827,13 +827,13 @@ Returns a figure suitable for display or plotting.
 """
 function reaction_additive_heatmap(effects_result; top_n = 20, fig_size = (800, 800))
     effects_wide_df = effects_result.effects_wide_df
-    effects_plot_df = first(effects_wide_df, top_n)
+    effects_plot_df = reverse(first(effects_wide_df, top_n))
     effects_row_labels = effects_plot_df.reaction_id
     effects_col_labels = names(effects_plot_df)[2:end]
     effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
     effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
     significance_wide_df = effects_result.significance_wide_df
-    significance_plot_df = first(significance_wide_df, top_n)
+    significance_plot_df = reverse(first(significance_wide_df, top_n))
     significance_row_labels = significance_plot_df.reaction_id
     significance_col_labels = names(significance_plot_df)[2:end]
     significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
