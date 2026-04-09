@@ -20,74 +20,57 @@ rxn_ids_to_strings =
 sampling_filename = joinpath("output", "ufba_sampling.csv")
 sampling_df = CSV.read(sampling_filename, DataFrame)
 
-# @info "Global mixed model analysis"
-# global_mixed_model_test(sampling_df)
+@info "Global mixed model analysis"
+global_mixed_model_test(sampling_df)
 
-# @info "Per reaction additive, time tests"
-# per_reaction_df = per_reaction_additive_time_test(sampling_df)
-# display(first(per_reaction_df, 20))
+@info "Per reaction additive, time tests"
+per_reaction_df = per_reaction_additive_time_test(sampling_df)
+display(first(per_reaction_df, 20))
 
-# @info "Heatmaps!"
-# effects_result = reaction_additive_timecourse_heatmap_dfs(sampling_df)
-# effects_adj_filename = joinpath("output", "uFBA_heatmaps", "reaction_additive_effects.xlsx")
-# XLSX.writetable(
-#     effects_adj_filename,
-#     "results_long" => effects_result.results_long_df,
-#     "rank" => effects_result.rank_df,
-#     "effects_wide" => effects_result.effects_wide_df,
-#     "significance_wide" => effects_result.significance_wide_df;
-#     overwrite = true,
-# )
-# println("Wrote $effects_adj_filename")
-# effects_heatmap = reaction_additive_heatmap(effects_result)
-# effects_heatmap_filename = joinpath("output", "uFBA_heatmaps", "effects_heatmap.png")
-# save(effects_heatmap_filename, effects_heatmap)
-# println("Wrote $effects_heatmap_filename")
+@info "Diagnosing uFBA run"
+diagnostic_df = diagnose_flux_stats(sampling_df)
+diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
+CSV.write(diagnostic_filename, diagnostic_df)
+println("Wrote $diagnostic_filename")
 
-# @info "Diagnosing uFBA run"
-# diagnostic_df = diagnose_flux_stats(sampling_df)
-# diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
-# CSV.write(diagnostic_filename, diagnostic_df)
-# println("Wrote $diagnostic_filename")
+@info "Writing median flux DataFrame"
+median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
+median_flux_df = calc_median_flux_df(sampling_df)
+CSV.write(median_flux_filename, median_flux_df)
+println("Wrote $median_flux_filename")
 
-# @info "Writing median flux DataFrame"
-# median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
-# median_flux_df = calc_median_flux_df(sampling_df)
-# CSV.write(median_flux_filename, median_flux_df)
-# println("Wrote $median_flux_filename")
+@info "Writing flux vector DataMatrix"
+data_matrix_filename = joinpath("output", "flux_vector_data_matrix.csv")
+data_matrix_df = prepare_median_flux_vector_matrix(sampling_df)
+CSV.write(data_matrix_filename, data_matrix_df)
+println("Wrote $data_matrix_filename")
 
-# @info "Writing flux vector DataMatrix"
-# data_matrix_filename = joinpath("output", "flux_vector_data_matrix.csv")
-# data_matrix_df = prepare_median_flux_vector_matrix(sampling_df)
-# CSV.write(data_matrix_filename, data_matrix_df)
-# println("Wrote $data_matrix_filename")
+@info "Reporting measured and unmeasured metabolites, with and without sinks"
+absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
+absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
+fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
+fba_model_metabolites_df = CSV.read(fba_model_metabolites_filename, DataFrame)
+ufba_optimized_sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
+ufba_optimized_sinks_df = CSV.read(ufba_optimized_sinks_filename, DataFrame)
 
-# @info "Reporting measured and unmeasured metabolites, with and without sinks"
-# absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
-# absolute_quant_long_df = CSV.read(absolute_quant_long_filename, DataFrame)
-# fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
-# fba_model_metabolites_df = CSV.read(fba_model_metabolites_filename, DataFrame)
-# ufba_optimized_sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
-# ufba_optimized_sinks_df = CSV.read(ufba_optimized_sinks_filename, DataFrame)
-
-# measurements_and_sinks_report_df, measurements_and_sinks_report_by_model_df =
-#     prepare_measurements_and_sinks_report_df(
-#         absolute_quant_long_df,
-#         fba_model_metabolites_df,
-#         ufba_optimized_sinks_df,
-#         sampling_df,
-#     )
-# measurements_and_sinks_report_filename =
-#     joinpath("output", "measurements_and_sinks_report.csv")
-# CSV.write(measurements_and_sinks_report_filename, measurements_and_sinks_report_df)
-# println("Wrote $measurements_and_sinks_report_filename")
-# measurements_and_sinks_report_by_model_filename =
-#     joinpath("output", "measurements_and_sinks_report_by_model.csv")
-# CSV.write(
-#     measurements_and_sinks_report_by_model_filename,
-#     measurements_and_sinks_report_by_model_df,
-# )
-# println("Wrote $measurements_and_sinks_report_by_model_filename")
+measurements_and_sinks_report_df, measurements_and_sinks_report_by_model_df =
+    prepare_measurements_and_sinks_report_df(
+        absolute_quant_long_df,
+        fba_model_metabolites_df,
+        ufba_optimized_sinks_df,
+        sampling_df,
+    )
+measurements_and_sinks_report_filename =
+    joinpath("output", "measurements_and_sinks_report.csv")
+CSV.write(measurements_and_sinks_report_filename, measurements_and_sinks_report_df)
+println("Wrote $measurements_and_sinks_report_filename")
+measurements_and_sinks_report_by_model_filename =
+    joinpath("output", "measurements_and_sinks_report_by_model.csv")
+CSV.write(
+    measurements_and_sinks_report_by_model_filename,
+    measurements_and_sinks_report_by_model_df,
+)
+println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
 comparison_result =
@@ -121,5 +104,5 @@ cohens_effect_heatmap_filename =
 save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)
 println("Wrote $cohens_effect_heatmap_filename")
 
-# @info "Plotting uFBA histograms"
-# plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+@info "Plotting uFBA histograms"
+plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
