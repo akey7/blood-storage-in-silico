@@ -100,7 +100,8 @@ XLSX.writetable(
     "control_vs_treatments" => comparison_result.interesting_df,
     "score_ranking" => comparison_result.score_ranking_df,
     "effects_wide" => comparison_result.effects_wide_df,
-    "significance_wide" => comparison_result.significance_wide_df;
+    "significance_wide" => comparison_result.significance_wide_df,
+    "heatmap_rank" => comparison_result.heatmap_rank_df;
     overwrite = true,
 )
 println("Wrote $cohens_effect_filename")

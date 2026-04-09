@@ -463,37 +463,6 @@ function compare_flux_distributions(
         )
         @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
     end
-
-    # Needed: effects_wide_df and significance_wide_df 
-
-    rank_df = @chain interesting_df begin
-        @rsubset(:adj_t_test_p < alpha)
-        @groupby(:reaction_id)
-        @combine(:sort_order = maximum(abs.(:reaction_cohen_effect_z)))
-        @orderby(-:sort_order)
-    end
-
-    effects_wide_df = @chain interesting_df begin
-        @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
-        unstack(
-            :reaction_id,
-            :treatment_additive,
-            :reaction_cohen_effect_z;
-            combine = abs_maximum,
-        )
-        innerjoin(rank_df, on = :reaction_id)
-        @orderby(-:sort_order)
-        @select(Not(:sort_order))
-    end
-
-    significance_wide_df = @chain interesting_df begin
-        @select(:reaction_id, :treatment_additive, :adj_t_test_p)
-        unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
-        innerjoin(rank_df, on = :reaction_id)
-        @orderby(-:sort_order)
-        @select(Not(:sort_order))
-    end
-
     interesting_vs_uninteresting_df = @chain interesting_df begin
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
@@ -519,13 +488,37 @@ function compare_flux_distributions(
         end
         @orderby(-:max_score)
     end
+    heatmap_rank_df = @chain score_ranking_df begin
+        @groupby(:reaction_id)
+        @combine(:max_max_score = maximum(:max_score))
+        @orderby(-:max_max_score)
+    end
+    effects_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
+        unstack(
+            :reaction_id,
+            :treatment_additive,
+            :reaction_cohen_effect_z;
+            combine = abs_maximum,
+        )
+        innerjoin(heatmap_rank_df, on = :reaction_id)
+        @orderby(-:max_max_score)
+        @select(Not(:max_max_score))
+    end
+    significance_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :adj_t_test_p)
+        unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
+        innerjoin(heatmap_rank_df, on = :reaction_id)
+        @orderby(-:max_max_score)
+        @select(Not(:max_max_score))
+    end
     result = (
         interesting_df = interesting_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
-        rank_df = rank_df,
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
+        heatmap_rank_df = heatmap_rank_df,
     )
     return result
 end
