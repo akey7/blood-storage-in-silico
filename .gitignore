@@ -44,3 +44,6 @@ output/
 
 # Ignore saved JuMP model files
 output/*.lp
+
+# Ignore PlotlyJS plots
+output/uFBA_3d_histograms/*.html
