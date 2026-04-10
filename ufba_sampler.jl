@@ -47,6 +47,9 @@ metabolites_to_ignore = load_metabolite_measurement_opt_outs()
 @info "Loading sink opt-ins (if available)"
 sink_opt_ins = load_sink_opt_ins()
 
+@info "Loading reaction names and subsystems"
+reaction_names_and_subsystems_df = load_reaction_names_and_subsystems()
+
 @info "Create reaction ids to strings mapping and save FBA model metabolites"
 fba_model, fba_model_metabolites_df = create_fba_model(
     load_base_rbc_gem();
@@ -65,7 +68,7 @@ mapping_sink_specifications = (
 )
 add_sinks_for_unmatched_metabolites!(fba_model, mapping_sink_specifications)
 rxn_ids_to_strings_dict, rxn_ids_to_strings_df =
-    map_reaction_ids_to_reaction_strings(fba_model)
+    map_reaction_ids_to_reaction_strings(fba_model, reaction_names_and_subsystems_df)
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings_dict)
 println("Wrote $rxn_ids_to_strings_filename")

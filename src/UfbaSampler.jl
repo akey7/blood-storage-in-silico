@@ -40,7 +40,8 @@ export sample_fluxes,
     decompose_sink_id,
     optimize_constraint_tree,
     extract_broken_constraints,
-    extract_unmeasured_relaxations
+    extract_unmeasured_relaxations,
+    load_reaction_names_and_subsystems
 
 """
     init_workers!(; project=Base.active_project())
@@ -67,26 +68,41 @@ function init_workers!(; project::AbstractString = Base.active_project())
     return nothing
 end
 
+function load_reaction_names_and_subsystems()
+    filename = joinpath("input", "Reaction Id to Subsystem and Name Map.csv")
+    return isfile(filename) ? CSV.read(filename, DataFrame) : nothing
+end
+
 """
-    map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
+    map_reaction_ids_to_reaction_strings(
+        model::A.AbstractFBCModel,
+        reaction_names_and_subsystems_df::DataFrame,
+    )
 
 Maps reaction_ids in the given model to human-readable reaction strings specifying reactants and products with an arrow pointing in the direction specified by the bounds of the reaction.
 
 # Arguments
 1. `model::A.AbstractFBCModel`: The model to create the reaction strings from.
+2. `reaction_names_and_subsystems_df::DataFrame`: DataFrame with `rxn_id`, `subsystem`, and `reaction_name` columns.
 
 # Returns
-`Tuple{Dict{String,String},DataFrame}`
+`Tuple{Dict{String,Dict{Symbol,String}},DataFrame}`
 
 Returns a tuple with two elements:
 1. A dictionary mapping reaction ids in the model to a human-readable reaction string and
 2. A DataFrame with `:reaction_id` and `:reaction_string` columns.
 """
-function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
+function map_reaction_ids_to_reaction_strings(
+    model::A.AbstractFBCModel,
+    reaction_names_and_subsystems_df::DataFrame,
+)
     result_dict = OrderedDict()
     reaction_ids = []
     reaction_strings = []
     for rxn_id in sort(string.(keys(model.reactions)))
+        rxn_df = @rsubset(reaction_names_and_subsystems_df, :rxn_id == String(rxn_id))
+        rxn_name = nrow(rxn_df) > 0 ? rxn_df[1, :reaction_name] : "Unknown reaction name"
+        rxn_subsystem = nrow(rxn_df) > 0 ? rxn_df[1, :subsystem] : "Unknown subsystem"
         push!(reaction_ids, rxn_id)
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
@@ -106,19 +122,36 @@ function map_reaction_ids_to_reaction_strings(model::A.AbstractFBCModel)
         )
         if rxn.lower_bound < 0.0 && isapprox(rxn.upper_bound, 0.0)
             rxn_string = "$lhs <-- $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
-            result_dict[rxn_id] = rxn_string
+            result_dict[rxn_id] = Dict(
+                :rxn_string => rxn_string,
+                :name => rxn_name,
+                :subsystem => rxn_subsystem,
+            )
             push!(reaction_strings, rxn_string)
         elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
             rxn_string = "$lhs --> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
-            result_dict[rxn_id] = rxn_string
+            result_dict[rxn_id] = Dict(
+                :rxn_string => rxn_string,
+                :name => rxn_name,
+                :subsystem => rxn_subsystem,
+            )
             push!(reaction_strings, rxn_string)
         else
             rxn_string = "$lhs <-> $rhs ($(rxn.lower_bound), $(rxn.upper_bound))"
-            result_dict[rxn_id] = rxn_string
+            result_dict[rxn_id] = Dict(
+                :rxn_string => rxn_string,
+                :name => rxn_name,
+                :subsystem => rxn_subsystem,
+            )
             push!(reaction_strings, rxn_string)
         end
     end
-    result_df = DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    rxn_ids_strings_df =
+        DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    result_df = @chain rxn_ids_strings_df begin
+        leftjoin(reaction_names_and_subsystems_df, on = :reaction_id => :rxn_id)
+        @orderby(:reaction_id)
+    end
     return result_dict, result_df
 end
 
