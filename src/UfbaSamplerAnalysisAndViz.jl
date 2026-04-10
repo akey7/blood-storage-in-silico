@@ -141,7 +141,7 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins
         n_reaction_ids = length(reaction_ids)
         prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
         for reaction_id in reaction_ids
-            reaction_string = rxn_ids_to_strings[reaction_id]
+            reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
             fig = histograms_for_reaction_v2(
                 long_sampling_df,
                 reaction_id,
