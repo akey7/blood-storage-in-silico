@@ -22,6 +22,7 @@ input
 ├── RBC-GEM.xml
 ├── flux_bounds_overrides.csv
 ├── metabolite_measurement_opt_outs_template.csv
+├── Reaction Id to Subsystem and Name Map.csv
 └── Subsystem Category Map.csv
 ```
 
@@ -40,6 +41,8 @@ Here are purposes of the input files:
 6. `Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`: Absolute quantification information, to be combined with relative quant data.
 
 7. `metabolite_measurement_opt_outs_template.csv`: An example template for metabolite measurements to ignore when setting up model constriants. See execution of `ufba_sampler.jl` for more information.
+
+8. `Reaction Id to Subsystem and Name Map.csv`: maps reaction ids to human-readable names and subsystems.
 
 ### Create the `output/` Folders
 

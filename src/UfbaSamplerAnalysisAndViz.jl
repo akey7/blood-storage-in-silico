@@ -46,7 +46,8 @@ Plots histograms for a single reaction, with time points as separate panels and 
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
-4: `bins`: Number of bins in the histograms.
+4. `subsystem`: Human-readable susbsytem of the reaction
+5. `bins`: Number of bins in the histograms.
 
 # Returns
 `Figure`
@@ -56,14 +57,16 @@ Returns a Makie `Figure` to display or save.
 function histograms_for_reaction_v2(
     long_sampling_df,
     reaction_id,
-    reaction_string;
+    reaction_string,
+    subsystem;
     bins = 20,
 )
     plt_df = @chain long_sampling_df begin
         @rsubset(:reaction_id == reaction_id)
         @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
     end
-    title = "$reaction_id\n$reaction_string"
+    clean_reaction_id = replace(reaction_id, "R_" => "")
+    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
     additive_palette = [
         "01-Ctrl AS3" => :dodgerblue,
         "02-Adenosine" => :orange,
@@ -141,11 +144,14 @@ function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins
         n_reaction_ids = length(reaction_ids)
         prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
         for reaction_id in reaction_ids
-            reaction_string = rxn_ids_to_strings[reaction_id]
+            reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
+            subsystem = rxn_ids_to_strings[reaction_id]["subsystem"]
+            # reaction_name = rxn_ids_to_strings[reaction_id]["name"]
             fig = histograms_for_reaction_v2(
                 long_sampling_df,
                 reaction_id,
-                reaction_string;
+                reaction_string,
+                subsystem;
                 bins = bins,
             )
             filename = joinpath("output", "uFBA_histograms_v2", "$reaction_id.png")
