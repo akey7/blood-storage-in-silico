@@ -68,6 +68,16 @@ function init_workers!(; project::AbstractString = Base.active_project())
     return nothing
 end
 
+"""
+    load_reaction_names_and_subsystems()
+
+Reads the `input/Reaction Id to Subsystem and Name Map.csv` to find extra information about reactions.
+
+# Returns
+`Union{DataFrame,Nothing}`
+
+Returns `nothing` (which will cause errors later) if the file is not found, or the DataFrame contained in that file.
+"""
 function load_reaction_names_and_subsystems()
     filename = joinpath("input", "Reaction Id to Subsystem and Name Map.csv")
     return isfile(filename) ? CSV.read(filename, DataFrame) : nothing
@@ -89,8 +99,8 @@ Maps reaction_ids in the given model to human-readable reaction strings specifyi
 `Tuple{Dict{String,Dict{Symbol,String}},DataFrame}`
 
 Returns a tuple with two elements:
-1. A dictionary mapping reaction ids in the model to a human-readable reaction string and
-2. A DataFrame with `:reaction_id` and `:reaction_string` columns.
+1. A dictionary mapping reaction ids in the model to a human-readable reaction strings, subsystems, and reaction names
+2. A DataFrame with `reaction_id`, `reaction_string`, `name`, and `subsystem` columns.
 """
 function map_reaction_ids_to_reaction_strings(
     model::A.AbstractFBCModel,
