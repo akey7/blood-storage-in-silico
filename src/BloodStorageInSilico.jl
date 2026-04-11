@@ -8,6 +8,7 @@ include("RawRelativeIntensities.jl")
 include("FbaModelBuilder.jl")
 include("ModelGraph.jl")
 include("MetaboliteBounds.jl")
+include("UfbaSamplerViz3D.jl")
 
 export MetaboliteTimelines,
     AbsoluteQuant,
@@ -17,5 +18,6 @@ export MetaboliteTimelines,
     FbaModelBuilder,
     ModelGraph,
     MetaboliteBounds
+UfbaSamplerViz3D
 
 end

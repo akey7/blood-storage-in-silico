@@ -10,6 +10,9 @@ using PlotlyJS
 include("src/UfbaSamplerAnalysisAndViz.jl")
 using .UfbaSamplerAnalysisAndViz
 
+include("src/UfbaSamplerViz3D.jl")
+using .UfbaSamplerViz3D
+
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
@@ -111,8 +114,7 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 
 @info "3D Histogram plot things"
 long_sampling_df = pivot_sampling_df_long(sampling_df)
-flux_df =
-    @rsubset(long_sampling_df, :additive == "01-Ctrl AS3", :reaction_id == "R_ORNDC")
+flux_df = @rsubset(long_sampling_df, :additive == "01-Ctrl AS3", :reaction_id == "R_ORNDC")
 display(first(flux_df, 10))
 p = stacked_flux_histograms_3d(
     flux_df;
