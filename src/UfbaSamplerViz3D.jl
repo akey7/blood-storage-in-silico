@@ -7,6 +7,10 @@ using PlotlyJS
 
 export stacked_flux_histograms_3d
 
+#####################################################################
+# BEGIN: BLOCKY HISTOGRAMS WITH A LINE BEHIND THEM                  #
+#####################################################################
+
 """
     cuboid_trace(x0, x1, y0, y1, z0, z1; color="royalblue", opacity=0.7, name="", showlegend=false)
 
@@ -299,5 +303,9 @@ function stacked_flux_histograms_3d(
 
     return PlotlyJS.plot(traces, layout)
 end
+
+#####################################################################
+# END: BLOCKY HISTOGRAMS WITH A LINE BEHIND THEM                    #
+#####################################################################
 
 end
