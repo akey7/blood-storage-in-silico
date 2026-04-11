@@ -116,17 +116,6 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 long_sampling_df = pivot_sampling_df_long(sampling_df)
 flux_df = @rsubset(long_sampling_df, :additive == "01-Ctrl AS3", :reaction_id == "R_ORNDC")
 display(first(flux_df, 10))
-p = stacked_flux_histograms_3d(
-    flux_df;
-    nbins = 30,
-    z_thickness = 0.16,
-    bar_color = "steelblue",
-    tie_method = :mean,
-    fig_title = "ACHR Flux Samples Across Weeks",
-)
-p_filename = joinpath("output", "uFBA_3d_histograms", "blocks.html")
-savefig(p, p_filename)
-println("Wrote $p_filename")
 p_scatter = stacked_flux_histogram_steps_3d_colored(flux_df; nbins = 30, tie_method = :mean)
 p_scatter_filename = joinpath("output", "uFBA_3d_histograms", "scatter3d.html")
 savefig(p_scatter, p_scatter_filename)
