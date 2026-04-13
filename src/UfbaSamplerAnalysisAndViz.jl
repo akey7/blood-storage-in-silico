@@ -19,7 +19,6 @@ using CategoricalArrays
 using MixedModels
 using MixedModels: likelihoodratiotest
 using GLM
-using PlotlyJS
 
 export histograms_for_reaction_v2,
     plot_all_histograms_for_reactions,
