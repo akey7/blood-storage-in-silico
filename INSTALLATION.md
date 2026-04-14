@@ -58,6 +58,7 @@ output
 ├── relative_absolute_plots
 ├── uFBA_histograms_v2
 ├── uFBA_heatmaps
+├── uFBA_3d_histograms
 ├── gem_dfs
 ├── ufba_models
 ```
