@@ -57,6 +57,7 @@ output
 ├── relative_absolute_c_means
 ├── relative_absolute_plots
 ├── uFBA_histograms_v2
+├── uFBA_heatmaps
 ├── gem_dfs
 ├── ufba_models
 ```
