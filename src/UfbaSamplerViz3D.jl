@@ -7,6 +7,33 @@ using PlotlyJS
 
 export stacked_flux_histogram_steps_3d_colored
 
+"""
+    stacked_flux_histogram_steps_3d_colored(
+        flux_df::DataFrame;
+        edges = nothing,
+        nbins::Int = 25,
+        line_width::Real = 5,
+        plane_opacity::Real = 0.12,
+        tie_method::Symbol = :first,
+        fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks",
+    )
+
+Makes a 3D plot of a given flux distribution trajectory through time. Histograms are plotted up the z axis and a line connecting the mode bins of all the histograms is plotted behind these histograms to show the trajectory of flux over time.
+
+# Arguments
+1. `flux_df::DataFrame`: Long format DataFrame of flux sampling results.
+2. `edges = nothing`: Edges for bins, leave as `nothing` to accept default assignment.
+3. `nbins::Int = 25`: Number of bins.
+4. `line_width::Real = 5`: Line width for the plot.
+5. `plane_opacity::Real = 0.12`: Opactiy behind the lines
+6. `tie_method::Symbol = :first`: How to resolve ties in the mode bin selection. In practice, ties shouldn't happen, but it is here just in case.
+7. `fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks"`: Title for the figure.
+
+# Returns
+`PlotlyJS.Plot`
+
+A PlotlyJS plot to display or save.
+"""
 function stacked_flux_histogram_steps_3d_colored(
     flux_df::DataFrame;
     edges = nothing,
@@ -20,10 +47,8 @@ function stacked_flux_histogram_steps_3d_colored(
     weeks = sort(unique(df.final_time))
     all_flux = Float64.(df.flux)
 
-    # ----------------------------
     # Bin edges
-    # ----------------------------
-    if edges === nothing
+    if isnothing(edges)
         edges = collect(range(minimum(all_flux), maximum(all_flux); length = nbins + 1))
     else
         edges = collect(edges)
@@ -31,9 +56,7 @@ function stacked_flux_histogram_steps_3d_colored(
 
     bin_centers = (edges[1:(end-1)] .+ edges[2:end]) ./ 2
 
-    # ----------------------------
     # Assign colors per week
-    # ----------------------------
     palette = [
         "#1f77b4",
         "#d62728",
@@ -50,9 +73,7 @@ function stacked_flux_histogram_steps_3d_colored(
     week_colors =
         Dict(week => palette[mod1(i, length(palette))] for (i, week) in enumerate(weeks))
 
-    # ----------------------------
     # Compute histograms
-    # ----------------------------
     counts_by_week = Dict{Int,Vector{Int}}()
     max_count = 0
 
@@ -69,9 +90,7 @@ function stacked_flux_histogram_steps_3d_colored(
 
     traces = GenericTrace[]
 
-    # ----------------------------
     # Reference planes
-    # ----------------------------
     push!(
         traces,
         surface(
@@ -100,9 +119,7 @@ function stacked_flux_histogram_steps_3d_colored(
         ),
     )
 
-    # ----------------------------
     # Histogram step lines
-    # ----------------------------
     mode_x = Float64[]
     mode_y = Float64[]
     mode_z = Float64[]
@@ -156,9 +173,7 @@ function stacked_flux_histogram_steps_3d_colored(
         push!(mode_z, float(week))
     end
 
-    # ----------------------------
     # Mode trajectory
-    # ----------------------------
     push!(
         traces,
         scatter3d(
@@ -172,9 +187,7 @@ function stacked_flux_histogram_steps_3d_colored(
         ),
     )
 
-    # ----------------------------
     # Layout (white background)
-    # ----------------------------
     layout = Layout(
         title = fig_title,
         scene = attr(
