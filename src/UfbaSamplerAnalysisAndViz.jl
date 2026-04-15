@@ -21,7 +21,7 @@ using MixedModels: likelihoodratiotest
 using GLM
 
 export histograms_for_reaction_v2,
-    plot_all_densities_for_reactions,
+    plot_all_distributions_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
     net_sink_fluxes,
@@ -188,7 +188,7 @@ Plots histograms and densities for all reactions in all additives at all time po
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
 3. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
     if nrow(sampling_df) == 0
         @warn "uFBA: Nothing to plot"
     else
