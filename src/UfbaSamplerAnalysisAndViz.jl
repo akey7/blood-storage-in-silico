@@ -21,7 +21,7 @@ using MixedModels: likelihoodratiotest
 using GLM
 
 export histograms_for_reaction_v2,
-    plot_all_histograms_for_reactions,
+    plot_all_distributions_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
     net_sink_fluxes,
@@ -98,6 +98,60 @@ function histograms_for_reaction_v2(
 end
 
 """
+    densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+
+Plots KDEs of the flux distributions for the reaction in the various additives.
+
+# Arguments
+1. `long_sampling_df`: Sampling DataFrame, pivoted long
+2. `reaction_id`: The reaction id for which the samples are being plotted.
+3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
+4. `subsystem`: Human-readable susbsytem of the reaction
+5. `bins`: Number of bins in the histograms.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` to display or save.
+"""
+function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+    plt_df = @chain long_sampling_df begin
+        @rsubset(:reaction_id == reaction_id)
+        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
+    end
+    clean_reaction_id = replace(reaction_id, "R_" => "")
+    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
+    additive_palette = [
+        "01-Ctrl AS3" => :dodgerblue,
+        "02-Adenosine" => :orange,
+        "03-Glutamine" => :blueviolet,
+        "04-Methionine" => :crimson,
+        "07-NAC" => :brown,
+        "08-Taurine" => :magenta,
+    ]
+    density_layer =
+        data(plt_df) *
+        mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
+        AlgebraOfGraphics.density() *
+        visual(alpha = 0.5)
+    zero_line_layer =
+        data((flux = [0],)) *
+        mapping(:flux) *
+        visual(VLines; color = :black, linestyle = :dash, linewidth = 3)
+    plt = density_layer + zero_line_layer
+    return draw(
+        plt,
+        scales(
+            Color = (; palette = additive_palette),
+            X = (; label = "Flux (mM/week)"),
+            Y = (; label = "Probability Density"),
+        );
+        facet = (; linkxaxes = :all, linkyaxes = :all),
+        figure = (; title = title, size = (700, 700)),
+    )
+end
+
+"""
     pivot_sampling_df_long(sampling_df)
 
 Pivots the sampling_df longer.
@@ -125,37 +179,46 @@ function pivot_sampling_df_long(sampling_df)
 end
 
 """
-    plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+    plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
 
-Plots version 2 of all histograms (with time points for all additives on the same figure). This function saves each figure as they are made to the `output/uFBA_histograms_v2` folder. Displays a progress meter as the plots are made.
+Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of uFBA sampling results.
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
 3. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
     if nrow(sampling_df) == 0
-        @info "uFBA: Nothing to plot"
+        @warn "uFBA: Nothing to plot"
     else
-        @info "uFBA: Plotting histograms, version 2"
         long_sampling_df = pivot_sampling_df_long(sampling_df)
         reaction_ids = unique(long_sampling_df.reaction_id)
         n_reaction_ids = length(reaction_ids)
-        prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
+        prog = Progress(n_reaction_ids, desc = "Writing histograms and densities")
         for reaction_id in reaction_ids
             reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
             subsystem = rxn_ids_to_strings[reaction_id]["subsystem"]
             # reaction_name = rxn_ids_to_strings[reaction_id]["name"]
-            fig = histograms_for_reaction_v2(
+            fig_hist = histograms_for_reaction_v2(
                 long_sampling_df,
                 reaction_id,
                 reaction_string,
                 subsystem;
                 bins = bins,
             )
-            filename = joinpath("output", "uFBA_histograms_v2", "$reaction_id.png")
-            save(filename, fig)
+            fig_density = densities_for_reaction(
+                long_sampling_df,
+                reaction_id,
+                reaction_string,
+                subsystem,
+            )
+            filename_hist =
+                joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
+            filename_density =
+                joinpath("output", "uFBA_densities", "$reaction_id Densities.png")
+            save(filename_hist, fig_hist)
+            save(filename_density, fig_density)
             next!(prog)
         end
         finish!(prog)

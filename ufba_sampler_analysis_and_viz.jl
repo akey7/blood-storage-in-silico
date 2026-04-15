@@ -110,7 +110,7 @@ save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)
 println("Wrote $cohens_effect_heatmap_filename")
 
 @info "Plotting uFBA histograms"
-plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 
 @info "3D Histogram plot things"
 long_sampling_df = pivot_sampling_df_long(sampling_df)
