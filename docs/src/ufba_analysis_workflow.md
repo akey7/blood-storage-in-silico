@@ -9,6 +9,15 @@ Modules = [BloodStorageInSilico.UfbaSamplerAnalysisAndViz]
 Order   = [:function]
 ```
 
+## UfbaSamplerViz3D
+
+3D plots for the uFBA sampler results.
+
+```@autodocs
+Modules = [BloodStorageInSilico.UfbaSamplerViz3D]
+Order   = [:function]
+```
+
 ## ModelGraph
 
 This module contains functions to process metabolic networks as graphs.

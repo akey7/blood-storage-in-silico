@@ -16,9 +16,9 @@ using .UfbaSamplerAnalysisAndViz
 common_metabolite_ids = [
     "M_pi_c",
     "M_h_c",
-    # "M_atp_c",
-    # "M_amp_c",
-    # "M_adp_c",
+    "M_atp_c",
+    "M_amp_c",
+    "M_adp_c",
     "M_nad_c",
     "M_nadh_c",
     "M_nadp_c",
