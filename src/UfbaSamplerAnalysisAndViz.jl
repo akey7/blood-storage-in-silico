@@ -21,7 +21,7 @@ using MixedModels: likelihoodratiotest
 using GLM
 
 export histograms_for_reaction_v2,
-    plot_all_histograms_for_reactions,
+    plot_all_densities_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
     net_sink_fluxes,
@@ -97,6 +97,23 @@ function histograms_for_reaction_v2(
     )
 end
 
+"""
+    densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+
+Plots KDEs of the flux distributions for the reaction in the various additives.
+
+# Arguments
+1. `long_sampling_df`: Sampling DataFrame, pivoted long
+2. `reaction_id`: The reaction id for which the samples are being plotted.
+3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
+4. `subsystem`: Human-readable susbsytem of the reaction
+5. `bins`: Number of bins in the histograms.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` to display or save.
+"""
 function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
     plt_df = @chain long_sampling_df begin
         @rsubset(:reaction_id == reaction_id)
@@ -127,7 +144,7 @@ function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, 
         scales(
             Color = (; palette = additive_palette),
             X = (; label = "Flux (mM/week)"),
-            # Y = (; label = "Sample Count"),
+            Y = (; label = "Probability Density"),
         );
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
@@ -162,16 +179,16 @@ function pivot_sampling_df_long(sampling_df)
 end
 
 """
-    plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+    plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
 
-Plots version 2 of all histograms (with time points for all additives on the same figure). This function saves each figure as they are made to the `output/uFBA_histograms_v2` folder. Displays a progress meter as the plots are made.
+Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of uFBA sampling results.
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
 3. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+function plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
     if nrow(sampling_df) == 0
         @warn "uFBA: Nothing to plot"
     else
