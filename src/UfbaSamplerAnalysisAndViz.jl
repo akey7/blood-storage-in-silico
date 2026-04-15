@@ -97,6 +97,43 @@ function histograms_for_reaction_v2(
     )
 end
 
+function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+    plt_df = @chain long_sampling_df begin
+        @rsubset(:reaction_id == reaction_id)
+        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
+    end
+    clean_reaction_id = replace(reaction_id, "R_" => "")
+    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
+    additive_palette = [
+        "01-Ctrl AS3" => :dodgerblue,
+        "02-Adenosine" => :orange,
+        "03-Glutamine" => :blueviolet,
+        "04-Methionine" => :crimson,
+        "07-NAC" => :brown,
+        "08-Taurine" => :magenta,
+    ]
+    density_layer =
+        data(plt_df) *
+        mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
+        AlgebraOfGraphics.density() *
+        visual(alpha = 0.5)
+    zero_line_layer =
+        data((flux = [0],)) *
+        mapping(:flux) *
+        visual(VLines; color = :black, linestyle = :dash, linewidth = 3)
+    plt = density_layer + zero_line_layer
+    return draw(
+        plt,
+        scales(
+            Color = (; palette = additive_palette),
+            X = (; label = "Flux (mM/week)"),
+            # Y = (; label = "Sample Count"),
+        );
+        facet = (; linkxaxes = :all, linkyaxes = :all),
+        figure = (; title = title, size = (700, 700)),
+    )
+end
+
 """
     pivot_sampling_df_long(sampling_df)
 
@@ -136,26 +173,35 @@ Plots version 2 of all histograms (with time points for all additives on the sam
 """
 function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
     if nrow(sampling_df) == 0
-        @info "uFBA: Nothing to plot"
+        @warn "uFBA: Nothing to plot"
     else
-        @info "uFBA: Plotting histograms, version 2"
         long_sampling_df = pivot_sampling_df_long(sampling_df)
         reaction_ids = unique(long_sampling_df.reaction_id)
         n_reaction_ids = length(reaction_ids)
-        prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
+        prog = Progress(n_reaction_ids, desc = "Writing histograms and densities")
         for reaction_id in reaction_ids
             reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
             subsystem = rxn_ids_to_strings[reaction_id]["subsystem"]
             # reaction_name = rxn_ids_to_strings[reaction_id]["name"]
-            fig = histograms_for_reaction_v2(
+            fig_hist = histograms_for_reaction_v2(
                 long_sampling_df,
                 reaction_id,
                 reaction_string,
                 subsystem;
                 bins = bins,
             )
-            filename = joinpath("output", "uFBA_histograms_v2", "$reaction_id.png")
-            save(filename, fig)
+            fig_density = densities_for_reaction(
+                long_sampling_df,
+                reaction_id,
+                reaction_string,
+                subsystem,
+            )
+            filename_hist =
+                joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
+            filename_density =
+                joinpath("output", "uFBA_densities", "$reaction_id Densities.png")
+            save(filename_hist, fig_hist)
+            save(filename_density, fig_density)
             next!(prog)
         end
         finish!(prog)
