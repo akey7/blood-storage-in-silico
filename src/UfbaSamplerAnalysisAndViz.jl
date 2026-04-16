@@ -144,7 +144,7 @@ function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, 
         scales(
             Color = (; palette = additive_palette),
             X = (; label = "Flux (mM/week)"),
-            Y = (; label = "Probability Density"),
+            Y = (; label = "Density"),
         );
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
