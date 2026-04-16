@@ -686,9 +686,9 @@ function enrich_visited_reactions_df(
 )
     reaction_ids = []
     reaction_strings = []
-    for (reaction_id, reaction_string) in rxn_ids_to_strings
+    for (reaction_id, vals) in rxn_ids_to_strings
         push!(reaction_ids, reaction_id)
-        push!(reaction_strings, reaction_string)
+        push!(reaction_strings, vals["rxn_string"])
     end
     reaction_map_df =
         DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
