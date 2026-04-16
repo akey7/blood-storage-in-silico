@@ -35,7 +35,8 @@ export histograms_for_reaction_v2,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
     reaction_additive_heatmap,
-    reaction_additive_timecourse_heatmap_dfs
+    reaction_additive_timecourse_heatmap_dfs,
+    remove_reaction_string_prefix
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -600,6 +601,38 @@ function compare_flux_distributions(
     result = (
         interesting_df = interesting_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
+        score_ranking_df = score_ranking_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+        heatmap_rank_df = heatmap_rank_df,
+    )
+    return result
+end
+
+function remove_reaction_string_prefix(comparison_result)
+    interesting_df = @rtransform(
+        comparison_result.interesting_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    score_ranking_df = @rtransform(
+        comparison_result.score_ranking_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    effects_wide_df = @rtransform(
+        comparison_result.effects_wide_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    significance_wide_df = @rtransform(
+        comparison_result.significance_wide_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    heatmap_rank_df = @rtransform(
+        comparison_result.heatmap_rank_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    result = (
+        interesting_df = interesting_df,
+        interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,

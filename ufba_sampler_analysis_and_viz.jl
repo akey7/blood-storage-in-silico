@@ -78,8 +78,9 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
-comparison_result =
+comparison_result_0 =
     compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
+comparison_result = remove_reaction_string_prefix(comparison_result_0)
 interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
 display(interesting_vs_uninteresting_df)
 cohens_effect_filename = joinpath("output", "uFBA_heatmaps", "cohens_effects.xlsx")
