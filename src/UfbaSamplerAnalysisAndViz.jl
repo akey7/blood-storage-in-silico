@@ -609,6 +609,19 @@ function compare_flux_distributions(
     return result
 end
 
+"""
+    remove_reaction_string_prefix(comparison_result)
+
+Goes through all DataFrames in the comparison result and removes the leading `R_` from reaction ids to enhance data readability for humans.
+
+# Arguments
+1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the same fields containing DataFrames that have reaction ids with the `R_` removed.
+"""
 function remove_reaction_string_prefix(comparison_result)
     interesting_df = @rtransform(
         comparison_result.interesting_df,
