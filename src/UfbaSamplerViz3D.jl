@@ -27,7 +27,8 @@ Makes a 3D plot of a given flux distribution trajectory through time. Histograms
 4. `line_width::Real = 5`: Line width for the plot.
 5. `plane_opacity::Real = 0.12`: Opactiy behind the lines
 6. `tie_method::Symbol = :first`: How to resolve ties in the mode bin selection. In practice, ties shouldn't happen, but it is here just in case.
-7. `fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks"`: Title for the figure.
+7. `z_spacing::Real = 0.45`: How far apart each histogram is up the z axis.
+8. `fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks"`: Title for the figure.
 
 # Returns
 `PlotlyJS.Plot`
@@ -35,28 +36,34 @@ Makes a 3D plot of a given flux distribution trajectory through time. Histograms
 A PlotlyJS plot to display or save.
 """
 function stacked_flux_histogram_steps_3d_colored(
-    flux_df::DataFrame;
+    df::DataFrame;
     edges = nothing,
     nbins::Int = 25,
     line_width::Real = 5,
     plane_opacity::Real = 0.12,
     tie_method::Symbol = :first,
+    z_spacing::Real = 0.45,
     fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks",
 )
-    df = dropmissing(flux_df, [:final_time, :flux])
     weeks = sort(unique(df.final_time))
+    length(weeks) > 0 || error("No weeks found in flux_df")
+    z_spacing > 0 || error("z_spacing must be positive")
     all_flux = Float64.(df.flux)
-
-    # Bin edges
-    if isnothing(edges)
-        edges = collect(range(minimum(all_flux), maximum(all_flux); length = nbins + 1))
+    if edges === nothing
+        flux_min = minimum(all_flux)
+        flux_max = maximum(all_flux)
+        if isapprox(flux_min, flux_max)
+            δ = max(abs(flux_min) * 0.05, 1e-6)
+            flux_min -= δ
+            flux_max += δ
+        end
+        edges = collect(range(flux_min, flux_max; length = nbins + 1))
     else
         edges = collect(edges)
     end
-
+    issorted(edges) || error("Histogram edges must be sorted")
+    length(edges) >= 2 || error("Histogram edges must contain at least two values")
     bin_centers = (edges[1:(end-1)] .+ edges[2:end]) ./ 2
-
-    # Assign colors per week
     palette = [
         "#1f77b4",
         "#d62728",
@@ -69,14 +76,12 @@ function stacked_flux_histogram_steps_3d_colored(
         "#bcbd22",
         "#17becf",
     ]
-
     week_colors =
         Dict(week => palette[mod1(i, length(palette))] for (i, week) in enumerate(weeks))
-
-    # Compute histograms
-    counts_by_week = Dict{Int,Vector{Int}}()
+    week_z = Dict(week => (i - 1) * z_spacing for (i, week) in enumerate(weeks))
+    zvals = [week_z[w] for w in weeks]
+    counts_by_week = Dict{eltype(weeks),Vector{Int}}()
     max_count = 0
-
     for week in weeks
         vals = Float64.(df[df.final_time .== week, :flux])
         h = fit(Histogram, vals, edges)
@@ -84,13 +89,10 @@ function stacked_flux_histogram_steps_3d_colored(
         counts_by_week[week] = counts
         max_count = max(max_count, maximum(counts))
     end
-
     xmin, xmax = first(edges), last(edges)
-    zmin, zmax = minimum(weeks) - 0.5, maximum(weeks) + 0.5
-
+    zmin = minimum(zvals) - 0.15
+    zmax = maximum(zvals) + 0.15
     traces = GenericTrace[]
-
-    # Reference planes
     push!(
         traces,
         surface(
@@ -102,9 +104,9 @@ function stacked_flux_histogram_steps_3d_colored(
             showscale = false,
             hoverinfo = "skip",
             showlegend = false,
+            name = "XY plane",
         ),
     )
-
     push!(
         traces,
         surface(
@@ -116,40 +118,31 @@ function stacked_flux_histogram_steps_3d_colored(
             showscale = false,
             hoverinfo = "skip",
             showlegend = false,
+            name = "XZ plane",
         ),
     )
-
-    # Histogram step lines
     mode_x = Float64[]
     mode_y = Float64[]
     mode_z = Float64[]
-
     for week in weeks
         counts = counts_by_week[week]
-
-        # Step coordinates
+        zpos = week_z[week]
         x_step = Float64[]
         y_step = Float64[]
-
-        push!(x_step, edges[1]);
+        push!(x_step, edges[1])
         push!(y_step, 0.0)
-
         for i in eachindex(counts)
             left = edges[i]
             right = edges[i+1]
             c = counts[i]
-
-            push!(x_step, left);
+            push!(x_step, left)
             push!(y_step, c)
-            push!(x_step, right);
+            push!(x_step, right)
             push!(y_step, c)
         end
-
-        push!(x_step, edges[end]);
+        push!(x_step, edges[end])
         push!(y_step, 0.0)
-
-        z_step = fill(float(week), length(x_step))
-
+        z_step = fill(zpos, length(x_step))
         push!(
             traces,
             scatter3d(
@@ -162,18 +155,15 @@ function stacked_flux_histogram_steps_3d_colored(
                 hovertemplate = "Week $week<br>Flux: %{x:.4f}<br>Count: %{y}<extra></extra>",
             ),
         )
-
-        # Mode
         max_bins = findall(==(maximum(counts)), counts)
         mode_center =
-            tie_method == :mean ? mean(bin_centers[max_bins]) : bin_centers[first(max_bins)]
-
+            tie_method == :mean ? mean(bin_centers[max_bins]) :
+            tie_method == :first ? bin_centers[first(max_bins)] :
+            error("Unsupported tie_method: $tie_method. Use :first or :mean.")
         push!(mode_x, mode_center)
         push!(mode_y, 0.0)
-        push!(mode_z, float(week))
+        push!(mode_z, zpos)
     end
-
-    # Mode trajectory
     push!(
         traces,
         scatter3d(
@@ -183,39 +173,43 @@ function stacked_flux_histogram_steps_3d_colored(
             mode = "lines+markers",
             name = "Mode trajectory",
             line = attr(width = 6, color = "black"),
-            marker = attr(size = 5),
+            marker = attr(size = 5, color = "black"),
+            hovertemplate = "Week: %{text}<br>Mode bin center: %{x:.4f}<extra></extra>",
+            text = string.(weeks),
         ),
     )
-
-    # Layout (white background)
     layout = Layout(
         title = fig_title,
+        paper_bgcolor = "white",
+        plot_bgcolor = "white",
         scene = attr(
             xaxis = attr(
                 title = "Flux",
                 backgroundcolor = "white",
                 gridcolor = "lightgray",
+                zerolinecolor = "lightgray",
             ),
             yaxis = attr(
                 title = "Bin count",
                 backgroundcolor = "white",
                 gridcolor = "lightgray",
+                zerolinecolor = "lightgray",
             ),
             zaxis = attr(
                 title = "Week",
                 tickmode = "array",
-                tickvals = weeks,
+                tickvals = zvals,
                 ticktext = ["Week $w" for w in weeks],
                 backgroundcolor = "white",
                 gridcolor = "lightgray",
+                zerolinecolor = "lightgray",
             ),
             aspectmode = "manual",
-            aspectratio = attr(x = 1.6, y = 1.0, z = 1.0),
+            aspectratio = attr(x = 1.6, y = 1.0, z = 0.7),
+            camera = attr(eye = attr(x = 1.7, y = 1.4, z = 1.1)),
         ),
-        paper_bgcolor = "white",
-        plot_bgcolor = "white",
+        showlegend = true,
     )
-
     return plot(traces, layout)
 end
 
