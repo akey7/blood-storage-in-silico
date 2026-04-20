@@ -172,7 +172,7 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 julia --project=. ufba_sampler_analysis_and_viz.jl
 ```
 
-### (6) `mode_graph.jl`: Analyze the uFBA models as graphs
+### (6) `model_graph.jl`: Analyze the uFBA models as graphs
 
 Analyzes the uFBA models as graphs.
 
