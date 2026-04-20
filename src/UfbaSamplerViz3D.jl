@@ -214,6 +214,35 @@ function stacked_flux_histogram_steps_3d_colored(
     return plot(traces, layout)
 end
 
+"""
+    stacked_flux_kde_3d(
+        df::DataFrame;
+        z_spacing::Real = 0.35,
+        npoints::Int = 256,
+        bandwidth = nothing,
+        line_width::Real = 5,
+        peak_projection_width::Real = 2,
+        plane_opacity::Real = 0.10,
+        fig_title::AbstractString = "3D KDE Curves Across Weeks",
+    )
+
+Makes a 3D plot of a given flux distribution trajectory through time. Kernel density estimation are plotted up the z axis and a line connecting the mode bins of all the KDEs is plotted behind these histograms to show the trajectory of flux over time. Lines from the peak of each curve to the trajectory line make the plot more readable.
+
+# Arguments
+1. `df::DataFrame`: Long format DataFrame of flux sampling results.
+2. `z_spacing::Real = 0.35`: How far apart each histogram is up the z axis.
+3. `npoints::Int = 256`: Number of points on the KDE curve
+4. `bandwidth = nothing`: Bandwidth of KDE, if specified.
+5. `line_width::Real = 5`: Line width of the plot.
+6. `peak_projection_width::Real = 2`: Width of line between peaks of curves and the mode trajectory line.
+7. `plane_opacity::Real = 0.10`: Opacity of reference planes.
+8. `fig_title::AbstractString = "3D KDE Curves Across Weeks"`: Figure title if specified.
+
+# Returns
+`PlotlyJS.Plot`
+
+A PlotlyJS plot to display or save.
+"""
 function stacked_flux_kde_3d(
     df::DataFrame;
     z_spacing::Real = 0.35,
@@ -228,21 +257,16 @@ function stacked_flux_kde_3d(
     length(weeks) > 0 || error("No weeks found in flux_df")
     z_spacing > 0 || error("z_spacing must be positive")
     npoints >= 32 || error("npoints should be at least 32 for a smooth KDE curve")
-
     all_flux = Float64.(df.flux)
     xmin = minimum(all_flux)
     xmax = maximum(all_flux)
-
     if isapprox(xmin, xmax)
         δ = max(abs(xmin) * 0.05, 1e-6)
         xmin -= δ
         xmax += δ
     end
-
-    # Controlled z positions independent of actual week labels
     week_z = Dict(week => (i - 1) * z_spacing for (i, week) in enumerate(weeks))
     zvals = [week_z[w] for w in weeks]
-
     palette = [
         "#1f77b4",
         "#d62728",
@@ -257,8 +281,6 @@ function stacked_flux_kde_3d(
     ]
     week_colors =
         Dict(week => palette[mod1(i, length(palette))] for (i, week) in enumerate(weeks))
-
-    # Precompute KDEs so we can size the y-axis
     kdes = Dict{eltype(weeks),Any}()
     ymax = 0.0
 
@@ -274,13 +296,9 @@ function stacked_flux_kde_3d(
         kdes[week] = kd
         ymax = max(ymax, maximum(kd.density))
     end
-
     zmin = minimum(zvals) - 0.12
     zmax = maximum(zvals) + 0.12
-
     traces = GenericTrace[]
-
-    # XY plane at the bottom
     push!(
         traces,
         surface(
@@ -295,8 +313,6 @@ function stacked_flux_kde_3d(
             name = "XY plane",
         ),
     )
-
-    # XZ plane at y = 0
     push!(
         traces,
         surface(
@@ -311,20 +327,15 @@ function stacked_flux_kde_3d(
             name = "XZ plane",
         ),
     )
-
     peak_x = Float64[]
     peak_y = Float64[]
     peak_z = Float64[]
-
     for week in weeks
         kd = kdes[week]
         zpos = week_z[week]
-
         x_curve = Float64.(kd.x)
         y_curve = Float64.(kd.density)
         z_curve = fill(zpos, length(x_curve))
-
-        # KDE curve
         push!(
             traces,
             scatter3d(
@@ -337,17 +348,12 @@ function stacked_flux_kde_3d(
                 hovertemplate = "Week $week<br>Flux: %{x:.4f}<br>Density: %{y:.4f}<extra></extra>",
             ),
         )
-
-        # Peak location
         peak_idx = argmax(y_curve)
         px = x_curve[peak_idx]
         py = y_curve[peak_idx]
-
         push!(peak_x, px)
         push!(peak_y, 0.0)
         push!(peak_z, zpos)
-
-        # Thin baseline projection from y=0 up to the KDE peak
         push!(
             traces,
             scatter3d(
@@ -366,8 +372,6 @@ function stacked_flux_kde_3d(
             ),
         )
     end
-
-    # Trajectory through the projected peak locations in the XZ plane
     push!(
         traces,
         scatter3d(
@@ -382,7 +386,6 @@ function stacked_flux_kde_3d(
             text = string.(weeks),
         ),
     )
-
     layout = Layout(
         title = fig_title,
         paper_bgcolor = "white",
@@ -415,7 +418,6 @@ function stacked_flux_kde_3d(
         ),
         showlegend = true,
     )
-
     return plot(traces, layout)
 end
 
