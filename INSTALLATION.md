@@ -22,6 +22,7 @@ input
 ├── RBC-GEM.xml
 ├── flux_bounds_overrides.csv
 ├── metabolite_measurement_opt_outs_template.csv
+├── Reaction Id to Subsystem and Name Map.csv
 └── Subsystem Category Map.csv
 ```
 
@@ -41,6 +42,8 @@ Here are purposes of the input files:
 
 7. `metabolite_measurement_opt_outs_template.csv`: An example template for metabolite measurements to ignore when setting up model constriants. See execution of `ufba_sampler.jl` for more information.
 
+8. `Reaction Id to Subsystem and Name Map.csv`: maps reaction ids to human-readable names and subsystems.
+
 ### Create the `output/` Folders
 
 There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
@@ -54,6 +57,9 @@ output
 ├── relative_absolute_c_means
 ├── relative_absolute_plots
 ├── uFBA_histograms_v2
+├── uFBA_densities
+├── uFBA_heatmaps
+├── uFBA_3d_histograms
 ├── gem_dfs
 ├── ufba_models
 ```

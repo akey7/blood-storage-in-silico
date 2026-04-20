@@ -15,9 +15,13 @@ using Chain
 using ThreadsX
 using Random
 using EffectSizes
+using CategoricalArrays
+using MixedModels
+using MixedModels: likelihoodratiotest
+using GLM
 
 export histograms_for_reaction_v2,
-    plot_all_histograms_for_reactions,
+    plot_all_distributions_for_reactions,
     diagnose_flux_stats,
     pivot_sampling_df_long,
     net_sink_fluxes,
@@ -26,7 +30,13 @@ export histograms_for_reaction_v2,
     combine_and_clean_addititve_final_time,
     prepare_median_flux_vector_matrix,
     prepare_measurements_and_sinks_report_df,
-    compare_flux_distributions
+    compare_flux_distributions,
+    global_mixed_model_test,
+    pivot_sampling_df_long_cat,
+    per_reaction_additive_time_test,
+    reaction_additive_heatmap,
+    reaction_additive_timecourse_heatmap_dfs,
+    remove_reaction_string_prefix
 
 """
     histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
@@ -37,7 +47,8 @@ Plots histograms for a single reaction, with time points as separate panels and 
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
-4: `bins`: Number of bins in the histograms.
+4. `subsystem`: Human-readable susbsytem of the reaction
+5. `bins`: Number of bins in the histograms.
 
 # Returns
 `Figure`
@@ -47,14 +58,16 @@ Returns a Makie `Figure` to display or save.
 function histograms_for_reaction_v2(
     long_sampling_df,
     reaction_id,
-    reaction_string;
+    reaction_string,
+    subsystem;
     bins = 20,
 )
     plt_df = @chain long_sampling_df begin
         @rsubset(:reaction_id == reaction_id)
         @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
     end
-    title = "$reaction_id\n$reaction_string"
+    clean_reaction_id = replace(reaction_id, "R_" => "")
+    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
     additive_palette = [
         "01-Ctrl AS3" => :dodgerblue,
         "02-Adenosine" => :orange,
@@ -75,7 +88,65 @@ function histograms_for_reaction_v2(
     plt = hist_layer + zero_line_layer
     return draw(
         plt,
-        scales(Color = (; palette = additive_palette));
+        scales(
+            Color = (; palette = additive_palette),
+            X = (; label = "Flux (mM/week)"),
+            Y = (; label = "Sample Count"),
+        );
+        facet = (; linkxaxes = :all, linkyaxes = :all),
+        figure = (; title = title, size = (700, 700)),
+    )
+end
+
+"""
+    densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+
+Plots KDEs of the flux distributions for the reaction in the various additives.
+
+# Arguments
+1. `long_sampling_df`: Sampling DataFrame, pivoted long
+2. `reaction_id`: The reaction id for which the samples are being plotted.
+3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
+4. `subsystem`: Human-readable susbsytem of the reaction
+5. `bins`: Number of bins in the histograms.
+
+# Returns
+`Figure`
+
+Returns a Makie `Figure` to display or save.
+"""
+function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+    plt_df = @chain long_sampling_df begin
+        @rsubset(:reaction_id == reaction_id)
+        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
+    end
+    clean_reaction_id = replace(reaction_id, "R_" => "")
+    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
+    additive_palette = [
+        "01-Ctrl AS3" => :dodgerblue,
+        "02-Adenosine" => :orange,
+        "03-Glutamine" => :blueviolet,
+        "04-Methionine" => :crimson,
+        "07-NAC" => :brown,
+        "08-Taurine" => :magenta,
+    ]
+    density_layer =
+        data(plt_df) *
+        mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
+        AlgebraOfGraphics.density() *
+        visual(alpha = 0.5)
+    zero_line_layer =
+        data((flux = [0],)) *
+        mapping(:flux) *
+        visual(VLines; color = :black, linestyle = :dash, linewidth = 3)
+    plt = density_layer + zero_line_layer
+    return draw(
+        plt,
+        scales(
+            Color = (; palette = additive_palette),
+            X = (; label = "Flux (mM/week)"),
+            Y = (; label = "Density"),
+        );
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
     )
@@ -109,34 +180,46 @@ function pivot_sampling_df_long(sampling_df)
 end
 
 """
-    plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+    plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
 
-Plots version 2 of all histograms (with time points for all additives on the same figure). This function saves each figure as they are made to the `output/uFBA_histograms_v2` folder. Displays a progress meter as the plots are made.
+Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of uFBA sampling results.
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
 3. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_histograms_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
     if nrow(sampling_df) == 0
-        @info "uFBA: Nothing to plot"
+        @warn "uFBA: Nothing to plot"
     else
-        @info "uFBA: Plotting histograms, version 2"
         long_sampling_df = pivot_sampling_df_long(sampling_df)
         reaction_ids = unique(long_sampling_df.reaction_id)
         n_reaction_ids = length(reaction_ids)
-        prog = Progress(n_reaction_ids, desc = "Writing histograms, version 2")
+        prog = Progress(n_reaction_ids, desc = "Writing histograms and densities")
         for reaction_id in reaction_ids
-            reaction_string = rxn_ids_to_strings[reaction_id]
-            fig = histograms_for_reaction_v2(
+            reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
+            subsystem = rxn_ids_to_strings[reaction_id]["subsystem"]
+            # reaction_name = rxn_ids_to_strings[reaction_id]["name"]
+            fig_hist = histograms_for_reaction_v2(
                 long_sampling_df,
                 reaction_id,
-                reaction_string;
+                reaction_string,
+                subsystem;
                 bins = bins,
             )
-            filename = joinpath("output", "uFBA_histograms_v2", "$reaction_id.png")
-            save(filename, fig)
+            fig_density = densities_for_reaction(
+                long_sampling_df,
+                reaction_id,
+                reaction_string,
+                subsystem,
+            )
+            filename_hist =
+                joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
+            filename_density =
+                joinpath("output", "uFBA_densities", "$reaction_id Densities.png")
+            save(filename_hist, fig_hist)
+            save(filename_density, fig_density)
             next!(prog)
         end
         finish!(prog)
@@ -339,6 +422,21 @@ function prepare_measurements_and_sinks_report_df(
 end
 
 """
+    abs_maximum(xs)
+
+Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+
+# Arguments
+1. `xs`: The vector to search through.
+
+# Returns
+`Float64`
+
+Returns the value that has the maximum magnitude while preserving the sign.
+"""
+abs_maximum(xs) = xs[argmax(abs.(xs))]
+
+"""
     compare_flux_distributions(
         sampling_df;
         control_additive = "01-Ctrl AS3",
@@ -362,7 +460,10 @@ For each (non-control) additive, time point, and reaction, compare all additives
 Returns a tuple of two DataFrames:
 1. `interesting_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
 2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
-3. `ranked_df`: Ranking reactions by their most influential treatment additive and time point.
+3. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
+4. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
+5. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
+6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
     sampling_df;
@@ -453,7 +554,7 @@ function compare_flux_distributions(
         DataFrames.combine(nrow => :count)
     end
     log_p_max = 2.0
-    ranked_df = @chain test_df begin
+    score_ranking_df = @chain test_df begin
         leftjoin(
             reaction_cohen_effect_z_df;
             on = [:treatment_additive, :final_time, :reaction_id],
@@ -473,12 +574,446 @@ function compare_flux_distributions(
         end
         @orderby(-:max_score)
     end
+    heatmap_rank_df = @chain score_ranking_df begin
+        @groupby(:reaction_id)
+        @combine(:max_max_score = maximum(:max_score))
+        @orderby(-:max_max_score)
+    end
+    effects_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
+        unstack(
+            :reaction_id,
+            :treatment_additive,
+            :reaction_cohen_effect_z;
+            combine = abs_maximum,
+        )
+        innerjoin(heatmap_rank_df, on = :reaction_id)
+        @orderby(-:max_max_score)
+        @select(Not(:max_max_score))
+    end
+    significance_wide_df = @chain interesting_df begin
+        @select(:reaction_id, :treatment_additive, :adj_t_test_p)
+        unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
+        innerjoin(heatmap_rank_df, on = :reaction_id)
+        @orderby(-:max_max_score)
+        @select(Not(:max_max_score))
+    end
     result = (
         interesting_df = interesting_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
-        ranked_df = ranked_df,
+        score_ranking_df = score_ranking_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+        heatmap_rank_df = heatmap_rank_df,
     )
     return result
+end
+
+"""
+    remove_reaction_string_prefix(comparison_result)
+
+Goes through all DataFrames in the comparison result and removes the leading `R_` from reaction ids to enhance data readability for humans.
+
+# Arguments
+1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the same fields containing DataFrames that have reaction ids with the `R_` removed.
+"""
+function remove_reaction_string_prefix(comparison_result)
+    interesting_df = @rtransform(
+        comparison_result.interesting_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    score_ranking_df = @rtransform(
+        comparison_result.score_ranking_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    effects_wide_df = @rtransform(
+        comparison_result.effects_wide_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    significance_wide_df = @rtransform(
+        comparison_result.significance_wide_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    heatmap_rank_df = @rtransform(
+        comparison_result.heatmap_rank_df,
+        :reaction_id = replace(:reaction_id, "R_" => "")
+    )
+    result = (
+        interesting_df = interesting_df,
+        interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df,
+        score_ranking_df = score_ranking_df,
+        effects_wide_df = effects_wide_df,
+        significance_wide_df = significance_wide_df,
+        heatmap_rank_df = heatmap_rank_df,
+    )
+    return result
+end
+
+"""
+    pivot_sampling_df_long_cat(sampling_df)
+
+Pivots the sampling DataFrame long, with a twist: It transforms `additive` and `final_time` into categorical variables.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns the wide DataFrame pivoted long, with `additive` transformed to `additive_cat` and `final_time` transformed to `final_time_cat`.
+"""
+function pivot_sampling_df_long_cat(sampling_df)
+    long_cat_df = @chain sampling_df begin
+        stack(Not([:additive, :final_time]), variable_name = :reaction_id, value_name = :flux)
+        @transform begin
+            :additive_cat = categorical(:additive; levels = sort(unique(:additive)))
+            :final_time_cat = categorical(
+                :final_time;
+                levels = sort(unique(:final_time)),
+                ordered = true,
+            )
+        end
+        @select(:reaction_id, :additive_cat, :final_time_cat, :flux)
+    end
+    return long_cat_df
+end
+
+"""
+    global_mixed_model_test(sampling_df)
+
+Performs a global test to answer a simple question: Does the additive treatment and time make any statistical difference whatsoever in any reactions? Since the outcome of this test is "yes", as supported by visual inspection of flux distributions, this function just prints the results of the test instead of gathering the results into a neater data structure.
+
+Note: Assumes that `01-Ctrl AS3` is the control group, and that in a sort of additive names, it will be placed first.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the results of the tests.
+"""
+function global_mixed_model_test(sampling_df)
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    m_null = fit(MixedModel, @formula(flux ~ 1 + (1 | reaction_id)), long_cat_df)
+    m_additive =
+        fit(MixedModel, @formula(flux ~ additive_cat + (1 | reaction_id)), long_cat_df)
+    m_time =
+        fit(MixedModel, @formula(flux ~ final_time_cat + (1 | reaction_id)), long_cat_df)
+    m_additive_time = fit(
+        MixedModel,
+        @formula(flux ~ additive_cat + final_time_cat + (1 | reaction_id)),
+        long_cat_df,
+    )
+    m_full = fit(
+        MixedModel,
+        @formula(flux ~ additive_cat * final_time_cat + (1 | reaction_id)),
+        long_cat_df,
+    )
+    println("========== FULL MODEL ==========")
+    println(m_full)
+
+    println("\n========== HYPOTHESIS TESTS ==========")
+
+    println("\nMain effect of additive (controlling for time):")
+    println(likelihoodratiotest(m_time, m_additive_time))
+
+    println("\nMain effect of time (controlling for additive):")
+    println(likelihoodratiotest(m_additive, m_additive_time))
+
+    println("\nAdditive x time interaction:")
+    println(likelihoodratiotest(m_additive_time, m_full))
+
+    result = (
+        long_cat_df = long_cat_df,
+        m_null = m_null,
+        m_additive = m_additive,
+        m_time = m_time,
+        m_additive_time = m_additive_time,
+        m_full = m_full,
+    )
+
+    return result
+end
+
+"""
+    per_reaction_additive_time_test(sampling_df)
+
+For each reaction, this function answers the question: are there any times and additives that make any difference on the fluxes for each individual reaction? This function tests time alone, additive alone, and time interacting with additive.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with a row per reaction and the results of F-tests and adjusted p-values for each reaction.
+"""
+function per_reaction_additive_time_test(sampling_df)
+    long_cat_df = pivot_sampling_df_long_cat(sampling_df)
+    reaction_ids = sort(unique(long_cat_df.reaction_id))
+    n_reaction_ids = length(reaction_ids)
+    prog = Progress(n_reaction_ids, "Per reaction additive/time test")
+    rows = map(reaction_ids) do reaction_id
+        reaction_df = @rsubset(long_cat_df, :reaction_id == reaction_id)
+        m_time = lm(@formula(flux ~ final_time_cat), reaction_df)
+        m_additive = lm(@formula(flux ~ additive_cat), reaction_df)
+        m_time_additive =
+            lm(@formula(flux ~ additive_cat + final_time_cat), reaction_df)
+        m_time_additive_interaction =
+            lm(@formula(flux ~ additive_cat * final_time_cat), reaction_df)
+        additive_ftest = GLM.ftest(m_time.model, m_time_additive.model)
+        time_ftest = GLM.ftest(m_additive.model, m_time_additive.model)
+        interaction_ftest =
+            GLM.ftest(m_time_additive.model, m_time_additive_interaction.model)
+        row = (
+            reaction_id = reaction_id,
+            additive_fstat = additive_ftest.fstat[2],
+            additive_p = additive_ftest.pval[2],
+            time_fstat = time_ftest.fstat[2],
+            time_p = time_ftest.pval[2],
+            interaction_fstat = interaction_ftest.fstat[2],
+            interaction_p = interaction_ftest.pval[2],
+        )
+        next!(prog)
+        return row
+    end
+    unsorted_df = DataFrame(rows)
+    sorted_and_adjusted_df = @chain unsorted_df begin
+        @transform begin
+            :additive_adj_p = adjust(:additive_p, BenjaminiHochberg())
+            :time_adj_p = adjust(:time_p, BenjaminiHochberg())
+            :interaction_adj_p = adjust(:interaction_p, BenjaminiHochberg())
+        end
+        @select(
+            :reaction_id,
+            :additive_fstat,
+            :additive_adj_p,
+            :time_fstat,
+            :time_adj_p,
+            :interaction_fstat,
+            :interaction_adj_p
+        )
+        @orderby(:reaction_id)
+    end
+    return sorted_and_adjusted_df
+end
+
+"""
+    reaction_additive_timecourse_heatmap_dfs(
+        sampling_df;
+        control_additive = "01-Ctrl AS3",
+    )
+
+Splits the samples per reaction and additives into pairs of control and treatment groups. Then it fits models that (1) test the effect of time only vs (2) the effects of additive and time. It then does an f-test for the statistical difference between the models to determine if additive has additional explanatory power beyond just time alone.
+
+TODO: These tests are ridiculously overpowered. In order to prevent taking -log10(0.0), which many adjusted p-values are, the minimum adjusted p-value is clamped at `eps(Float64)` on the low end. This is higher than even the maximum adjusted p-values. This means that the `significance_value` for all reactions is fixed at approximately ~15. Perhaps thinning of the samples could be done in the future to fix this? Or sorting reactions not by significance but by order of magnitude of the F-statistic? I am keeping this here in case it is useful in the future, but am not generating the plot based on this in the current release.
+
+# Arguments
+1. `sampling_df`: Wide-format sampling DataFrame.
+2. `control_additive`: The additive that is considered the "control" group for all the tests.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.reaction_additive_heatmap).
+
+Available fields are:
+1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.
+2. `significance_wide_df`: The wide format of `-log10.(max.(results_long_df.adj_p_value, eps(Float64)))`, with reactions on rows and additives on columns. See the TODO caveat above.
+3. `results_long_df`: Long format of the results of all tests.
+4. `rank_df`: DataFrame that controls the ranking of additives.
+"""
+function reaction_additive_timecourse_heatmap_dfs(
+    sampling_df;
+    control_additive = "01-Ctrl AS3",
+)
+    analysis_df = pivot_sampling_df_long(sampling_df)
+    reactions = unique(analysis_df.reaction_id)
+    additives = sort(unique(analysis_df.additive))
+    treatment_additives = [a for a in additives if a != control_additive]
+    isempty(treatment_additives) && throw(ArgumentError("No non-control additives found."))
+    jobs = [
+        (reaction_id, additive) for reaction_id in reactions for
+        additive in treatment_additives
+    ]
+    n_jobs = length(jobs)
+    println("n_jobs: $n_jobs")
+    result_rows = ThreadsX.map(jobs) do (reaction_id, additive)
+        pair_df = @chain analysis_df begin
+            @rsubset(:reaction_id == reaction_id)
+            @rsubset(:additive == control_additive || :additive == additive)
+            @rtransform(:group = :additive == control_additive ? "control" : "treatment")
+        end
+        pair_df.group = categorical(pair_df.group)
+        pair_df.final_time = categorical(pair_df.final_time)
+        try
+            reduced_model = lm(@formula(flux ~ final_time), pair_df)
+            full_model =
+                lm(@formula(flux ~ final_time + group + final_time & group), pair_df)
+            ft = GLM.ftest(reduced_model.model, full_model.model)
+            statistic = Float64(ft.fstat[2])
+            p_value = Float64(ft.pval[2])
+            print(".")
+            return (
+                reaction_id = reaction_id,
+                additive = additive,
+                statistic = statistic,
+                p_value = p_value,
+                n_obs = nrow(pair_df),
+                model_ok = true,
+            )
+        catch err
+            @warn "ANOVA fit failed for reaction/additive pair" reaction_id additive exception =
+                (err, catch_backtrace())
+            print(".")
+            return (
+                reaction_id = reaction_id,
+                additive = additive,
+                statistic = NaN,
+                p_value = NaN,
+                n_obs = nrow(pair_df),
+                model_ok = false,
+            )
+        end
+    end
+    println("done")
+    results_long_df = DataFrame(result_rows)
+    results_long_df.adj_p_value = fill(NaN, nrow(results_long_df))
+    valid_idx = findall(x -> !isnan(x), results_long_df.p_value)
+    if !isempty(valid_idx)
+        results_long_df.adj_p_value[valid_idx] =
+            adjust(results_long_df.p_value[valid_idx], BenjaminiHochberg())
+    end
+    results_long_df.significance_value =
+        -log10.(max.(results_long_df.adj_p_value, eps(Float64)))
+
+    rank_df = @chain results_long_df begin
+        @rsubset(:adj_p_value < 0.05)
+        @groupby(:reaction_id)
+        @combine(:sort_order = maximum(:significance_value))
+        @orderby(-:sort_order)
+    end
+
+    effects_wide_df = @chain results_long_df begin
+        @select(:reaction_id, :additive, :statistic)
+        unstack(:reaction_id, :additive, :statistic)
+    end
+    significance_wide_df = @chain results_long_df begin
+        @select(:reaction_id, :additive, :significance_value)
+        unstack(:reaction_id, :additive, :significance_value)
+    end
+    for additive in treatment_additives
+        if !(additive in names(effects_wide_df))
+            effects_wide_df[!, additive] = fill(NaN, nrow(effects_wide_df))
+        end
+        if !(additive in names(significance_wide_df))
+            significance_wide_df[!, additive] = fill(NaN, nrow(significance_wide_df))
+        end
+    end
+    effects_wide_df = select(effects_wide_df, :reaction_id, treatment_additives...)
+    significance_wide_df =
+        select(significance_wide_df, :reaction_id, treatment_additives...)
+    effects_wide_sorted_df = @chain effects_wide_df begin
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+    significance_wide_sorted_df = @chain significance_wide_df begin
+        innerjoin(rank_df, on = :reaction_id)
+        @orderby(-:sort_order)
+        @select(Not(:sort_order))
+    end
+    return (
+        effects_wide_df = effects_wide_sorted_df,
+        significance_wide_df = significance_wide_sorted_df,
+        results_long_df = results_long_df,
+        rank_df = rank_df,
+    )
+end
+
+"""
+    reaction_additive_heatmap(
+        effects_result;
+        top_n = 20,
+        fig_size = (800, 800),
+    )
+
+Plots a pair of heatmaps side-by-side, one with effect sizes and the other with significance values. Meant to be useful for a variety of tests.
+
+# Arguments
+1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
+2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
+3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
+4. `include_significance = false`: If true, includes the significance heatmap.
+5. `effect_title = "Heatmap"`: Plot title for the effect heatmap.
+6. `effect_colorbar_label = "Legend"`: Title for the colorbar legend.
+
+# Returns
+`Figure`
+
+Returns a figure suitable for display or plotting.
+"""
+function reaction_additive_heatmap(
+    effects_result;
+    top_n = 20,
+    fig_size = (800, 800),
+    include_significance = false,
+    effect_title = "Heatmap",
+    effect_colorbar_label = "Legend",
+)
+    effects_wide_df = effects_result.effects_wide_df
+    effects_plot_df = reverse(first(effects_wide_df, top_n))
+    effects_row_labels = effects_plot_df.reaction_id
+    effects_col_labels = names(effects_plot_df)[2:end]
+    effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
+    effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
+    fig = Figure(size = fig_size)
+    effects_ax = Axis(
+        fig[1, 1],
+        title = effect_title,
+        xticks = (1:length(effects_col_labels), effects_col_labels),
+        yticks = (1:length(effects_row_labels), effects_row_labels),
+        xticklabelrotation = π/4,
+    )
+    effects_hm = heatmap!(
+        effects_ax,
+        effects_heatmap_mat';
+        colormap = Reverse(:RdBu_9),
+        colorrange = effects_clims,
+    )
+    Colorbar(fig[1, 2], effects_hm; label = effect_colorbar_label, labelsize = 14)
+    if include_significance
+        significance_wide_df = effects_result.significance_wide_df
+        significance_plot_df = reverse(first(significance_wide_df, top_n))
+        significance_row_labels = significance_plot_df.reaction_id
+        significance_col_labels = names(significance_plot_df)[2:end]
+        significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
+        significance_clims = (
+            -maximum(abs, significance_heatmap_mat),
+            maximum(abs, significance_heatmap_mat),
+        )
+        significance_ax = Axis(
+            fig[1, 3],
+            title = "Significance",
+            xticks = (1:length(significance_col_labels), significance_col_labels),
+            yticks = (1:length(significance_row_labels), significance_row_labels),
+            xticklabelrotation = π/4,
+        )
+        significance_hm = heatmap!(
+            significance_ax,
+            significance_heatmap_mat';
+            colormap = :Blues,
+            colorrange = significance_clims,
+        )
+        Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
+    end
+    return fig
 end
 
 end
