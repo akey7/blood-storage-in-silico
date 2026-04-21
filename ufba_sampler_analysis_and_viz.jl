@@ -7,11 +7,11 @@ using YAML
 using CairoMakie
 using PlotlyJS
 
-include("src/UfbaSamplerAnalysisAndViz.jl")
-using .UfbaSamplerAnalysisAndViz
+include("src/UfbaSamplerAnalysis.jl")
+using .UfbaSamplerAnalysis
 
-include("src/UfbaSamplerViz3D.jl")
-using .UfbaSamplerViz3D
+include("src/UfbaSamplerViz.jl")
+using .UfbaSamplerViz
 
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")

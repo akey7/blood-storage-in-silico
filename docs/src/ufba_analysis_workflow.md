@@ -5,7 +5,7 @@
 Because the `UfbaSampler.jl` module was becoming huge, I split the visualization and analysis functions for `UfbaSampler.jl` into their own module.
 
 ```@autodocs
-Modules = [BloodStorageInSilico.UfbaSamplerAnalysisAndViz]
+Modules = [BloodStorageInSilico.UfbaSamplerAnalysis]
 Order   = [:function]
 ```
 
@@ -14,7 +14,7 @@ Order   = [:function]
 3D plots for the uFBA sampler results.
 
 ```@autodocs
-Modules = [BloodStorageInSilico.UfbaSamplerViz3D]
+Modules = [BloodStorageInSilico.UfbaSamplerViz]
 Order   = [:function]
 ```
 

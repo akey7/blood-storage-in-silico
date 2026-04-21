@@ -1,4 +1,4 @@
-module UfbaSamplerAnalysisAndViz
+module UfbaSamplerAnalysis
 
 using Base.Iterators
 using Statistics

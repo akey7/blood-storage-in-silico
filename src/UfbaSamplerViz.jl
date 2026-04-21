@@ -1,4 +1,4 @@
-module UfbaSamplerViz3D
+module UfbaSamplerViz
 
 using DataFrames
 using StatsBase
