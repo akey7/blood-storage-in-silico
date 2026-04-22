@@ -770,4 +770,20 @@ function reaction_additive_timecourse_heatmap_dfs(
     )
 end
 
+function reaction_correlations_one_additive_one_time(sampling_df)
+    # x = reaction_a_fluxes
+    # y = reaction_b_fluxes
+    # rho = cor(ordinalrank(x), ordinalrank(y))
+    # test = CorspearmanTest(x, y)
+    # p_value = pvalue(test)
+    # println("Spearman rho = ", rho)
+    # println("p-value      = ", p_value)
+
+    long_df = pivot_sampling_df_long(sampling_df)
+    additives = sort(unique(long_df.additive))
+    final_times = sort(unique(long_df.final_time))
+    tasks = product(additives, final_times)
+    n_tasks = length(tasks)
+end
+
 end
