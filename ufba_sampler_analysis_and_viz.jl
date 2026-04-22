@@ -110,7 +110,7 @@ cohens_effect_heatmap_filename =
 save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)
 println("Wrote $cohens_effect_heatmap_filename")
 
-@info "Plotting uFBA histograms"
+@info "Plotting uFBA histogram and density plots"
 plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 
 @info "3D histogram/KDE plot things"
@@ -125,3 +125,5 @@ p_scatter = stacked_flux_histogram_steps_3d_colored(flux_df; nbins = 30, tie_met
 p_scatter_filename = joinpath("output", "uFBA_3d_histograms", "line_hist_3d.html")
 savefig(p_scatter, p_scatter_filename)
 println("Wrote $p_scatter_filename")
+
+# @info "Reaction correlations"
