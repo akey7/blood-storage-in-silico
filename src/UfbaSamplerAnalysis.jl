@@ -257,7 +257,7 @@ end
 """
     abs_maximum(xs)
 
-Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 
 # Arguments
 1. `xs`: The vector to search through.
@@ -448,7 +448,7 @@ end
 Goes through all DataFrames in the comparison result and removes the leading `R_` from reaction ids to enhance data readability for humans.
 
 # Arguments
-1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 
 # Returns
 `NamedTuple`
@@ -654,7 +654,7 @@ TODO: These tests are ridiculously overpowered. In order to prevent taking -log1
 # Returns
 `NamedTuple`
 
-Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.reaction_additive_heatmap).
+Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerViz.reaction_additive_heatmap).
 
 Available fields are:
 1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.

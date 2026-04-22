@@ -663,7 +663,7 @@ end
 # Arguments
 1. `visited_reactions_df::DataFrame`: Visited reactions DataFrame
 2. `rxn_ids_to_strings::OrderedDict{String,Any}` The mapping of reaction ids to reactions returned by [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings)
-3. `median_df::DataFrame`: Median flux DataFrame returned by [`calc_median_flux_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.calc_median_flux_df)
+3. `median_df::DataFrame`: Median flux DataFrame returned by [`calc_median_flux_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.calc_median_flux_df)
 
 # Returns
 `DataFrame`
