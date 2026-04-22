@@ -111,8 +111,8 @@ function map_reaction_ids_to_reaction_strings(
     reaction_strings = []
     for rxn_id in sort(string.(keys(model.reactions)))
         rxn_df = @rsubset(reaction_names_and_subsystems_df, :rxn_id == String(rxn_id))
-        rxn_name = nrow(rxn_df) > 0 ? rxn_df[1, :reaction_name] : "Unknown reaction name"
-        rxn_subsystem = nrow(rxn_df) > 0 ? rxn_df[1, :subsystem] : "Unknown subsystem"
+        rxn_name = nrow(rxn_df) > 0 ? rxn_df[1, :reaction_name] : "Sink or unknown name"
+        rxn_subsystem = nrow(rxn_df) > 0 ? rxn_df[1, :subsystem] : "Sink or unknown subsystem"
         push!(reaction_ids, rxn_id)
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
