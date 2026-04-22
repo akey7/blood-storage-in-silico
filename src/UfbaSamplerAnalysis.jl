@@ -35,7 +35,7 @@ export diagnose_flux_stats,
 """
     pivot_sampling_df_long(sampling_df)
 
-Pivots the sampling_df longer.
+Pivots the sampling DataFrame longer. This function duplicates the function of the same name in `UfbaSamplerAnalysis`. It is duplicated so that neither this module nor the analysis module need to import each other, which would mess up the documentation.
 
 # Arguments
 1. `sampling_df`: The sampling DataFrame in long format. The DataFrame should have a column for each reaction sampled, along with `:additive` and `:final_time` columns.
