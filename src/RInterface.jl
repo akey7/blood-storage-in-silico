@@ -232,9 +232,13 @@ function export_correlation_dict_for_r(
 
     long_df = reduce(vcat, long_chunks)
 
-    CSV.write(joinpath(out_dir, "manifest.csv"), manifest_df; missingstring = missingstring)
     CSV.write(
-        joinpath(out_dir, "correlations_long.csv"),
+        joinpath(out_dir, "correlation_matrices_1", "manifest.csv"),
+        manifest_df;
+        missingstring = missingstring,
+    )
+    CSV.write(
+        joinpath(out_dir, "correlation_matrices_1", "correlations_long.csv"),
         long_df;
         missingstring = missingstring,
     )
