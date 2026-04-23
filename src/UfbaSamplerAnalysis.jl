@@ -30,7 +30,8 @@ export diagnose_flux_stats,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
     reaction_additive_timecourse_heatmap_dfs,
-    remove_reaction_string_prefix
+    remove_reaction_string_prefix,
+    reaction_correlations_one_additive_one_time
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -770,20 +771,30 @@ function reaction_additive_timecourse_heatmap_dfs(
     )
 end
 
-function reaction_correlations_one_additive_one_time(sampling_df)
-    # x = reaction_a_fluxes
-    # y = reaction_b_fluxes
-    # rho = cor(ordinalrank(x), ordinalrank(y))
-    # test = CorspearmanTest(x, y)
-    # p_value = pvalue(test)
-    # println("Spearman rho = ", rho)
-    # println("p-value      = ", p_value)
+function additive_final_time_dfs(sampling_df)
+    final_times = sort(unique(sampling_df.final_time))
+    additives = sort(unique(sampling_df.additive))
+    subsets = product(additives, final_times)
+    subset_dfs = Dict(
+        (additive, final_time) =>
+            @rsubset(sampling_df, :additive == additive, :final_time == final_time) for
+        (additive, final_time) in subsets
+    )
+    return subset_dfs
+end
 
-    long_df = pivot_sampling_df_long(sampling_df)
-    additives = sort(unique(long_df.additive))
-    final_times = sort(unique(long_df.final_time))
-    tasks = product(additives, final_times)
-    n_tasks = length(tasks)
+function reaction_correlations_one_additive_one_time(sampling_df)
+    subset_dfs = additive_final_time_dfs(sampling_df)
+    result_dict = Dict()
+    for (additive, final_time) in keys(subset_dfs)
+        df = select(subset_dfs[(additive, final_time)], Not([:additive, :final_time]))
+        mat = Matrix{Float64}(df)
+        cor_mat = corspearman(mat)
+        result_df = DataFrame(cor_mat, names(df))
+        insertcols!(result_df, 1, :row_variable => names(df))
+        result_dict[(additive, final_time)] = result_df
+    end
+    return result_dict
 end
 
 end
