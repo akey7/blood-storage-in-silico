@@ -9,6 +9,7 @@ include("FbaModelBuilder.jl")
 include("ModelGraph.jl")
 include("MetaboliteBounds.jl")
 include("UfbaSamplerViz.jl")
+include("RInterface.jl")
 
 export MetaboliteTimelines,
     AbsoluteQuant,
@@ -18,6 +19,7 @@ export MetaboliteTimelines,
     FbaModelBuilder,
     ModelGraph,
     MetaboliteBounds,
-    UfbaSamplerViz
+    UfbaSamplerViz,
+    RInterface
 
 end
