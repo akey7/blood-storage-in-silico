@@ -56,7 +56,7 @@ Named tuple with:
 function export_correlation_dict_for_r(
     corr_dict::Dict{Tuple{String,Int64},DataFrame},
     out_dir::AbstractString;
-    row_col::Symbol = :row_variable,
+    row_col::String = "row_variable",
     symmetry_atol::Real = 1e-8,
     diagonal_atol::Real = 1e-8,
     check_diagonal_is_one::Bool = true,
@@ -75,14 +75,14 @@ function export_correlation_dict_for_r(
         s
     end
 
-    function normalize_reaction_ids(df::DataFrame, row_col::Symbol)
+    function normalize_reaction_ids(df, row_col)
         row_ids = string.(df[!, row_col])
         col_syms = filter(!=(row_col), names(df))
         col_ids = string.(col_syms)
         return row_ids, col_syms, col_ids
     end
 
-    function matrix_from_df(df::DataFrame, col_syms::Vector{Symbol})
+    function matrix_from_df(df, col_syms)
         n = nrow(df)
         p = length(col_syms)
         n == p || error(
@@ -104,7 +104,7 @@ function export_correlation_dict_for_r(
     end
 
     # ---------- set up output dirs ----------
-    matrices_dir = joinpath(out_dir, "matrices")
+    matrices_dir = joinpath(out_dir, "correlation_matrices_1")
     mkpath(matrices_dir)
 
     manifest_df = DataFrame(additive = String[], timepoint = Int[], filename = String[])
@@ -115,7 +115,8 @@ function export_correlation_dict_for_r(
     sorted_entries = sort(collect(corr_dict); by = x -> x[1])
 
     first_key, first_df = first(sorted_entries)
-    row_col in names(first_df) || error("Expected column $(row_col) in all DataFrames.")
+    row_col in names(first_df) ||
+        error("Expected column $(row_col) in all DataFrames. Broke at $(first_key)")
 
     ref_row_ids, ref_col_syms, ref_col_ids = normalize_reaction_ids(first_df, row_col)
 

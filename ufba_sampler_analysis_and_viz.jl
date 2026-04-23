@@ -13,6 +13,9 @@ using .UfbaSamplerAnalysis
 include("src/UfbaSamplerViz.jl")
 using .UfbaSamplerViz
 
+include("src/RInterface.jl")
+using .RInterface
+
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
@@ -128,4 +131,6 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 
 @info "Reaction correlations"
 corr_1_dict = reaction_correlations_one_additive_one_time(sampling_df)
-display(first(corr_1_dict[("01-Ctrl AS3", 2)], 10))
+# display(corr_1_dict[("01-Ctrl AS3", 2)][!, :row_variable])
+export_correlation_dict_for_r(corr_1_dict, "output")
+println("Wrote matrices for R")

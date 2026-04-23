@@ -785,7 +785,7 @@ end
 
 function reaction_correlations_one_additive_one_time(sampling_df)
     subset_dfs = additive_final_time_dfs(sampling_df)
-    result_dict = Dict()
+    result_dict::Dict{Tuple{String,Int64},DataFrame} = Dict()
     for (additive, final_time) in keys(subset_dfs)
         df = select(subset_dfs[(additive, final_time)], Not([:additive, :final_time]))
         mat = Matrix{Float64}(df)
