@@ -84,6 +84,16 @@ function load_reaction_names_and_subsystems()
     return isfile(filename) ? CSV.read(filename, DataFrame) : nothing
 end
 
+"""
+    load_subsystem_category_map()
+
+Reads the subsystem to category map DataFrame. Throws an error and stops if the map file is not found.
+
+# Returns
+`DataFrame`
+
+Returns the mapping DataFrame.
+"""
 function load_subsystem_category_map()
     filename = joinpath("input", "Subsystem Category Map.csv")
     if !isfile(filename)
