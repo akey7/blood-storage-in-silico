@@ -41,7 +41,8 @@ export sample_fluxes,
     optimize_constraint_tree,
     extract_broken_constraints,
     extract_unmeasured_relaxations,
-    load_reaction_names_and_subsystems
+    load_reaction_names_and_subsystems,
+    load_subsystem_category_map
 
 """
     init_workers!(; project=Base.active_project())
@@ -83,10 +84,21 @@ function load_reaction_names_and_subsystems()
     return isfile(filename) ? CSV.read(filename, DataFrame) : nothing
 end
 
+function load_subsystem_category_map()
+    filename = joinpath("input", "Subsystem Category Map.csv")
+    if !isfile(filename)
+        error(
+            "Can't load $(filename), which is necessary for mapping reaction ids to categories.",
+        )
+    end
+    return CSV.read(filename, DataFrame)
+end
+
 """
     map_reaction_ids_to_reaction_strings(
         model::A.AbstractFBCModel,
         reaction_names_and_subsystems_df::DataFrame,
+        subsystem_category_map_df::DataFrame,
     )
 
 Maps reaction_ids in the given model to human-readable reaction strings specifying reactants and products with an arrow pointing in the direction specified by the bounds of the reaction.
@@ -94,18 +106,26 @@ Maps reaction_ids in the given model to human-readable reaction strings specifyi
 # Arguments
 1. `model::A.AbstractFBCModel`: The model to create the reaction strings from.
 2. `reaction_names_and_subsystems_df::DataFrame`: DataFrame with `rxn_id`, `subsystem`, and `reaction_name` columns.
+3. `subsystem_category_map_df::DataFrame`: DataFrame with `name` (name of the reaction subsystem) and `category` columns.
 
 # Returns
 `Tuple{Dict{String,Dict{Symbol,String}},DataFrame}`
 
 Returns a tuple with two elements:
 1. A dictionary mapping reaction ids in the model to a human-readable reaction strings, subsystems, and reaction names
-2. A DataFrame with `reaction_id`, `reaction_string`, `name`, and `subsystem` columns.
+2. A DataFrame with `reaction_id`, `reaction_string`, `name`, and `subsystem`, and `category` columns.
 """
 function map_reaction_ids_to_reaction_strings(
     model::A.AbstractFBCModel,
     reaction_names_and_subsystems_df::DataFrame,
+    subsystem_category_map_df::DataFrame,
 )
+    subsystem_category_map_dict = Dict()
+    for row in eachrow(subsystem_category_map_df)
+        subsystem = row.name
+        category = row.category
+        subsystem_category_map_dict[subsystem] = category
+    end
     result_dict = OrderedDict()
     reaction_ids = []
     reaction_strings = []
@@ -114,6 +134,8 @@ function map_reaction_ids_to_reaction_strings(
         rxn_name = nrow(rxn_df) > 0 ? rxn_df[1, :reaction_name] : "Sink or unknown name"
         rxn_subsystem =
             nrow(rxn_df) > 0 ? rxn_df[1, :subsystem] : "Sink or unknown subsystem"
+        rxn_category =
+            get(subsystem_category_map_dict, rxn_subsystem, "Sink or unknown category")
         push!(reaction_ids, rxn_id)
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
@@ -137,6 +159,7 @@ function map_reaction_ids_to_reaction_strings(
                 :rxn_string => rxn_string,
                 :name => rxn_name,
                 :subsystem => rxn_subsystem,
+                :category => rxn_category,
             )
             push!(reaction_strings, rxn_string)
         elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
@@ -145,6 +168,7 @@ function map_reaction_ids_to_reaction_strings(
                 :rxn_string => rxn_string,
                 :name => rxn_name,
                 :subsystem => rxn_subsystem,
+                :category => rxn_category,
             )
             push!(reaction_strings, rxn_string)
         else
@@ -153,6 +177,7 @@ function map_reaction_ids_to_reaction_strings(
                 :rxn_string => rxn_string,
                 :name => rxn_name,
                 :subsystem => rxn_subsystem,
+                :category => rxn_category,
             )
             push!(reaction_strings, rxn_string)
         end
