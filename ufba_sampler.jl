@@ -67,8 +67,12 @@ mapping_sink_specifications = (
     metabolites_to_ignore = metabolites_to_ignore,
 )
 add_sinks_for_unmatched_metabolites!(fba_model, mapping_sink_specifications)
-rxn_ids_to_strings_dict, rxn_ids_to_strings_df =
-    map_reaction_ids_to_reaction_strings(fba_model, reaction_names_and_subsystems_df)
+subsystem_category_map_df = load_subsystem_category_map()
+rxn_ids_to_strings_dict, rxn_ids_to_strings_df = map_reaction_ids_to_reaction_strings(
+    fba_model,
+    reaction_names_and_subsystems_df,
+    subsystem_category_map_df,
+)
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings_dict)
 println("Wrote $rxn_ids_to_strings_filename")
