@@ -79,6 +79,8 @@ println("Wrote $rxn_ids_to_strings_filename")
 fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
 CSV.write(fba_model_metabolites_filename, fba_model_metabolites_df)
 println("Wrote $fba_model_metabolites_filename")
+rxn_ids_to_strings_filename = joinpath("output", "rxn_strings_subsystems_categories.csv")
+CSV.write(rxn_ids_to_strings_filename, rxn_ids_to_strings_df)
 
 @info "Run uFBA jobs"
 
