@@ -775,7 +775,7 @@ function classify_reaction_id(reaction_id)
     reaction_id_str = string(reaction_id)
     if occursin("t", reaction_id_str)
         return :transporter
-    elseif occursin(reaction_id_str, "EX_")
+    elseif occursin("EX_", reaction_id_str)
         return :exchange
     else
         return :inner_reaction
