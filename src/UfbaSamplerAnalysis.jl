@@ -771,6 +771,17 @@ function reaction_additive_timecourse_heatmap_dfs(
     )
 end
 
+function classify_reaction_id(reaction_id)
+    reaction_id_str = string(reaction_id)
+    if occursin("t", reaction_id_str)
+        return :transporter
+    elseif startswith(reaction_id_str, "R_EX")
+        return :exchange
+    else
+        return :inner_reaction
+    end
+end
+
 function additive_final_time_dfs(sampling_df)
     final_times = sort(unique(sampling_df.final_time))
     additives = sort(unique(sampling_df.additive))
