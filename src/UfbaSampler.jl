@@ -104,6 +104,14 @@ function load_subsystem_category_map()
     return CSV.read(filename, DataFrame)
 end
 
+function remap_category(original_category)
+    if original_category == "Other" || original_category == "Pseudoreactions" || original_category == "Transport reactions"
+        return "Other, Transport, & Pseudoreactions"
+    else
+        return original_category
+    end
+end
+
 """
     map_reaction_ids_to_reaction_strings(
         model::A.AbstractFBCModel,
@@ -173,7 +181,7 @@ function map_reaction_ids_to_reaction_strings(
                 :rxn_string => rxn_string,
                 :name => rxn_name,
                 :subsystem => rxn_subsystem,
-                :category => rxn_category,
+                :category => remap_category(rxn_category),
             )
             push!(reaction_strings, rxn_string)
         elseif isapprox(rxn.lower_bound, 0.0) && rxn.upper_bound > 0.0
@@ -182,7 +190,7 @@ function map_reaction_ids_to_reaction_strings(
                 :rxn_string => rxn_string,
                 :name => rxn_name,
                 :subsystem => rxn_subsystem,
-                :category => rxn_category,
+                :category => remap_category(rxn_category),
             )
             push!(reaction_strings, rxn_string)
         else
@@ -191,7 +199,7 @@ function map_reaction_ids_to_reaction_strings(
                 :rxn_string => rxn_string,
                 :name => rxn_name,
                 :subsystem => rxn_subsystem,
-                :category => rxn_category,
+                :category => remap_category(rxn_category),
             )
             push!(reaction_strings, rxn_string)
         end
@@ -200,7 +208,7 @@ function map_reaction_ids_to_reaction_strings(
         reaction_id = reaction_ids,
         reaction_string = reaction_strings,
         reaction_subsystem = reaction_subsystems,
-        reaction_category = reaction_categories,
+        reaction_category = remap_category.(reaction_categories),
     )
     result_df = @chain rxn_ids_strings_df begin
         leftjoin(reaction_names_and_subsystems_df, on = :reaction_id => :rxn_id)
