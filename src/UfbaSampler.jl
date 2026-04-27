@@ -139,6 +139,8 @@ function map_reaction_ids_to_reaction_strings(
     result_dict = OrderedDict()
     reaction_ids = []
     reaction_strings = []
+    reaction_subsystems = []
+    reaction_categories = []
     for rxn_id in sort(string.(keys(model.reactions)))
         rxn_df = @rsubset(reaction_names_and_subsystems_df, :rxn_id == String(rxn_id))
         rxn_name = nrow(rxn_df) > 0 ? rxn_df[1, :reaction_name] : "Sink or unknown name"
@@ -147,6 +149,8 @@ function map_reaction_ids_to_reaction_strings(
         rxn_category =
             get(subsystem_category_map_dict, rxn_subsystem, "Sink or unknown category")
         push!(reaction_ids, rxn_id)
+        push!(reaction_subsystems, rxn_subsystem)
+        push!(reaction_categories, rxn_category)
         stoi = model.reactions[rxn_id].stoichiometry
         rxn = model.reactions[rxn_id]
         lhs = replace(
@@ -192,8 +196,12 @@ function map_reaction_ids_to_reaction_strings(
             push!(reaction_strings, rxn_string)
         end
     end
-    rxn_ids_strings_df =
-        DataFrame(reaction_id = reaction_ids, reaction_string = reaction_strings)
+    rxn_ids_strings_df = DataFrame(
+        reaction_id = reaction_ids,
+        reaction_string = reaction_strings,
+        reaction_subsystem = reaction_subsystems,
+        reaction_category = reaction_categories,
+    )
     result_df = @chain rxn_ids_strings_df begin
         leftjoin(reaction_names_and_subsystems_df, on = :reaction_id => :rxn_id)
         @orderby(:reaction_id)
