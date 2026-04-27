@@ -782,20 +782,34 @@ function classify_reaction_id(reaction_id)
     end
 end
 
-function additive_final_time_dfs(sampling_df)
+function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    reaction_ids = [
+        col_name for col_name in Symbol.(names(sampling_df)) if
+        col_name != :additive && col_name != :final_time
+    ]
+    not_reaction_ids = [
+        not_reaction_id for not_reaction_id in reaction_ids if
+        classify_reaction_id(not_reaction_id) ∉ allowed_reaction_id_categories
+    ]
+    select_sampling_df = select(sampling_df, Not(not_reaction_ids))
     final_times = sort(unique(sampling_df.final_time))
     additives = sort(unique(sampling_df.additive))
     subsets = product(additives, final_times)
     subset_dfs = Dict(
-        (additive, final_time) =>
-            @rsubset(sampling_df, :additive == additive, :final_time == final_time) for
-        (additive, final_time) in subsets
+        (additive, final_time) => @rsubset(
+            select_sampling_df,
+            :additive == additive,
+            :final_time == final_time
+        ) for (additive, final_time) in subsets
     )
     return subset_dfs
 end
 
-function reaction_correlations_one_additive_one_time(sampling_df)
-    subset_dfs = additive_final_time_dfs(sampling_df)
+function reaction_correlations_one_additive_one_time(
+    sampling_df,
+    allowed_reaction_id_categories,
+)
+    subset_dfs = additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
     result_dict::Dict{Tuple{String,Int64},DataFrame} = Dict()
     for (additive, final_time) in keys(subset_dfs)
         df = select(subset_dfs[(additive, final_time)], Not([:additive, :final_time]))
