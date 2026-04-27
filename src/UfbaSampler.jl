@@ -145,9 +145,9 @@ function map_reaction_ids_to_reaction_strings(
         rxn_df = @rsubset(reaction_names_and_subsystems_df, :rxn_id == String(rxn_id))
         rxn_name = nrow(rxn_df) > 0 ? rxn_df[1, :reaction_name] : "Sink or unknown name"
         rxn_subsystem =
-            nrow(rxn_df) > 0 ? rxn_df[1, :subsystem] : "Sink or unknown subsystem"
+            nrow(rxn_df) > 0 ? rxn_df[1, :subsystem] : "Other"
         rxn_category =
-            get(subsystem_category_map_dict, rxn_subsystem, "Sink or unknown category")
+            get(subsystem_category_map_dict, rxn_subsystem, "Other")
         push!(reaction_ids, rxn_id)
         push!(reaction_subsystems, rxn_subsystem)
         push!(reaction_categories, rxn_category)
