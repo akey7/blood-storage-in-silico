@@ -771,6 +771,19 @@ function reaction_additive_timecourse_heatmap_dfs(
     )
 end
 
+"""
+    classify_reaction_id(reaction_id)
+
+Classifies a reaction id as `:transporter`, `:exchange`, `:inner_reaction`.
+
+# Arguments
+1. `reaction_id`: Reaction id to classify.
+
+# Returns
+`Symbol`
+
+Returns the classification of the reaction d.
+"""
 function classify_reaction_id(reaction_id)
     reaction_id_str = string(reaction_id)
     if occursin("t", reaction_id_str)
@@ -782,6 +795,22 @@ function classify_reaction_id(reaction_id)
     end
 end
 
+"""
+    additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+
+Splits the given wide sampling DataFrame into separate DataFrames stored in a Dictionary that uses a tuple of `(additive, final_time)` as the keys and DataFrames filtered down to that additive and final time as values. Filters the reactions in each DataFrame to those reaction that are inthe allowed classifications.
+
+The allowed reaction categories in the second argument explained below are `:transporter`, `:exchange`, `:inner_reaction`.
+
+# Arguments
+1. `sampling_df`: Wide sampling DataFrame with all additives and time points.
+2. `allowed_reaction_id_categories`: A vector (even of a single element) of symbols corresponding to classifications of [`classify_reaction_id`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.classify_reaction_id).
+
+# Returns
+`Dict{Tuple{String,Int64},DataFrame}`
+
+Dictionary mapping `(additive, final_time)` tuples to DataFrames as explained above.
+"""
 function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
     reaction_ids = [
         col_name for col_name in Symbol.(names(sampling_df)) if
@@ -805,6 +834,23 @@ function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
     return subset_dfs
 end
 
+"""
+    reaction_correlations_one_additive_one_time(
+        sampling_df,
+        allowed_reaction_id_categories,
+    )
+
+Calculates correlation matrices of fluxes of reactions in each additive at each final time of the given wide sampling DataFrame with reactions limited to those in the allowed categories (`:transporter`, `:exchange`, `:inner_reaction`).
+
+# Arguments
+1. `sampling_df`: Wide sampling DataFrame
+2. `allowed_reaction_id_categories`: Vector (even if only of one element) of reaction categories for the to select for the correlation matrices.
+
+# Returns
+`Dict{Tuple{String,Int64},DataFrame}`
+
+Dictionary mapping tuples of additive and final time to correlation matrices (in DataFrame form) of the correlations between each pair of reactions.
+"""
 function reaction_correlations_one_additive_one_time(
     sampling_df,
     allowed_reaction_id_categories,
