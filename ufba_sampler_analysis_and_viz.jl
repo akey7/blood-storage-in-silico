@@ -130,7 +130,7 @@ sampling_df = CSV.read(sampling_filename, DataFrame)
 # println("Wrote $p_scatter_filename")
 
 @info "Reaction correlations"
-corr_1_dict = reaction_correlations_one_additive_one_time(sampling_df)
+corr_1_dict = reaction_correlations_one_additive_one_time(sampling_df, [:inner_reaction])
 # display(corr_1_dict[("01-Ctrl AS3", 2)][!, :row_variable])
 export_correlation_dict_for_r(corr_1_dict, "output")
 println("Wrote matrices for R")
