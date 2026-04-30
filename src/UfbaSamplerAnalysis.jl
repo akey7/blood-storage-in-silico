@@ -1,11 +1,8 @@
-module UfbaSamplerAnalysisAndViz
+module UfbaSamplerAnalysis
 
 using Base.Iterators
 using Statistics
 using StatsBase
-using CairoMakie
-using AlgebraOfGraphics
-using ColorSchemes
 using DataFrames
 using DataFramesMeta
 using ProgressMeter
@@ -20,9 +17,7 @@ using MixedModels
 using MixedModels: likelihoodratiotest
 using GLM
 
-export histograms_for_reaction_v2,
-    plot_all_distributions_for_reactions,
-    diagnose_flux_stats,
+export diagnose_flux_stats,
     pivot_sampling_df_long,
     net_sink_fluxes,
     net_flux_from_up_and_down,
@@ -34,128 +29,14 @@ export histograms_for_reaction_v2,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    reaction_additive_heatmap,
     reaction_additive_timecourse_heatmap_dfs,
-    remove_reaction_string_prefix
-
-"""
-    histograms_for_reaction_v2(long_sampling_df, reaction_id, reaction_string; bins = 20)
-
-Plots histograms for a single reaction, with time points as separate panels and additives layered on top of each other in different colors. Draws a thick black dashed vertical line at the 0 point on all rows.
-
-# Arguments
-1. `long_sampling_df`: Sampling DataFrame, pivoted long
-2. `reaction_id`: The reaction id for which the samples are being plotted.
-3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
-4. `subsystem`: Human-readable susbsytem of the reaction
-5. `bins`: Number of bins in the histograms.
-
-# Returns
-`Figure`
-
-Returns a Makie `Figure` to display or save.
-"""
-function histograms_for_reaction_v2(
-    long_sampling_df,
-    reaction_id,
-    reaction_string,
-    subsystem;
-    bins = 20,
-)
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:reaction_id == reaction_id)
-        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
-    end
-    clean_reaction_id = replace(reaction_id, "R_" => "")
-    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
-    additive_palette = [
-        "01-Ctrl AS3" => :dodgerblue,
-        "02-Adenosine" => :orange,
-        "03-Glutamine" => :blueviolet,
-        "04-Methionine" => :crimson,
-        "07-NAC" => :brown,
-        "08-Taurine" => :magenta,
-    ]
-    hist_layer =
-        data(plt_df) *
-        mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
-        histogram(bins = bins) *
-        visual(alpha = 0.5)
-    zero_line_layer =
-        data((flux = [0],)) *
-        mapping(:flux) *
-        visual(VLines; color = :black, linestyle = :dash, linewidth = 3)
-    plt = hist_layer + zero_line_layer
-    return draw(
-        plt,
-        scales(
-            Color = (; palette = additive_palette),
-            X = (; label = "Flux (mM/week)"),
-            Y = (; label = "Sample Count"),
-        );
-        facet = (; linkxaxes = :all, linkyaxes = :all),
-        figure = (; title = title, size = (700, 700)),
-    )
-end
-
-"""
-    densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
-
-Plots KDEs of the flux distributions for the reaction in the various additives.
-
-# Arguments
-1. `long_sampling_df`: Sampling DataFrame, pivoted long
-2. `reaction_id`: The reaction id for which the samples are being plotted.
-3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
-4. `subsystem`: Human-readable susbsytem of the reaction
-5. `bins`: Number of bins in the histograms.
-
-# Returns
-`Figure`
-
-Returns a Makie `Figure` to display or save.
-"""
-function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:reaction_id == reaction_id)
-        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
-    end
-    clean_reaction_id = replace(reaction_id, "R_" => "")
-    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
-    additive_palette = [
-        "01-Ctrl AS3" => :dodgerblue,
-        "02-Adenosine" => :orange,
-        "03-Glutamine" => :blueviolet,
-        "04-Methionine" => :crimson,
-        "07-NAC" => :brown,
-        "08-Taurine" => :magenta,
-    ]
-    density_layer =
-        data(plt_df) *
-        mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
-        AlgebraOfGraphics.density() *
-        visual(alpha = 0.5)
-    zero_line_layer =
-        data((flux = [0],)) *
-        mapping(:flux) *
-        visual(VLines; color = :black, linestyle = :dash, linewidth = 3)
-    plt = density_layer + zero_line_layer
-    return draw(
-        plt,
-        scales(
-            Color = (; palette = additive_palette),
-            X = (; label = "Flux (mM/week)"),
-            Y = (; label = "Density"),
-        );
-        facet = (; linkxaxes = :all, linkyaxes = :all),
-        figure = (; title = title, size = (700, 700)),
-    )
-end
+    remove_reaction_string_prefix,
+    reaction_correlations_one_additive_one_time
 
 """
     pivot_sampling_df_long(sampling_df)
 
-Pivots the sampling_df longer.
+Pivots the sampling DataFrame longer. This function duplicates the function of the same name in `UfbaSamplerAnalysis`. It is duplicated so that neither this module nor the analysis module need to import each other, which would mess up the documentation.
 
 # Arguments
 1. `sampling_df`: The sampling DataFrame in long format. The DataFrame should have a column for each reaction sampled, along with `:additive` and `:final_time` columns.
@@ -177,53 +58,6 @@ function pivot_sampling_df_long(sampling_df)
         value_name = :flux,
     )
     return long_sampling_df
-end
-
-"""
-    plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
-
-Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made.
-
-# Arguments
-1. `sampling_df`: Wide DataFrame of uFBA sampling results.
-2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
-3. `bins`: Number of bins to put onto histograms.
-"""
-function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
-    if nrow(sampling_df) == 0
-        @warn "uFBA: Nothing to plot"
-    else
-        long_sampling_df = pivot_sampling_df_long(sampling_df)
-        reaction_ids = unique(long_sampling_df.reaction_id)
-        n_reaction_ids = length(reaction_ids)
-        prog = Progress(n_reaction_ids, desc = "Writing histograms and densities")
-        for reaction_id in reaction_ids
-            reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
-            subsystem = rxn_ids_to_strings[reaction_id]["subsystem"]
-            # reaction_name = rxn_ids_to_strings[reaction_id]["name"]
-            fig_hist = histograms_for_reaction_v2(
-                long_sampling_df,
-                reaction_id,
-                reaction_string,
-                subsystem;
-                bins = bins,
-            )
-            fig_density = densities_for_reaction(
-                long_sampling_df,
-                reaction_id,
-                reaction_string,
-                subsystem,
-            )
-            filename_hist =
-                joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
-            filename_density =
-                joinpath("output", "uFBA_densities", "$reaction_id Densities.png")
-            save(filename_hist, fig_hist)
-            save(filename_density, fig_density)
-            next!(prog)
-        end
-        finish!(prog)
-    end
 end
 
 """
@@ -424,7 +258,7 @@ end
 """
     abs_maximum(xs)
 
-Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+Returns the SIGNED value with the maximum absolute value in the given vector. In other words, looks for the maximum magnitude while preserving the sign. A helper function for [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 
 # Arguments
 1. `xs`: The vector to search through.
@@ -615,7 +449,7 @@ end
 Goes through all DataFrames in the comparison result and removes the leading `R_` from reaction ids to enhance data readability for humans.
 
 # Arguments
-1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.compare_flux_distributions)
+1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 
 # Returns
 `NamedTuple`
@@ -821,7 +655,7 @@ TODO: These tests are ridiculously overpowered. In order to prevent taking -log1
 # Returns
 `NamedTuple`
 
-Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerAnalysisAndViz.reaction_additive_heatmap).
+Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerViz.reaction_additive_heatmap).
 
 Available fields are:
 1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.
@@ -938,82 +772,100 @@ function reaction_additive_timecourse_heatmap_dfs(
 end
 
 """
-    reaction_additive_heatmap(
-        effects_result;
-        top_n = 20,
-        fig_size = (800, 800),
-    )
+    classify_reaction_id(reaction_id)
 
-Plots a pair of heatmaps side-by-side, one with effect sizes and the other with significance values. Meant to be useful for a variety of tests.
+Classifies a reaction id as `:transporter`, `:exchange`, `:inner_reaction`.
 
 # Arguments
-1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
-2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
-3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
-4. `include_significance = false`: If true, includes the significance heatmap.
-5. `effect_title = "Heatmap"`: Plot title for the effect heatmap.
-6. `effect_colorbar_label = "Legend"`: Title for the colorbar legend.
+1. `reaction_id`: Reaction id to classify.
 
 # Returns
-`Figure`
+`Symbol`
 
-Returns a figure suitable for display or plotting.
+Returns the classification of the reaction d.
 """
-function reaction_additive_heatmap(
-    effects_result;
-    top_n = 20,
-    fig_size = (800, 800),
-    include_significance = false,
-    effect_title = "Heatmap",
-    effect_colorbar_label = "Legend",
-)
-    effects_wide_df = effects_result.effects_wide_df
-    effects_plot_df = reverse(first(effects_wide_df, top_n))
-    effects_row_labels = effects_plot_df.reaction_id
-    effects_col_labels = names(effects_plot_df)[2:end]
-    effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
-    effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
-    fig = Figure(size = fig_size)
-    effects_ax = Axis(
-        fig[1, 1],
-        title = effect_title,
-        xticks = (1:length(effects_col_labels), effects_col_labels),
-        yticks = (1:length(effects_row_labels), effects_row_labels),
-        xticklabelrotation = π/4,
-    )
-    effects_hm = heatmap!(
-        effects_ax,
-        effects_heatmap_mat';
-        colormap = Reverse(:RdBu_9),
-        colorrange = effects_clims,
-    )
-    Colorbar(fig[1, 2], effects_hm; label = effect_colorbar_label, labelsize = 14)
-    if include_significance
-        significance_wide_df = effects_result.significance_wide_df
-        significance_plot_df = reverse(first(significance_wide_df, top_n))
-        significance_row_labels = significance_plot_df.reaction_id
-        significance_col_labels = names(significance_plot_df)[2:end]
-        significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
-        significance_clims = (
-            -maximum(abs, significance_heatmap_mat),
-            maximum(abs, significance_heatmap_mat),
-        )
-        significance_ax = Axis(
-            fig[1, 3],
-            title = "Significance",
-            xticks = (1:length(significance_col_labels), significance_col_labels),
-            yticks = (1:length(significance_row_labels), significance_row_labels),
-            xticklabelrotation = π/4,
-        )
-        significance_hm = heatmap!(
-            significance_ax,
-            significance_heatmap_mat';
-            colormap = :Blues,
-            colorrange = significance_clims,
-        )
-        Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
+function classify_reaction_id(reaction_id)
+    reaction_id_str = string(reaction_id)
+    if occursin("t", reaction_id_str)
+        return :transporter
+    elseif occursin("EX_", reaction_id_str)
+        return :exchange
+    else
+        return :inner_reaction
     end
-    return fig
+end
+
+"""
+    additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+
+Splits the given wide sampling DataFrame into separate DataFrames stored in a Dictionary that uses a tuple of `(additive, final_time)` as the keys and DataFrames filtered down to that additive and final time as values. Filters the reactions in each DataFrame to those reaction that are inthe allowed classifications.
+
+The allowed reaction categories in the second argument explained below are `:transporter`, `:exchange`, `:inner_reaction`.
+
+# Arguments
+1. `sampling_df`: Wide sampling DataFrame with all additives and time points.
+2. `allowed_reaction_id_categories`: A vector (even of a single element) of symbols corresponding to classifications of [`classify_reaction_id`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.classify_reaction_id).
+
+# Returns
+`Dict{Tuple{String,Int64},DataFrame}`
+
+Dictionary mapping `(additive, final_time)` tuples to DataFrames as explained above.
+"""
+function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    reaction_ids = [
+        col_name for col_name in Symbol.(names(sampling_df)) if
+        col_name != :additive && col_name != :final_time
+    ]
+    not_reaction_ids = [
+        not_reaction_id for not_reaction_id in reaction_ids if
+        classify_reaction_id(not_reaction_id) ∉ allowed_reaction_id_categories
+    ]
+    select_sampling_df = select(sampling_df, Not(not_reaction_ids))
+    final_times = sort(unique(sampling_df.final_time))
+    additives = sort(unique(sampling_df.additive))
+    subsets = product(additives, final_times)
+    subset_dfs = Dict(
+        (additive, final_time) => @rsubset(
+            select_sampling_df,
+            :additive == additive,
+            :final_time == final_time
+        ) for (additive, final_time) in subsets
+    )
+    return subset_dfs
+end
+
+"""
+    reaction_correlations_one_additive_one_time(
+        sampling_df,
+        allowed_reaction_id_categories,
+    )
+
+Calculates correlation matrices of fluxes of reactions in each additive at each final time of the given wide sampling DataFrame with reactions limited to those in the allowed categories (`:transporter`, `:exchange`, `:inner_reaction`).
+
+# Arguments
+1. `sampling_df`: Wide sampling DataFrame
+2. `allowed_reaction_id_categories`: Vector (even if only of one element) of reaction categories for the to select for the correlation matrices.
+
+# Returns
+`Dict{Tuple{String,Int64},DataFrame}`
+
+Dictionary mapping tuples of additive and final time to correlation matrices (in DataFrame form) of the correlations between each pair of reactions.
+"""
+function reaction_correlations_one_additive_one_time(
+    sampling_df,
+    allowed_reaction_id_categories,
+)
+    subset_dfs = additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    result_dict::Dict{Tuple{String,Int64},DataFrame} = Dict()
+    for (additive, final_time) in keys(subset_dfs)
+        df = select(subset_dfs[(additive, final_time)], Not([:additive, :final_time]))
+        mat = Matrix{Float64}(df)
+        cor_mat = corspearman(mat)
+        result_df = DataFrame(cor_mat, names(df))
+        insertcols!(result_df, 1, :row_variable => names(df))
+        result_dict[(additive, final_time)] = result_df
+    end
+    return result_dict
 end
 
 end

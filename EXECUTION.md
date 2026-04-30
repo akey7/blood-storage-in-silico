@@ -156,7 +156,8 @@ Outputs the following files:
 5. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
 6. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
 7. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
-1. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+9. Writes a bunch of `.csv` files for use by an R script to plot correlation heatmaps and perform hierarchical clustering. These files are written to `output/correlation_matrices_1/`.
 
 There are no threads or workers in this script, so execution is simple.
 
