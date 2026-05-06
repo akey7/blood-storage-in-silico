@@ -16,6 +16,7 @@ using CategoricalArrays
 using MixedModels
 using MixedModels: likelihoodratiotest
 using GLM
+using CSV
 
 export diagnose_flux_stats,
     pivot_sampling_df_long,
@@ -31,7 +32,8 @@ export diagnose_flux_stats,
     per_reaction_additive_time_test,
     reaction_additive_timecourse_heatmap_dfs,
     remove_reaction_string_prefix,
-    reaction_correlations_one_additive_one_time
+    reaction_correlations_one_additive_one_time,
+    write_all_flux_vector_matrices
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -165,6 +167,20 @@ function prepare_median_flux_vector_matrix(sampling_df; exclude_additive = nothi
         unstack(:reaction_id, :additive_final_time, :median_flux)
     end
     return transformed_df
+end
+
+function write_all_flux_vector_matrices(sampling_df, output_folder)
+    exclusions::Vector{Any} = sort(unique(sampling_df.additive))
+    push!(exclusions, nothing)
+    for exclusion in exclusions
+        filename =
+            isnothing(exclusion) ? "flux_vector_matrix_everything.csv" :
+            "flux_vector_matrix_exclude_$(replace(lowercase(exclusion), "-" => "_", " " => "_")).csv"
+        output_filename = joinpath(output_folder, filename)
+        df = prepare_median_flux_vector_matrix(sampling_df; exclude_additive = exclusion)
+        CSV.write(output_filename, df)
+        println("Wrote $filename")
+    end
 end
 
 """

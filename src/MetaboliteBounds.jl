@@ -124,10 +124,7 @@ Determines if the given sink name contains any of the substrings in the given si
 
 Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
 """
-function does_sink_id_match_list(
-    sink_id,
-    matching_sink_ids,
-)
+function does_sink_id_match_list(sink_id, matching_sink_ids)
     if isnothing(matching_sink_ids)
         return false
     else

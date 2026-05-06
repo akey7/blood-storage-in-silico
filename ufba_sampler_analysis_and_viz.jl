@@ -48,10 +48,12 @@ CSV.write(median_flux_filename, median_flux_df)
 println("Wrote $median_flux_filename")
 
 @info "Writing flux vector data matrices"
-data_matrix_filename = joinpath("output", "flux_vector_data_matrix.csv")
-data_matrix_df = prepare_median_flux_vector_matrix(sampling_df)
-CSV.write(data_matrix_filename, data_matrix_df)
-println("Wrote $data_matrix_filename")
+# data_matrix_filename = joinpath("output", "flux_vector_data_matrix.csv")
+# data_matrix_df = prepare_median_flux_vector_matrix(sampling_df)
+# CSV.write(data_matrix_filename, data_matrix_df)
+# println("Wrote $data_matrix_filename")
+data_matrix_path = joinpath("output", "flux_vector_data_matrices")
+write_all_flux_vector_matrices(sampling_df, data_matrix_path)
 
 # @info "Reporting measured and unmeasured metabolites, with and without sinks"
 # absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
