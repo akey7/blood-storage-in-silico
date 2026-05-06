@@ -47,7 +47,7 @@ median_flux_df = calc_median_flux_df(sampling_df)
 CSV.write(median_flux_filename, median_flux_df)
 println("Wrote $median_flux_filename")
 
-@info "Writing flux vector DataMatrix"
+@info "Writing flux vector data matrices"
 data_matrix_filename = joinpath("output", "flux_vector_data_matrix.csv")
 data_matrix_df = prepare_median_flux_vector_matrix(sampling_df)
 CSV.write(data_matrix_filename, data_matrix_df)

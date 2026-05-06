@@ -139,21 +139,23 @@ function combine_and_clean_addititve_final_time(additive, final_time)
 end
 
 """
-    prepare_median_flux_vector_matrix(sampling_df)
+    prepare_median_flux_vector_matrix(sampling_df; exclude_additive = nothing)
 
 Prepare a data matrix of the uFBA results. Each row is a reaction, each column is an additive at a time point, and each element is the median flux for that row and column.
 
 # Arguments
 1. `sampling_df`: The wide formatted sampling DataFrame
+2. `exclude_additive = nothing`: If specified, the columns for the given additive are not added to the output. If left as `nothing`, all additives are included. 
 
 # Returns
 `DataFrame`
 
 Returns a data matrix in the form of a DataFrame as specified above.
 """
-function prepare_median_flux_vector_matrix(sampling_df)
+function prepare_median_flux_vector_matrix(sampling_df; exclude_additive = nothing)
     median_df = calc_median_flux_df(sampling_df)
     transformed_df = @chain median_df begin
+        @rsubset(:additive != exclude_additive)
         @rtransform(
             :additive_final_time =
                 combine_and_clean_addititve_final_time(:additive, :final_time)
