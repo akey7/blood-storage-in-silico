@@ -8,8 +8,8 @@ using YAML
 
 include("src/ModelGraph.jl")
 using .ModelGraph
-include("src/UfbaSamplerAnalysisAndViz.jl")
-using .UfbaSamplerAnalysisAndViz
+include("src/UfbaSamplerAnalysis.jl")
+using .UfbaSamplerAnalysis
 
 @info "Not traversing the following metabolite ids!"
 # Common metabolites not to be traversed
