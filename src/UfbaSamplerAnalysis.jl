@@ -16,6 +16,7 @@ using CategoricalArrays
 using MixedModels
 using MixedModels: likelihoodratiotest
 using GLM
+using CSV
 
 export diagnose_flux_stats,
     pivot_sampling_df_long,
@@ -31,7 +32,8 @@ export diagnose_flux_stats,
     per_reaction_additive_time_test,
     reaction_additive_timecourse_heatmap_dfs,
     remove_reaction_string_prefix,
-    reaction_correlations_one_additive_one_time
+    reaction_correlations_one_additive_one_time,
+    write_all_flux_vector_matrices
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -139,21 +141,23 @@ function combine_and_clean_addititve_final_time(additive, final_time)
 end
 
 """
-    prepare_median_flux_vector_matrix(sampling_df)
+    prepare_median_flux_vector_matrix(sampling_df; exclude_additive = nothing)
 
 Prepare a data matrix of the uFBA results. Each row is a reaction, each column is an additive at a time point, and each element is the median flux for that row and column.
 
 # Arguments
 1. `sampling_df`: The wide formatted sampling DataFrame
+2. `exclude_additive = nothing`: If specified, the columns for the given additive are not added to the output. If left as `nothing`, all additives are included. 
 
 # Returns
 `DataFrame`
 
 Returns a data matrix in the form of a DataFrame as specified above.
 """
-function prepare_median_flux_vector_matrix(sampling_df)
+function prepare_median_flux_vector_matrix(sampling_df; exclude_additive = nothing)
     median_df = calc_median_flux_df(sampling_df)
     transformed_df = @chain median_df begin
+        @rsubset(:additive != exclude_additive)
         @rtransform(
             :additive_final_time =
                 combine_and_clean_addititve_final_time(:additive, :final_time)
@@ -163,6 +167,29 @@ function prepare_median_flux_vector_matrix(sampling_df)
         unstack(:reaction_id, :additive_final_time, :median_flux)
     end
     return transformed_df
+end
+
+"""
+    write_all_flux_vector_matrices(sampling_df, output_folder)
+
+Iterate through all additives in the `sampling_df`, writing flux vector data matrices that EXCLUDE each addtive condition in turn. Saves the resulting matrices in `.csv` files in the specified output folder. Uses [`prepare_median_flux_vector_matrix`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.prepare_median_flux_vector_matrix) to prepare the matrices. This function does not return anything, rather it writes files to the filesystem.
+
+# Arguments
+1. `sampling_df`: The wide sampling DataFrame
+2. `output_folder`: Path to save the data matrices into.
+"""
+function write_all_flux_vector_matrices(sampling_df, output_folder)
+    exclusions::Vector{Any} = sort(unique(sampling_df.additive))
+    push!(exclusions, nothing)
+    for exclusion in exclusions
+        filename =
+            isnothing(exclusion) ? "flux_vector_matrix_everything.csv" :
+            "flux_vector_matrix_exclude_$(replace(lowercase(exclusion), "-" => "_", " " => "_")).csv"
+        output_filename = joinpath(output_folder, filename)
+        df = prepare_median_flux_vector_matrix(sampling_df; exclude_additive = exclusion)
+        CSV.write(output_filename, df)
+        println("Wrote $filename")
+    end
 end
 
 """

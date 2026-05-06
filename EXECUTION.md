@@ -152,7 +152,7 @@ Outputs the following files:
 1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
 2. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
 3. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
-4. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
+4. Writes data matrices of median fluxes to `output/flux_vector_data_matrices`. One matrix contains all additives. The rest of the matrices exclude one matrix at a time.
 5. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
 6. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
 7. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
