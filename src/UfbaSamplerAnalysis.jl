@@ -169,6 +169,15 @@ function prepare_median_flux_vector_matrix(sampling_df; exclude_additive = nothi
     return transformed_df
 end
 
+"""
+    write_all_flux_vector_matrices(sampling_df, output_folder)
+
+Iterate through all additives in the `sampling_df`, writing flux vector data matrices that EXCLUDE each addtive condition in turn. Saves the resulting matrices in `.csv` files in the specified output folder. Uses [`prepare_median_flux_vector_matrix`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.prepare_median_flux_vector_matrix) to prepare the matrices. This function does not return anything, rather it writes files to the filesystem.
+
+# Arguments
+1. `sampling_df`: The wide sampling DataFrame
+2. `output_folder`: Path to save the data matrices into.
+"""
 function write_all_flux_vector_matrices(sampling_df, output_folder)
     exclusions::Vector{Any} = sort(unique(sampling_df.additive))
     push!(exclusions, nothing)
