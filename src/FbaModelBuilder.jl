@@ -417,11 +417,23 @@ function create_fba_model(
     # println("> Setting NaKt load")
     model.reactions["R_NaKt"].objective_coefficient = 1.0
 
-    metabolite_ids =
-        [replace(metabolite_id, "M_" => "") for (metabolite_id, _) in model.metabolites]
-    metabolites_df = DataFrame(metabolite_id = metabolite_ids)
+    custom_reaction_ids = ["R_LOAD_ATP", "R_LOAD_NADH", "R_LOAD_NADPH", "R_NaKt"]
 
-    return model, metabolites_df
+    complete_reaction_ids = [
+        all_reaction_ids
+        custom_reaction_ids
+    ]
+
+    reactions_metabolites = []
+    for reaction_id ∈ complete_reaction_ids
+        for metabolite_id ∈ keys(model.reactions[reaction_id].stoichiometry)
+            reaction_metabolite = (reaction_id = reaction_id, metabolite_id = metabolite_id)
+            push!(reactions_metabolites, reaction_metabolite)
+        end
+    end
+    reactions_metabolites_df = DataFrame(reactions_metabolites)
+
+    return model, reactions_metabolites_df
 end
 
 end
