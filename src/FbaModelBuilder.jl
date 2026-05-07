@@ -426,8 +426,9 @@ function create_fba_model(
 
     reactions_metabolites = []
     for reaction_id ∈ complete_reaction_ids
-        for metabolite_id ∈ keys(model.reactions[reaction_id].stoichiometry)
-            reaction_metabolite = (reaction_id = reaction_id, metabolite_id = metabolite_id)
+        for (metabolite_id, coeff) ∈ model.reactions[reaction_id].stoichiometry
+            reaction_metabolite =
+                (reaction_id = reaction_id, metabolite_id = metabolite_id, coeff = coeff)
             push!(reactions_metabolites, reaction_metabolite)
         end
     end
