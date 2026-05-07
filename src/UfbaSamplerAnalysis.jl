@@ -33,7 +33,8 @@ export diagnose_flux_stats,
     reaction_additive_timecourse_heatmap_dfs,
     remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
-    write_all_flux_vector_matrices
+    write_all_flux_vector_matrices,
+    reactions_metabolites_report_dfs
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -893,6 +894,19 @@ function reaction_correlations_one_additive_one_time(
         result_dict[(additive, final_time)] = result_df
     end
     return result_dict
+end
+
+function reactions_metabolites_report_dfs(
+    fba_reactions_metabolites_df,
+    metabolite_ids_names_df,
+    reaction_ids_to_strings_df,
+    measurements_and_sinks_report_df,
+)
+    reactions_metabolites_df = @chain fba_reactions_metabolites_df begin
+        leftjoin(metabolite_ids_names_df, on = :metabolite_id)
+        leftjoin(reaction_ids_to_strings_df, on = :reaction_id)
+    end
+    return reactions_metabolites_df
 end
 
 end

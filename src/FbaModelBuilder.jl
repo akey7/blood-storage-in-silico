@@ -434,7 +434,17 @@ function create_fba_model(
     end
     reactions_metabolites_df = DataFrame(reactions_metabolites)
 
-    return model, reactions_metabolites_df
+    metabolite_ids =
+        [replace(metabolite_id, "M_" => "") for (metabolite_id, _) in model.metabolites]
+    metabolites_df = DataFrame(metabolite_id = metabolite_ids)
+
+    result = (
+        model = model,
+        reactions_metabolites_df = reactions_metabolites_df,
+        metabolites_df = metabolites_df,
+    )
+
+    return result
 end
 
 end

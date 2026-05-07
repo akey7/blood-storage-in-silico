@@ -51,11 +51,14 @@ sink_opt_ins = load_sink_opt_ins()
 reaction_names_and_subsystems_df = load_reaction_names_and_subsystems()
 
 @info "Create reaction ids to strings mapping and save FBA model metabolites"
-fba_model, fba_reactions_metabolites_df = create_fba_model(
+fba_model_result = create_fba_model(
     load_base_rbc_gem();
     exchanges = default_exchanges(),
     flux_bounds_overrides_df = flux_bounds_overrides_df,
 )
+fba_model = fba_model_result.model
+fba_reactions_metabolites_df = fba_model_result.reactions_metabolites_df
+fba_model_metabolites_df = fba_model_result.metabolites_df
 mapping_additive = "01-Ctrl AS3"
 metabolite_status_df =
     find_metabolite_matches(fba_model, metabolites_bounds_df, mapping_additive, 2)
@@ -76,8 +79,11 @@ rxn_ids_to_strings_dict, rxn_ids_to_strings_df = map_reaction_ids_to_reaction_st
 rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 YAML.write_file(rxn_ids_to_strings_filename, rxn_ids_to_strings_dict)
 println("Wrote $rxn_ids_to_strings_filename")
-fba_model_metabolites_filename = joinpath("output", "fba_model_reactions_metabolites.csv")
-CSV.write(fba_model_metabolites_filename, fba_reactions_metabolites_df)
+fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
+CSV.write(fba_model_metabolites_filename, fba_model_metabolites_df)
+println("Wrote $fba_model_metabolites_filename")
+fba_reactions_metabolites_filename = joinpath("output", "fba_model_reactions_metabolites.csv")
+CSV.write(fba_reactions_metabolites_filename, fba_reactions_metabolites_df)
 println("Wrote $fba_model_metabolites_filename")
 rxn_ids_to_strings_filename = joinpath("output", "rxn_strings_subsystems_categories.csv")
 CSV.write(rxn_ids_to_strings_filename, rxn_ids_to_strings_df)
