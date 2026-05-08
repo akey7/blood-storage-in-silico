@@ -93,7 +93,10 @@ reactions_metabolites_df = reactions_metabolites_report_dfs(
     reaction_ids_to_strings_df,
     measurements_and_sinks_report_df,
 )
-display(first(reactions_metabolites_df, 10))
+reactions_metabolites_filename =
+    joinpath("output", "reactions_metabolites_measurements.csv")
+CSV.write(reactions_metabolites_filename, reactions_metabolites_df)
+println("Wrote $reactions_metabolites_filename")
 
 # @info "Comparing control vs. treatment fluxes"
 # comparison_result_0 =
