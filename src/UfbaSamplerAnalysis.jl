@@ -906,7 +906,7 @@ end
         reference_final_time = 2,
     )
 
-Makes DataFrames that link reactions to metabolites and count the number of measures metabolties per reaction, reaction subsystem, and reaction category.
+Makes DataFrames that link reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category.
 
 This function assumes that the same metaolties are measured across additives and time points and uses the specified additive and final time as the reference.
 
