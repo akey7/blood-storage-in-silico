@@ -87,15 +87,25 @@ reaction_ids_to_strings_filename =
 fba_reactions_metabolites_df = CSV.read(fba_reactions_metabolites_filename, DataFrame)
 metabolite_ids_names_df = CSV.read(metabolite_ids_names_filename, DataFrame)
 reaction_ids_to_strings_df = CSV.read(reaction_ids_to_strings_filename, DataFrame)
-reactions_metabolites_df = reactions_metabolites_report_dfs(
+reactions_metabolites_result = reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
     metabolite_ids_names_df,
     reaction_ids_to_strings_df,
     measurements_and_sinks_report_df,
 )
 reactions_metabolites_filename =
-    joinpath("output", "reactions_metabolites_measurements.csv")
-CSV.write(reactions_metabolites_filename, reactions_metabolites_df)
+    joinpath("output", "reactions_metabolites_measurements.xlsx")
+reactions_metabolites_df = reactions_metabolites_result.reactions_metabolites_df
+reactions_measured_df = reactions_metabolites_result.reactions_measured_df
+subsystems_measured_df = reactions_metabolites_result.subsystems_measured_df
+categories_measured_df = reactions_metabolites_result.categories_measured_df
+XLSX.writetable(
+    reactions_metabolites_filename,
+    "reactions_metabolites" => reactions_metabolites_df,
+    "reactions_measured" => reactions_measured_df,
+    "subsystems_measured" => subsystems_measured_df,
+    "categories_measured" => categories_measured_df,
+)
 println("Wrote $reactions_metabolites_filename")
 
 # @info "Comparing control vs. treatment fluxes"

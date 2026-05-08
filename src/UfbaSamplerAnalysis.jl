@@ -926,7 +926,28 @@ function reactions_metabolites_report_dfs(
             :is_metabolite_measured = :is_measured
         )
     end
-    return reactions_metabolites_df
+    reactions_measured_df = @chain reactions_metabolites_df begin
+        @groupby(:reaction_id, :reaction_name)
+        @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
+        @orderby(-:n_measured_metabolites, :reaction_id)
+    end
+    subsystems_measured_df = @chain reactions_metabolites_df begin
+        @groupby(:reaction_subsystem)
+        @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
+        @orderby(-:n_measured_metabolites, :reaction_subsystem)
+    end
+    categories_measured_df = @chain reactions_metabolites_df begin
+        @groupby(:reaction_category)
+        @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
+        @orderby(-:n_measured_metabolites, :reaction_category)
+    end
+    result = (
+        reactions_metabolites_df = reactions_metabolites_df,
+        reactions_measured_df = reactions_measured_df,
+        subsystems_measured_df = subsystems_measured_df,
+        categories_measured_df = categories_measured_df,
+    )
+    return result
 end
 
 end
