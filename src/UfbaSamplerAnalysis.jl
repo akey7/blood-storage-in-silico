@@ -896,6 +896,42 @@ function reaction_correlations_one_additive_one_time(
     return result_dict
 end
 
+"""
+    reactions_metabolites_report_dfs(
+        fba_reactions_metabolites_df,
+        metabolite_ids_names_df,
+        reaction_ids_to_strings_df,
+        measurements_and_sinks_report_df;
+        reference_additive = "01-Ctrl AS3",
+        reference_final_time = 2,
+    )
+
+Makes DataFrames that link reactions to metabolites and count the number of measures metabolties per reaction, reaction subsystem, and reaction category.
+
+This function assumes that the same metaolties are measured across additives and time points and uses the specified additive and final time as the reference.
+
+# Arguments
+1. `fba_reactions_metabolites_df`: DataFrame that is part of the output from [`create_fba_model`](@ref BloodStorageInSilico.UfbaSampler.FbaModelBuilder.create_fba_model) mapping reaction ids to metabolite ids
+2. `metabolite_ids_names_df`: A DataFrame that has `metabolite_id` and `metabolite_name` columns.
+3. `reaction_ids_to_strings_df`: DataFrame that is part of the output from [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings) mapping reaction ids to names, subsystems, and categories.
+4. `measurements_and_sinks_report_df`: DataFrame that is part of the output from [`prepare_measurements_and_sinks_report_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.prepare_measurements_and_sinks_report_df) that is the measurements and sinks report.
+5. `reference_additive = "01-Ctrl AS3"`: Optional. Reference additive for metabolite measurements.
+6. `reference_final_time = 2`: Optional. Reference final time for metabolite measurements.
+
+# Returns
+`NamedTuple`
+
+reactions_metabolites_df = reactions_metabolites_df,
+        reactions_measured_df = reactions_measured_df,
+        subsystems_measured_df = subsystems_measured_df,
+        categories_measured_df = categories_measured_df,
+
+Returns a named tuple with the following fields:
+1. `reactions_metabolites_df`: DataFrame unifying all reaction data with all metabolite and metabolite measurement data.
+2. `reactions_measured_df`: DataFrame counting the number of measured metabolites for each reaction.
+3. `subsystems_measured_df`: DataFrame counting the number of measured metabolites for each reaction subsystem.
+4. `categories_measured_df`: DataFrame counting the number of measured metabolites for each reaction category.
+"""
 function reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
     metabolite_ids_names_df,
