@@ -900,11 +900,20 @@ function reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
     metabolite_ids_names_df,
     reaction_ids_to_strings_df,
-    measurements_and_sinks_report_df,
+    measurements_and_sinks_report_df;
+    reference_additive = "01-Ctrl AS3",
+    reference_final_time = 2,
 )
+    is_measured_df = @chain measurements_and_sinks_report_df begin
+        @rsubset(:additive == reference_additive, :final_time == reference_final_time)
+        @rtransform(:metabolite_id = "M_$(:fba_metabolite_id)")
+        @select(:metabolite_id, :is_measured)
+    end
     reactions_metabolites_df = @chain fba_reactions_metabolites_df begin
         leftjoin(metabolite_ids_names_df, on = :metabolite_id)
         leftjoin(reaction_ids_to_strings_df, on = :reaction_id)
+        leftjoin(is_measured_df, on = :metabolite_id)
+        @orderby(:reaction_id, :coeff, :metabolite_id)
     end
     return reactions_metabolites_df
 end
