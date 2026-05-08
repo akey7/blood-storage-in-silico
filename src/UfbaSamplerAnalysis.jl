@@ -914,6 +914,17 @@ function reactions_metabolites_report_dfs(
         leftjoin(reaction_ids_to_strings_df, on = :reaction_id)
         leftjoin(is_measured_df, on = :metabolite_id)
         @orderby(:reaction_id, :coeff, :metabolite_id)
+        @select(
+            :reaction_id,
+            :reaction_name,
+            :reaction_subsystem,
+            :reaction_category,
+            :reaction_string,
+            :metabolite_id,
+            :coeff,
+            :metabolite_name,
+            :is_metabolite_measured = :is_measured
+        )
     end
     return reactions_metabolites_df
 end
