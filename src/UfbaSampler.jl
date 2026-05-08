@@ -597,11 +597,12 @@ function make_ufba_models_for_additives_and_times(
     result = map(enumerate(pairs)) do p
         (i, (additive, final_time)) = p
         additive_string = String(additive)
-        full_model, _ = create_fba_model(
+        fba_model_result = create_fba_model(
             base_rbc_gem;
             exchanges = exchanges,
             flux_bounds_overrides_df = flux_bounds_overrides_df,
         )
+        full_model = fba_model_result.model
         metabolite_status_df = find_metabolite_matches(
             full_model,
             metabolite_bounds_df,
@@ -633,11 +634,12 @@ function make_ufba_models_for_additives_and_times(
             prune_analysis = analyze_pruning_optimization(prune_result)
             prune_zero_sinks = string.(prune_analysis.prune)
             nonzero_sinks = string.(prune_analysis.keep)
-            pruned_model, _ = create_fba_model(
+            pruned_fba_model_result = create_fba_model(
                 base_rbc_gem;
                 exchanges = exchanges,
                 flux_bounds_overrides_df = flux_bounds_overrides_df,
             )
+            pruned_model = pruned_fba_model_result.model
             second_sink_specifications = (
                 metabolite_status_df = metabolite_status_df,
                 additive = additive,

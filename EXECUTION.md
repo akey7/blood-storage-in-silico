@@ -158,6 +158,7 @@ Outputs the following files:
 7. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
 8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
 9. Writes a bunch of `.csv` files for use by an R script to plot correlation heatmaps and perform hierarchical clustering. These files are written to `output/correlation_matrices_1/`.
+10. Writes an Excel workbook that links reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category. Filename is `output/reactions_metabolites_measurements.xlsx`
 
 There are no threads or workers in this script, so execution is simple.
 

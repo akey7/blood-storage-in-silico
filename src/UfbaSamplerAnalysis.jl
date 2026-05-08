@@ -33,7 +33,8 @@ export diagnose_flux_stats,
     reaction_additive_timecourse_heatmap_dfs,
     remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
-    write_all_flux_vector_matrices
+    write_all_flux_vector_matrices,
+    reactions_metabolites_report_dfs
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -893,6 +894,96 @@ function reaction_correlations_one_additive_one_time(
         result_dict[(additive, final_time)] = result_df
     end
     return result_dict
+end
+
+"""
+    reactions_metabolites_report_dfs(
+        fba_reactions_metabolites_df,
+        metabolite_ids_names_df,
+        reaction_ids_to_strings_df,
+        measurements_and_sinks_report_df;
+        reference_additive = "01-Ctrl AS3",
+        reference_final_time = 2,
+    )
+
+Makes DataFrames that link reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category.
+
+This function assumes that the same metaolties are measured across additives and time points and uses the specified additive and final time as the reference.
+
+# Arguments
+1. `fba_reactions_metabolites_df`: DataFrame that is part of the output from [`create_fba_model`](@ref BloodStorageInSilico.UfbaSampler.FbaModelBuilder.create_fba_model) mapping reaction ids to metabolite ids
+2. `metabolite_ids_names_df`: A DataFrame that has `metabolite_id` and `metabolite_name` columns.
+3. `reaction_ids_to_strings_df`: DataFrame that is part of the output from [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings) mapping reaction ids to names, subsystems, and categories.
+4. `measurements_and_sinks_report_df`: DataFrame that is part of the output from [`prepare_measurements_and_sinks_report_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.prepare_measurements_and_sinks_report_df) that is the measurements and sinks report.
+5. `reference_additive = "01-Ctrl AS3"`: Optional. Reference additive for metabolite measurements.
+6. `reference_final_time = 2`: Optional. Reference final time for metabolite measurements.
+
+# Returns
+`NamedTuple`
+
+reactions_metabolites_df = reactions_metabolites_df,
+        reactions_measured_df = reactions_measured_df,
+        subsystems_measured_df = subsystems_measured_df,
+        categories_measured_df = categories_measured_df,
+
+Returns a named tuple with the following fields:
+1. `reactions_metabolites_df`: DataFrame unifying all reaction data with all metabolite and metabolite measurement data.
+2. `reactions_measured_df`: DataFrame counting the number of measured metabolites for each reaction.
+3. `subsystems_measured_df`: DataFrame counting the number of measured metabolites for each reaction subsystem.
+4. `categories_measured_df`: DataFrame counting the number of measured metabolites for each reaction category.
+"""
+function reactions_metabolites_report_dfs(
+    fba_reactions_metabolites_df,
+    metabolite_ids_names_df,
+    reaction_ids_to_strings_df,
+    measurements_and_sinks_report_df;
+    reference_additive = "01-Ctrl AS3",
+    reference_final_time = 2,
+)
+    is_measured_df = @chain measurements_and_sinks_report_df begin
+        @rsubset(:additive == reference_additive, :final_time == reference_final_time)
+        @rtransform(:metabolite_id = "M_$(:fba_metabolite_id)")
+        @select(:metabolite_id, :is_measured)
+    end
+    reactions_metabolites_df = @chain fba_reactions_metabolites_df begin
+        leftjoin(metabolite_ids_names_df, on = :metabolite_id)
+        leftjoin(reaction_ids_to_strings_df, on = :reaction_id)
+        leftjoin(is_measured_df, on = :metabolite_id)
+        @orderby(:reaction_id, :coeff, :metabolite_id)
+        @select(
+            :reaction_id,
+            :reaction_name,
+            :reaction_subsystem,
+            :reaction_category,
+            :reaction_string,
+            :metabolite_id,
+            :coeff,
+            :metabolite_name,
+            :is_metabolite_measured = :is_measured
+        )
+    end
+    reactions_measured_df = @chain reactions_metabolites_df begin
+        @groupby(:reaction_id, :reaction_name)
+        @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
+        @orderby(-:n_measured_metabolites, :reaction_id)
+    end
+    subsystems_measured_df = @chain reactions_metabolites_df begin
+        @groupby(:reaction_subsystem)
+        @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
+        @orderby(-:n_measured_metabolites, :reaction_subsystem)
+    end
+    categories_measured_df = @chain reactions_metabolites_df begin
+        @groupby(:reaction_category)
+        @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
+        @orderby(-:n_measured_metabolites, :reaction_category)
+    end
+    result = (
+        reactions_metabolites_df = reactions_metabolites_df,
+        reactions_measured_df = reactions_measured_df,
+        subsystems_measured_df = subsystems_measured_df,
+        categories_measured_df = categories_measured_df,
+    )
+    return result
 end
 
 end
