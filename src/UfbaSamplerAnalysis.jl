@@ -620,8 +620,8 @@ function per_reaction_additive_time_test(sampling_df)
     long_cat_df = pivot_sampling_df_long_cat(sampling_df)
     reaction_ids = sort(unique(long_cat_df.reaction_id))
     n_reaction_ids = length(reaction_ids)
-    prog = Progress(n_reaction_ids, "Per reaction additive/time test")
-    rows = map(reaction_ids) do reaction_id
+    println("n_reaction_ids: $n_reaction_ids")
+    rows = ThreadsX.map(reaction_ids) do reaction_id
         reaction_df = @rsubset(long_cat_df, :reaction_id == reaction_id)
         m_time = lm(@formula(flux ~ final_time_cat), reaction_df)
         m_additive = lm(@formula(flux ~ additive_cat), reaction_df)
@@ -642,9 +642,10 @@ function per_reaction_additive_time_test(sampling_df)
             interaction_fstat = interaction_ftest.fstat[2],
             interaction_p = interaction_ftest.pval[2],
         )
-        next!(prog)
+        print(".")
         return row
     end
+    println("done")
     unsorted_df = DataFrame(rows)
     sorted_and_adjusted_df = @chain unsorted_df begin
         @transform begin
