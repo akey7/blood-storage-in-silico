@@ -16,7 +16,7 @@ Before you execute these scripts, the `input/` and `output/` folder must be conf
 
 The scripts take input and write output files. Some scripts rely on output files previously written by other scripts. The order of script execution presented here maintains the order of reliance of the scripts on each other if such order is important. Such an arrangment of scripts might not be ideal, but it works for now!
 
-## Executing Scripts
+## Manually Executing Scripts
 
 All commands are issued from the root of the repo.
 
@@ -204,6 +204,10 @@ This script only uses a single thread, so execution on macOS or Window is simple
 ```
 julia --project=. model_graph.jl
 ```
+
+## API Runner
+
+The `api_runner.jl` script unifies many aspects of the manual workflow above for execution by the Python API interface.
 
 ## Other Scripts
 
