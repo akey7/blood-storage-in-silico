@@ -105,6 +105,7 @@ XLSX.writetable(
     "reactions_measured" => reactions_measured_df,
     "subsystems_measured" => subsystems_measured_df,
     "categories_measured" => categories_measured_df,
+    overwrite = true,
 )
 println("Wrote $reactions_metabolites_filename")
 
