@@ -47,11 +47,9 @@ median_flux_df = calc_median_flux_df(sampling_df)
 CSV.write(median_flux_filename, median_flux_df)
 println("Wrote $median_flux_filename")
 
-@info "Writing flux vector DataMatrix"
-data_matrix_filename = joinpath("output", "flux_vector_data_matrix.csv")
-data_matrix_df = prepare_median_flux_vector_matrix(sampling_df)
-CSV.write(data_matrix_filename, data_matrix_df)
-println("Wrote $data_matrix_filename")
+@info "Writing flux vector data matrices"
+data_matrix_path = joinpath("output", "flux_vector_data_matrices")
+write_all_flux_vector_matrices(sampling_df, data_matrix_path)
 
 @info "Reporting measured and unmeasured metabolites, with and without sinks"
 absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
@@ -79,6 +77,36 @@ CSV.write(
     measurements_and_sinks_report_by_model_df,
 )
 println("Wrote $measurements_and_sinks_report_by_model_filename")
+
+@info "Combining reactions, metabolites, and measurements report"
+fba_reactions_metabolites_filename =
+    joinpath("output", "fba_model_reactions_metabolites.csv")
+metabolite_ids_names_filename = joinpath("input", "Metabolite Id to Name Map.csv")
+reaction_ids_to_strings_filename =
+    joinpath("output", "rxn_strings_subsystems_categories.csv")
+fba_reactions_metabolites_df = CSV.read(fba_reactions_metabolites_filename, DataFrame)
+metabolite_ids_names_df = CSV.read(metabolite_ids_names_filename, DataFrame)
+reaction_ids_to_strings_df = CSV.read(reaction_ids_to_strings_filename, DataFrame)
+reactions_metabolites_result = reactions_metabolites_report_dfs(
+    fba_reactions_metabolites_df,
+    metabolite_ids_names_df,
+    reaction_ids_to_strings_df,
+    measurements_and_sinks_report_df,
+)
+reactions_metabolites_filename =
+    joinpath("output", "reactions_metabolites_measurements.xlsx")
+reactions_metabolites_df = reactions_metabolites_result.reactions_metabolites_df
+reactions_measured_df = reactions_metabolites_result.reactions_measured_df
+subsystems_measured_df = reactions_metabolites_result.subsystems_measured_df
+categories_measured_df = reactions_metabolites_result.categories_measured_df
+XLSX.writetable(
+    reactions_metabolites_filename,
+    "reactions_metabolites" => reactions_metabolites_df,
+    "reactions_measured" => reactions_measured_df,
+    "subsystems_measured" => subsystems_measured_df,
+    "categories_measured" => categories_measured_df,
+)
+println("Wrote $reactions_metabolites_filename")
 
 @info "Comparing control vs. treatment fluxes"
 comparison_result_0 =
@@ -131,6 +159,5 @@ println("Wrote $p_scatter_filename")
 
 @info "Reaction correlations"
 corr_1_dict = reaction_correlations_one_additive_one_time(sampling_df, [:inner_reaction])
-# display(corr_1_dict[("01-Ctrl AS3", 2)][!, :row_variable])
 export_correlation_dict_for_r(corr_1_dict, "output")
 println("Wrote matrices for R")

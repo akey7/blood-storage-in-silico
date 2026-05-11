@@ -62,6 +62,7 @@ output
 ├── uFBA_3d_histograms
 ├── gem_dfs
 ├── ufba_models
+├── flux_vector_data_matrices
 ```
 
 ### Install Dependencies

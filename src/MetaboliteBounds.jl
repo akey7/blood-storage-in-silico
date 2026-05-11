@@ -124,10 +124,7 @@ Determines if the given sink name contains any of the substrings in the given si
 
 Returns `true` if one of the provided substrings matches the given sink name. Returns `false` if the substring list is not provided or none of the substrings are found
 """
-function does_sink_id_match_list(
-    sink_id::String,
-    matching_sink_ids::Union{Vector{String},Nothing} = nothing,
-)
+function does_sink_id_match_list(sink_id, matching_sink_ids)
     if isnothing(matching_sink_ids)
         return false
     else
@@ -421,15 +418,16 @@ function should_sink_id_be_included(
     metabolites_with_exchanges,
     metabolites_to_ignore,
 )
-    if does_sink_id_match_list(sink_id, sink_opt_ins)
+    sink_id_str = String(sink_id)
+    if does_sink_id_match_list(sink_id_str, sink_opt_ins)
         return true
-    elseif does_sink_id_match_list(sink_id, metabolites_with_exchanges)
+    elseif does_sink_id_match_list(sink_id_str, metabolites_with_exchanges)
         return false
-    elseif does_sink_id_match_list(sink_id, prune_zero_sinks)
+    elseif does_sink_id_match_list(sink_id_str, prune_zero_sinks)
         return false
-    elseif does_sink_id_match_list(sink_id, metabolites_to_ignore)
+    elseif does_sink_id_match_list(sink_id_str, metabolites_to_ignore)
         return true
-    elseif does_sink_id_match_list(sink_id, unfound_metabolite_ids)
+    elseif does_sink_id_match_list(sink_id_str, unfound_metabolite_ids)
         return true
     else
         return false

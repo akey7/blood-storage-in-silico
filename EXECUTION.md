@@ -16,7 +16,7 @@ Before you execute these scripts, the `input/` and `output/` folder must be conf
 
 The scripts take input and write output files. Some scripts rely on output files previously written by other scripts. The order of script execution presented here maintains the order of reliance of the scripts on each other if such order is important. Such an arrangment of scripts might not be ideal, but it works for now!
 
-## Executing Scripts
+## Manually Executing Scripts
 
 All commands are issued from the root of the repo.
 
@@ -152,12 +152,13 @@ Outputs the following files:
 1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
 2. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
 3. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
-4. Writes a data matrix of median fluxes to `output/flux_vector_data_matrix.csv`.
+4. Writes data matrices of median fluxes to `output/flux_vector_data_matrices`. One matrix contains all additives. The rest of the matrices exclude one matrix at a time.
 5. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
 6. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
 7. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
 8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
 9. Writes a bunch of `.csv` files for use by an R script to plot correlation heatmaps and perform hierarchical clustering. These files are written to `output/correlation_matrices_1/`.
+10. Writes an Excel workbook that links reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category. Filename is `output/reactions_metabolites_measurements.xlsx`
 
 There are no threads or workers in this script, so execution is simple.
 
@@ -203,6 +204,10 @@ This script only uses a single thread, so execution on macOS or Window is simple
 ```
 julia --project=. model_graph.jl
 ```
+
+## API Runner
+
+The `api_runner.jl` script unifies many aspects of the manual workflow above for execution by the Python API interface.
 
 ## Other Scripts
 
