@@ -542,40 +542,23 @@ Extracts the loadings of the metabolite features on each of the PCs. Used by [`p
 # Returns
 `DataFrame`
 
-Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns (though with the additive and metabolite name on the right):
 
 1. `additive`: Additive the PCA was performed for.
 2. `metabolite_name`: Names of the metabolites.
-3. `pc1_loading`: Loadings on the first PC.
-4. `pc2_loading`: Loadings on the second PC.
-5. `pc3_loading`: Loadings on the third PC.
-6. `pc4_loading`: Loadings on the fourth PC.
-7. `pc5_loading`: Loadings on the fifth PC.
-8. `pc6_loading`: Loadings on the sixth PC.
+3. This is an subsequent columns `:pcX_loading`: Loading on xth PC.
 """
 function extract_pca_loadings(pca_result)
     additive = pca_result.additive
     M = pca_result.model
-    L = loadings(M)
-    pc1_loadings = L[:, 1]
-    pc2_loadings = L[:, 2]
-    pc3_loadings = L[:, 3]
-    pc4_loadings = L[:, 4]
-    pc5_loadings = L[:, 5]
-    pc6_loadings = L[:, 6]
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    loadings_df = DataFrame(
-        additive = additive,
-        metabolite_name = metabolite_names,
-        pc1_loading = pc1_loadings,
-        pc2_loading = pc2_loadings,
-        pc3_loading = pc3_loadings,
-        pc4_loading = pc4_loadings,
-        pc5_loading = pc5_loadings,
-        pc6_loading = pc6_loadings,
-    )
+    L = loadings(M)
+    colnames = ["pc$(i)_loading" for i in axes(L, 2)]
+    loadings_df = DataFrame(L, colnames)
+    loadings_df[!, :metabolite_name] = metabolite_names
+    loadings_df[!, :additive] = fill(additive, nrow(loadings_df))
     result_df = @orderby(loadings_df, :pc1_loading)
     return result_df
 end
