@@ -22,7 +22,8 @@ export load_relative_intensities,
     pca_loadings_report,
     plot_single_additive_2d_pcas,
     plot_additive_pair_2d_pcas,
-    detect_week_1_side
+    detect_week_1_side,
+    load_relative_intensities_2
 
 """
     load_relative_intensities()
@@ -52,6 +53,32 @@ function load_relative_intensities()
     return long_df
 end
 
+function load_relative_intensities_2()
+    relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
+    wide_df = CSV.read(relative_filename, DataFrame)
+    long_df = stack(
+        wide_df,
+        Not([:Sample, :Day, :Condition]),
+        variable_name = :MixedName,
+        value_name = :Intensity,
+    )
+    result_df = @chain long_df begin
+        @rtransform(:Time = div(:Day, 7, RoundUp))
+        @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
+    end
+    return result_df
+end
+
+function parse_patient_from_sample_id(sample_id)
+    # Original Sample id: "B7_C1_P1-E-D7_r24"
+    # Hidden sample id in spreadsheet: "C-d0-B12"
+
+    sample_id_pattern_2 = r"^[A-Z]-d\d+-[A-H]\d+$"
+    is_id_pattern_2 = occursin(sample_id_pattern_2, sample_id)
+    patient_id = is_id_pattern_2 ? split(sample_id, "-")[1] : split(sample_id, "_")[3][1:2]
+    return patient_id
+end
+
 """
     pca_relative_intensities(long_df, additive)
 
@@ -73,15 +100,16 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 """
 function pca_relative_intensities(long_df, additive)
     # @info "Beginning PCA for $additive"
+
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
-        @rtransform(:Patient = split(:Sample, "_")[3][1:2])
+        @rtransform(:Patient = parse_patient_from_sample_id(:Sample))
         @select(:MixedName, :Patient, :Time, :Intensity)
         unstack([:Patient, :Time], :MixedName, :Intensity, combine = first)
         @orderby(:Patient, :Time)
     end
     metabolite_names = names(wide_df)[3:end]
-    # display(metabolite_names) 
+    # display(metabolite_names)
     patient_time_labels = @select(wide_df, :Patient, :Time)
     # display(patient_time_labels)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
@@ -130,7 +158,7 @@ function pca_relative_intensities(long_df, additive)
     zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
     Xz = StatsBase.transform(zt, Xf)
     # Check for NaN and missing
-    for j in axes(X, 2), i in axes(X, 1)
+    for j in axes(Xf, 2), i in axes(Xf, 1)
         if isnan(Xf[i, j]) || ismissing(Xf[i, j])
             println("Xf[$i, $j] is NaN or missing")
         end
@@ -576,7 +604,8 @@ Returns a DataFrame, ordered by the column `pc1_loading`, that has the following
 """
 function pca_loadings_report(long_df)
     additives = sort(unique(long_df.Additive))
-    all_pca_results = ThreadsX.map(additives) do additive
+    # all_pca_results = ThreadsX.map(additives) do additive
+    all_pca_results = map(additives) do additive
         pca_result = pca_relative_intensities(long_df, additive)
         extract_pca_loadings(pca_result)
     end
