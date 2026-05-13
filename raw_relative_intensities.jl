@@ -24,6 +24,7 @@ println("Wrote $loadings_filename")
 @info "Plotting and Saving Single-Additive 2D PCAs"
 plot_single_additive_2d_pcas(long_df)
 
+# This will take too long for the 77 additive dataset, specify pairs explicitly?
 # @info "Plotting and Saving Additive Pair 2D PCAs"
 # plot_additive_pair_2d_pcas(long_df)
 
