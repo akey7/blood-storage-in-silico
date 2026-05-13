@@ -221,9 +221,9 @@ function plot_single_additive_2d_pcas(long_df)
     prog = Progress(n_additives, desc = "Plotting 2D Single-Additive PCAs")
     for additive in additives
         pca_result = pca_relative_intensities(long_df, additive)
-        # fig = plot_pca_panels(pca_result, additive)
-        # filename = joinpath("output", "pca_plots", "PCA $additive.png")
-        # save(filename, fig)
+        fig = plot_pca_panels(pca_result, additive)
+        filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        save(filename, fig)
         next!(prog)
     end
 end
@@ -455,8 +455,14 @@ Returns `:left` for left side, `:right` for right side.
 """
 function detect_week_1_side(pca_result)
     result_df = gather_pca_scores(pca_result)
-    week_1_df = @rsubset(result_df, :time == 1)
-    direction = sign(week_1_df[1, :pc1]) <= 0.0 ? :left : :right
+    # println(
+    #     "detect_week_1_side(): result_df row count: $(nrow(result_df)), additive: $(pca_result.additive)",
+    # )
+    # display(result_df)
+    first_week_number = minimum(result_df.time)
+    first_week_df = @rsubset(result_df, :time == first_week_number)
+    direction = sign(first_week_df[1, :pc1]) <= 0.0 ? :left : :right
+    # println(direction)
     return direction
 end
 
