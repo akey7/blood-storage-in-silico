@@ -99,8 +99,6 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 6. `additive`: The additive the PCA was performed for.
 """
 function pca_relative_intensities(long_df, additive)
-    # @info "Beginning PCA for $additive"
-
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
         @rtransform(:Patient = parse_patient_from_sample_id(:Sample))
@@ -223,9 +221,9 @@ function plot_single_additive_2d_pcas(long_df)
     prog = Progress(n_additives, desc = "Plotting 2D Single-Additive PCAs")
     for additive in additives
         pca_result = pca_relative_intensities(long_df, additive)
-        fig = plot_pca_panels(pca_result, additive)
-        filename = joinpath("output", "pca_plots", "PCA $additive.png")
-        save(filename, fig)
+        # fig = plot_pca_panels(pca_result, additive)
+        # filename = joinpath("output", "pca_plots", "PCA $additive.png")
+        # save(filename, fig)
         next!(prog)
     end
 end
