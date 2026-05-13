@@ -28,7 +28,7 @@ export load_relative_intensities,
 """
     load_relative_intensities()
 
-Loads the relative quantification (intensity) and pivots it long.
+Loads the first relative quantification (intensity) dataset and pivots it long. Along the way, it transforms days to weeks and matches the column names to the output of the original function.
 
 # Returns
 `DataFrame`
@@ -53,6 +53,23 @@ function load_relative_intensities()
     return long_df
 end
 
+
+"""
+    load_relative_intensities_2()
+
+Loads the SECOND relative quantification (intensity) and pivots it long.
+
+# Returns
+`DataFrame`
+
+Returns a long DataFrame with the following columns: 
+
+1. `:Sample`, the sample id
+2. `:Time` the time point of the measurement (in weeks)
+3. `:Additive`: Additive the measurement was taken in.
+4. `:MixedName`: The name of either a single compound or group of compounds under the same peak.
+5. `:Intensity`: The integrated area of the peak.
+"""
 function load_relative_intensities_2()
     relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
     wide_df = CSV.read(relative_filename, DataFrame)
