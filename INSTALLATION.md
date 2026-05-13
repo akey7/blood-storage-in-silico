@@ -17,6 +17,7 @@ input
 ├── Absolute Quant Data Sheet.xlsx
 ├── Absolute Quant Extracellular Datasheet.xlsx
 ├── Data Sheet 1.CSV
+├── AS Dev Library Trial 1.csv
 ├── Proportionation Sheet 2.csv
 ├── RBC-GEM.json
 ├── RBC-GEM.xml
@@ -43,6 +44,8 @@ Here are purposes of the input files:
 7. `metabolite_measurement_opt_outs_template.csv`: An example template for metabolite measurements to ignore when setting up model constriants. See execution of `ufba_sampler.jl` for more information.
 
 8. `Reaction Id to Subsystem and Name Map.csv`: maps reaction ids to human-readable names and subsystems.
+
+9. `AS Dev Library Trial 1.csv`: Second set of relative quantification data.
 
 ### Create the `output/` Folders
 
