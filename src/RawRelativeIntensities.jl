@@ -269,6 +269,7 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
     pc2 = scores[2, :]
     time_labels = pca_result.patient_time_labels.Time
     time_color_map = Dict(
+        0 => "#FF0000",
         1 => "#006CD1",
         2 => "#E66100",
         3 => "#5D3A9B",
@@ -277,6 +278,7 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
         6 => "#222222",
     )
     time_shape_map = Dict(
+        0 => :star4,
         1 => :circle,
         2 => :rect,
         3 => :diamond,
