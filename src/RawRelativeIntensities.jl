@@ -87,9 +87,8 @@ function load_relative_intensities_2()
 end
 
 function parse_patient_from_sample_id(sample_id)
-    # Original Sample id: "B7_C1_P1-E-D7_r24"
-    # Hidden sample id in spreadsheet: "C-d0-B12"
-
+    # First dataset sample id: "B7_C1_P1-E-D7_r24"
+    # Second dataset sample id: "C-d0-B12"
     sample_id_pattern_2 = r"^[A-Z]-d\d+-[A-H]\d+$"
     is_id_pattern_2 = occursin(sample_id_pattern_2, sample_id)
     patient_id = is_id_pattern_2 ? split(sample_id, "-")[1] : split(sample_id, "_")[3][1:2]
