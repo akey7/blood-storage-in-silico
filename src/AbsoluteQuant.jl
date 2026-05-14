@@ -145,10 +145,11 @@ function load_relative_quant_2()
         variable_name = :MixedName,
         value_name = :Intensity,
     )
-    valid_measurements_df = @rtransform(
-        long_df_1,
-        :is_valid = !(ismissing(:Intensity) || isapprox(:Intensity, 0.0))
-    )
+    valid_measurements_df = @chain long_df_1 begin
+        @rtransform(:is_valid = !(ismissing(:Intensity) || isapprox(:Intensity, 0.0)))
+        @orderby(:Condition, :Day, :MixedName)
+        @select(:Condition, :Day, :MixedName, :Intensity, :Sample, :is_valid)
+    end
     long_df_2 = @chain long_df_1 begin
         @rtransform(:Time = div(:Day, 7, RoundUp))
         @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
@@ -164,6 +165,15 @@ function load_relative_quant_2()
         @rtransform(
             :max_as3_fold_change = :max_as3_intensity / :median_as3_intensity,
             :min_as3_fold_change = :min_as3_intensity / :median_as3_intensity
+        )
+        @orderby(:Additive, :Time, :MixedName)
+        @select(
+            :Additive,
+            :Time,
+            :MixedName,
+            :median_as3_intensity,
+            :min_as3_fold_change,
+            :max_as3_fold_change
         )
     end
     result = (

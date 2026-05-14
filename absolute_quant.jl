@@ -42,8 +42,7 @@ valid_measurements_df = fold_changes_2_result.valid_measurements_df
 as3_fold_change_df = fold_changes_2_result.as3_fold_change_df
 valid_measurements_filename =
     joinpath("output", "relative_quant_2", "valid_measurements.csv")
-as3_fold_change_filename =
-    joinpath("output", "relative_quant_2", "as3_fold_change.csv")
+as3_fold_change_filename = joinpath("output", "relative_quant_2", "as3_fold_change.csv")
 CSV.write(valid_measurements_filename, valid_measurements_df)
 CSV.write(as3_fold_change_filename, as3_fold_change_df)
 println("Wrote $valid_measurements_filename")
