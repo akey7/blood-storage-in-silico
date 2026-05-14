@@ -155,7 +155,7 @@ function load_relative_quant_2()
         @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
     end
     as3_intensity_df = @rsubset(long_df_2, :Additive == "AS3")
-    as3_fold_change_df = @chain as3_intensity_df begin
+    as3_fold_change_df_1 = @chain as3_intensity_df begin
         @groupby(:Additive, :Time, :MixedName)
         @combine(
             :median_as3_intensity = median(:Intensity),
@@ -176,9 +176,13 @@ function load_relative_quant_2()
             :max_as3_fold_change
         )
     end
+    as3_fold_change_df_2 = @rsubset as3_fold_change_df_1 begin
+        isfinite(:min_as3_fold_change)
+        isfinite(:max_as3_fold_change)
+    end
     result = (
         valid_measurements_df = valid_measurements_df,
-        as3_fold_change_df = as3_fold_change_df,
+        as3_fold_change_df = as3_fold_change_df_2,
     )
     return result
 end
