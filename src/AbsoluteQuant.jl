@@ -137,20 +137,25 @@ end
 function load_relative_quant_2()
     relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
     wide_df = CSV.read(relative_filename, DataFrame)
-    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
-    proportination_df = CSV.read(proportination_filename, DataFrame)
-    long_df = @chain wide_df begin
-        stack(
-            Not([:Sample, :Day, :Condition]),
-            variable_name = :MixedName,
-            value_name = :Intensity,
-        )
+    # proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    # proportination_df = CSV.read(proportination_filename, DataFrame)
+    long_df_1 = stack(
+        wide_df,
+        Not([:Sample, :Day, :Condition]),
+        variable_name = :MixedName,
+        value_name = :Intensity,
+    )
+    valid_measurements_df = @rtransform(
+        long_df_1,
+        :is_valid = !(ismissing(:Intensity) || isapprox(:Intensity, 0.0))
+    )
+    long_df_2 = @chain long_df_1 begin
         @rtransform(:Time = div(:Day, 7, RoundUp))
         @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
     end
-    as3_intensity_df = @rsubset(long_df, :Additive == "AS3")
+    as3_intensity_df = @rsubset(long_df_2, :Additive == "AS3")
     as3_median_intensity_df = @chain as3_intensity_df begin
-        @groupby(:Time, :MixedName)
+        @groupby(:Additive, :Time, :MixedName)
         @combine(
             :median_as3_intensity = median(:Intensity),
             :max_as3_intensity = maximum(:Intensity),
@@ -161,7 +166,11 @@ function load_relative_quant_2()
             :min_as3_fold_change = :min_as3_intensity / :median_as3_intensity
         )
     end
-    return as3_median_intensity_df
+    result = (
+        valid_measurements_df = valid_measurements_df,
+        as3_median_intensity_df = as3_median_intensity_df,
+    )
+    return result
 end
 
 """

@@ -66,6 +66,7 @@ output
 ├── gem_dfs
 ├── ufba_models
 ├── flux_vector_data_matrices
+├── relative_quant_2
 ```
 
 ### Install Dependencies

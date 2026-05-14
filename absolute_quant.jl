@@ -36,9 +36,18 @@ Random.seed!(123)
 # CSV.write(absolute_quant_wide_filename, absolute_quant_wide_df)
 # println("Wrote $absolute_quant_wide_filename")
 
-@info "Combining relative and absolute quant, second dataset"
-fold_changes_2_df = load_relative_quant_2()
-display(fold_changes_2_df)
+@info "Relative quant, second dataset"
+fold_changes_2_result = load_relative_quant_2()
+valid_measurements_df = fold_changes_2_result.valid_measurements_df
+as3_median_intensity_df = fold_changes_2_result.as3_median_intensity_df
+valid_measurements_filename =
+    joinpath("output", "relative_quant_2", "valid_measurements.csv")
+as3_median_intensity_filename =
+    joinpath("output", "relative_quant_2", "as3_median_intensity.csv")
+CSV.write(valid_measurements_filename, valid_measurements_df)
+CSV.write(as3_median_intensity_filename, as3_median_intensity_df)
+println("Wrote $valid_measurements_filename")
+println("Write $as3_median_intensity_filename")
 
 # println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
 # plot_all_mM_timeseries(absolute_quant_long_df)
