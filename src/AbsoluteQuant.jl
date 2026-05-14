@@ -168,7 +168,6 @@ function load_relative_quant_2()
         )
         @orderby(:Additive, :Time, :MixedName)
         @select(
-            :Additive,
             :Time,
             :MixedName,
             :median_as3_intensity,
@@ -180,9 +179,20 @@ function load_relative_quant_2()
         isfinite(:min_as3_fold_change)
         isfinite(:max_as3_fold_change)
     end
+    conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
+    conditions_fold_change_df = @chain conditions_df begin
+        innerjoin(as3_fold_change_df_2; on = [:Time, :MixedName])
+        @rtransform(
+            :min_intensity = :Intensity * :min_as3_fold_change,
+            :max_intensity = :Intensity * :max_as3_fold_change
+        )
+        @orderby(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
+        @select(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
+    end
     result = (
         valid_measurements_df = valid_measurements_df,
         as3_fold_change_df = as3_fold_change_df_2,
+        conditions_fold_change_df = conditions_fold_change_df,
     )
     return result
 end

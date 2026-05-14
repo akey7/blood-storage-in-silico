@@ -40,13 +40,17 @@ Random.seed!(123)
 fold_changes_2_result = load_relative_quant_2()
 valid_measurements_df = fold_changes_2_result.valid_measurements_df
 as3_fold_change_df = fold_changes_2_result.as3_fold_change_df
+conditions_fold_change_df = fold_changes_2_result.conditions_fold_change_df
 valid_measurements_filename =
     joinpath("output", "relative_quant_2", "valid_measurements.csv")
 as3_fold_change_filename = joinpath("output", "relative_quant_2", "as3_fold_change.csv")
+conditions_fold_change_filename = joinpath("output", "relative_quant_2", "conditions_fold_change.csv")
 CSV.write(valid_measurements_filename, valid_measurements_df)
 CSV.write(as3_fold_change_filename, as3_fold_change_df)
+CSV.write(conditions_fold_change_filename, conditions_fold_change_df)
 println("Wrote $valid_measurements_filename")
-println("Write $as3_fold_change_filename")
+println("Wrote $as3_fold_change_filename")
+println("Wrote $conditions_fold_change_filename")
 
 # println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
 # plot_all_mM_timeseries(absolute_quant_long_df)
