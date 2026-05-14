@@ -36,7 +36,8 @@ export load_absolute_quant,
     qc,
     load_extracellular_absolute_quant,
     combine_relative_and_absolute_quant_e,
-    union_and_pivot_wide
+    union_and_pivot_wide,
+    load_relative_quant_2
 
 """
     load_absolute_quant()
@@ -138,6 +139,29 @@ function load_relative_quant_2()
     wide_df = CSV.read(relative_filename, DataFrame)
     proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
     proportination_df = CSV.read(proportination_filename, DataFrame)
+    long_df = @chain wide_df begin
+        stack(
+            Not([:Sample, :Day, :Condition]),
+            variable_name = :MixedName,
+            value_name = :Intensity,
+        )
+        @rtransform(:Time = div(:Day, 7, RoundUp))
+        @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
+    end
+    as3_intensity_df = @rsubset(long_df, :Additive == "AS3")
+    as3_median_intensity_df = @chain as3_intensity_df begin
+        @groupby(:Time, :MixedName)
+        @combine(
+            :median_as3_intensity = median(:Intensity),
+            :max_as3_intensity = maximum(:Intensity),
+            :min_as3_intensity = minimum(:Intensity)
+        )
+        @rtransform(
+            :max_as3_fold_change = :max_as3_intensity / :median_as3_intensity,
+            :min_as3_fold_change = :min_as3_intensity / :median_as3_intensity
+        )
+    end
+    return as3_median_intensity_df
 end
 
 """
