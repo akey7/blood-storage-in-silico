@@ -133,6 +133,13 @@ function load_relative_quant()
     return fold_changes_df
 end
 
+function load_relative_quant_2()
+    relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
+    wide_df = CSV.read(relative_filename, DataFrame)
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
+end
+
 """
     qc(fold_changes_df, patient_count = 6)
 
