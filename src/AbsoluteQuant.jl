@@ -878,6 +878,7 @@ function regress_concentration_vs_time(long_df)
             )
         catch
             println("Failed $metabolite, $additive, $final_time")
+            display(regression_df)
             return (
                 additive = additive,
                 metabolite = metabolite,
