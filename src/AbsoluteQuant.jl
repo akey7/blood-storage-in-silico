@@ -152,7 +152,7 @@ function load_relative_quant_2()
     end
     long_df_2 = @chain long_df_1 begin
         @rtransform(:Time = div(:Day, 7, RoundUp))
-        @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
+        @select(:Additive = :Condition, :Time, :MixedName, :Intensity)
     end
     as3_intensity_df = @rsubset(long_df_2, :Additive == "AS3")
     as3_fold_change_df_1 = @chain as3_intensity_df begin
@@ -179,8 +179,8 @@ function load_relative_quant_2()
         isfinite(:min_as3_fold_change)
         isfinite(:max_as3_fold_change)
     end
-    conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
-    conditions_fold_change_df = @chain conditions_df begin
+    non_as3_conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
+    non_as3_conditions_fold_change_df = @chain non_as3_conditions_df begin
         innerjoin(as3_fold_change_df_2; on = [:Time, :MixedName])
         @rtransform(
             :min_intensity = :Intensity * :min_as3_fold_change,
@@ -189,10 +189,40 @@ function load_relative_quant_2()
         @orderby(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
         @select(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
     end
+    non_as3_expanded_long_rows = []
+    for row in eachrow(non_as3_conditions_fold_change_df)
+        row_1 = (
+            Additive = row.Additive,
+            Time = row.Time,
+            MixedName = row.MixedName,
+            Intensity = row.min_intensity,
+        )
+        row_2 = (
+            Additive = row.Additive,
+            Time = row.Time,
+            MixedName = row.MixedName,
+            Intensity = row.Intensity,
+        )
+        row_3 = (
+            Additive = row.Additive,
+            Time = row.Time,
+            MixedName = row.MixedName,
+            Intensity = row.max_intensity,
+        )
+        push!(non_as3_expanded_long_rows, row_1)
+        push!(non_as3_expanded_long_rows, row_2)
+        push!(non_as3_expanded_long_rows, row_3)
+    end
+    non_as3_expanded_long_df = DataFrame(non_as3_expanded_long_rows)
+    display(first(non_as3_expanded_long_df, 10))
+    all_conditions_long_df_1 = vcat(as3_intensity_df, non_as3_expanded_long_df)
+    all_conditions_long_df_2 =
+        @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)
     result = (
         valid_measurements_df = valid_measurements_df,
         as3_fold_change_df = as3_fold_change_df_2,
-        conditions_fold_change_df = conditions_fold_change_df,
+        conditions_fold_change_df = non_as3_conditions_fold_change_df,
+        all_conditions_long_df = all_conditions_long_df_2,
     )
     return result
 end
