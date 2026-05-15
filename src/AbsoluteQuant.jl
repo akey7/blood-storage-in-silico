@@ -137,8 +137,8 @@ end
 function load_relative_quant_2()
     relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
     wide_df = CSV.read(relative_filename, DataFrame)
-    # proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
-    # proportination_df = CSV.read(proportination_filename, DataFrame)
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
     long_df_1 = stack(
         wide_df,
         Not([:Sample, :Day, :Condition]),
@@ -228,12 +228,25 @@ function load_relative_quant_2()
     non_as3_expanded_long_df = DataFrame(non_as3_expanded_long_rows)
     all_conditions_long_df_1 = vcat(as3_intensity_df, non_as3_expanded_long_df)
     all_conditions_long_df_2 =
-        @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)
+        @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)    
+    control_intensity_df = @rsubset(long_df_2, :Additive == "AS3", :Time == 0)
+    ctrl_time_1_median_df = @chain control_intensity_df begin
+        @groupby(:MixedName)
+        @combine(:ctrl_time_0_median_intensity = median(skipmissing(:Intensity)))
+    end
+    fold_changes_df = @chain long_df_2 begin
+        innerjoin(ctrl_time_1_median_df; on = :MixedName)
+        @rtransform(:FoldChange = :Intensity / :ctrl_time_0_median_intensity)
+        innerjoin(proportination_df; on = :MixedName)
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
+        @orderby(:Sample, :Additive, :Time, :Metabolite)
+    end
     result = (
         valid_measurements_df = valid_measurements_df,
         as3_fold_change_df = as3_fold_change_df_2,
         conditions_fold_change_df = non_as3_conditions_fold_change_df,
         all_conditions_long_df = all_conditions_long_df_2,
+        fold_changes_df = fold_changes_df,
     )
     return result
 end
