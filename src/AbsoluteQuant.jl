@@ -152,11 +152,11 @@ function load_relative_quant_2()
     end
     long_df_2 = @chain long_df_1 begin
         @rtransform(:Time = div(:Day, 7, RoundUp))
-        @select(:Additive = :Condition, :Time, :MixedName, :Intensity)
+        @select(:Sample, :Additive = :Condition, :Time, :MixedName, :Intensity)
     end
     as3_intensity_df = @rsubset(long_df_2, :Additive == "AS3")
     as3_fold_change_df_1 = @chain as3_intensity_df begin
-        @groupby(:Additive, :Time, :MixedName)
+        @groupby(:Additive, :Time, :Sample, :MixedName)
         @combine(
             :median_as3_intensity = median(:Intensity),
             :max_as3_intensity = maximum(:Intensity),
@@ -168,6 +168,7 @@ function load_relative_quant_2()
         )
         @orderby(:Additive, :Time, :MixedName)
         @select(
+            :Sample,
             :Time,
             :MixedName,
             :median_as3_intensity,
@@ -181,29 +182,40 @@ function load_relative_quant_2()
     end
     non_as3_conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
     non_as3_conditions_fold_change_df = @chain non_as3_conditions_df begin
-        innerjoin(as3_fold_change_df_2; on = [:Time, :MixedName])
+        innerjoin(as3_fold_change_df_2; on = [:Time, :MixedName], makeunique = true)
         @rtransform(
             :min_intensity = :Intensity * :min_as3_fold_change,
             :max_intensity = :Intensity * :max_as3_fold_change
         )
         @orderby(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
-        @select(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
+        @select(
+            :Sample,
+            :Additive,
+            :Time,
+            :MixedName,
+            :Intensity,
+            :min_intensity,
+            :max_intensity
+        )
     end
     non_as3_expanded_long_rows = []
     for row in eachrow(non_as3_conditions_fold_change_df)
         row_1 = (
+            Sample = row.Sample,
             Additive = row.Additive,
             Time = row.Time,
             MixedName = row.MixedName,
             Intensity = row.min_intensity,
         )
         row_2 = (
+            Sample = row.Sample,
             Additive = row.Additive,
             Time = row.Time,
             MixedName = row.MixedName,
             Intensity = row.Intensity,
         )
         row_3 = (
+            Sample = row.Sample,
             Additive = row.Additive,
             Time = row.Time,
             MixedName = row.MixedName,
