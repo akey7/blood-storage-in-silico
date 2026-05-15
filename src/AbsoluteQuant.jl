@@ -226,7 +226,6 @@ function load_relative_quant_2()
         push!(non_as3_expanded_long_rows, row_3)
     end
     non_as3_expanded_long_df = DataFrame(non_as3_expanded_long_rows)
-    display(first(non_as3_expanded_long_df, 10))
     all_conditions_long_df_1 = vcat(as3_intensity_df, non_as3_expanded_long_df)
     all_conditions_long_df_2 =
         @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)

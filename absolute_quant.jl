@@ -10,13 +10,13 @@ println("Num threads $num_threads")
 
 Random.seed!(123)
 
-println(">" ^ 10, " COMBINING RELATIVE AND ABSOLUTE QUANT DATA ", "<" ^ 10)
+@info "Combining relative and absolute quant, first dataset"
 absolute_quant_df, absolute_quant_medians_df = load_absolute_quant()
 absolute_extracellular_quant_df = load_extracellular_absolute_quant()
-println(first(absolute_quant_medians_df, 10))
 fold_changes_df = load_relative_quant()
 fold_change_filename = joinpath("output", "relative_quant_1", "fold_changes.csv")
 CSV.write(fold_change_filename, fold_changes_df)
+display(first(fold_changes_df, 10))
 println("Wrote $fold_change_filename")
 # qc_fold_changes_df, qc_fold_change_zeros_df = qc(fold_changes_df)
 # qc_fold_changes_filename = joinpath("output", "qc_fold_changes.csv")
@@ -44,20 +44,21 @@ fold_changes_2_result = load_relative_quant_2()
 valid_measurements_df = fold_changes_2_result.valid_measurements_df
 as3_fold_change_df = fold_changes_2_result.as3_fold_change_df
 conditions_fold_change_df = fold_changes_2_result.conditions_fold_change_df
-all_conditions_long_df = fold_changes_2_result.all_conditions_long_df
+fold_changes_2_df = fold_changes_2_result.all_conditions_long_df
+display(first(fold_changes_2_df, 10))
 valid_measurements_filename =
     joinpath("output", "relative_quant_2", "valid_measurements.csv")
 as3_fold_change_filename = joinpath("output", "relative_quant_2", "as3_fold_change.csv")
 conditions_fold_change_filename = joinpath("output", "relative_quant_2", "conditions_fold_change.csv")
-all_conditions_long_filename = joinpath("output", "relative_quant_2", "all_conditions_long.csv")
+fold_changes_2_filename = joinpath("output", "relative_quant_2", "fold_changes_2.csv")
 CSV.write(valid_measurements_filename, valid_measurements_df)
 CSV.write(as3_fold_change_filename, as3_fold_change_df)
 CSV.write(conditions_fold_change_filename, conditions_fold_change_df)
-CSV.write(all_conditions_long_filename, all_conditions_long_df)
+CSV.write(fold_changes_2_filename, fold_changes_2_df)
 println("Wrote $valid_measurements_filename")
 println("Wrote $as3_fold_change_filename")
 println("Wrote $conditions_fold_change_filename")
-println("Wrote $all_conditions_long_filename")
+println("Wrote $fold_changes_2_filename")
 
 # println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
 # plot_all_mM_timeseries(absolute_quant_long_df)
