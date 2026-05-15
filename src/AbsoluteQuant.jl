@@ -851,10 +851,10 @@ function regress_concentration_vs_time(long_df)
     unique_metabolites = unique(long_df.Metabolite)
     # final_times = [2, 3, 4, 5, 6]
     final_times = [2, 4, 6]
-    tasks = product(unique_metabolites, unique_additives, final_times)
+    tasks = collect(product(unique_metabolites, unique_additives, final_times))[1:100]
     n_tasks = length(tasks)
     println("n_tasks: $n_tasks")
-    rows = ThreadsX.map(tasks) do t
+    rows = map(tasks) do t
         metabolite, additive, final_time = t
         print(".")
         regression_df =
