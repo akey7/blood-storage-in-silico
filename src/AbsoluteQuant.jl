@@ -851,30 +851,45 @@ function regress_concentration_vs_time(long_df)
     unique_metabolites = unique(long_df.Metabolite)
     # final_times = [2, 3, 4, 5, 6]
     final_times = [2, 4, 6]
-    tasks = collect(product(unique_metabolites, unique_additives, final_times))
-    rows = map(tasks[1:10]) do t
+    tasks = product(unique_metabolites, unique_additives, final_times)
+    n_tasks = length(tasks)
+    println("n_tasks: $n_tasks")
+    rows = ThreadsX.map(tasks) do t
         metabolite, additive, final_time = t
-        println("Calculating $additive, $metabolite, $final_time")
+        print(".")
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
-        display(regression_df)
-        single_model = lm(@formula(absolute_mM ~ Time), regression_df)
-        coefs = coef(single_model)
-        intercept = coefs[1]
-        rate = coefs[2]
-        ci = confint(single_model)
-        lb = ci[2, 1]
-        ub = ci[2, 2]
-        (
-            additive = additive,
-            metabolite = metabolite,
-            final_time = final_time,
-            intercept = intercept,
-            rate = rate,
-            lb = lb,
-            ub = ub,
-        )
+        try
+            single_model = lm(@formula(absolute_mM ~ Time), regression_df)
+            coefs = coef(single_model)
+            intercept = coefs[1]
+            rate = coefs[2]
+            ci = confint(single_model)
+            lb = ci[2, 1]
+            ub = ci[2, 2]
+            return (
+                additive = additive,
+                metabolite = metabolite,
+                final_time = final_time,
+                intercept = intercept,
+                rate = rate,
+                lb = lb,
+                ub = ub,
+            )
+        catch
+            println("Failed $metabolite, $additive, $final_time")
+            return (
+                additive = additive,
+                metabolite = metabolite,
+                final_time = final_time,
+                intercept = missing,
+                rate = missing,
+                lb = missing,
+                ub = missing,
+            )
+        end
     end
+    println("done")
     regressions_df = @chain rows begin
         DataFrame()
         @rtransform(:lb_ub_different_sign = sign(:lb) != sign(:ub))
