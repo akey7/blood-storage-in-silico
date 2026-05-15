@@ -228,7 +228,7 @@ function load_relative_quant_2()
     non_as3_expanded_long_df = DataFrame(non_as3_expanded_long_rows)
     all_conditions_long_df_1 = vcat(as3_intensity_df, non_as3_expanded_long_df)
     all_conditions_long_df_2 =
-        @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)    
+        @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)
     control_intensity_df = @rsubset(long_df_2, :Additive == "AS3", :Time == 0)
     ctrl_time_1_median_df = @chain control_intensity_df begin
         @groupby(:MixedName)
@@ -238,6 +238,7 @@ function load_relative_quant_2()
         innerjoin(ctrl_time_1_median_df; on = :MixedName)
         @rtransform(:FoldChange = :Intensity / :ctrl_time_0_median_intensity)
         innerjoin(proportination_df; on = :MixedName)
+        @rsubset(isfinite(:FoldChange), !isapprox(:FoldChange, 0.0))
         @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
         @orderby(:Sample, :Additive, :Time, :Metabolite)
     end
@@ -483,7 +484,8 @@ function c_means_metabolite_trajectories(
     n_clusters = 5,
     μ = 5.0,
 )
-    X0 = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    clean_wide_timeseries_df = dropmissing(wide_timeseries_df)
+    X0 = Matrix{Float64}(disallowmissing(clean_wide_timeseries_df[:, Not(:Metabolite)]))
     X = (X0 .- mean(X0, dims = 1)) ./ std(X0, dims = 1)
     nans = count(isnan, X)
     infs = count(isinf, X)
@@ -805,9 +807,16 @@ Used by [`regress_concentration_vs_time`](@ref BloodStorageInSilico.AbsoluteQuan
 
 Each time point with the approximated mM concentration, ordered by time.
 """
-function additive_metabolite_time_points(long_df, additive, metabolite, tf)
+function additive_metabolite_time_points(long_df, additive, metabolite, final_time)
+    timepoints = sort(unique(long_df.Time))
+    timepoint_idx = findfirst(==(final_time), timepoints)
     result_df = @chain long_df begin
-        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time >= timepoints[timepoint_idx-1],
+            :Time <= timepoints[timepoint_idx]
+        )
         @select(:Time, :absolute_mM)
         @orderby(:Time)
     end
@@ -840,13 +849,15 @@ function regress_concentration_vs_time(long_df)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
-    final_times = [2, 3, 4, 5, 6]
-    tasks = product(unique_metabolites, unique_additives, final_times)
-    rows = ThreadsX.map(tasks) do t
+    # final_times = [2, 3, 4, 5, 6]
+    final_times = [2, 4, 6]
+    tasks = collect(product(unique_metabolites, unique_additives, final_times))
+    rows = map(tasks[1:10]) do t
         metabolite, additive, final_time = t
         println("Calculating $additive, $metabolite, $final_time")
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
+        display(regression_df)
         single_model = lm(@formula(absolute_mM ~ Time), regression_df)
         coefs = coef(single_model)
         intercept = coefs[1]

@@ -81,15 +81,16 @@ absolute_quant_wide_filename = joinpath("output", "absolute_quant_wide.csv")
 CSV.write(absolute_quant_wide_filename, absolute_quant_wide_df)
 println("Wrote $absolute_quant_wide_filename")
 
-# println(">" ^ 10, " TIMESERIES PLOTS ", "<" ^ 10)
+# For the second dataset there are too many additives to plot in this way
+# @info "Timeseries plots"
 # plot_all_mM_timeseries(absolute_quant_long_df)
 
-# println(">" ^ 10, " C-MEANS CLUSTERING ", "<" ^ 10)
+# @info "C-Means clustering"
 # all_memberships_dfs, fuzzy_objectives_df =
 #     cluster_all_additives_all_n_clusters(absolute_quant_long_df; max_clusters = 7)
 # println(first(fuzzy_objectives_df, 10))
 
-# println(">" ^ 10, " MAKING C-MEANS PLOTS ", "<" ^ 10)
+# @info "Making c-means plots"
 # plot_elbows(fuzzy_objectives_df)
 # all_primary_cluster_df =
 #     plot_c_means_all_additives(absolute_quant_long_df, all_memberships_dfs, 6)
@@ -97,9 +98,9 @@ println("Wrote $absolute_quant_wide_filename")
 # CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
 # println("Wrote $all_primary_cluster_df_filename")
 
-# println(">" ^ 10, " RATE REGRESSIONS ", "<" ^ 10)
-# rate_df = regress_concentration_vs_time(absolute_quant_long_df)
-# rate_filename = joinpath("output", "concentration_rates.csv")
-# CSV.write(rate_filename, rate_df)
-# println("Wrote $rate_filename")
+@info "Rate regressions"
+rate_df = regress_concentration_vs_time(absolute_quant_long_df)
+rate_filename = joinpath("output", "concentration_rates.csv")
+CSV.write(rate_filename, rate_df)
+println("Wrote $rate_filename")
 # plot_all_regressions(absolute_quant_long_df)
