@@ -141,7 +141,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
     proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
     proportination_df = CSV.read(proportination_filename, DataFrame)
 
-    cleaning_rows = []
+    metabolite_cleaning_rows = []
     skip_cols = [:Sample, :Day, :Condition]
     cols_to_keep = [:Sample, :Day, :Condition]
     for (col_name, col) in pairs(eachcol(wide_df_1))
@@ -158,7 +158,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
                 decision = "drop column",
                 reason = "$pct values missing or zero",
             )
-            push!(cleaning_rows, cleaning_row)
+            push!(metabolite_cleaning_rows, cleaning_row)
         end
     end
     wide_df_2 = select(wide_df_1, cols_to_keep)
@@ -175,13 +175,13 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
                 decision = "impute zeros and missing values",
                 reason = "$pct_avail values available for imputation",
             )
-            push!(cleaning_rows, row)
+            push!(metabolite_cleaning_rows, row)
         end
         v_median = median(skipmissing(v))
         wide_df_2[!, col_name] =
             map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
     end
-    cleaning_df = @chain cleaning_rows begin
+    metabolite_cleaning_df = @chain metabolite_cleaning_rows begin
         DataFrame()
         @orderby(:col_name)
     end
@@ -298,7 +298,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
         all_conditions_long_df = all_conditions_long_df_2,
         fold_changes_df = fold_changes_df,
         cols_to_keep = cols_to_keep,
-        cleaning_df = cleaning_df,
+        metabolite_cleaning_df = metabolite_cleaning_df,
     )
     return result
 end
