@@ -155,7 +155,7 @@ function load_relative_quant_2(
         if frac_missing_or_zero < zero_measurement_col_discard_frac
             push!(cols_to_keep, col_name)
         else
-            pct = @sprintf("%.2f%%", frac_missing_or_zero * 100)
+            pct = @sprintf("%.1f%%", frac_missing_or_zero * 100)
             cleaning_row = (
                 col_name = col_name,
                 decision = "drop column",
@@ -171,12 +171,19 @@ function load_relative_quant_2(
         n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
         frac = n_approx_zero / length(v)
         frac_avail = 1.0 - frac
-        pct_avail = @sprintf("%.2f%%", frac_avail * 100)
+        pct_avail = @sprintf("%.1f%%", frac_avail * 100)
         if n_approx_zero >= 1
             row = (
                 col_name = col_name,
                 decision = "impute zeros and missing values",
                 reason = "$pct_avail values available for imputation",
+            )
+            push!(metabolite_cleaning_rows, row)
+        else
+            row = (
+                col_name = col_name,
+                decision = "unmodified",
+                reason = "$pct_avail values present",
             )
             push!(metabolite_cleaning_rows, row)
         end
