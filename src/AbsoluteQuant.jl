@@ -136,13 +136,13 @@ end
 
 function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
     relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
-    wide_df = CSV.read(relative_filename, DataFrame)
+    wide_df_1 = CSV.read(relative_filename, DataFrame)
     proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
     proportination_df = CSV.read(proportination_filename, DataFrame)
 
     skip_cols = [:Sample, :Day, :Condition]
     cols_to_keep = [:Sample, :Day, :Condition]
-    for (name, col) in pairs(eachcol(wide_df))
+    for (name, col) in pairs(eachcol(wide_df_1))
         name in skip_cols && continue
         v = Vector{Union{Missing,Float64}}(allowmissing(col))
         n_nonmissing = count(!ismissing, v)
@@ -154,7 +154,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
     end
 
     long_df_1 = stack(
-        wide_df,
+        wide_df_1,
         Not([:Sample, :Day, :Condition]),
         variable_name = :MixedName,
         value_name = :Intensity,
