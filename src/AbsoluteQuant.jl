@@ -135,7 +135,10 @@ function load_relative_quant()
     return fold_changes_df
 end
 
-function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
+function load_relative_quant_2(
+    zero_measurement_col_discard_frac = 0.25,
+    control_condition = "AS3",
+)
     relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
     wide_df_1 = CSV.read(relative_filename, DataFrame)
     proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
@@ -185,6 +188,14 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
         DataFrame()
         @orderby(:col_name)
     end
+    n_samples_per_condition_df = @chain wide_df_2 begin
+        @rsubset(:Condition != control_condition)
+        @groupby(:Condition)
+        @combine(:Count = length(:Condition))
+    end
+    condition_cleaning_rows = []
+    days = sort(unique(wide_df_2.Day))
+    n_days = length(days)
 
     long_df_1 = stack(
         wide_df_1,
@@ -299,6 +310,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
         fold_changes_df = fold_changes_df,
         cols_to_keep = cols_to_keep,
         metabolite_cleaning_df = metabolite_cleaning_df,
+        n_samples_per_condition_df = n_samples_per_condition_df,
     )
     return result
 end

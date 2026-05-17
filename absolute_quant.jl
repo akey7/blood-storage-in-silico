@@ -48,6 +48,7 @@ all_conditions_long_df = fold_changes_2_result.all_conditions_long_df
 fold_changes_df_2 = fold_changes_2_result.fold_changes_df
 cols_to_keep = fold_changes_2_result.cols_to_keep
 metabolite_cleaning_df = fold_changes_2_result.metabolite_cleaning_df
+n_samples_per_condition_df = fold_changes_2_result.n_samples_per_condition_df
 # display(first(fold_changes_df_2, 10))
 valid_measurements_filename =
     joinpath("output", "relative_quant_2", "valid_measurements.csv")
@@ -83,6 +84,7 @@ absolute_quant_wide_filename = joinpath("output", "absolute_quant_wide.csv")
 CSV.write(absolute_quant_wide_filename, absolute_quant_wide_df)
 println("Wrote $absolute_quant_wide_filename")
 display(first(metabolite_cleaning_df, 10))
+display(first(n_samples_per_condition_df, 10))
 
 # For the second dataset there are too many additives to plot in this way
 # @info "Timeseries plots"
