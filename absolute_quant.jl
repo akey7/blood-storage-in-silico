@@ -1,6 +1,7 @@
 using CSV
 using Random
 using CairoMakie
+using DataFrames
 
 include("src/AbsoluteQuant.jl")
 using .AbsoluteQuant
@@ -47,6 +48,8 @@ all_conditions_long_df = fold_changes_2_result.all_conditions_long_df
 fold_changes_df_2 = fold_changes_2_result.fold_changes_df
 cols_to_keep = fold_changes_2_result.cols_to_keep
 metabolite_cleaning_df = fold_changes_2_result.metabolite_cleaning_df
+clean_metabolite_cleaning_df = copy(metabolite_cleaning_df)
+clean_metabolite_cleaning_df[!, :col_name] = [replace(string(s), "’" => "'") for s in clean_metabolite_cleaning_df[!, :col_name]]
 n_samples_per_condition_df = fold_changes_2_result.n_samples_per_condition_df
 # display(first(fold_changes_df_2, 10))
 as3_fold_change_filename = joinpath("output", "relative_quant_2", "as3_fold_change.csv")
@@ -59,7 +62,7 @@ CSV.write(as3_fold_change_filename, as3_fold_change_df)
 CSV.write(conditions_fold_change_filename, conditions_fold_change_df)
 CSV.write(all_conditions_long_filename, all_conditions_long_df)
 CSV.write(fold_changes_filename_2, fold_changes_df_2)
-CSV.write(metabolite_cleaning_filename, metabolite_cleaning_df)
+CSV.write(metabolite_cleaning_filename, clean_metabolite_cleaning_df)
 CSV.write(n_samples_per_condition_filename, n_samples_per_condition_df)
 println("Wrote $as3_fold_change_filename")
 println("Wrote $conditions_fold_change_filename")
