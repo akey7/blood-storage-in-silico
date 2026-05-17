@@ -204,6 +204,9 @@ function load_relative_quant_2(
         @rtransform(:decision = :count < n_days ? "discard" : "retain")
         @orderby(:count, :Condition)
     end
+    conditions_to_keep_df = @rsubset(n_samples_per_condition_df, :count == n_days)
+    conditions_to_keep = sort(unique(conditions_to_keep_df.Condition))
+    wide_df_3 = @rsubset(wide_df_2, :Condition in conditions_to_keep)
 
     long_df_1 = stack(
         wide_df_1,
