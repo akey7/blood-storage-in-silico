@@ -195,14 +195,15 @@ function load_relative_quant_2(
         DataFrame()
         @orderby(:col_name)
     end
+    days = sort(unique(wide_df_2.Day))
+    n_days = length(days)
     n_samples_per_condition_df = @chain wide_df_2 begin
         @rsubset(:Condition != control_condition)
         @groupby(:Condition)
-        @combine(:Count = length(:Condition))
+        @combine(:count = length(:Condition))
+        @rtransform(:decision = :count < n_days ? "discard" : "retain")
+        @orderby(:count, :Condition)
     end
-    condition_cleaning_rows = []
-    days = sort(unique(wide_df_2.Day))
-    n_days = length(days)
 
     long_df_1 = stack(
         wide_df_1,
