@@ -152,6 +152,22 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
             push!(cols_to_keep, name)
         end
     end
+    wide_df_2 = select(wide_df_1, cols_to_keep)
+    cols_kept_imputed_elements_counts = []
+    for (name, col) in pairs(eachcol(wide_df_2))
+        name in skip_cols && continue
+        v = Vector{Union{Missing,Float64}}(allowmissing(col))
+        n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
+        if n_approx_zero >= 1
+            push!(
+                cols_kept_imputed_elements_counts,
+                (col_name = name, n_approx_zero_or_missing = n_approx_zero),
+            )
+        end
+        v_median = median(skipmissing(v))
+        wide_df_2[!, name] = map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
+    end
+    cols_kept_imputed_elements_df = DataFrame(cols_kept_imputed_elements_counts)
 
     long_df_1 = stack(
         wide_df_1,
@@ -265,6 +281,8 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
         all_conditions_long_df = all_conditions_long_df_2,
         fold_changes_df = fold_changes_df,
         cols_to_keep = cols_to_keep,
+        wide_df_2 = wide_df_2,
+        cols_kept_imputed_elements_df = cols_kept_imputed_elements_df,
     )
     return result
 end
