@@ -215,12 +215,6 @@ function load_relative_quant_2(
         value_name = :Intensity,
     )
 
-    valid_measurements_df = @chain long_df_1 begin
-        @rtransform(:is_valid = !(ismissing(:Intensity) || isapprox(:Intensity, 0.0)))
-        @orderby(:Condition, :Day, :MixedName)
-        @select(:Condition, :Day, :MixedName, :Intensity, :Sample, :is_valid)
-    end
-
     long_df_2 = @chain long_df_1 begin
         @rtransform(:Time = div(:Day, 7, RoundUp))
         @select(:Sample, :Additive = :Condition, :Time, :MixedName, :Intensity)
@@ -314,7 +308,6 @@ function load_relative_quant_2(
         @orderby(:Sample, :Additive, :Time, :Metabolite)
     end
     result = (
-        valid_measurements_df = valid_measurements_df,
         as3_fold_change_df = as3_fold_change_df_2,
         conditions_fold_change_df = non_as3_conditions_fold_change_df,
         all_conditions_long_df = all_conditions_long_df_2,
