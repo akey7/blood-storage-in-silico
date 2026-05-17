@@ -152,7 +152,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
         if frac_missing_or_zero < zero_measurement_col_discard_frac
             push!(cols_to_keep, col_name)
         else
-            pct = @sprintf("%.0f%%", frac_missing_or_zero * 100)
+            pct = @sprintf("%.2f%%", frac_missing_or_zero * 100)
             cleaning_row = (
                 col_name = col_name,
                 decision = "drop column",
@@ -161,25 +161,26 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
             push!(cleaning_rows, cleaning_row)
         end
     end
-    # wide_df_2 = select(wide_df_1, cols_to_keep)
-    # for (name, col) in pairs(eachcol(wide_df_2))
-    #     name in skip_cols && continue
-    #     v = Vector{Union{Missing,Float64}}(allowmissing(col))
-    #     n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
-    #     frac = n_approx_zero / length(v)
-    #     frac_avail = 1.0 - frac
-    #     pct_avail = @sprintf("%.0f%%", frac_avail * 100)
-    #     if n_approx_zero >= 1
-    #         row = (
-    #             col_name = name,
-    #             decision = "impute zeros and missing values",
-    #             reason = "$pct_avail values available for imputation",
-    #         )
-    #         push!(cleaning_rows, row)
-    #     end
-    #     v_median = median(skipmissing(v))
-    #     wide_df_2[!, name] = map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
-    # end
+    wide_df_2 = select(wide_df_1, cols_to_keep)
+    for (col_name, col) in pairs(eachcol(wide_df_2))
+        col_name in skip_cols && continue
+        v = Vector{Union{Missing,Float64}}(allowmissing(col))
+        n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
+        frac = n_approx_zero / length(v)
+        frac_avail = 1.0 - frac
+        pct_avail = @sprintf("%.2f%%", frac_avail * 100)
+        if n_approx_zero >= 1
+            row = (
+                col_name = col_name,
+                decision = "impute zeros and missing values",
+                reason = "$pct_avail values available for imputation",
+            )
+            push!(cleaning_rows, row)
+        end
+        v_median = median(skipmissing(v))
+        wide_df_2[!, col_name] =
+            map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
+    end
     cleaning_df = @chain cleaning_rows begin
         DataFrame()
         @orderby(:col_name)
