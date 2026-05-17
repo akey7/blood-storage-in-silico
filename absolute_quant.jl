@@ -46,6 +46,7 @@ as3_fold_change_df = fold_changes_2_result.as3_fold_change_df
 conditions_fold_change_df = fold_changes_2_result.conditions_fold_change_df
 all_conditions_long_df = fold_changes_2_result.all_conditions_long_df
 fold_changes_df_2 = fold_changes_2_result.fold_changes_df
+cols_to_keep = fold_changes_2_result.cols_to_keep
 # display(first(fold_changes_df_2, 10))
 valid_measurements_filename =
     joinpath("output", "relative_quant_2", "valid_measurements.csv")
@@ -80,6 +81,7 @@ println("Write $absolute_quant_long_filename")
 absolute_quant_wide_filename = joinpath("output", "absolute_quant_wide.csv")
 CSV.write(absolute_quant_wide_filename, absolute_quant_wide_df)
 println("Wrote $absolute_quant_wide_filename")
+display(cols_to_keep)
 
 # For the second dataset there are too many additives to plot in this way
 # @info "Timeseries plots"
@@ -98,9 +100,9 @@ println("Wrote $absolute_quant_wide_filename")
 # CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
 # println("Wrote $all_primary_cluster_df_filename")
 
-@info "Rate regressions"
-rate_df = regress_concentration_vs_time(absolute_quant_long_df)
-rate_filename = joinpath("output", "concentration_rates.csv")
-CSV.write(rate_filename, rate_df)
-println("Wrote $rate_filename")
+# @info "Rate regressions"
+# rate_df = regress_concentration_vs_time(absolute_quant_long_df)
+# rate_filename = joinpath("output", "concentration_rates.csv")
+# CSV.write(rate_filename, rate_df)
+# println("Wrote $rate_filename")
 # plot_all_regressions(absolute_quant_long_df)
