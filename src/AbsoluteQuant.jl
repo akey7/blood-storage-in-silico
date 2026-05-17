@@ -20,6 +20,7 @@ using Statistics
 using Random
 using ThreadsX
 using ProgressMeter
+using Printf
 
 export load_absolute_quant,
     load_relative_quant,
@@ -140,34 +141,49 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
     proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
     proportination_df = CSV.read(proportination_filename, DataFrame)
 
+    cleaning_rows = []
     skip_cols = [:Sample, :Day, :Condition]
     cols_to_keep = [:Sample, :Day, :Condition]
-    for (name, col) in pairs(eachcol(wide_df_1))
-        name in skip_cols && continue
-        v = Vector{Union{Missing,Float64}}(allowmissing(col))
-        n_nonmissing = count(!ismissing, v)
-        n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
-        frac = n_approx_zero / n_nonmissing
-        if frac < zero_measurement_col_discard_frac
-            push!(cols_to_keep, name)
-        end
-    end
-    wide_df_2 = select(wide_df_1, cols_to_keep)
-    cols_kept_imputed_elements_counts = []
-    for (name, col) in pairs(eachcol(wide_df_2))
-        name in skip_cols && continue
+    for (col_name, col) in pairs(eachcol(wide_df_1))
+        col_name in skip_cols && continue
         v = Vector{Union{Missing,Float64}}(allowmissing(col))
         n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
-        if n_approx_zero >= 1
-            push!(
-                cols_kept_imputed_elements_counts,
-                (col_name = name, n_approx_zero_or_missing = n_approx_zero),
+        frac_missing_or_zero = n_approx_zero / length(v)
+        if frac_missing_or_zero < zero_measurement_col_discard_frac
+            push!(cols_to_keep, col_name)
+        else
+            pct = @sprintf("%.0f%%", frac_missing_or_zero * 100)
+            cleaning_row = (
+                col_name = col_name,
+                decision = "drop column",
+                reason = "$pct values missing or zero",
             )
+            push!(cleaning_rows, cleaning_row)
         end
-        v_median = median(skipmissing(v))
-        wide_df_2[!, name] = map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
     end
-    cols_kept_imputed_elements_df = DataFrame(cols_kept_imputed_elements_counts)
+    # wide_df_2 = select(wide_df_1, cols_to_keep)
+    # for (name, col) in pairs(eachcol(wide_df_2))
+    #     name in skip_cols && continue
+    #     v = Vector{Union{Missing,Float64}}(allowmissing(col))
+    #     n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
+    #     frac = n_approx_zero / length(v)
+    #     frac_avail = 1.0 - frac
+    #     pct_avail = @sprintf("%.0f%%", frac_avail * 100)
+    #     if n_approx_zero >= 1
+    #         row = (
+    #             col_name = name,
+    #             decision = "impute zeros and missing values",
+    #             reason = "$pct_avail values available for imputation",
+    #         )
+    #         push!(cleaning_rows, row)
+    #     end
+    #     v_median = median(skipmissing(v))
+    #     wide_df_2[!, name] = map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
+    # end
+    cleaning_df = @chain cleaning_rows begin
+        DataFrame()
+        @orderby(:col_name)
+    end
 
     long_df_1 = stack(
         wide_df_1,
@@ -281,8 +297,7 @@ function load_relative_quant_2(zero_measurement_col_discard_frac = 0.25)
         all_conditions_long_df = all_conditions_long_df_2,
         fold_changes_df = fold_changes_df,
         cols_to_keep = cols_to_keep,
-        wide_df_2 = wide_df_2,
-        cols_kept_imputed_elements_df = cols_kept_imputed_elements_df,
+        cleaning_df = cleaning_df,
     )
     return result
 end
