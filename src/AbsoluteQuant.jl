@@ -206,10 +206,11 @@ function load_relative_quant_2(
     end
     conditions_to_keep_df = @rsubset(n_samples_per_condition_df, :count == n_days)
     conditions_to_keep = sort(unique(conditions_to_keep_df.Condition))
+    push!(conditions_to_keep, control_condition)
     wide_df_3 = @rsubset(wide_df_2, :Condition in conditions_to_keep)
 
     long_df_1 = stack(
-        wide_df_1,
+        wide_df_3,
         Not([:Sample, :Day, :Condition]),
         variable_name = :MixedName,
         value_name = :Intensity,
@@ -219,7 +220,7 @@ function load_relative_quant_2(
         @rtransform(:Time = div(:Day, 7, RoundUp))
         @select(:Sample, :Additive = :Condition, :Time, :MixedName, :Intensity)
     end
-    as3_intensity_df = @rsubset(long_df_2, :Additive == "AS3")
+    as3_intensity_df = @rsubset(long_df_2, :Additive == control_condition)
     as3_fold_change_df_1 = @chain as3_intensity_df begin
         @groupby(:Additive, :Time, :Sample, :MixedName)
         @combine(
@@ -237,17 +238,19 @@ function load_relative_quant_2(
             :Time,
             :MixedName,
             :median_as3_intensity,
+            :max_as3_intensity,
+            :min_as3_intensity,
             :min_as3_fold_change,
             :max_as3_fold_change
         )
     end
-    as3_fold_change_df_2 = @rsubset as3_fold_change_df_1 begin
-        isfinite(:min_as3_fold_change)
-        isfinite(:max_as3_fold_change)
-    end
+    # as3_fold_change_df_2 = @rsubset as3_fold_change_df_1 begin
+    #     isfinite(:min_as3_fold_change)
+    #     isfinite(:max_as3_fold_change)
+    # end
     non_as3_conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
     non_as3_conditions_fold_change_df = @chain non_as3_conditions_df begin
-        innerjoin(as3_fold_change_df_2; on = [:Time, :MixedName], makeunique = true)
+        innerjoin(as3_fold_change_df_1; on = [:Time, :MixedName], makeunique = true)
         @rtransform(
             :min_intensity = :Intensity * :min_as3_fold_change,
             :max_intensity = :Intensity * :max_as3_fold_change
@@ -308,7 +311,7 @@ function load_relative_quant_2(
         @orderby(:Sample, :Additive, :Time, :Metabolite)
     end
     result = (
-        as3_fold_change_df = as3_fold_change_df_2,
+        as3_fold_change_df = as3_fold_change_df_1,
         conditions_fold_change_df = non_as3_conditions_fold_change_df,
         all_conditions_long_df = all_conditions_long_df_2,
         fold_changes_df = fold_changes_df,
