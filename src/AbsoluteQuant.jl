@@ -304,15 +304,22 @@ function load_relative_quant_2(
         @groupby(:MixedName)
         @combine(:ctrl_time_0_median_intensity = median(skipmissing(:Intensity)))
     end
-    fold_changes_df = @chain long_df_2 begin
+    fold_changes_df = @chain all_conditions_long_df_2 begin
         innerjoin(ctrl_time_1_median_df; on = :MixedName)
         @rtransform(:FoldChange = :Intensity / :ctrl_time_0_median_intensity)
-        @orderby(:Additive, :Time, :MixedName)
-        # innerjoin(proportination_df; on = :MixedName)
-        # @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
-        # @orderby(:Sample, :Additive, :Time, :Metabolite)
+        innerjoin(proportination_df; on = :MixedName)
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
+        @orderby(:Additive, :Time, :Metabolite)
     end
-    display(first(fold_changes_df, 100))
+
+    # fold_changes_counts_df = @chain fold_changes_df begin
+    #     @groupby(:Additive, :Time, :Metabolite)
+    #     @combine(:n_samples = length(:FoldChange))
+    #     @rsubset(:n_samples < 3)
+    #     @orderby(:Additive, :Time, :Metabolite)
+    # end
+    # display(first(fold_changes_counts_df, 100))
+
     result = (
         as3_fold_change_df = as3_fold_change_df_1,
         conditions_fold_change_df = non_as3_conditions_fold_change_df,
