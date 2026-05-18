@@ -104,11 +104,11 @@ println("Wrote $absolute_quant_wide_filename")
 # CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
 # println("Wrote $all_primary_cluster_df_filename")
 
-# @info "Rate regressions"
-# rate_df = regress_concentration_vs_time(absolute_quant_long_df)
-# rate_filename = joinpath("output", "concentration_rates.csv")
-# CSV.write(rate_filename, rate_df)
-# println("Wrote $rate_filename")
+@info "Rate regressions"
+rate_df = regress_concentration_vs_time(absolute_quant_long_df)
+rate_filename = joinpath("output", "concentration_rates.csv")
+CSV.write(rate_filename, rate_df)
+println("Wrote $rate_filename")
 
 # @info "Regression plots"
 # plot_all_regressions(absolute_quant_long_df)
