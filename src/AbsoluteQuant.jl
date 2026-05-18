@@ -994,7 +994,7 @@ Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression
 function plot_all_regressions(long_df)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
-    pairs = product(additives, metabolites)
+    pairs = collect(product(additives, metabolites))[1:10]
     # n_pairs = length(pairs)
     # prog = Progress(n_pairs, "Writing regression plots")
     for (additive, metabolite) in pairs
@@ -1023,8 +1023,13 @@ function plot_regression(long_df, additive, metabolite)
     super_title = "$additive $metabolite"
     fig = Figure(; size = (360, 720))
     Label(fig[0, :], text = super_title, fontsize = 25)
+
+    # final_times_to_figure_map =
+    #     Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
+
     final_times_to_figure_map =
-        Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
+        Dict(2 => fig[1, 1], 4 => fig[2, 1], 6 => fig[3, 1])
+
     for (final_time, fig_ref) in final_times_to_figure_map
         plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
         if final_time < 6
@@ -1055,12 +1060,15 @@ NamedTuple with the following fields:
 2. `ylims`: The y limits for the scatter plot.
 """
 function scatter_plot_df(long_df, additive, metabolite, final_time)
+    timepoints = sort(unique(long_df.Time))
+    timepoint_idx = findfirst(==(final_time), timepoints)
+    println("additive_metabolite_time_points(): final_time=$final_time, timepoints=$timepoints, timepoint_idx=$timepoint_idx")
     scatter_df = @chain long_df begin
         @rsubset(
             :Additive == additive,
             :Metabolite == metabolite,
-            :Time <= final_time,
-            :Time >= final_time - 1
+            :Time >= timepoints[timepoint_idx-1],
+            :Time <= timepoints[timepoint_idx]
         )
         @select(:Time, :absolute_mM)
     end
@@ -1094,8 +1102,7 @@ function plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, time_label)
     plt =
         data(plot_data.scatter_df) *
         mapping(:Time, :absolute_mM) *
-        # (visual(Scatter) + linear(level = 0.95))
-        visual(Scatter)
+        (visual(Scatter) + linear(level = 0.95))
     draw!(ax, plt)
 end
 
