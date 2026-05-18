@@ -995,13 +995,14 @@ function plot_all_regressions(long_df)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
     pairs = product(additives, metabolites)
-    n_pairs = length(pairs)
-    prog = Progress(n_pairs, "Writing regression plots")
+    # n_pairs = length(pairs)
+    # prog = Progress(n_pairs, "Writing regression plots")
     for (additive, metabolite) in pairs
         filename = joinpath("output", "regression_plots", "$additive $metabolite.png")
+        println("Plotting additive: $additive, metabolite: $metabolite")
         fig = plot_regression(long_df, additive, metabolite)
         save(filename, fig)
-        next!(prog)
+        # next!(prog)
     end
 end
 
@@ -1093,7 +1094,8 @@ function plot_conc_vs_time_from_plot_data!(plot_data, fig_ref, time_label)
     plt =
         data(plot_data.scatter_df) *
         mapping(:Time, :absolute_mM) *
-        (visual(Scatter) + linear(level = 0.95))
+        # (visual(Scatter) + linear(level = 0.95))
+        visual(Scatter)
     draw!(ax, plt)
 end
 
