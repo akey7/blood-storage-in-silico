@@ -49,14 +49,19 @@ fold_changes_df = fold_changes_2_result.fold_changes_df
 cols_to_keep = fold_changes_2_result.cols_to_keep
 metabolite_cleaning_df = fold_changes_2_result.metabolite_cleaning_df
 clean_metabolite_cleaning_df = copy(metabolite_cleaning_df)
-clean_metabolite_cleaning_df[!, :col_name] = [replace(string(s), "’" => "'") for s in clean_metabolite_cleaning_df[!, :col_name]]
+clean_metabolite_cleaning_df[!, :col_name] =
+    [replace(string(s), "’" => "'") for s in clean_metabolite_cleaning_df[!, :col_name]]
 n_samples_per_condition_df = fold_changes_2_result.n_samples_per_condition_df
 as3_fold_change_filename = joinpath("output", "relative_quant_2", "as3_fold_change.csv")
-conditions_fold_change_filename = joinpath("output", "relative_quant_2", "conditions_fold_change.csv")
-all_conditions_long_filename = joinpath("output", "relative_quant_2", "all_conditions_long_df.csv")
+conditions_fold_change_filename =
+    joinpath("output", "relative_quant_2", "conditions_fold_change.csv")
+all_conditions_long_filename =
+    joinpath("output", "relative_quant_2", "all_conditions_long_df.csv")
 fold_changes_filename = joinpath("output", "relative_quant_2", "fold_changes.csv")
-metabolite_cleaning_filename = joinpath("output", "relative_quant_2", "metabolite_cleaning.csv")
-n_samples_per_condition_filename = joinpath("output", "relative_quant_2", "n_samples_per_condition.csv")
+metabolite_cleaning_filename =
+    joinpath("output", "relative_quant_2", "metabolite_cleaning.csv")
+n_samples_per_condition_filename =
+    joinpath("output", "relative_quant_2", "n_samples_per_condition.csv")
 CSV.write(as3_fold_change_filename, as3_fold_change_df)
 CSV.write(conditions_fold_change_filename, conditions_fold_change_df)
 CSV.write(all_conditions_long_filename, all_conditions_long_df)
@@ -105,7 +110,7 @@ println("Wrote $absolute_quant_wide_filename")
 # println("Wrote $all_primary_cluster_df_filename")
 
 @info "Rate regressions"
-rate_df = regress_concentration_vs_time(absolute_quant_long_df)
+rate_df = regress_concentration_vs_time(absolute_quant_long_df; remove_zero_rates = true)
 rate_filename = joinpath("output", "concentration_rates.csv")
 CSV.write(rate_filename, rate_df)
 println("Wrote $rate_filename")

@@ -895,12 +895,13 @@ function additive_metabolite_time_points(long_df, additive, metabolite, final_ti
 end
 
 """
-    regress_concentration_vs_time(long_df)
+    regress_concentration_vs_time(long_df; remove_zero_rates = true)
 
 Regresses the concentration vs time to find the rate of metabolite concentration change (95% confidence interval upper and lower bounds) for all the metabolites and additives in `long_df`. Uses ThreadsX to split this task into multiple threads if multiple threads are available.
 
 # Arguments
 1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
+2. `remove_zero_rates = true`: If `true` removes rows from the output DataFrame where the rate is approximately zero.
 
 # Returns
 `DataFrame`
@@ -916,7 +917,7 @@ Returns a DataFrame with the concentration rate regression results. The DataFram
 7. `ub`: Upper bound of the 95% confidence interval of the slope.
 8. `lb_ub_different_sign`: `true` if the lower bound and upper bound are different signs.
 """
-function regress_concentration_vs_time(long_df)
+function regress_concentration_vs_time(long_df; remove_zero_rates = true)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
@@ -977,7 +978,9 @@ function regress_concentration_vs_time(long_df)
             :lb_ub_different_sign
         )
     end
-    return regressions_df
+    final_df =
+        remove_zero_rates ? @rsubset(regressions_df, !isapprox(:rate, 0.0)) : regressions_df
+    return final_df
 end
 
 """
