@@ -311,15 +311,6 @@ function load_relative_quant_2(
         @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
         @orderby(:Additive, :Time, :Metabolite)
     end
-
-    # fold_changes_counts_df = @chain fold_changes_df begin
-    #     @groupby(:Additive, :Time, :Metabolite)
-    #     @combine(:n_samples = length(:FoldChange))
-    #     @rsubset(:n_samples < 3)
-    #     @orderby(:Additive, :Time, :Metabolite)
-    # end
-    # display(first(fold_changes_counts_df, 100))
-
     result = (
         as3_fold_change_df = as3_fold_change_df_1,
         conditions_fold_change_df = non_as3_conditions_fold_change_df,
