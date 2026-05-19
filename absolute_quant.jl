@@ -79,26 +79,6 @@ println("Wrote $absolute_quant_wide_filename")
 
 n_plots = 100
 
-# For the second dataset there are too many additives to plot in this way using given color palette
-# @info "Timeseries plots"
-# plot_all_mM_timeseries(absolute_quant_long_df)
-
-max_clusters = 7
-@info "C-Means clustering (max clusters: $max_clusters)"
-all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(
-    absolute_quant_long_df;
-    max_clusters = max_clusters,
-)
-println(first(fuzzy_objectives_df, 10))
-
-# @info "Making c-means plots"
-# plot_elbows(fuzzy_objectives_df)
-# all_primary_cluster_df =
-#     plot_c_means_all_additives(absolute_quant_long_df, all_memberships_dfs, 6)
-# all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.csv")
-# CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
-# println("Wrote $all_primary_cluster_df_filename")
-
 @info "Rate regressions"
 rate_df = regress_concentration_vs_time(absolute_quant_long_df; remove_zero_rates = true)
 rate_filename = joinpath("output", "concentration_rates.csv")
@@ -107,3 +87,24 @@ println("Wrote $rate_filename")
 
 @info "Regression plots (limiting to first $n_plots)"
 plot_all_regressions(absolute_quant_long_df; n_plots = n_plots)
+
+# For the second dataset there are too many additives to plot in this way using given color palette
+# @info "Timeseries plots"
+# plot_all_mM_timeseries(absolute_quant_long_df)
+
+# For the second relative quant dataset, ways to visualize and save c-means clusters needs to be scaled to higher numbers of additives.
+# max_clusters = 7
+# @info "C-Means clustering (max clusters: $max_clusters)"
+# all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(
+#     absolute_quant_long_df;
+#     max_clusters = max_clusters,
+# )
+# println(first(fuzzy_objectives_df, 10))
+
+# @info "Making c-means plots"
+# plot_elbows(fuzzy_objectives_df)
+# all_primary_cluster_df =
+#     plot_c_means_all_additives(absolute_quant_long_df, all_memberships_dfs, 6)
+# all_primary_cluster_df_filename = joinpath("output", "c_means_primary_clusters.csv")
+# CSV.write(all_primary_cluster_df_filename, all_primary_cluster_df)
+# println("Wrote $all_primary_cluster_df_filename")
