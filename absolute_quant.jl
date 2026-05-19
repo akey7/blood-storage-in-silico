@@ -77,6 +77,8 @@ absolute_quant_wide_filename = joinpath("output", "absolute_quant_wide.csv")
 CSV.write(absolute_quant_wide_filename, absolute_quant_wide_df)
 println("Wrote $absolute_quant_wide_filename")
 
+n_plots = 100
+
 # For the second dataset there are too many additives to plot in this way
 # @info "Timeseries plots"
 # plot_all_mM_timeseries(absolute_quant_long_df)
@@ -100,5 +102,5 @@ rate_filename = joinpath("output", "concentration_rates.csv")
 CSV.write(rate_filename, rate_df)
 println("Wrote $rate_filename")
 
-@info "Regression plots"
-plot_all_regressions(absolute_quant_long_df)
+@info "Regression plots (limiting to first $n_plots)"
+plot_all_regressions(absolute_quant_long_df; n_plots = n_plots)

@@ -930,8 +930,13 @@ function regress_concentration_vs_time(long_df; remove_zero_rates = true)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
+
+    # First set of final_times for first relative quant dataset
     # final_times = [2, 3, 4, 5, 6]
+
+    # Second set of final_times for second relative quant dataset
     final_times = [2, 4, 6]
+    
     tasks = product(unique_metabolites, unique_additives, final_times)
     n_tasks = length(tasks)
     println("n_tasks: $n_tasks")
@@ -1034,11 +1039,12 @@ function plot_regression(long_df, additive, metabolite)
     fig = Figure(; size = (360, 720))
     Label(fig[0, :], text = super_title, fontsize = 25)
 
+    # First dict of final_times_to_figure_map for first relative quant dataset
     # final_times_to_figure_map =
     #     Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
 
-    final_times_to_figure_map =
-        Dict(2 => fig[1, 1], 4 => fig[2, 1], 6 => fig[3, 1])
+    # Second dict of final_times_to_figure_map for second relative quant dataset
+    final_times_to_figure_map = Dict(2 => fig[1, 1], 4 => fig[2, 1], 6 => fig[3, 1])
 
     for (final_time, fig_ref) in final_times_to_figure_map
         plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
