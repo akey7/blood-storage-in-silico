@@ -818,6 +818,8 @@ end
 
 Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes. Dislpays a nifty progress bar as it writes plots.
 
+Note: Currently only works with first dataset, because the second dataset has too many additives. Spaghetti plot for second dataset?
+
 # Arguments
 1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide). The source of the data that will be plotted.
 """

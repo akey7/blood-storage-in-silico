@@ -79,7 +79,7 @@ println("Wrote $absolute_quant_wide_filename")
 
 n_plots = 100
 
-# For the second dataset there are too many additives to plot in this way
+# For the second dataset there are too many additives to plot in this way using given color palette
 # @info "Timeseries plots"
 # plot_all_mM_timeseries(absolute_quant_long_df)
 
