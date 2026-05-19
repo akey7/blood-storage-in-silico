@@ -135,6 +135,25 @@ function load_relative_quant()
     return fold_changes_df
 end
 
+"""
+    function load_relative_quant_2(
+        zero_measurement_col_discard_frac = 0.25,
+        control_condition = "AS3",
+    )
+
+Loads the SECOND relative quant dataset. This dataset requires more cleaning and manipulation to work with the rest of the Blood Storage In Silico pipeline.
+
+# Arguments
+1. `zero_measurement_col_discard_frac = 0.25`: The proportion of values in a metabolite measurement column that are allowed to be zero or missing. If a greater proportion is zero or missing, then the column is dropped.
+2. `control_condition = "AS3"`: The name of the condition considered to be the "control".
+
+# Returns
+`NamedTuple`
+
+1. `fold_changes_df`: The main output of this function. Relative quant information as imputed from fold changes within the control condition. This is what is passed along for absolute quant approximation.
+2. `metabolite_cleaning_df`: Used fo diagnostics. Documents decisions about which metabolites from the original DataFrame to retain unmodified, impute missing and zero values, or drop.
+3. `n_samples_per_condition`: Used fo diagnostics. Calculated from the wide DataFrame after metabolite cleaning. Counts the number of complete rows per condition, and the decision for that condition depending on the rows found for that condition.
+"""
 function load_relative_quant_2(
     zero_measurement_col_discard_frac = 0.25,
     control_condition = "AS3",
@@ -208,14 +227,12 @@ function load_relative_quant_2(
     conditions_to_keep = sort(unique(conditions_to_keep_df.Condition))
     push!(conditions_to_keep, control_condition)
     wide_df_3 = @rsubset(wide_df_2, :Condition in conditions_to_keep)
-
     long_df_1 = stack(
         wide_df_3,
         Not([:Sample, :Day, :Condition]),
         variable_name = :MixedName,
         value_name = :Intensity,
     )
-
     long_df_2 = @chain long_df_1 begin
         @rtransform(:Time = div(:Day, 7, RoundUp))
         @select(:Sample, :Additive = :Condition, :Time, :MixedName, :Intensity)
@@ -246,10 +263,6 @@ function load_relative_quant_2(
             :max_as3_fold_change
         )
     end
-    # as3_fold_change_df_2 = @rsubset as3_fold_change_df_1 begin
-    #     isfinite(:min_as3_fold_change)
-    #     isfinite(:max_as3_fold_change)
-    # end
     non_as3_conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
     non_as3_conditions_fold_change_df = @chain non_as3_conditions_df begin
         innerjoin(as3_fold_change_df_1; on = [:Time, :MixedName], makeunique = true)
@@ -312,11 +325,7 @@ function load_relative_quant_2(
         @orderby(:Additive, :Time, :Metabolite)
     end
     result = (
-        as3_fold_change_df = as3_fold_change_df_1,
-        conditions_fold_change_df = non_as3_conditions_fold_change_df,
-        all_conditions_long_df = all_conditions_long_df_2,
         fold_changes_df = fold_changes_df,
-        cols_to_keep = cols_to_keep,
         metabolite_cleaning_df = metabolite_cleaning_df,
         n_samples_per_condition_df = n_samples_per_condition_df,
     )

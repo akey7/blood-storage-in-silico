@@ -42,35 +42,20 @@ Random.seed!(123)
 
 @info "Relative quant, SECOND dataset"
 fold_changes_2_result = load_relative_quant_2()
-as3_fold_change_df = fold_changes_2_result.as3_fold_change_df
-conditions_fold_change_df = fold_changes_2_result.conditions_fold_change_df
-all_conditions_long_df = fold_changes_2_result.all_conditions_long_df
 fold_changes_df = fold_changes_2_result.fold_changes_df
-cols_to_keep = fold_changes_2_result.cols_to_keep
 metabolite_cleaning_df = fold_changes_2_result.metabolite_cleaning_df
 clean_metabolite_cleaning_df = copy(metabolite_cleaning_df)
 clean_metabolite_cleaning_df[!, :col_name] =
     [replace(string(s), "’" => "'") for s in clean_metabolite_cleaning_df[!, :col_name]]
 n_samples_per_condition_df = fold_changes_2_result.n_samples_per_condition_df
-as3_fold_change_filename = joinpath("output", "relative_quant_2", "as3_fold_change.csv")
-conditions_fold_change_filename =
-    joinpath("output", "relative_quant_2", "conditions_fold_change.csv")
-all_conditions_long_filename =
-    joinpath("output", "relative_quant_2", "all_conditions_long_df.csv")
 fold_changes_filename = joinpath("output", "relative_quant_2", "fold_changes.csv")
 metabolite_cleaning_filename =
     joinpath("output", "relative_quant_2", "metabolite_cleaning.csv")
 n_samples_per_condition_filename =
     joinpath("output", "relative_quant_2", "n_samples_per_condition.csv")
-CSV.write(as3_fold_change_filename, as3_fold_change_df)
-CSV.write(conditions_fold_change_filename, conditions_fold_change_df)
-CSV.write(all_conditions_long_filename, all_conditions_long_df)
 CSV.write(fold_changes_filename, fold_changes_df)
 CSV.write(metabolite_cleaning_filename, clean_metabolite_cleaning_df)
 CSV.write(n_samples_per_condition_filename, n_samples_per_condition_df)
-println("Wrote $as3_fold_change_filename")
-println("Wrote $conditions_fold_change_filename")
-println("Wrote $all_conditions_long_filename")
 println("Wrote $fold_changes_filename")
 println("Wrote $metabolite_cleaning_filename")
 println("Wrote $n_samples_per_condition_filename")
