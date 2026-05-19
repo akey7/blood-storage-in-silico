@@ -83,10 +83,13 @@ n_plots = 100
 # @info "Timeseries plots"
 # plot_all_mM_timeseries(absolute_quant_long_df)
 
-# @info "C-Means clustering"
-# all_memberships_dfs, fuzzy_objectives_df =
-#     cluster_all_additives_all_n_clusters(absolute_quant_long_df; max_clusters = 7)
-# println(first(fuzzy_objectives_df, 10))
+max_clusters = 7
+@info "C-Means clustering (max clusters: $max_clusters)"
+all_memberships_dfs, fuzzy_objectives_df = cluster_all_additives_all_n_clusters(
+    absolute_quant_long_df;
+    max_clusters = max_clusters,
+)
+println(first(fuzzy_objectives_df, 10))
 
 # @info "Making c-means plots"
 # plot_elbows(fuzzy_objectives_df)
