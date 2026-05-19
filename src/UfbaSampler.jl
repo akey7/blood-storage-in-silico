@@ -691,7 +691,7 @@ function make_ufba_models_for_additives_and_times(
                 prune_method = prune_method,
                 additive = additive,
                 final_time = final_time,
-                broken_case_1_constraint = prune_result,
+                broken_constraint = prune_result,
             )
             next!(prog)
             return (
