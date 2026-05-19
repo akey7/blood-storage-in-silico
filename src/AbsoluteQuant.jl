@@ -999,19 +999,20 @@ Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression
 
 # Arguments
 1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
+2. `n_plots = 100`: Limit to the given number of plots. If `-1`, make all plots.
 """
-function plot_all_regressions(long_df)
+function plot_all_regressions(long_df; n_plots = 100)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
-    pairs = collect(product(additives, metabolites))[1:10]
-    # n_pairs = length(pairs)
-    # prog = Progress(n_pairs, "Writing regression plots")
+    plot_specs = product(additives, metabolites)
+    pairs = n_plots == -1 ? plot_specs : first(plot_specs, n_plots)
+    n_pairs = length(pairs)
+    prog = Progress(n_pairs, "Writing regression plots")
     for (additive, metabolite) in pairs
         filename = joinpath("output", "regression_plots", "$additive $metabolite.png")
-        println("Plotting additive: $additive, metabolite: $metabolite")
         fig = plot_regression(long_df, additive, metabolite)
         save(filename, fig)
-        # next!(prog)
+        next!(prog)
     end
 end
 
@@ -1071,7 +1072,6 @@ NamedTuple with the following fields:
 function scatter_plot_df(long_df, additive, metabolite, final_time)
     timepoints = sort(unique(long_df.Time))
     timepoint_idx = findfirst(==(final_time), timepoints)
-    println("additive_metabolite_time_points(): final_time=$final_time, timepoints=$timepoints, timepoint_idx=$timepoint_idx")
     scatter_df = @chain long_df begin
         @rsubset(
             :Additive == additive,
