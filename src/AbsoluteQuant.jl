@@ -20,6 +20,7 @@ using Statistics
 using Random
 using ThreadsX
 using ProgressMeter
+using Printf
 
 export load_absolute_quant,
     load_relative_quant,
@@ -36,7 +37,8 @@ export load_absolute_quant,
     qc,
     load_extracellular_absolute_quant,
     combine_relative_and_absolute_quant_e,
-    union_and_pivot_wide
+    union_and_pivot_wide,
+    load_relative_quant_2
 
 """
     load_absolute_quant()
@@ -131,6 +133,203 @@ function load_relative_quant()
         @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
     end
     return fold_changes_df
+end
+
+"""
+    function load_relative_quant_2(
+        zero_measurement_col_discard_frac = 0.25,
+        control_condition = "AS3",
+    )
+
+Loads the SECOND relative quant dataset. This dataset requires more cleaning and manipulation to work with the rest of the Blood Storage In Silico pipeline.
+
+# Arguments
+1. `zero_measurement_col_discard_frac = 0.25`: The proportion of values in a metabolite measurement column that are allowed to be zero or missing. If a greater proportion is zero or missing, then the column is dropped.
+2. `control_condition = "AS3"`: The name of the condition considered to be the "control".
+
+# Returns
+`NamedTuple`
+
+1. `fold_changes_df`: The main output of this function. Relative quant information as imputed from fold changes within the control condition. This is what is passed along for absolute quant approximation.
+2. `metabolite_cleaning_df`: Used fo diagnostics. Documents decisions about which metabolites from the original DataFrame to retain unmodified, impute missing and zero values, or drop.
+3. `n_samples_per_condition`: Used fo diagnostics. Calculated from the wide DataFrame after metabolite cleaning. Counts the number of complete rows per condition, and the decision for that condition depending on the rows found for that condition.
+"""
+function load_relative_quant_2(
+    zero_measurement_col_discard_frac = 0.25,
+    control_condition = "AS3",
+)
+    relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
+    wide_df_1 = CSV.read(relative_filename, DataFrame)
+    proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
+    proportination_df = CSV.read(proportination_filename, DataFrame)
+
+    metabolite_cleaning_rows = []
+    skip_cols = [:Sample, :Day, :Condition]
+    cols_to_keep = [:Sample, :Day, :Condition]
+    for (col_name, col) in pairs(eachcol(wide_df_1))
+        col_name in skip_cols && continue
+        v = Vector{Union{Missing,Float64}}(allowmissing(col))
+        n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
+        frac_missing_or_zero = n_approx_zero / length(v)
+        if frac_missing_or_zero < zero_measurement_col_discard_frac
+            push!(cols_to_keep, col_name)
+        else
+            pct = @sprintf("%.1f%%", frac_missing_or_zero * 100)
+            cleaning_row = (
+                col_name = col_name,
+                decision = "drop column",
+                reason = "$pct values missing or zero",
+            )
+            push!(metabolite_cleaning_rows, cleaning_row)
+        end
+    end
+    wide_df_2 = select(wide_df_1, cols_to_keep)
+    for (col_name, col) in pairs(eachcol(wide_df_2))
+        col_name in skip_cols && continue
+        v = Vector{Union{Missing,Float64}}(allowmissing(col))
+        n_approx_zero = count(x -> !ismissing(x) && isapprox(x, 0.0), v)
+        frac = n_approx_zero / length(v)
+        frac_avail = 1.0 - frac
+        pct_avail = @sprintf("%.1f%%", frac_avail * 100)
+        if n_approx_zero >= 1
+            row = (
+                col_name = col_name,
+                decision = "impute zeros and missing values",
+                reason = "$pct_avail values available for imputation",
+            )
+            push!(metabolite_cleaning_rows, row)
+        else
+            row = (
+                col_name = col_name,
+                decision = "unmodified",
+                reason = "$pct_avail values present",
+            )
+            push!(metabolite_cleaning_rows, row)
+        end
+        v_median = median(skipmissing(v))
+        wide_df_2[!, col_name] =
+            map(x -> (ismissing(x) || isapprox(x, 0.0)) ? v_median : x, v)
+    end
+    metabolite_cleaning_df = @chain metabolite_cleaning_rows begin
+        DataFrame()
+        @orderby(:col_name)
+    end
+    days = sort(unique(wide_df_2.Day))
+    n_days = length(days)
+    n_samples_per_condition_df = @chain wide_df_2 begin
+        @rsubset(:Condition != control_condition)
+        @groupby(:Condition)
+        @combine(:count = length(:Condition))
+        @rtransform(:decision = :count < n_days ? "discard" : "retain")
+        @orderby(:count, :Condition)
+    end
+    conditions_to_keep_df = @rsubset(n_samples_per_condition_df, :count == n_days)
+    conditions_to_keep = sort(unique(conditions_to_keep_df.Condition))
+    push!(conditions_to_keep, control_condition)
+    wide_df_3 = @rsubset(wide_df_2, :Condition in conditions_to_keep)
+    long_df_1 = stack(
+        wide_df_3,
+        Not([:Sample, :Day, :Condition]),
+        variable_name = :MixedName,
+        value_name = :Intensity,
+    )
+    long_df_2 = @chain long_df_1 begin
+        @rtransform(:Time = div(:Day, 7, RoundUp))
+        @select(:Sample, :Additive = :Condition, :Time, :MixedName, :Intensity)
+    end
+    as3_intensity_df = @rsubset(long_df_2, :Additive == control_condition)
+    as3_fold_change_df_1 = @chain as3_intensity_df begin
+        @groupby(:Additive, :Time, :MixedName)
+        @combine(
+            :n_samples = length(:Intensity),
+            :median_as3_intensity = median(:Intensity),
+            :max_as3_intensity = maximum(:Intensity),
+            :min_as3_intensity = minimum(:Intensity)
+        )
+        @rtransform(
+            :max_as3_fold_change = :max_as3_intensity / :median_as3_intensity,
+            :min_as3_fold_change = :min_as3_intensity / :median_as3_intensity
+        )
+        @orderby(:Additive, :Time, :MixedName)
+        @select(
+            :Additive,
+            :Time,
+            :MixedName,
+            :n_samples,
+            :median_as3_intensity,
+            :max_as3_intensity,
+            :min_as3_intensity,
+            :min_as3_fold_change,
+            :max_as3_fold_change
+        )
+    end
+    non_as3_conditions_df = @rsubset(long_df_2, :Additive != "AS3", isfinite(:Intensity))
+    non_as3_conditions_fold_change_df = @chain non_as3_conditions_df begin
+        innerjoin(as3_fold_change_df_1; on = [:Time, :MixedName], makeunique = true)
+        @rtransform(
+            :min_intensity = :Intensity * :min_as3_fold_change,
+            :max_intensity = :Intensity * :max_as3_fold_change
+        )
+        @orderby(:Additive, :Time, :MixedName, :Intensity, :min_intensity, :max_intensity)
+        @select(
+            :Sample,
+            :Additive,
+            :Time,
+            :MixedName,
+            :Intensity,
+            :min_intensity,
+            :max_intensity
+        )
+    end
+    non_as3_expanded_long_rows = []
+    for row in eachrow(non_as3_conditions_fold_change_df)
+        row_1 = (
+            Sample = row.Sample,
+            Additive = row.Additive,
+            Time = row.Time,
+            MixedName = row.MixedName,
+            Intensity = row.min_intensity,
+        )
+        row_2 = (
+            Sample = row.Sample,
+            Additive = row.Additive,
+            Time = row.Time,
+            MixedName = row.MixedName,
+            Intensity = row.Intensity,
+        )
+        row_3 = (
+            Sample = row.Sample,
+            Additive = row.Additive,
+            Time = row.Time,
+            MixedName = row.MixedName,
+            Intensity = row.max_intensity,
+        )
+        push!(non_as3_expanded_long_rows, row_1)
+        push!(non_as3_expanded_long_rows, row_2)
+        push!(non_as3_expanded_long_rows, row_3)
+    end
+    non_as3_expanded_long_df = DataFrame(non_as3_expanded_long_rows)
+    all_conditions_long_df_1 = vcat(as3_intensity_df, non_as3_expanded_long_df)
+    all_conditions_long_df_2 =
+        @orderby(all_conditions_long_df_1, :Additive, :Time, :MixedName, :Intensity)
+    control_intensity_df = @rsubset(long_df_2, :Additive == "AS3", :Time == 0)
+    ctrl_time_1_median_df = @chain control_intensity_df begin
+        @groupby(:MixedName)
+        @combine(:ctrl_time_0_median_intensity = median(skipmissing(:Intensity)))
+    end
+    fold_changes_df = @chain all_conditions_long_df_2 begin
+        innerjoin(ctrl_time_1_median_df; on = :MixedName)
+        @rtransform(:FoldChange = :Intensity / :ctrl_time_0_median_intensity)
+        innerjoin(proportination_df; on = :MixedName)
+        @select(:Sample, :Time, :Additive, :Metabolite, :FoldChange)
+        @orderby(:Additive, :Time, :Metabolite)
+    end
+    result = (
+        fold_changes_df = fold_changes_df,
+        metabolite_cleaning_df = metabolite_cleaning_df,
+        n_samples_per_condition_df = n_samples_per_condition_df,
+    )
+    return result
 end
 
 """
@@ -365,7 +564,8 @@ function c_means_metabolite_trajectories(
     n_clusters = 5,
     μ = 5.0,
 )
-    X0 = Matrix{Float64}(disallowmissing(wide_timeseries_df[:, Not(:Metabolite)]))
+    clean_wide_timeseries_df = dropmissing(wide_timeseries_df)
+    X0 = Matrix{Float64}(disallowmissing(clean_wide_timeseries_df[:, Not(:Metabolite)]))
     X = (X0 .- mean(X0, dims = 1)) ./ std(X0, dims = 1)
     nans = count(isnan, X)
     infs = count(isinf, X)
@@ -618,6 +818,8 @@ end
 
 Plots the absolute quant approximations for all metabolites in all additives. Saves each plot to the `output/relative_absolute_plots` folder as it goes. Dislpays a nifty progress bar as it writes plots.
 
+Note: Currently only works with first dataset, because the second dataset has too many additives. Spaghetti plot for second dataset?
+
 # Arguments
 1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide). The source of the data that will be plotted.
 """
@@ -687,9 +889,16 @@ Used by [`regress_concentration_vs_time`](@ref BloodStorageInSilico.AbsoluteQuan
 
 Each time point with the approximated mM concentration, ordered by time.
 """
-function additive_metabolite_time_points(long_df, additive, metabolite, tf)
+function additive_metabolite_time_points(long_df, additive, metabolite, final_time)
+    timepoints = sort(unique(long_df.Time))
+    timepoint_idx = findfirst(==(final_time), timepoints)
     result_df = @chain long_df begin
-        @rsubset(:Additive == additive, :Metabolite == metabolite, :Time >= tf - 1, :Time <= tf)
+        @rsubset(
+            :Additive == additive,
+            :Metabolite == metabolite,
+            :Time >= timepoints[timepoint_idx-1],
+            :Time <= timepoints[timepoint_idx]
+        )
         @select(:Time, :absolute_mM)
         @orderby(:Time)
     end
@@ -697,12 +906,13 @@ function additive_metabolite_time_points(long_df, additive, metabolite, tf)
 end
 
 """
-    regress_concentration_vs_time(long_df)
+    regress_concentration_vs_time(long_df; remove_zero_rates = true)
 
 Regresses the concentration vs time to find the rate of metabolite concentration change (95% confidence interval upper and lower bounds) for all the metabolites and additives in `long_df`. Uses ThreadsX to split this task into multiple threads if multiple threads are available.
 
 # Arguments
 1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
+2. `remove_zero_rates = true`: If `true` removes rows from the output DataFrame where the rate is approximately zero.
 
 # Returns
 `DataFrame`
@@ -718,34 +928,57 @@ Returns a DataFrame with the concentration rate regression results. The DataFram
 7. `ub`: Upper bound of the 95% confidence interval of the slope.
 8. `lb_ub_different_sign`: `true` if the lower bound and upper bound are different signs.
 """
-function regress_concentration_vs_time(long_df)
+function regress_concentration_vs_time(long_df; remove_zero_rates = true)
     Random.seed!(123)
     unique_additives = unique(long_df.Additive)
     unique_metabolites = unique(long_df.Metabolite)
-    final_times = [2, 3, 4, 5, 6]
+
+    # First set of final_times for first relative quant dataset
+    # final_times = [2, 3, 4, 5, 6]
+
+    # Second set of final_times for second relative quant dataset
+    final_times = [2, 4, 6]
+
     tasks = product(unique_metabolites, unique_additives, final_times)
+    n_tasks = length(tasks)
+    println("n_tasks: $n_tasks")
     rows = ThreadsX.map(tasks) do t
         metabolite, additive, final_time = t
-        println("Calculating $additive, $metabolite, $final_time")
+        print(".")
         regression_df =
             additive_metabolite_time_points(long_df, additive, metabolite, final_time)
-        single_model = lm(@formula(absolute_mM ~ Time), regression_df)
-        coefs = coef(single_model)
-        intercept = coefs[1]
-        rate = coefs[2]
-        ci = confint(single_model)
-        lb = ci[2, 1]
-        ub = ci[2, 2]
-        (
-            additive = additive,
-            metabolite = metabolite,
-            final_time = final_time,
-            intercept = intercept,
-            rate = rate,
-            lb = lb,
-            ub = ub,
-        )
+        try
+            single_model = lm(@formula(absolute_mM ~ Time), regression_df)
+            coefs = coef(single_model)
+            intercept = coefs[1]
+            rate = coefs[2]
+            ci = confint(single_model)
+            lb = ci[2, 1]
+            ub = ci[2, 2]
+            return (
+                additive = additive,
+                metabolite = metabolite,
+                final_time = final_time,
+                intercept = intercept,
+                rate = rate,
+                lb = lb,
+                ub = ub,
+            )
+        catch
+            println("Failed $metabolite, $additive, $final_time")
+            display(regression_df)
+            return (
+                additive = additive,
+                metabolite = metabolite,
+                final_time = final_time,
+                intercept = missing,
+                rate = missing,
+                lb = missing,
+                ub = missing,
+            )
+        end
     end
+    println("done")
     regressions_df = @chain rows begin
         DataFrame()
         @rtransform(:lb_ub_different_sign = sign(:lb) != sign(:ub))
@@ -761,7 +994,9 @@ function regress_concentration_vs_time(long_df)
             :lb_ub_different_sign
         )
     end
-    return regressions_df
+    final_df =
+        remove_zero_rates ? @rsubset(regressions_df, !isapprox(:rate, 0.0)) : regressions_df
+    return final_df
 end
 
 """
@@ -771,11 +1006,13 @@ Uses [`plot_regression`](@ref BloodStorageInSilico.AbsoluteQuant.plot_regression
 
 # Arguments
 1. `long_df`: The long DataFrame from [`union_and_pivot_wide`](@ref BloodStorageInSilico.AbsoluteQuant.union_and_pivot_wide).
+2. `n_plots = 100`: Limit to the given number of plots. If `-1`, make all plots.
 """
-function plot_all_regressions(long_df)
+function plot_all_regressions(long_df; n_plots = 100)
     additives = unique(long_df.Additive)
     metabolites = unique(long_df.Metabolite)
-    pairs = product(additives, metabolites)
+    plot_specs = product(additives, metabolites)
+    pairs = n_plots == -1 ? plot_specs : first(plot_specs, n_plots)
     n_pairs = length(pairs)
     prog = Progress(n_pairs, "Writing regression plots")
     for (additive, metabolite) in pairs
@@ -803,8 +1040,14 @@ function plot_regression(long_df, additive, metabolite)
     super_title = "$additive $metabolite"
     fig = Figure(; size = (360, 720))
     Label(fig[0, :], text = super_title, fontsize = 25)
-    final_times_to_figure_map =
-        Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
+
+    # First dict of final_times_to_figure_map for first relative quant dataset
+    # final_times_to_figure_map =
+    #     Dict(2 => fig[1, 1], 3 => fig[2, 1], 4 => fig[3, 1], 5 => fig[4, 1], 6 => fig[5, 1])
+
+    # Second dict of final_times_to_figure_map for second relative quant dataset
+    final_times_to_figure_map = Dict(2 => fig[1, 1], 4 => fig[2, 1], 6 => fig[3, 1])
+
     for (final_time, fig_ref) in final_times_to_figure_map
         plot_data = scatter_plot_df(long_df, additive, metabolite, final_time)
         if final_time < 6
@@ -835,12 +1078,14 @@ NamedTuple with the following fields:
 2. `ylims`: The y limits for the scatter plot.
 """
 function scatter_plot_df(long_df, additive, metabolite, final_time)
+    timepoints = sort(unique(long_df.Time))
+    timepoint_idx = findfirst(==(final_time), timepoints)
     scatter_df = @chain long_df begin
         @rsubset(
             :Additive == additive,
             :Metabolite == metabolite,
-            :Time <= final_time,
-            :Time >= final_time - 1
+            :Time >= timepoints[timepoint_idx-1],
+            :Time <= timepoints[timepoint_idx]
         )
         @select(:Time, :absolute_mM)
     end
