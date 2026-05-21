@@ -91,7 +91,18 @@ CSV.write(rxn_ids_to_strings_filename, rxn_ids_to_strings_df)
 
 @info "Run uFBA jobs"
 sink_opt_ins_strings = Vector{String}(string.(sink_opt_ins))
-println(typeof(sink_opt_ins_strings))
+
+# ufba_jobs = make_ufba_models_for_additives_and_times(
+#     metabolites_bounds_df,
+#     n_models;
+#     exchanges = default_exchanges(),
+#     flux_bounds_overrides_df = flux_bounds_overrides_df,
+#     metabolites_to_ignore = metabolites_to_ignore,
+#     prune_method = prune_method,
+#     relax_strategy = :frac_minimum,
+#     sink_opt_ins = sink_opt_ins_strings,
+# )
+
 ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_bounds_df,
     n_models;
@@ -100,6 +111,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_to_ignore = metabolites_to_ignore,
     prune_method = prune_method,
     relax_strategy = :frac_minimum,
+    frac_minimum = 0.5,
     sink_opt_ins = sink_opt_ins_strings,
 )
 

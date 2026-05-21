@@ -289,6 +289,7 @@ function suggested_unmeasured_metabolite_bounds(
         min_ub_abs = minimum(abs.(selection_df.ub))
         min_abs = minimum([min_lb_abs, min_ub_abs])
         overall = frac_minimum * min_abs
+        println("suggested_unmeasured_metabolite_bounds(): frac_minimum=$frac_minimum overall=$overall")
         return -overall, overall
     elseif strategy == :q
         abs_bounds = []
