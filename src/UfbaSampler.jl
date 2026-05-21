@@ -867,7 +867,7 @@ end
 function extract_constraint_bounds(ufba_jobs)
     metabolites_rows = []
     fluxes_rows = []
-    for ufba_jobs in ufba_jobs
+    for ufba_job in ufba_jobs
         additive = ufba_job.additive
         final_time = ufba_job.final_time
         measured_metabolites = ufba_job.pruned_measured_metabolites
