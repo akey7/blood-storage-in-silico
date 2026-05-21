@@ -884,7 +884,7 @@ function extract_constraint_bounds(ufba_jobs)
                 bound_ub = b isa C.Between ? b.upper : missing
                 bound_lb = b isa C.Between ? b.lower : missing
                 constraint_type = b isa C.EqualTo ? "equal to" : "between"
-                if branch == :fluxes
+                if branch == "fluxes"
                     flux_row = (
                         additive = additive,
                         final_time = final_time,
