@@ -30,6 +30,7 @@ JuliaLocalPreferences.toml
 # Ignore input and output data
 input/
 output/
+output_archive/
 *.csv
 *.png
 

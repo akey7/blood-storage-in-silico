@@ -691,7 +691,7 @@ function make_ufba_models_for_additives_and_times(
                 prune_method = prune_method,
                 additive = additive,
                 final_time = final_time,
-                broken_case_1_constraint = prune_result,
+                broken_constraint = prune_result,
             )
             next!(prog)
             return (
@@ -900,12 +900,12 @@ function extract_broken_constraints(jobs, job_results)
     end
     unsorted_prune_breaks_df =
         length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
-        DataFrame(additive = [], final_time = [], broken_case_1_constraint = [])
+        DataFrame(additive = [], final_time = [], broken_constraint = [])
     prune_breaks_df = @orderby(
         unsorted_prune_breaks_df,
         :additive,
         :final_time,
-        :broken_case_1_constraint
+        :broken_constraint
     )
     unsorted_fba_breaks_df =
         length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
