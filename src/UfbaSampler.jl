@@ -547,7 +547,7 @@ Create all models that represent each combination of additive and final time poi
 4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
 5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
 6. `prune_method::Symbol = :case3`: Prune method to use. Can be either `:case1` or `:case3`.
-7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:tenth_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
+7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:frac_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
 8. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
 9. `sink_opt_ins::Vector{String}`
 
@@ -901,12 +901,8 @@ function extract_broken_constraints(jobs, job_results)
     unsorted_prune_breaks_df =
         length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
         DataFrame(additive = [], final_time = [], broken_constraint = [])
-    prune_breaks_df = @orderby(
-        unsorted_prune_breaks_df,
-        :additive,
-        :final_time,
-        :broken_constraint
-    )
+    prune_breaks_df =
+        @orderby(unsorted_prune_breaks_df, :additive, :final_time, :broken_constraint)
     unsorted_fba_breaks_df =
         length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
         DataFrame(additive = [], final_time = [], fba_break = [])

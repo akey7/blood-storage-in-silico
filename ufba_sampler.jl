@@ -82,7 +82,8 @@ println("Wrote $rxn_ids_to_strings_filename")
 fba_model_metabolites_filename = joinpath("output", "fba_model_metabolites.csv")
 CSV.write(fba_model_metabolites_filename, fba_model_metabolites_df)
 println("Wrote $fba_model_metabolites_filename")
-fba_reactions_metabolites_filename = joinpath("output", "fba_model_reactions_metabolites.csv")
+fba_reactions_metabolites_filename =
+    joinpath("output", "fba_model_reactions_metabolites.csv")
 CSV.write(fba_reactions_metabolites_filename, fba_reactions_metabolites_df)
 println("Wrote $fba_model_metabolites_filename")
 rxn_ids_to_strings_filename = joinpath("output", "rxn_strings_subsystems_categories.csv")
@@ -98,7 +99,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     flux_bounds_overrides_df = flux_bounds_overrides_df,
     metabolites_to_ignore = metabolites_to_ignore,
     prune_method = prune_method,
-    relax_strategy = :tenth_minimum,
+    relax_strategy = :frac_minimum,
     sink_opt_ins = sink_opt_ins_strings,
 )
 
