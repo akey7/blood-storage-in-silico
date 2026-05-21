@@ -42,7 +42,8 @@ export sample_fluxes,
     extract_broken_constraints,
     extract_unmeasured_relaxations,
     load_reaction_names_and_subsystems,
-    load_subsystem_category_map
+    load_subsystem_category_map,
+    extract_constraint_bounds
 
 """
     init_workers!(; project=Base.active_project())
@@ -861,6 +862,68 @@ function extract_unmeasured_relaxations(ufba_jobs)
         @orderby(:additive, :final_time)
     end
     return result_df
+end
+
+function extract_constraint_bounds(ufba_jobs)
+    metabolites_rows = []
+    fluxes_rows = []
+    for ufba_jobs in ufba_jobs
+        additive = ufba_job.additive
+        final_time = ufba_job.final_time
+        measured_metabolites = ufba_job.pruned_measured_metabolites
+        pruned_ct = ufba_job.pruned_with_metabolite_bounds_ct
+        if !isnothing(pruned_ct)
+            C.itraverse(pruned_ct) do path, con
+                path_str = string.(path)
+                branch = first(path_str)
+                leaf = last(path_str)
+                constraint_path = join(string.(path), ".")
+                b = con.bound
+                isnothing(b) && return
+                bound_equal_to = b isa C.EqualTo ? b.equal_to : missing
+                bound_ub = b isa C.Between ? b.upper : missing
+                bound_lb = b isa C.Between ? b.lower : missing
+                constraint_type = b isa C.EqualTo ? "equal to" : "between"
+                if branch == :fluxes
+                    flux_row = (
+                        additive = additive,
+                        final_time = final_time,
+                        reaction_id = leaf,
+                        constraint_path = constraint_path,
+                        constraint_type = constraint_type,
+                        lb = bound_lb,
+                        ub = bound_ub,
+                        equal_to = bound_equal_to,
+                    )
+                    push!(fluxes_rows, flux_row)
+                else
+                    is_measured = leaf in measured_metabolites ? "measured" : "unmeasured"
+                    metabolite_row = (
+                        additive = additive,
+                        final_time = final_time,
+                        metabolite_id = leaf,
+                        is_measured = is_measured,
+                        constraint_path = constraint_path,
+                        constraint_type = constraint_type,
+                        lb = bound_lb,
+                        ub = bound_ub,
+                        equal_to = bound_equal_to,
+                    )
+                    push!(metabolites_rows, metabolite_row)
+                end
+            end
+        end
+    end
+    metabolites_df = @chain metabolites_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time, :is_measured, :metabolite_id)
+    end
+    fluxes_df = @chain fluxes_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time, :reaction_id)
+    end
+    result = (metabolites_df = metabolites_df, fluxes_df = fluxes_df)
+    return result
 end
 
 """

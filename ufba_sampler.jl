@@ -116,7 +116,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
 )
 
 pruning_overview_df = extract_pruning_overview(ufba_jobs)
-unmeasured_relaxations_df = extract_unmeasured_relaxations(ufba_jobs)
+# unmeasured_relaxations_df = extract_unmeasured_relaxations(ufba_jobs)
 ufba_jobs_result =
     execute_all_ufba_jobs(ufba_jobs, rxn_ids_to_strings_df; n_chains = n_chains)
 sampling_df = ufba_jobs_result.sampling_df
@@ -126,6 +126,9 @@ joined_blocked_reaction_ids_df = ufba_jobs_result.joined_blocked_reaction_ids_df
 prune_breaks_df = ufba_jobs_result.prune_breaks_df
 fba_breaks_df = ufba_jobs_result.fba_breaks_df
 sinks_df = ufba_jobs_result.sinks_df
+constraint_bound_results = extract_constraint_bounds(ufba_jobs)
+constraints_metabolites_df = constraint_bound_results.metabolites_df
+constraints_fluxes_df = constraint_bound_results.fluxes_df
 
 @info "uFBA: Final status"
 display(status_df)
@@ -151,9 +154,17 @@ println("Wrote $prune_breaks_filename")
 fba_breaks_filename = joinpath("output", "ufba_fba_breaks.csv")
 CSV.write(fba_breaks_filename, fba_breaks_df)
 println("Wrote $fba_breaks_filename")
-unmeasured_relaxations_filename = joinpath("output", "ufba_unmeasured_relaxations.csv")
-CSV.write(unmeasured_relaxations_filename, unmeasured_relaxations_df)
+# unmeasured_relaxations_filename = joinpath("output", "ufba_unmeasured_relaxations.csv")
+# CSV.write(unmeasured_relaxations_filename, unmeasured_relaxations_df)
 println("Wrote $unmeasured_relaxations_filename")
+
+constraints_metabolites_filename = joinpath("output", "ufba_constraints_metabolites.csv")
+constraints_fluxes_filename = joinpath("output", "ufba_constraints_fluxes.csv")
+CSV.write(constraints_metabolites_filename, constraints_metabolites_df)
+CSV.write(constraints_fluxes_filename, constraints_fluxes_df)
+println("Wrote $constraints_metabolites_filename")
+println("Wrote $constraints_fluxes_filename")
+
 if !isnothing(sinks_df)
     sinks_filename = joinpath("output", "ufba_sinks_optimized.csv")
     CSV.write(sinks_filename, sinks_df)
