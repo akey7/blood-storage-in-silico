@@ -549,7 +549,8 @@ Create all models that represent each combination of additive and final time poi
 6. `prune_method::Symbol = :case3`: Prune method to use. Can be either `:case1` or `:case3`.
 7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:frac_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
 8. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
-9. `sink_opt_ins::Vector{String}`
+9. `sink_opt_ins::Vector{String}`: Vector of sinks to create no matter what the pruning results are.
+10. `frac_minimum::Float64 = 0.1`: Fraction of minimum measurement for relaxation of unmeasured metabolites as found in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
 
 # Returns
 `Vector{NamedTuple}`
@@ -573,6 +574,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 15. `pruned_unmeasured_metabolites`: Metabolites that were not measured.
 16. `pruned_measured_metabolites`: Metabolites that were measured.
 17. `relax_quantile`: The quantile of absolute value sof bounds on measured metabolites that was used for unmeasured metabolites.
+18. `frac_minimum`: Fraction of minimum measurement used for metabolite relaxation
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -584,6 +586,7 @@ function make_ufba_models_for_additives_and_times(
     relax_strategy::Symbol = :q,
     relax_quantile::Float64 = 0.1,
     sink_opt_ins::Vector{String} = nothing,
+    frac_minimum::Float64 = 0.1,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -626,6 +629,7 @@ function make_ufba_models_for_additives_and_times(
             metabolites_to_ignore = metabolites_to_ignore,
             relax_strategy = relax_strategy,
             relax_quantile = relax_quantile,
+            frac_minimum = frac_minimum,
         )
         unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
         prune_status, prune_result =
@@ -665,6 +669,7 @@ function make_ufba_models_for_additives_and_times(
                 metabolites_to_ignore = metabolites_to_ignore,
                 relax_strategy = relax_strategy,
                 relax_quantile = relax_quantile,
+                frac_minimum = frac_minimum,
             )
             next!(prog)
             return (
@@ -684,7 +689,8 @@ function make_ufba_models_for_additives_and_times(
                 pruned_default_ub = pruned_metabolite_bounds_result.default_ub,
                 pruned_unmeasured_metabolites = pruned_metabolite_bounds_result.unmeasured_metabolites,
                 pruned_measured_metabolites = pruned_metabolite_bounds_result.measured_metabolites,
-                relax_quantile = relax_quantile,
+                relax_quantile = relax_strategy == :q ? relax_quantile : missing,
+                frac_minimum = relax_strategy == :frac_minimum ? frac_minimum : missing,
             )
         else
             prune_breaks_df = DataFrame(
@@ -711,7 +717,8 @@ function make_ufba_models_for_additives_and_times(
                 pruned_default_ub = nothing,
                 pruned_unmeasured_metabolites = nothing,
                 pruned_measured_metabolites = nothing,
-                relax_quantile = relax_quantile,
+                relax_quantile = relax_strategy == :q ? relax_quantile : missing,
+                frac_minimum = relax_strategy == :frac_minimum ? frac_minimum : missing,
             )
         end
     end

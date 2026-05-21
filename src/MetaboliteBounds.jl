@@ -320,6 +320,7 @@ Mutates the given ConstraintTree in place.
 5. `metabolites_to_ignore::Union{Vector{String},Nothing} = nothing`: If `nothing`, incorporates constraints for all metabolites in the DataFrame. If specified, ignores the metabolites specified (omit the leading `M_` in this list).
 6. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:frac_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
 7. `relax_quantile::Float64 = 0.5`: The percentile of the metabolite measurements to set upper and lower bounds of unmeasured to. If unspecified, defaults to 0.5.
+8. `frac_minimum::Float64 = 0.1`: Fraction of minimum to use if `:frac_minimum` strategy (see `strategy` keyword argument above) for computing metabolite bounds. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds)
 
 # Returns
 `NamedTuple`
@@ -338,6 +339,7 @@ function add_metabolite_bounds_to_constraint_tree!(
     metabolites_to_ignore::Union{Vector{String},Nothing} = nothing,
     relax_strategy::Symbol = :q,
     relax_quantile::Float64 = 0.1,
+    frac_minimum::Float64 = 0.1,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
     default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
@@ -346,6 +348,7 @@ function add_metabolite_bounds_to_constraint_tree!(
         final_time;
         strategy = relax_strategy,
         p = relax_quantile,
+        frac_minimum = frac_minimum,
     )
     unmeasured_metabolites = Symbol[]
     measured_metabolites = Symbol[]
@@ -361,7 +364,6 @@ function add_metabolite_bounds_to_constraint_tree!(
                 final_time,
             )
             if isnothing(bounds)
-                # ct.flux_stoichiometry[k].bound = C.EqualTo(0.0)
                 ct.flux_stoichiometry[k].bound = C.Between(default_lb, default_ub)
                 push!(unmeasured_metabolites, k)
             else
