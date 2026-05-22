@@ -621,9 +621,9 @@ function make_ufba_models_for_additives_and_times(
             metabolites_to_ignore = metabolites_to_ignore,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        prune_ct = flux_balance_constraints(full_model)
+        pre_prune_with_metabolite_bounds_ct = flux_balance_constraints(full_model)
         measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
-            prune_ct,
+            pre_prune_with_metabolite_bounds_ct,
             metabolite_bounds_df,
             additive_string,
             final_time;
@@ -633,8 +633,11 @@ function make_ufba_models_for_additives_and_times(
             frac_minimum = frac_minimum,
         )
         unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
-        prune_status, prune_result =
-            optimize_for_pruning(prune_method, prune_ct, unmeasured_metabolite_ids)
+        prune_status, prune_result = optimize_for_pruning(
+            prune_method,
+            pre_prune_with_metabolite_bounds_ct,
+            unmeasured_metabolite_ids,
+        )
         if prune_status == :ok
             prune_analysis = analyze_pruning_optimization(prune_result)
             prune_zero_sinks = string.(prune_analysis.prune)
@@ -684,6 +687,7 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = added_sink_ids,
                 prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
+                pre_prune_with_metabolite_bounds_ct = pre_prune_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = nothing,
                 pruned_default_lb = pruned_metabolite_bounds_result.default_lb,
@@ -712,6 +716,7 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = nothing,
                 prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = nothing,
+                pre_prune_with_metabolite_bounds_ct = pre_prune_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = prune_breaks_df,
                 pruned_default_lb = nothing,
@@ -864,61 +869,86 @@ function extract_unmeasured_relaxations(ufba_jobs)
     return result_df
 end
 
+function ct_to_rows!(
+    metabolite_rows,
+    flux_rows,
+    ct,
+    additive,
+    final_time,
+    prune_status,
+    measured_metabolites,
+)
+    C.itraverse(ct) do path, con
+        path_str = string.(path)
+        branch = first(path_str)
+        leaf = last(path_str)
+        constraint_path = join(string.(path), ".")
+        b = con.bound
+        isnothing(b) && return
+        bound_equal_to = b isa C.EqualTo ? b.equal_to : missing
+        bound_ub = b isa C.Between ? b.upper : missing
+        bound_lb = b isa C.Between ? b.lower : missing
+        constraint_type = b isa C.EqualTo ? "equality" : "between"
+        if branch == "fluxes"
+            flux_row = (
+                additive = additive,
+                final_time = final_time,
+                prune_status = prune_status,
+                reaction_id = leaf,
+                constraint_path = constraint_path,
+                constraint_type = constraint_type,
+                lb = bound_lb,
+                ub = bound_ub,
+                equal_to = bound_equal_to,
+            )
+            push!(flux_rows, flux_row)
+        else
+            is_measured = leaf in measured_metabolites ? "measured" : "unmeasured"
+            metabolite_row = (
+                additive = additive,
+                final_time = final_time,
+                prune_status = prune_status,
+                metabolite_id = leaf,
+                is_measured = is_measured,
+                constraint_path = constraint_path,
+                constraint_type = constraint_type,
+                lb = bound_lb,
+                ub = bound_ub,
+                equal_to = bound_equal_to,
+            )
+            push!(metabolite_rows, metabolite_row)
+        end
+    end
+end
+
 function extract_constraint_bounds(ufba_jobs)
-    metabolites_rows = []
-    fluxes_rows = []
+    metabolite_rows = []
+    flux_rows = []
     for ufba_job in ufba_jobs
         additive = ufba_job.additive
         final_time = ufba_job.final_time
         measured_metabolites = string.(ufba_job.pruned_measured_metabolites)
-        pruned_ct = ufba_job.pruned_with_metabolite_bounds_ct
-        if !isnothing(pruned_ct)
-            C.itraverse(pruned_ct) do path, con
-                path_str = string.(path)
-                branch = first(path_str)
-                leaf = last(path_str)
-                constraint_path = join(string.(path), ".")
-                b = con.bound
-                isnothing(b) && return
-                bound_equal_to = b isa C.EqualTo ? b.equal_to : missing
-                bound_ub = b isa C.Between ? b.upper : missing
-                bound_lb = b isa C.Between ? b.lower : missing
-                constraint_type = b isa C.EqualTo ? "equal to" : "between"
-                if branch == "fluxes"
-                    flux_row = (
-                        additive = additive,
-                        final_time = final_time,
-                        reaction_id = leaf,
-                        constraint_path = constraint_path,
-                        constraint_type = constraint_type,
-                        lb = bound_lb,
-                        ub = bound_ub,
-                        equal_to = bound_equal_to,
-                    )
-                    push!(fluxes_rows, flux_row)
-                else
-                    is_measured = leaf in measured_metabolites ? "measured" : "unmeasured"
-                    metabolite_row = (
-                        additive = additive,
-                        final_time = final_time,
-                        metabolite_id = leaf,
-                        is_measured = is_measured,
-                        constraint_path = constraint_path,
-                        constraint_type = constraint_type,
-                        lb = bound_lb,
-                        ub = bound_ub,
-                        equal_to = bound_equal_to,
-                    )
-                    push!(metabolites_rows, metabolite_row)
-                end
-            end
-        end
+        pruned_with_metabolite_bounds_ct = ufba_job.pruned_with_metabolite_bounds_ct
+        prune_status = ufba_job.prune_status
+        pre_prune_with_metabolite_bounds_ct = ufba_job.pre_prune_with_metabolite_bounds_ct
+        ct =
+            prune_status == :ok ? pruned_with_metabolite_bounds_ct :
+            pre_prune_with_metabolite_bounds_ct
+        ct_to_rows!(
+            metabolite_rows,
+            flux_rows,
+            ct,
+            additive,
+            final_time,
+            prune_status,
+            measured_metabolites,
+        )
     end
-    metabolites_df = @chain metabolites_rows begin
+    metabolites_df = @chain metabolite_rows begin
         DataFrame()
         @orderby(:additive, :final_time, :is_measured, :metabolite_id)
     end
-    fluxes_df = @chain fluxes_rows begin
+    fluxes_df = @chain flux_rows begin
         DataFrame()
         @orderby(:additive, :final_time, :reaction_id)
     end
