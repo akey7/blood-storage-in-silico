@@ -290,12 +290,14 @@ function suggested_unmeasured_metabolite_bounds(
     if nrow(selection_df) == 0
         exit("suggested_unmeasured_metabolite_bounds(): Empty selection_df! Stopping.")
     end
+    println("suggested_unmeasured_metabolite_bounds()")
+    display(selection_df)
     if strategy == :frac_minimum
         min_lb_abs = minimum(abs.(selection_df.lb))
         min_ub_abs = minimum(abs.(selection_df.ub))
         min_abs = minimum([min_lb_abs, min_ub_abs])
         overall = frac_minimum * min_abs
-        # println("suggested_unmeasured_metabolite_bounds(): frac_minimum=$frac_minimum overall=$overall")
+        println("suggested_unmeasured_metabolite_bounds(): frac_minimum=$frac_minimum overall=$overall")
         return -overall, overall
     elseif strategy == :q
         abs_bounds = []
@@ -356,6 +358,8 @@ function add_metabolite_bounds_to_constraint_tree!(
             push!(needed_metabolite_ids, short_metabolite_id)
         end
     end
+    # println("add_metabolite_bounds_to_constraint_tree!()")
+    # display(needed_metabolite_ids)
     default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
         metabolite_bounds_df,
         additive,
