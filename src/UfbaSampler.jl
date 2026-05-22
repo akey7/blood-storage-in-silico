@@ -40,7 +40,6 @@ export sample_fluxes,
     decompose_sink_id,
     optimize_constraint_tree,
     extract_broken_constraints,
-    extract_unmeasured_relaxations,
     load_reaction_names_and_subsystems,
     load_subsystem_category_map,
     extract_constraint_bounds
@@ -576,6 +575,7 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 16. `pruned_measured_metabolites`: Metabolites that were measured.
 17. `relax_quantile`: The quantile of absolute value sof bounds on measured metabolites that was used for unmeasured metabolites.
 18. `frac_minimum`: Fraction of minimum measurement used for metabolite relaxation
+19. `prune_status`: Status of prune attempt.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -821,54 +821,29 @@ function extract_pruning_overview(ufba_jobs)
 end
 
 """
-    extract_unmeasured_relaxations(ufba_jobs)
+    ct_to_rows!(
+        metabolite_rows,
+        flux_rows,
+        ct,
+        additive,
+        final_time,
+        prune_status,
+        measured_metabolites,
+    )
 
-Extracts the relaxation bounds used for unmeasured metabolites in all models into a DataFrame.
+Helper function for [`extract_constraint_bounds`](@ref BloodStorageInSilico.UfbaSampler.extract_constraint_bounds) to place constraint and model information into named tuples and place those named tuples into vectors.
+
+Vectors are mutated in place rather than returning a value.
 
 # Arguments
-1. `ufba_jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
-
-# Returns
-`DataFrame`
-
-Returns a DataFrame with the following columns:
-1. `additive`
-2. `final_time`
-3. `pruned_default_lb`: Default lower bound. `missing` if the model failed to prune.
-4. `pruned_default_ub`: Default upper bound. `missing` if the model failed to prune.
+1. `metabolite_rows`: Vector to place metabolite constraints into. This vector is mutated in place.
+2. `flux_rows`: Vector to place flux constraints into. This vector is mutated in place.
+3. `ct`: ConstraintTree with bounds information to place into the vectors.
+4. `additive`: Additive used in the model.
+5. `final_time`: Time point of the model.
+6. `prune_status`: Status of the pruning.
+7. `measured_metabolites`: Vector of measured metabolites.
 """
-function extract_unmeasured_relaxations(ufba_jobs)
-    status_rows = []
-    for ufba_job in ufba_jobs
-        additive = ufba_job.additive
-        final_time = ufba_job.final_time
-        pruned_default_lb = ufba_job.pruned_default_lb
-        pruned_default_ub = ufba_job.pruned_default_ub
-        if !isnothing(pruned_default_lb) && !isnothing(pruned_default_ub)
-            status_row = (
-                additive = additive,
-                final_time = final_time,
-                pruned_default_lb = pruned_default_lb,
-                pruned_default_ub = pruned_default_ub,
-            )
-            push!(status_rows, status_row)
-        else
-            status_row = (
-                additive = additive,
-                final_time = final_time,
-                pruned_default_lb = missing,
-                pruned_default_ub = missing,
-            )
-            push!(status_rows, status_row)
-        end
-    end
-    result_df = @chain status_rows begin
-        DataFrame()
-        @orderby(:additive, :final_time)
-    end
-    return result_df
-end
-
 function ct_to_rows!(
     metabolite_rows,
     flux_rows,
@@ -923,6 +898,21 @@ function ct_to_rows!(
     end
 end
 
+"""
+    extract_constraint_bounds(ufba_jobs)
+
+Extracts bounds from constraints in uFBA models created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times). Places constraints on fluxes and metabolites into DataFrames.
+
+# Arguments
+1. `ufba_jobs`: uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with two DataFrames
+1. `metabolites_df`: Constraints on metabolites
+2. `fluxes_df`: Constraints on fluxes.
+"""
 function extract_constraint_bounds(ufba_jobs)
     metabolite_rows = []
     flux_rows = []
