@@ -40,9 +40,9 @@ export sample_fluxes,
     decompose_sink_id,
     optimize_constraint_tree,
     extract_broken_constraints,
-    extract_unmeasured_relaxations,
     load_reaction_names_and_subsystems,
-    load_subsystem_category_map
+    load_subsystem_category_map,
+    extract_constraint_bounds
 
 """
     init_workers!(; project=Base.active_project())
@@ -547,9 +547,10 @@ Create all models that represent each combination of additive and final time poi
 4. `flux_bounds_overrides_df::Union{Nothing,DataFrame} = nothing`: If specified, a DataFrame of per-reaction flux bounds overrides.
 5. `metabolites_to_ignore::Vector{String} = nothing`: If specified, these metabolite bounds are ignored.
 6. `prune_method::Symbol = :case3`: Prune method to use. Can be either `:case1` or `:case3`.
-7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:tenth_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
+7. `relax_strategy::Symbol = :q`: Strategy to find realxation amount. Either `:q` or `:frac_minimum` as noted in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds).
 8. `relax_quantile::Float64 = 0.1`: Relaxation quantile to use. See [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
-9. `sink_opt_ins::Vector{String}`
+9. `sink_opt_ins::Vector{String}`: Vector of sinks to create no matter what the pruning results are.
+10. `frac_minimum::Float64 = 0.1`: Fraction of minimum measurement for relaxation of unmeasured metabolites as found in [`suggested_unmeasured_metabolite_bounds`](@ref BloodStorageInSilico.UfbaSampler.MetaboliteBounds.suggested_unmeasured_metabolite_bounds) for more information.
 
 # Returns
 `Vector{NamedTuple}`
@@ -573,6 +574,8 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 15. `pruned_unmeasured_metabolites`: Metabolites that were not measured.
 16. `pruned_measured_metabolites`: Metabolites that were measured.
 17. `relax_quantile`: The quantile of absolute value sof bounds on measured metabolites that was used for unmeasured metabolites.
+18. `frac_minimum`: Fraction of minimum measurement used for metabolite relaxation
+19. `prune_status`: Status of prune attempt.
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -584,6 +587,7 @@ function make_ufba_models_for_additives_and_times(
     relax_strategy::Symbol = :q,
     relax_quantile::Float64 = 0.1,
     sink_opt_ins::Vector{String} = nothing,
+    frac_minimum::Float64 = 0.1,
 )
     base_rbc_gem = load_base_rbc_gem()
     final_times = sort(unique(metabolite_bounds_df.final_time))
@@ -617,19 +621,23 @@ function make_ufba_models_for_additives_and_times(
             metabolites_to_ignore = metabolites_to_ignore,
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
-        prune_ct = flux_balance_constraints(full_model)
+        pre_prune_with_metabolite_bounds_ct = flux_balance_constraints(full_model)
         measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
-            prune_ct,
+            pre_prune_with_metabolite_bounds_ct,
             metabolite_bounds_df,
             additive_string,
             final_time;
             metabolites_to_ignore = metabolites_to_ignore,
             relax_strategy = relax_strategy,
             relax_quantile = relax_quantile,
+            frac_minimum = frac_minimum,
         )
         unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
-        prune_status, prune_result =
-            optimize_for_pruning(prune_method, prune_ct, unmeasured_metabolite_ids)
+        prune_status, prune_result = optimize_for_pruning(
+            prune_method,
+            pre_prune_with_metabolite_bounds_ct,
+            unmeasured_metabolite_ids,
+        )
         if prune_status == :ok
             prune_analysis = analyze_pruning_optimization(prune_result)
             prune_zero_sinks = string.(prune_analysis.prune)
@@ -665,6 +673,7 @@ function make_ufba_models_for_additives_and_times(
                 metabolites_to_ignore = metabolites_to_ignore,
                 relax_strategy = relax_strategy,
                 relax_quantile = relax_quantile,
+                frac_minimum = frac_minimum,
             )
             next!(prog)
             return (
@@ -678,13 +687,15 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = added_sink_ids,
                 prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = pruned_with_metabolite_bounds_ct,
+                pre_prune_with_metabolite_bounds_ct = pre_prune_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = nothing,
                 pruned_default_lb = pruned_metabolite_bounds_result.default_lb,
                 pruned_default_ub = pruned_metabolite_bounds_result.default_ub,
                 pruned_unmeasured_metabolites = pruned_metabolite_bounds_result.unmeasured_metabolites,
                 pruned_measured_metabolites = pruned_metabolite_bounds_result.measured_metabolites,
-                relax_quantile = relax_quantile,
+                relax_quantile = relax_strategy == :q ? relax_quantile : missing,
+                frac_minimum = relax_strategy == :frac_minimum ? frac_minimum : missing,
             )
         else
             prune_breaks_df = DataFrame(
@@ -705,13 +716,15 @@ function make_ufba_models_for_additives_and_times(
                 added_sink_ids = nothing,
                 prune_method = prune_method,
                 pruned_with_metabolite_bounds_ct = nothing,
+                pre_prune_with_metabolite_bounds_ct = pre_prune_with_metabolite_bounds_ct,
                 prune_status = prune_status,
                 prune_breaks_df = prune_breaks_df,
                 pruned_default_lb = nothing,
                 pruned_default_ub = nothing,
                 pruned_unmeasured_metabolites = nothing,
                 pruned_measured_metabolites = nothing,
-                relax_quantile = relax_quantile,
+                relax_quantile = relax_strategy == :q ? relax_quantile : missing,
+                frac_minimum = relax_strategy == :frac_minimum ? frac_minimum : missing,
             )
         end
     end
@@ -808,52 +821,131 @@ function extract_pruning_overview(ufba_jobs)
 end
 
 """
-    extract_unmeasured_relaxations(ufba_jobs)
+    ct_to_rows!(
+        metabolite_rows,
+        flux_rows,
+        ct,
+        additive,
+        final_time,
+        prune_status,
+        measured_metabolites,
+    )
 
-Extracts the relaxation bounds used for unmeasured metabolites in all models into a DataFrame.
+Helper function for [`extract_constraint_bounds`](@ref BloodStorageInSilico.UfbaSampler.extract_constraint_bounds) to place constraint and model information into named tuples and place those named tuples into vectors.
+
+Vectors are mutated in place rather than returning a value.
 
 # Arguments
-1. `ufba_jobs`: Original uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
+1. `metabolite_rows`: Vector to place metabolite constraints into. This vector is mutated in place.
+2. `flux_rows`: Vector to place flux constraints into. This vector is mutated in place.
+3. `ct`: ConstraintTree with bounds information to place into the vectors.
+4. `additive`: Additive used in the model.
+5. `final_time`: Time point of the model.
+6. `prune_status`: Status of the pruning.
+7. `measured_metabolites`: Vector of measured metabolites.
+"""
+function ct_to_rows!(
+    metabolite_rows,
+    flux_rows,
+    ct,
+    additive,
+    final_time,
+    prune_status,
+    measured_metabolites,
+)
+    C.itraverse(ct) do path, con
+        path_str = string.(path)
+        branch = first(path_str)
+        leaf = last(path_str)
+        constraint_path = join(string.(path), ".")
+        b = con.bound
+        isnothing(b) && return
+        bound_equal_to = b isa C.EqualTo ? b.equal_to : missing
+        bound_ub = b isa C.Between ? b.upper : missing
+        bound_lb = b isa C.Between ? b.lower : missing
+        constraint_type = b isa C.EqualTo ? "equality" : "between"
+        if branch == "fluxes"
+            flux_row = (
+                additive = additive,
+                final_time = final_time,
+                prune_status = prune_status,
+                reaction_id = leaf,
+                constraint_path = constraint_path,
+                constraint_type = constraint_type,
+                lb = bound_lb,
+                ub = bound_ub,
+                equal_to = bound_equal_to,
+            )
+            push!(flux_rows, flux_row)
+        else
+            is_measured =
+                !isnothing(findfirst(occursin.(leaf, measured_metabolites))) ? "measured" :
+                "unmeasured"
+            metabolite_row = (
+                additive = additive,
+                final_time = final_time,
+                prune_status = prune_status,
+                metabolite_id = leaf,
+                is_measured = is_measured,
+                constraint_path = constraint_path,
+                constraint_type = constraint_type,
+                lb = bound_lb,
+                ub = bound_ub,
+                equal_to = bound_equal_to,
+            )
+            push!(metabolite_rows, metabolite_row)
+        end
+    end
+end
+
+"""
+    extract_constraint_bounds(ufba_jobs)
+
+Extracts bounds from constraints in uFBA models created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times). Places constraints on fluxes and metabolites into DataFrames.
+
+# Arguments
+1. `ufba_jobs`: uFBA jobs created by [`make_ufba_models_for_additives_and_times`](@ref BloodStorageInSilico.UfbaSampler.make_ufba_models_for_additives_and_times)
 
 # Returns
-`DataFrame`
+`NamedTuple`
 
-Returns a DataFrame with the following columns:
-1. `additive`
-2. `final_time`
-3. `pruned_default_lb`: Default lower bound. `missing` if the model failed to prune.
-4. `pruned_default_ub`: Default upper bound. `missing` if the model failed to prune.
+Returns a named tuple with two DataFrames
+1. `metabolites_df`: Constraints on metabolites
+2. `fluxes_df`: Constraints on fluxes.
 """
-function extract_unmeasured_relaxations(ufba_jobs)
-    status_rows = []
+function extract_constraint_bounds(ufba_jobs)
+    metabolite_rows = []
+    flux_rows = []
     for ufba_job in ufba_jobs
         additive = ufba_job.additive
         final_time = ufba_job.final_time
-        pruned_default_lb = ufba_job.pruned_default_lb
-        pruned_default_ub = ufba_job.pruned_default_ub
-        if !isnothing(pruned_default_lb) && !isnothing(pruned_default_ub)
-            status_row = (
-                additive = additive,
-                final_time = final_time,
-                pruned_default_lb = pruned_default_lb,
-                pruned_default_ub = pruned_default_ub,
-            )
-            push!(status_rows, status_row)
-        else
-            status_row = (
-                additive = additive,
-                final_time = final_time,
-                pruned_default_lb = missing,
-                pruned_default_ub = missing,
-            )
-            push!(status_rows, status_row)
-        end
+        measured_metabolites = string.(ufba_job.pruned_measured_metabolites)
+        pruned_with_metabolite_bounds_ct = ufba_job.pruned_with_metabolite_bounds_ct
+        prune_status = ufba_job.prune_status
+        pre_prune_with_metabolite_bounds_ct = ufba_job.pre_prune_with_metabolite_bounds_ct
+        ct =
+            prune_status == :ok ? pruned_with_metabolite_bounds_ct :
+            pre_prune_with_metabolite_bounds_ct
+        ct_to_rows!(
+            metabolite_rows,
+            flux_rows,
+            ct,
+            additive,
+            final_time,
+            prune_status,
+            measured_metabolites,
+        )
     end
-    result_df = @chain status_rows begin
+    metabolites_df = @chain metabolite_rows begin
         DataFrame()
-        @orderby(:additive, :final_time)
+        @orderby(:additive, :final_time, :is_measured, :metabolite_id)
     end
-    return result_df
+    fluxes_df = @chain flux_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time, :reaction_id)
+    end
+    result = (metabolites_df = metabolites_df, fluxes_df = fluxes_df)
+    return result
 end
 
 """
@@ -901,12 +993,8 @@ function extract_broken_constraints(jobs, job_results)
     unsorted_prune_breaks_df =
         length(prune_breaks_dfs) > 0 ? vcat(prune_breaks_dfs...) :
         DataFrame(additive = [], final_time = [], broken_constraint = [])
-    prune_breaks_df = @orderby(
-        unsorted_prune_breaks_df,
-        :additive,
-        :final_time,
-        :broken_constraint
-    )
+    prune_breaks_df =
+        @orderby(unsorted_prune_breaks_df, :additive, :final_time, :broken_constraint)
     unsorted_fba_breaks_df =
         length(fba_breaks_dfs) > 0 ? vcat(fba_breaks_dfs...) :
         DataFrame(additive = [], final_time = [], fba_break = [])
