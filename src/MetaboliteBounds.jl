@@ -283,7 +283,7 @@ function suggested_unmeasured_metabolite_bounds(
         metabolite_bounds_df,
         :additive == additive,
         :final_time == final_time,
-        :metabolite_id in needed_metabolite_ids,
+        :metabolite in needed_metabolite_ids,
         !isapprox(:lb, 0.0),
         !isapprox(:ub, 0.0)
     )
