@@ -349,7 +349,7 @@ function add_metabolite_bounds_to_constraint_tree!(
     frac_minimum::Float64 = 0.1,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
-    needed_metabolite_ids = []
+    needed_metabolite_ids = String[]
     for k in keys(ct.flux_stoichiometry)
         short_metabolite_id = string(k)[3:end]
         if short_metabolite_id ∉ metabolites_to_ignore_2
