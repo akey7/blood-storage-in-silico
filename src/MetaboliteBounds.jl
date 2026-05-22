@@ -290,8 +290,8 @@ function suggested_unmeasured_metabolite_bounds(
     if nrow(selection_df) == 0
         exit("suggested_unmeasured_metabolite_bounds(): Empty selection_df! Stopping.")
     end
-    println("suggested_unmeasured_metabolite_bounds()")
-    display(selection_df)
+    # println("suggested_unmeasured_metabolite_bounds()")
+    # display(selection_df)
     if strategy == :frac_minimum
         min_lb_abs = minimum(abs.(selection_df.lb))
         min_ub_abs = minimum(abs.(selection_df.ub))

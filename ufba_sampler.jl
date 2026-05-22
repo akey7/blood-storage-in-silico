@@ -111,7 +111,7 @@ ufba_jobs = make_ufba_models_for_additives_and_times(
     metabolites_to_ignore = metabolites_to_ignore,
     prune_method = prune_method,
     relax_strategy = :frac_minimum,
-    frac_minimum = 0.9,
+    frac_minimum = 1.0,
     sink_opt_ins = sink_opt_ins_strings,
 )
 constraint_bound_results = extract_constraint_bounds(ufba_jobs)
