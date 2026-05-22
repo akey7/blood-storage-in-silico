@@ -903,7 +903,9 @@ function ct_to_rows!(
             )
             push!(flux_rows, flux_row)
         else
-            is_measured = leaf in measured_metabolites ? "measured" : "unmeasured"
+            is_measured =
+                !isnothing(findfirst(occursin.(leaf, measured_metabolites))) ? "measured" :
+                "unmeasured"
             metabolite_row = (
                 additive = additive,
                 final_time = final_time,
