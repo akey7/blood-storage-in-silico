@@ -335,7 +335,7 @@ Mutates the given ConstraintTree in place.
 `NamedTuple`
 
 Returns a named tuple with the following fields:
-1. `unmeasured_metabolites`: Vector of symbols of metabolites that did not have measurements that were incorporated into the constraint tree.
+1. `unmeasured_metabolites`: Vector of symbols of metabolites that did not have measurements that were incorporated into the constraint tree. **This includes metabolites with ignored measurements.**
 2. `measured_metabolites`: Vector of symbols of metabolites that have measurements that were incorporated into the constraint tree.
 3. `default_ub`: The default upper bound of unmeasured metabolites.
 4. `default_lb`: The default lower bound of unmeasured metabolites.
@@ -391,8 +391,9 @@ function add_metabolite_bounds_to_constraint_tree!(
                 push!(measured_metabolites, k)
             end
         else
-            # println("Skipping bounds for metabolite id $short_metabolite_id")
-            continue
+            # Place default bounds of metabolites that have ignored measurements
+            ct.flux_stoichiometry[k].bound = C.Between(default_lb, default_ub)
+            push!(unmeasured_metabolites, k)
         end
     end
     result = (
