@@ -260,9 +260,10 @@ Suggest upper and lower bounds for unmeasured metabolites for appropriate model 
 1. `metabolite_bounds_df::DataFrame`: Bounds of measured metabolites.
 2. `additive::String`: Additive to search within the metabolite bounds.
 3. `final_time::Int64`: Final time to search within the metabolite bounds.
-4. `strategy::Symbol = :q`: If `:q`, looks for the value of the quantile noted in `p` parameter. If `:frac_minimum`, the specified fraction of the minimum absolute value of measured metabolite abundances (see `frac_minimum` keyword argument).
-5. `p::Float64 = 0.1`: Percentile of the measured absolute values to base the bounds off of. Defaults to searching for the median.
-6. `frac_minimum::Float64 = 0.1`: Fraction of minimum to use if `:frac_minimum` strategy (see `strategy` keyword argument above) for computing metabolite bounds.
+4. `needed_metabolite_ids::Vector{String}`: Vector of metabolite ids that need measurements. Metabolite ids not in this vector will be ignored when calculating the suggested metabolite bounds.
+5. `strategy::Symbol = :q`: If `:q`, looks for the value of the quantile noted in `p` parameter. If `:frac_minimum`, the specified fraction of the minimum absolute value of measured metabolite abundances (see `frac_minimum` keyword argument).
+6. `p::Float64 = 0.1`: Percentile of the measured absolute values to base the bounds off of. Defaults to searching for the median.
+7. `frac_minimum::Float64 = 0.1`: Fraction of minimum to use if `:frac_minimum` strategy (see `strategy` keyword argument above) for computing metabolite bounds.
 
 # Returns
 `Tuple{Float64,Float64}`
@@ -272,7 +273,8 @@ Suggested lower and upper bounds for unmeasured metabolites.
 function suggested_unmeasured_metabolite_bounds(
     metabolite_bounds_df::DataFrame,
     additive::String,
-    final_time::Int64;
+    final_time::Int64,
+    needed_metabolite_ids::Vector{String};
     p::Float64 = 0.1,
     strategy::Symbol = :q,
     frac_minimum::Float64 = 0.1,
@@ -281,9 +283,15 @@ function suggested_unmeasured_metabolite_bounds(
         metabolite_bounds_df,
         :additive == additive,
         :final_time == final_time,
+        :metabolite in needed_metabolite_ids,
         !isapprox(:lb, 0.0),
         !isapprox(:ub, 0.0)
     )
+    if nrow(selection_df) == 0
+        exit("suggested_unmeasured_metabolite_bounds(): Empty selection_df! Stopping.")
+    end
+    # println("suggested_unmeasured_metabolite_bounds()")
+    # display(selection_df)
     if strategy == :frac_minimum
         min_lb_abs = minimum(abs.(selection_df.lb))
         min_ub_abs = minimum(abs.(selection_df.ub))
@@ -327,7 +335,7 @@ Mutates the given ConstraintTree in place.
 `NamedTuple`
 
 Returns a named tuple with the following fields:
-1. `unmeasured_metabolites`: Vector of symbols of metabolites that did not have measurements that were incorporated into the constraint tree.
+1. `unmeasured_metabolites`: Vector of symbols of metabolites that did not have measurements that were incorporated into the constraint tree. **This includes metabolites with ignored measurements.**
 2. `measured_metabolites`: Vector of symbols of metabolites that have measurements that were incorporated into the constraint tree.
 3. `default_ub`: The default upper bound of unmeasured metabolites.
 4. `default_lb`: The default lower bound of unmeasured metabolites.
@@ -343,10 +351,20 @@ function add_metabolite_bounds_to_constraint_tree!(
     frac_minimum::Float64 = 0.1,
 )
     metabolites_to_ignore_2 = !isnothing(metabolites_to_ignore) ? metabolites_to_ignore : []
+    needed_metabolite_ids = String[]
+    for k in keys(ct.flux_stoichiometry)
+        short_metabolite_id = string(k)[3:end]
+        if short_metabolite_id ∉ metabolites_to_ignore_2
+            push!(needed_metabolite_ids, short_metabolite_id)
+        end
+    end
+    # println("add_metabolite_bounds_to_constraint_tree!()")
+    # display(needed_metabolite_ids)
     default_lb, default_ub = suggested_unmeasured_metabolite_bounds(
         metabolite_bounds_df,
         additive,
-        final_time;
+        final_time,
+        needed_metabolite_ids;
         strategy = relax_strategy,
         p = relax_quantile,
         frac_minimum = frac_minimum,
@@ -373,8 +391,9 @@ function add_metabolite_bounds_to_constraint_tree!(
                 push!(measured_metabolites, k)
             end
         else
-            # println("Skipping bounds for metabolite id $short_metabolite_id")
-            continue
+            # Place default bounds of metabolites that have ignored measurements
+            ct.flux_stoichiometry[k].bound = C.Between(default_lb, default_ub)
+            push!(unmeasured_metabolites, k)
         end
     end
     result = (

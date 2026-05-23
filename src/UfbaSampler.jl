@@ -571,11 +571,10 @@ Returns a vector of `NamedTuple` with specifications for jobs for each model. Ea
 12. `prune_breaks_df`: If pruning was a `:fail` as indicated by `prune_optimize_status`, this field is populated with a DataFrame reporting the broken constraints. If the pruning was `:ok`, this field is `nothing`.
 13. `pruned_default_lb`: Default lower bound for unmeasured metabolites in pruned model.
 14. `pruned_default_ub`: Default upper bound for unmeasured metabolites in pruned model.
-15. `pruned_unmeasured_metabolites`: Metabolites that were not measured.
-16. `pruned_measured_metabolites`: Metabolites that were measured.
-17. `relax_quantile`: The quantile of absolute value sof bounds on measured metabolites that was used for unmeasured metabolites.
-18. `frac_minimum`: Fraction of minimum measurement used for metabolite relaxation
-19. `prune_status`: Status of prune attempt.
+15. `relax_quantile`: The quantile of absolute value sof bounds on measured metabolites that was used for unmeasured metabolites.
+16. `frac_minimum`: Fraction of minimum measurement used for metabolite relaxation
+17. `prune_status`: Status of prune attempt.
+18. `pre_prune_measured_metabolite_ids`: Pre-pruning measured metabolite ids
 """
 function make_ufba_models_for_additives_and_times(
     metabolite_bounds_df::DataFrame,
@@ -622,7 +621,7 @@ function make_ufba_models_for_additives_and_times(
         )
         add_sinks_for_unmatched_metabolites!(full_model, first_sink_specifications)
         pre_prune_with_metabolite_bounds_ct = flux_balance_constraints(full_model)
-        measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
+        pre_prune_measured_unmeasured = add_metabolite_bounds_to_constraint_tree!(
             pre_prune_with_metabolite_bounds_ct,
             metabolite_bounds_df,
             additive_string,
@@ -632,11 +631,12 @@ function make_ufba_models_for_additives_and_times(
             relax_quantile = relax_quantile,
             frac_minimum = frac_minimum,
         )
-        unmeasured_metabolite_ids = measured_unmeasured.unmeasured_metabolites
+        pre_prune_unmeasured_metabolite_ids = pre_prune_measured_unmeasured.unmeasured_metabolites
+        pre_prune_measured_metabolite_ids = pre_prune_measured_unmeasured.measured_metabolites
         prune_status, prune_result = optimize_for_pruning(
             prune_method,
             pre_prune_with_metabolite_bounds_ct,
-            unmeasured_metabolite_ids,
+            pre_prune_unmeasured_metabolite_ids,
         )
         if prune_status == :ok
             prune_analysis = analyze_pruning_optimization(prune_result)
@@ -692,10 +692,9 @@ function make_ufba_models_for_additives_and_times(
                 prune_breaks_df = nothing,
                 pruned_default_lb = pruned_metabolite_bounds_result.default_lb,
                 pruned_default_ub = pruned_metabolite_bounds_result.default_ub,
-                pruned_unmeasured_metabolites = pruned_metabolite_bounds_result.unmeasured_metabolites,
-                pruned_measured_metabolites = pruned_metabolite_bounds_result.measured_metabolites,
                 relax_quantile = relax_strategy == :q ? relax_quantile : missing,
                 frac_minimum = relax_strategy == :frac_minimum ? frac_minimum : missing,
+                pre_prune_measured_metabolite_ids = pre_prune_measured_metabolite_ids,
             )
         else
             prune_breaks_df = DataFrame(
@@ -721,10 +720,9 @@ function make_ufba_models_for_additives_and_times(
                 prune_breaks_df = prune_breaks_df,
                 pruned_default_lb = nothing,
                 pruned_default_ub = nothing,
-                pruned_unmeasured_metabolites = nothing,
-                pruned_measured_metabolites = nothing,
                 relax_quantile = relax_strategy == :q ? relax_quantile : missing,
                 frac_minimum = relax_strategy == :frac_minimum ? frac_minimum : missing,
+                pre_prune_measured_metabolite_ids = pre_prune_measured_metabolite_ids,
             )
         end
     end
@@ -919,7 +917,7 @@ function extract_constraint_bounds(ufba_jobs)
     for ufba_job in ufba_jobs
         additive = ufba_job.additive
         final_time = ufba_job.final_time
-        measured_metabolites = string.(ufba_job.pruned_measured_metabolites)
+        measured_metabolites = string.(ufba_job.pre_prune_measured_metabolite_ids)
         pruned_with_metabolite_bounds_ct = ufba_job.pruned_with_metabolite_bounds_ct
         prune_status = ufba_job.prune_status
         pre_prune_with_metabolite_bounds_ct = ufba_job.pre_prune_with_metabolite_bounds_ct
