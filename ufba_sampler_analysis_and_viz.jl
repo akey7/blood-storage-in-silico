@@ -24,9 +24,10 @@ rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
-@info "Reading sampling file"
-sampling_filename = joinpath("output", "ufba_sampling.csv")
-sampling_df = CSV.read(sampling_filename, DataFrame)
+@info "Reading sampling file and valid valid additive / time combinations"
+sampling_results = load_sampling_results()
+sampling_df = sampling_results.sampling_df
+working_models_df = sampling_results.working_models_df
 
 # Disabling because very long for second dataset
 # @info "Global mixed model analysis"
@@ -112,14 +113,19 @@ XLSX.writetable(
 println("Wrote $reactions_metabolites_filename")
 
 @info "Comparing control vs. treatment fluxes"
-comparison_result_0 =
-    compare_flux_distributions(sampling_df; alpha = 0.01, interesting_cohen_effect_z = 2.0)
+comparison_result_0 = compare_flux_distributions(
+    sampling_df,
+    working_models_df;
+    alpha = 0.01,
+    interesting_cohen_effect_z = 2.0,
+)
 comparison_result = remove_reaction_string_prefix(comparison_result_0)
 interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
 display(interesting_vs_uninteresting_df)
-cohens_effect_filename = joinpath("output", "uFBA_heatmaps", "cohens_effects.xlsx")
+comparison_result_filename = joinpath("output", "uFBA_heatmaps", "comparison_result.xlsx")
 XLSX.writetable(
-    cohens_effect_filename,
+    comparison_result_filename,
+    "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
     "control_vs_treatments" => comparison_result.interesting_df,
     "score_ranking" => comparison_result.score_ranking_df,
     "effects_wide" => comparison_result.effects_wide_df,
@@ -127,22 +133,22 @@ XLSX.writetable(
     "heatmap_rank" => comparison_result.heatmap_rank_df;
     overwrite = true,
 )
-println("Wrote $cohens_effect_filename")
-top_n = 50
-fig_size = (800, 900)
-effect_title = "Cohen's Effect Size, Top $top_n Reactions"
-effect_colorbar_label = "Standardized Cohen's Effect Size"
-cohens_effects_heatmaps = reaction_additive_heatmap(
-    comparison_result;
-    top_n = top_n,
-    fig_size = fig_size,
-    effect_title = effect_title,
-    effect_colorbar_label = effect_colorbar_label,
-)
-cohens_effect_heatmap_filename =
-    joinpath("output", "uFBA_heatmaps", "cohens_effects_heatmaps.png")
-save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)
-println("Wrote $cohens_effect_heatmap_filename")
+println("Wrote $comparison_result_filename")
+# top_n = 50
+# fig_size = (800, 900)
+# effect_title = "Cohen's Effect Size, Top $top_n Reactions"
+# effect_colorbar_label = "Standardized Cohen's Effect Size"
+# cohens_effects_heatmaps = reaction_additive_heatmap(
+#     comparison_result;
+#     top_n = top_n,
+#     fig_size = fig_size,
+#     effect_title = effect_title,
+#     effect_colorbar_label = effect_colorbar_label,
+# )
+# cohens_effect_heatmap_filename =
+#     joinpath("output", "uFBA_heatmaps", "cohens_effects_heatmaps.png")
+# save(cohens_effect_heatmap_filename, cohens_effects_heatmaps)
+# println("Wrote $cohens_effect_heatmap_filename")
 
 # @info "Plotting uFBA histogram and density plots"
 # plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
@@ -161,6 +167,10 @@ println("Wrote $cohens_effect_heatmap_filename")
 # println("Wrote $p_scatter_filename")
 
 @info "Reaction correlations"
-corr_1_dict = reaction_correlations_one_additive_one_time(sampling_df, [:inner_reaction])
+corr_1_dict = reaction_correlations_one_additive_one_time(
+    sampling_df,
+    [:inner_reaction],
+    working_models_df,
+)
 export_correlation_dict_for_r(corr_1_dict, "output")
 println("Wrote matrices for R")

@@ -34,7 +34,30 @@ export diagnose_flux_stats,
     remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
     write_all_flux_vector_matrices,
-    reactions_metabolites_report_dfs
+    reactions_metabolites_report_dfs,
+    load_sampling_results
+
+function load_sampling_results()
+    sampling_filename = joinpath("output", "ufba_sampling.csv")
+    sampling_df = CSV.read(sampling_filename, DataFrame)
+    additives = sort(unique(sampling_df.additive))
+    final_times = sort(unique(sampling_df.final_time))
+    all_possible = product(additives, final_times)
+    working_model_rows = []
+    for (additive, final_time) in all_possible
+        trial_df = @rsubset(sampling_df, :additive == additive, :final_time == final_time)
+        if nrow(trial_df) > 0
+            row = (additive = additive, final_time = final_time)
+            push!(working_model_rows, row)
+        end
+    end
+    working_models_df = @chain working_model_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
+    end
+    result = (sampling_df = sampling_df, working_models_df = working_models_df)
+    return result
+end
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -299,9 +322,64 @@ Returns the value that has the maximum magnitude while preserving the sign.
 abs_maximum(xs) = xs[argmax(abs.(xs))]
 
 """
+    function verify_t_test_data(
+        control_fluxes::Vector{Float64},
+        treatment_fluxes::Vector{Float64},
+    )
+
+Verifies the given vectors of control and treatment flux samples meet t-test requirements. This includes verifying that for both vectors (1) there are no `NaN` values, (2) there are at least two samples, and (3) variance is not approximately zero. Returns a boolean `true` or `false` indicating whether both vectors pass these conditions. Also returns a human-readable message about the status of these tests.
+
+# Arguments
+1. `control_fluxes::Vector{Float64}`: Vector of control fluxes
+2. `treatment_fluxes::Vector{Float64}`: Vector of treatment fluxes.
+
+# Returns
+`NamedTuple`
+
+1. `pass`: `true` if both vectors pass conditions, `false` otherwise.
+2. `reason`: A string indicating what condition failed or a message indicating all good.
+"""
+function verify_t_test_data(
+    control_fluxes::Vector{Float64},
+    treatment_fluxes::Vector{Float64},
+)
+    if any(isnan, control_fluxes)
+        result = (pass = false, reason = "NaN samples present in CONTROL flux samples")
+        return result
+    end
+    if any(isnan, treatment_fluxes)
+        result = (pass = false, reason = "NaN samples present in TREATMENT flux samples")
+        return result
+    end
+    if length(control_fluxes) < 2
+        result =
+            (pass = false, status = "Less than 2 samples found in CONTROL flux samples")
+        return result
+    end
+    if length(treatment_fluxes) < 2
+        result =
+            (pass = false, status = "Less than 2 samples found in TREATMENT flux samples")
+        return result
+    end
+    if isapprox(var(control_fluxes), 0.0)
+        result = (pass = false, status = "Variance of CONTROL fluxes is approximately zero")
+        return result
+    end
+    if isapprox(var(treatment_fluxes), 0.0)
+        result =
+            (pass = false, status = "Variance of TREATMENT fluxes is approximately zero")
+        return result
+    end
+    result =
+        (pass = true, status = "T-test checks pass for both control and treatment fluxes")
+    return result
+end
+
+"""
     compare_flux_distributions(
-        sampling_df;
-        control_additive = "01-Ctrl AS3",
+        sampling_df,
+        working_models_df;
+        control_additive = "AS3",
         n_samples = nothing,
         alpha = 0.01,
         interesting_cohen_effect_z = 2.0,
@@ -311,10 +389,11 @@ For each (non-control) additive, time point, and reaction, compare all additives
 
 # Arguments
 1. `sampling_df`: The wide formatted sampling DataFrame
-2. `control_additive = "01-Ctrl AS3"`: The name of the additive to use as the "control".
-3. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
-4. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
-5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
+2. `working_models_df`: DataFrame specifying working models in the sampling DataFrame.
+3. `control_additive = "AS3"`: The name of the additive to use as the "control".
+4. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
+5. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
+6. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
 `NamedTuple`
@@ -328,8 +407,9 @@ Returns a tuple of two DataFrames:
 6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
-    sampling_df;
-    control_additive = "01-Ctrl AS3",
+    sampling_df,
+    working_models_df;
+    control_additive = "AS3",
     n_samples = nothing,
     alpha = 0.01,
     interesting_cohen_effect_z = 2.0,
@@ -337,15 +417,23 @@ function compare_flux_distributions(
     Random.seed!(123)
     ci_quantile = 1.0 - alpha
     long_sampling_df = pivot_sampling_df_long(sampling_df)
-    final_times = sort(unique(long_sampling_df.final_time))
-    reaction_ids = sort(unique(long_sampling_df.reaction_id))
     treatments_df = @rsubset(long_sampling_df, :additive != control_additive)
-    treatment_additives = sort(unique(treatments_df.additive))
     control_df = @rsubset(long_sampling_df, :additive == control_additive)
-    tasks = product(treatment_additives, reaction_ids, final_times)
-    n_tasks = length(tasks)
+    reaction_ids = sort(unique(long_sampling_df.reaction_id))
+    all_tasks = []
+    for row in eachrow(working_models_df)
+        additive = row.additive
+        final_time = row.final_time
+        if additive != control_additive
+            for reaction_id in reaction_ids
+                single_task = (additive, reaction_id, final_time)
+                push!(all_tasks, single_task)
+            end
+        end
+    end
+    n_tasks = length(all_tasks)
     println("n_tasks: $n_tasks")
-    test_rows = ThreadsX.map(tasks) do t
+    test_rows = ThreadsX.map(all_tasks) do t
         treatment_additive, reaction_id, final_time = t
         control_reaction_df =
             @rsubset(control_df, :final_time == final_time, :reaction_id == reaction_id)
@@ -363,25 +451,46 @@ function compare_flux_distributions(
         treatment_fluxes =
             isnothing(n_samples) ? treatment_fluxes_0 :
             sample(treatment_fluxes_0, n_samples, replace = false)
-        t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
-        t_test_p = pvalue(t_test)
-        mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
-        mw_p = pvalue(mw_test)
-        cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
-        cohen_effect = effectsize(cohen_d)
-        # cohen_effect_size_ci = confint(cohen_d)
-        unadjusted_row = (
-            treatment_additive = treatment_additive,
-            reaction_id = reaction_id,
-            final_time = final_time,
-            t_test_p = t_test_p,
-            mw_p = mw_p,
-            cohen_effect = cohen_effect,
+        verify_t_test_data_result = verify_t_test_data(control_fluxes, treatment_fluxes)
+        if verify_t_test_data_result.pass
+            t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
+            t_test_p = pvalue(t_test)
+            mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
+            mw_p = pvalue(mw_test)
+            cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
+            cohen_effect = effectsize(cohen_d)
+
+            # I was trying Cohen's effect confidence intervals, but abandoned it
+            # but here is the code if I want to go back to that.
+            # cohen_effect_size_ci = confint(cohen_d)
             # cohen_effect_low = lower(cohen_effect_size_ci),
             # cohen_effect_high = upper(cohen_effect_size_ci),
-        )
-        print(".")
-        return unadjusted_row
+
+            unadjusted_row = (
+                treatment_additive = treatment_additive,
+                reaction_id = reaction_id,
+                final_time = final_time,
+                t_test_verification_status = verify_t_test_data_result.status,
+                t_test_p = t_test_p,
+                mw_p = mw_p,
+                cohen_effect = cohen_effect,
+            )
+            print(".")
+            return unadjusted_row
+        else
+            @warn "$treatment_additive, $final_time, $reaction_id: $(verify_t_test_data_result.status)"
+            unadjusted_row = (
+                treatment_additive = treatment_additive,
+                reaction_id = reaction_id,
+                final_time = final_time,
+                t_test_verification_status = verify_t_test_data_result.status,
+                t_test_p = missing,
+                mw_p = missing,
+                cohen_effect = missing,
+            )
+            print(".")
+            return unadjusted_row
+        end
     end
     println("done")
     test_df = @chain test_rows begin
@@ -825,7 +934,11 @@ function classify_reaction_id(reaction_id)
 end
 
 """
-    additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    additive_final_time_dfs(
+        sampling_df,
+        allowed_reaction_id_categories,
+        working_models_df,
+    )
 
 Splits the given wide sampling DataFrame into separate DataFrames stored in a Dictionary that uses a tuple of `(additive, final_time)` as the keys and DataFrames filtered down to that additive and final time as values. Filters the reactions in each DataFrame to those reaction that are inthe allowed classifications.
 
@@ -834,13 +947,18 @@ The allowed reaction categories in the second argument explained below are `:tra
 # Arguments
 1. `sampling_df`: Wide sampling DataFrame with all additives and time points.
 2. `allowed_reaction_id_categories`: A vector (even of a single element) of symbols corresponding to classifications of [`classify_reaction_id`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.classify_reaction_id).
+3. `working_models_df`: DataFrame listing working models.
 
 # Returns
 `Dict{Tuple{String,Int64},DataFrame}`
 
 Dictionary mapping `(additive, final_time)` tuples to DataFrames as explained above.
 """
-function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+function additive_final_time_dfs(
+    sampling_df,
+    allowed_reaction_id_categories,
+    working_models_df,
+)
     reaction_ids = [
         col_name for col_name in Symbol.(names(sampling_df)) if
         col_name != :additive && col_name != :final_time
@@ -850,9 +968,12 @@ function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
         classify_reaction_id(not_reaction_id) ∉ allowed_reaction_id_categories
     ]
     select_sampling_df = select(sampling_df, Not(not_reaction_ids))
-    final_times = sort(unique(sampling_df.final_time))
-    additives = sort(unique(sampling_df.additive))
-    subsets = product(additives, final_times)
+    # final_times = sort(unique(sampling_df.final_time))
+    # additives = sort(unique(sampling_df.additive))
+
+    # subsets = product(additives, final_times)
+    subsets = [(row.additive, row.final_time) for row in eachrow(working_models_df)]
+
     subset_dfs = Dict(
         (additive, final_time) => @rsubset(
             select_sampling_df,
@@ -874,6 +995,7 @@ Calculates correlation matrices of fluxes of reactions in each additive at each 
 # Arguments
 1. `sampling_df`: Wide sampling DataFrame
 2. `allowed_reaction_id_categories`: Vector (even if only of one element) of reaction categories for the to select for the correlation matrices.
+3. `working_models_df`: DataFrame listing working models.
 
 # Returns
 `Dict{Tuple{String,Int64},DataFrame}`
@@ -883,8 +1005,13 @@ Dictionary mapping tuples of additive and final time to correlation matrices (in
 function reaction_correlations_one_additive_one_time(
     sampling_df,
     allowed_reaction_id_categories,
+    working_models_df,
 )
-    subset_dfs = additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    subset_dfs = additive_final_time_dfs(
+        sampling_df,
+        allowed_reaction_id_categories,
+        working_models_df,
+    )
     result_dict::Dict{Tuple{String,Int64},DataFrame} = Dict()
     for (additive, final_time) in keys(subset_dfs)
         df = select(subset_dfs[(additive, final_time)], Not([:additive, :final_time]))
