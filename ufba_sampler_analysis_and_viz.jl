@@ -24,9 +24,10 @@ rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
-@info "Reading sampling file"
-sampling_filename = joinpath("output", "ufba_sampling.csv")
-sampling_df = CSV.read(sampling_filename, DataFrame)
+@info "Reading sampling file and valid valid additive / time combinations"
+sampling_results = load_sampling_results()
+sampling_df = sampling_results.sampling_df
+working_models_df = sampling_results.working_models_df
 
 # Disabling because very long for second dataset
 # @info "Global mixed model analysis"

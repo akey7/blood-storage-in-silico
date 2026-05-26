@@ -34,7 +34,30 @@ export diagnose_flux_stats,
     remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
     write_all_flux_vector_matrices,
-    reactions_metabolites_report_dfs
+    reactions_metabolites_report_dfs,
+    load_sampling_results
+
+function load_sampling_results()
+    sampling_filename = joinpath("output", "ufba_sampling.csv")
+    sampling_df = CSV.read(sampling_filename, DataFrame)
+    additives = sort(unique(sampling_df.additive))
+    final_times = sort(unique(sampling_df.final_time))
+    all_possible = product(additives, final_times)
+    working_model_rows = []
+    for (additive, final_time) in all_possible
+        trial_df = @rsubset(sampling_df, :additive == additive, :final_time == final_time)
+        if nrow(trial_df) > 0
+            row = (additive = additive, final_time = final_time)
+            push!(working_model_rows, row)
+        end
+    end
+    working_models_df = @chain working_model_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
+    end
+    result = (sampling_df = sampling_df, working_models_df = working_models_df)
+    return result
+end
 
 """
     pivot_sampling_df_long(sampling_df)
