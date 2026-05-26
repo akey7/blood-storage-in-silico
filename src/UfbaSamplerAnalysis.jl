@@ -298,10 +298,43 @@ Returns the value that has the maximum magnitude while preserving the sign.
 """
 abs_maximum(xs) = xs[argmax(abs.(xs))]
 
+function verify_t_test_data(control_fluxes, treatment_fluxes)
+    if any(isnan, control_fluxes)
+        result = (pass = false, reason = "NaN samples present in CONTROL flux samples")
+        return result
+    end
+    if any(isnan, treatment_fluxes)
+        result = (pass = false, reason = "NaN samples present in TREATMENT flux samples")
+        return result
+    end
+    if length(control_fluxes) < 2
+        result =
+            (pass = false, status = "Less than 2 samples found in CONTROL flux samples")
+        return result
+    end
+    if length(treatment_fluxes) < 2
+        result =
+            (pass = false, status = "Less than 2 samples found in TREATMENT flux samples")
+        return result
+    end
+    if isapprox(var(control_fluxes), 0.0)
+        result = (pass = false, status = "Variance of CONTROL fluxes is approximately zero")
+        return result
+    end
+    if isapprox(var(treatment_fluxes), 0.0)
+        result =
+            (pass = false, status = "Variance of TREATMENT fluxes is approximately zero")
+        return result
+    end
+    result =
+        (pass = true, status = "T-test checks pass for both control and treatment fluxes")
+    return result
+end
+
 """
     compare_flux_distributions(
         sampling_df;
-        control_additive = "01-Ctrl AS3",
+        control_additive = "AS3",
         n_samples = nothing,
         alpha = 0.01,
         interesting_cohen_effect_z = 2.0,
@@ -311,7 +344,7 @@ For each (non-control) additive, time point, and reaction, compare all additives
 
 # Arguments
 1. `sampling_df`: The wide formatted sampling DataFrame
-2. `control_additive = "01-Ctrl AS3"`: The name of the additive to use as the "control".
+2. `control_additive = "AS3"`: The name of the additive to use as the "control".
 3. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
 4. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
 5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
@@ -329,7 +362,7 @@ Returns a tuple of two DataFrames:
 """
 function compare_flux_distributions(
     sampling_df;
-    control_additive = "01-Ctrl AS3",
+    control_additive = "AS3",
     n_samples = nothing,
     alpha = 0.01,
     interesting_cohen_effect_z = 2.0,
@@ -363,25 +396,45 @@ function compare_flux_distributions(
         treatment_fluxes =
             isnothing(n_samples) ? treatment_fluxes_0 :
             sample(treatment_fluxes_0, n_samples, replace = false)
-        t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
-        t_test_p = pvalue(t_test)
-        mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
-        mw_p = pvalue(mw_test)
-        cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
-        cohen_effect = effectsize(cohen_d)
-        # cohen_effect_size_ci = confint(cohen_d)
-        unadjusted_row = (
-            treatment_additive = treatment_additive,
-            reaction_id = reaction_id,
-            final_time = final_time,
-            t_test_p = t_test_p,
-            mw_p = mw_p,
-            cohen_effect = cohen_effect,
+        verify_t_test_data_result = verify_t_test_data(control_fluxes, treatment_fluxes)
+        if verify_t_test_data_result.pass
+            t_test = UnequalVarianceTTest(treatment_fluxes, control_fluxes)
+            t_test_p = pvalue(t_test)
+            mw_test = MannWhitneyUTest(treatment_fluxes, control_fluxes)
+            mw_p = pvalue(mw_test)
+            cohen_d = CohenD(treatment_fluxes, control_fluxes; quantile = ci_quantile)
+            cohen_effect = effectsize(cohen_d)
+
+            # I was trying Cohen's effect confidence intervals, but abandoned it
+            # but here is the code if I want to go back to that.
+            # cohen_effect_size_ci = confint(cohen_d)
             # cohen_effect_low = lower(cohen_effect_size_ci),
             # cohen_effect_high = upper(cohen_effect_size_ci),
-        )
-        print(".")
-        return unadjusted_row
+
+            unadjusted_row = (
+                treatment_additive = treatment_additive,
+                reaction_id = reaction_id,
+                final_time = final_time,
+                t_test_verification_status = verify_t_test_data_result.status,
+                t_test_p = t_test_p,
+                mw_p = mw_p,
+                cohen_effect = cohen_effect,
+            )
+            print(".")
+            return unadjusted_row
+        else
+            unadjusted_row = (
+                treatment_additive = treatment_additive,
+                reaction_id = reaction_id,
+                final_time = final_time,
+                t_test_verification_status = verify_t_test_data_result.status,
+                t_test_p = missing,
+                mw_p = missing,
+                cohen_effect = missing,
+            )
+            print(".")
+            return unadjusted_row
+        end
     end
     println("done")
     test_df = @chain test_rows begin

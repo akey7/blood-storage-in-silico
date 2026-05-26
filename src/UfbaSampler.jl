@@ -631,8 +631,10 @@ function make_ufba_models_for_additives_and_times(
             relax_quantile = relax_quantile,
             frac_minimum = frac_minimum,
         )
-        pre_prune_unmeasured_metabolite_ids = pre_prune_measured_unmeasured.unmeasured_metabolites
-        pre_prune_measured_metabolite_ids = pre_prune_measured_unmeasured.measured_metabolites
+        pre_prune_unmeasured_metabolite_ids =
+            pre_prune_measured_unmeasured.unmeasured_metabolites
+        pre_prune_measured_metabolite_ids =
+            pre_prune_measured_unmeasured.measured_metabolites
         prune_status, prune_result = optimize_for_pruning(
             prune_method,
             pre_prune_with_metabolite_bounds_ct,
