@@ -120,6 +120,7 @@ display(interesting_vs_uninteresting_df)
 cohens_effect_filename = joinpath("output", "uFBA_heatmaps", "cohens_effects.xlsx")
 XLSX.writetable(
     cohens_effect_filename,
+    "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
     "control_vs_treatments" => comparison_result.interesting_df,
     "score_ranking" => comparison_result.score_ranking_df,
     "effects_wide" => comparison_result.effects_wide_df,
