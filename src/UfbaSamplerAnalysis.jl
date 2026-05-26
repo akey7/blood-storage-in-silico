@@ -934,7 +934,11 @@ function classify_reaction_id(reaction_id)
 end
 
 """
-    additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    additive_final_time_dfs(
+        sampling_df,
+        allowed_reaction_id_categories,
+        working_models_df,
+    )
 
 Splits the given wide sampling DataFrame into separate DataFrames stored in a Dictionary that uses a tuple of `(additive, final_time)` as the keys and DataFrames filtered down to that additive and final time as values. Filters the reactions in each DataFrame to those reaction that are inthe allowed classifications.
 
@@ -943,13 +947,18 @@ The allowed reaction categories in the second argument explained below are `:tra
 # Arguments
 1. `sampling_df`: Wide sampling DataFrame with all additives and time points.
 2. `allowed_reaction_id_categories`: A vector (even of a single element) of symbols corresponding to classifications of [`classify_reaction_id`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.classify_reaction_id).
+3. `working_models_df`: DataFrame listing working models.
 
 # Returns
 `Dict{Tuple{String,Int64},DataFrame}`
 
 Dictionary mapping `(additive, final_time)` tuples to DataFrames as explained above.
 """
-function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+function additive_final_time_dfs(
+    sampling_df,
+    allowed_reaction_id_categories,
+    working_models_df,
+)
     reaction_ids = [
         col_name for col_name in Symbol.(names(sampling_df)) if
         col_name != :additive && col_name != :final_time
@@ -959,9 +968,12 @@ function additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
         classify_reaction_id(not_reaction_id) ∉ allowed_reaction_id_categories
     ]
     select_sampling_df = select(sampling_df, Not(not_reaction_ids))
-    final_times = sort(unique(sampling_df.final_time))
-    additives = sort(unique(sampling_df.additive))
-    subsets = product(additives, final_times)
+    # final_times = sort(unique(sampling_df.final_time))
+    # additives = sort(unique(sampling_df.additive))
+
+    # subsets = product(additives, final_times)
+    subsets = [(additive, final_time) for row in eachrow(working_models_df)]
+
     subset_dfs = Dict(
         (additive, final_time) => @rsubset(
             select_sampling_df,
@@ -983,6 +995,7 @@ Calculates correlation matrices of fluxes of reactions in each additive at each 
 # Arguments
 1. `sampling_df`: Wide sampling DataFrame
 2. `allowed_reaction_id_categories`: Vector (even if only of one element) of reaction categories for the to select for the correlation matrices.
+3. `working_models_df`: DataFrame listing working models.
 
 # Returns
 `Dict{Tuple{String,Int64},DataFrame}`
@@ -992,8 +1005,13 @@ Dictionary mapping tuples of additive and final time to correlation matrices (in
 function reaction_correlations_one_additive_one_time(
     sampling_df,
     allowed_reaction_id_categories,
+    working_models_df,
 )
-    subset_dfs = additive_final_time_dfs(sampling_df, allowed_reaction_id_categories)
+    subset_dfs = additive_final_time_dfs(
+        sampling_df,
+        allowed_reaction_id_categories,
+        working_models_df,
+    )
     result_dict::Dict{Tuple{String,Int64},DataFrame} = Dict()
     for (additive, final_time) in keys(subset_dfs)
         df = select(subset_dfs[(additive, final_time)], Not([:additive, :final_time]))

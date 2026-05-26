@@ -167,6 +167,10 @@ println("Wrote $comparison_result_filename")
 # println("Wrote $p_scatter_filename")
 
 @info "Reaction correlations"
-corr_1_dict = reaction_correlations_one_additive_one_time(sampling_df, [:inner_reaction])
+corr_1_dict = reaction_correlations_one_additive_one_time(
+    sampling_df,
+    [:inner_reaction],
+    working_models_df,
+)
 export_correlation_dict_for_r(corr_1_dict, "output")
 println("Wrote matrices for R")
