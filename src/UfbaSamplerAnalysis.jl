@@ -972,7 +972,7 @@ function additive_final_time_dfs(
     # additives = sort(unique(sampling_df.additive))
 
     # subsets = product(additives, final_times)
-    subsets = [(additive, final_time) for row in eachrow(working_models_df)]
+    subsets = [(row.additive, row.final_time) for row in eachrow(working_models_df)]
 
     subset_dfs = Dict(
         (additive, final_time) => @rsubset(
