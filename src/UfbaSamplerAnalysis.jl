@@ -298,7 +298,28 @@ Returns the value that has the maximum magnitude while preserving the sign.
 """
 abs_maximum(xs) = xs[argmax(abs.(xs))]
 
-function verify_t_test_data(control_fluxes, treatment_fluxes)
+"""
+    function verify_t_test_data(
+        control_fluxes::Vector{Float64},
+        treatment_fluxes::Vector{Float64},
+    )
+
+Verifies the given vectors of control and treatment flux samples meet t-test requirements. This includes verifying that for both vectors (1) there are no `NaN` values, (2) there are at least two samples, and (3) variance is not approximately zero. Returns a boolean `true` or `false` indicating whether both vectors pass these conditions. Also returns a human-readable message about the status of these tests.
+
+# Arguments
+1. `control_fluxes::Vector{Float64}`: Vector of control fluxes
+2. `treatment_fluxes::Vector{Float64}`: Vector of treatment fluxes.
+
+# Returns
+`NamedTuple`
+
+1. `pass`: `true` if both vectors pass conditions, `false` otherwise.
+2. `reason`: A string indicating what condition failed or a message indicating all good.
+"""
+function verify_t_test_data(
+    control_fluxes::Vector{Float64},
+    treatment_fluxes::Vector{Float64},
+)
     if any(isnan, control_fluxes)
         result = (pass = false, reason = "NaN samples present in CONTROL flux samples")
         return result
