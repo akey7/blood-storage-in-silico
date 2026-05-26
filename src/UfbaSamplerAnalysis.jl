@@ -377,7 +377,8 @@ end
 
 """
     compare_flux_distributions(
-        sampling_df;
+        sampling_df,
+        working_models_df;
         control_additive = "AS3",
         n_samples = nothing,
         alpha = 0.01,
@@ -388,10 +389,11 @@ For each (non-control) additive, time point, and reaction, compare all additives
 
 # Arguments
 1. `sampling_df`: The wide formatted sampling DataFrame
-2. `control_additive = "AS3"`: The name of the additive to use as the "control".
-3. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
-4. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
-5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
+2. `working_models_df`: DataFrame specifying working models in the sampling DataFrame.
+3. `control_additive = "AS3"`: The name of the additive to use as the "control".
+4. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
+5. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
+6. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
 `NamedTuple`
@@ -405,7 +407,8 @@ Returns a tuple of two DataFrames:
 6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
-    sampling_df;
+    sampling_df,
+    working_models_df;
     control_additive = "AS3",
     n_samples = nothing,
     alpha = 0.01,
@@ -414,15 +417,23 @@ function compare_flux_distributions(
     Random.seed!(123)
     ci_quantile = 1.0 - alpha
     long_sampling_df = pivot_sampling_df_long(sampling_df)
-    final_times = sort(unique(long_sampling_df.final_time))
-    reaction_ids = sort(unique(long_sampling_df.reaction_id))
     treatments_df = @rsubset(long_sampling_df, :additive != control_additive)
-    treatment_additives = sort(unique(treatments_df.additive))
     control_df = @rsubset(long_sampling_df, :additive == control_additive)
-    tasks = product(treatment_additives, reaction_ids, final_times)
-    n_tasks = length(tasks)
+    reaction_ids = sort(unique(long_sampling_df.reaction_id))
+    all_tasks = []
+    for row in eachrow(working_models_df)
+        additive = row.additive
+        final_time = row.final_time
+        if additive != control_additive
+            for reaction_id in reaction_ids
+                single_task = (additive, reaction_id, final_time)
+                push!(all_tasks, single_task)
+            end
+        end
+    end
+    n_tasks = length(all_tasks)
     println("n_tasks: $n_tasks")
-    test_rows = ThreadsX.map(tasks) do t
+    test_rows = ThreadsX.map(all_tasks) do t
         treatment_additive, reaction_id, final_time = t
         control_reaction_df =
             @rsubset(control_df, :final_time == final_time, :reaction_id == reaction_id)
