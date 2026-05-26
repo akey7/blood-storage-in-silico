@@ -444,6 +444,7 @@ function compare_flux_distributions(
             print(".")
             return unadjusted_row
         else
+            @warn "$treatment_additive, $final_time, $reaction_id: $(verify_t_test_data_result.status)"
             unadjusted_row = (
                 treatment_additive = treatment_additive,
                 reaction_id = reaction_id,
