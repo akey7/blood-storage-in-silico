@@ -146,10 +146,6 @@ println("Wrote $comparison_result_filename")
 # p_kde_filename = joinpath("output", "uFBA_3d_histograms", "line_kde_3d.html")
 # savefig(p_kde, p_kde_filename)
 # println("Wrote $p_kde_filename")
-# p_scatter = stacked_flux_histogram_steps_3d_colored(flux_df; nbins = 30, tie_method = :mean)
-# p_scatter_filename = joinpath("output", "uFBA_3d_histograms", "line_hist_3d.html")
-# savefig(p_scatter, p_scatter_filename)
-# println("Wrote $p_scatter_filename")
 
 @info "Reaction correlations"
 corr_1_dict = reaction_correlations_one_additive_one_time(
