@@ -805,7 +805,7 @@ TODO: These tests are ridiculously overpowered. In order to prevent taking -log1
 # Returns
 `NamedTuple`
 
-Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerViz.reaction_additive_heatmap).
+Returns a named tuple with data suitable for diagnostics.
 
 Available fields are:
 1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.

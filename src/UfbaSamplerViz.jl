@@ -14,7 +14,6 @@ using ProgressMeter
 
 export stacked_flux_histogram_steps_3d_colored,
     stacked_flux_kde_3d,
-    reaction_additive_heatmap,
     plot_all_distributions_for_reactions,
     densities_for_reaction,
     histograms_for_reaction_v2
@@ -457,85 +456,6 @@ function stacked_flux_kde_3d(
         showlegend = true,
     )
     return PlotlyJS.plot(traces, layout)
-end
-
-"""
-    reaction_additive_heatmap(
-        effects_result;
-        top_n = 20,
-        fig_size = (800, 800),
-    )
-
-Plots a pair of heatmaps side-by-side, one with effect sizes and the other with significance values. Meant to be useful for a variety of tests.
-
-# Arguments
-1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
-2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
-3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
-4. `include_significance = false`: If true, includes the significance heatmap.
-5. `effect_title = "Heatmap"`: Plot title for the effect heatmap.
-6. `effect_colorbar_label = "Legend"`: Title for the colorbar legend.
-
-# Returns
-`Figure`
-
-Returns a figure suitable for display or plotting.
-"""
-function reaction_additive_heatmap(
-    effects_result;
-    top_n = 20,
-    fig_size = (800, 800),
-    include_significance = false,
-    effect_title = "Heatmap",
-    effect_colorbar_label = "Legend",
-)
-    effects_wide_df = effects_result.effects_wide_df
-    effects_plot_df = reverse(first(effects_wide_df, top_n))
-    effects_row_labels = effects_plot_df.reaction_id
-    effects_col_labels = names(effects_plot_df)[2:end]
-    effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
-    effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
-    fig = Figure(size = fig_size)
-    effects_ax = Axis(
-        fig[1, 1],
-        title = effect_title,
-        xticks = (1:length(effects_col_labels), effects_col_labels),
-        yticks = (1:length(effects_row_labels), effects_row_labels),
-        xticklabelrotation = π/4,
-    )
-    effects_hm = heatmap!(
-        effects_ax,
-        effects_heatmap_mat';
-        colormap = Reverse(:RdBu_9),
-        colorrange = effects_clims,
-    )
-    Colorbar(fig[1, 2], effects_hm; label = effect_colorbar_label, labelsize = 14)
-    if include_significance
-        significance_wide_df = effects_result.significance_wide_df
-        significance_plot_df = reverse(first(significance_wide_df, top_n))
-        significance_row_labels = significance_plot_df.reaction_id
-        significance_col_labels = names(significance_plot_df)[2:end]
-        significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
-        significance_clims = (
-            -maximum(abs, significance_heatmap_mat),
-            maximum(abs, significance_heatmap_mat),
-        )
-        significance_ax = Axis(
-            fig[1, 3],
-            title = "Significance",
-            xticks = (1:length(significance_col_labels), significance_col_labels),
-            yticks = (1:length(significance_row_labels), significance_row_labels),
-            xticklabelrotation = π/4,
-        )
-        significance_hm = heatmap!(
-            significance_ax,
-            significance_heatmap_mat';
-            colormap = :Blues,
-            colorrange = significance_clims,
-        )
-        Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
-    end
-    return fig
 end
 
 """
