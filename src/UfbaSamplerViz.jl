@@ -13,9 +13,7 @@ using ColorSchemes
 using ProgressMeter
 
 export stacked_flux_kde_3d,
-    plot_all_distributions_for_reactions,
-    densities_for_reaction,
-    histograms_for_reaction_v2
+    plot_all_distributions_for_reactions, densities_for_reaction, histograms_for_reaction_v2
 
 """
     pivot_sampling_df_long(sampling_df)
