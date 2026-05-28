@@ -135,8 +135,21 @@ XLSX.writetable(
 )
 println("Wrote $comparison_result_filename")
 
+# Uncomment to plot from first dataset
 # @info "Plotting uFBA histogram and density plots"
 # plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+
+# Uncomment to select an interesting treatement and compare with control
+control_additive = "AS3"
+treatment_additive = "adenosine-10uM"
+@info "Plotting uFBA histogram and density plots for $control_additive vs $treatment_additive"
+plot_all_distributions_for_reactions(
+    sampling_df,
+    rxn_ids_to_strings;
+    control_additive = control_additive,
+    treatment_additive = treatment_additive,
+    bins = 80,
+)
 
 # @info "3D histogram/KDE plot things"
 # long_sampling_df = pivot_sampling_df_long(sampling_df)

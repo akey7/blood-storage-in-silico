@@ -308,7 +308,7 @@ function additive_comparison_palette(
     control_additive = nothing,
     treatment_additive = nothing,
 )
-    if isnothing(control_additive) && isnothing(treatment_additive)
+    if isnothing(control_additive) || isnothing(treatment_additive)
         additive_palette = [
             "01-Ctrl AS3" => :dodgerblue,
             "02-Adenosine" => :orange,
@@ -320,6 +320,39 @@ function additive_comparison_palette(
         return additive_palette
     else
         additive_palette = [control_additive => :dodgerblue, treatment_additive => :orange]
+    end
+end
+
+function subset_long_sampling_df(
+    long_sampling_df;
+    control_additive = nothing,
+    treatment_additive = nothing,
+)
+    timepoints = sort(unique(long_sampling_df.Time))
+    if isnothing(control_additive) || isnothing(treatment_additive)
+        interesting_additives = [control_additive, treatment_additive]
+        plt_df = @chain long_sampling_df begin
+            @rsubset begin
+                :reaction_id == reaction_id
+                :additive in interesting_additives
+            end
+            @rtransform begin
+                :final_time_idx = findfirst(==(:final_time), timepoints)
+                :start_time_idx = :final_time_idx - 1
+                :time_span = "Week $(timepoints[:start_time_idx]) to $(timepoints[:final_time_idx])"
+            end
+        end
+        return plt_df
+    else
+        plt_df = @chain long_sampling_df begin
+            @rsubset(:reaction_id == reaction_id)
+            @rtransform begin
+                :final_time_idx = findfirst(==(:final_time), timepoints)
+                :start_time_idx = :final_time_idx - 1
+                :time_span = "Week $(timepoints[:start_time_idx]) to $(timepoints[:final_time_idx])"
+            end
+        end
+        return plt_df
     end
 end
 
@@ -349,15 +382,11 @@ function densities_for_reaction(
     control_additive = nothing,
     treatment_additive = nothing,
 )
-    timepoints = sort(unique(long_df.Time))
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:reaction_id == reaction_id)
-        @rtransform begin
-            :final_time_idx = findfirst(==(:final_time), timepoints)
-            :start_time_idx = :final_time_idx - 1
-            :time_span = "Week $(timepoints[:start_time_idx]) to $(timepoints[:final_time_idx])"
-        end
-    end
+    plt_df = subset_long_sampling_df(
+        long_sampling_df;
+        control_additive = control_additive,
+        treatment_additive = treatment_additive,
+    )
     clean_reaction_id = replace(reaction_id, "R_" => "")
     title = "$clean_reaction_id ($subsystem)\n$reaction_string"
     additive_palette = additive_comparison_palette(control_additive, treatment_additive)
@@ -411,10 +440,11 @@ function histograms_for_reaction_v2(
     treatment_additive = nothing,
     bins = 20,
 )
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:reaction_id == reaction_id)
-        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
-    end
+    plt_df = subset_long_sampling_df(
+        long_sampling_df;
+        control_additive = control_additive,
+        treatment_additive = treatment_additive,
+    )
     clean_reaction_id = replace(reaction_id, "R_" => "")
     title = "$clean_reaction_id ($subsystem)\n$reaction_string"
     additive_palette = additive_comparison_palette(control_additive, treatment_additive)
