@@ -250,16 +250,24 @@ function stacked_flux_kde_3d(
 end
 
 """
-    plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+    plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
 
-Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made.
+Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made. Returns nothing since it saves as it goes.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of uFBA sampling results.
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
-3. `bins`: Number of bins to put onto histograms.
+3. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+4. `treatment_additive = nothing`: See `control_additive` above.
+5. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+function plot_all_distributions_for_reactions(
+    sampling_df,
+    rxn_ids_to_strings;
+    control_additive = nothing,
+    treatment_additive = nothing,
+    bins = 20,
+)
     if nrow(sampling_df) == 0
         @warn "uFBA: Nothing to plot"
     else
@@ -296,6 +304,25 @@ function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; b
     end
 end
 
+function additive_comparison_palette(
+    control_additive = nothing,
+    treatment_additive = nothing,
+)
+    if isnothing(control_additive) && isnothing(treatment_additive)
+        additive_palette = [
+            "01-Ctrl AS3" => :dodgerblue,
+            "02-Adenosine" => :orange,
+            "03-Glutamine" => :blueviolet,
+            "04-Methionine" => :crimson,
+            "07-NAC" => :brown,
+            "08-Taurine" => :magenta,
+        ]
+        return additive_palette
+    else
+        additive_palette = [control_additive => :dodgerblue, treatment_additive => :orange]
+    end
+end
+
 """
     densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
 
@@ -306,28 +333,34 @@ Plots KDEs of the flux distributions for the reaction in the various additives.
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 4. `subsystem`: Human-readable susbsytem of the reaction
-5. `bins`: Number of bins in the histograms.
+5. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+6. `treatment_additive = nothing`: See `control_additive` above.
 
 # Returns
 `Figure`
 
 Returns a Makie `Figure` to display or save.
 """
-function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+function densities_for_reaction(
+    long_sampling_df,
+    reaction_id,
+    reaction_string,
+    subsystem;
+    control_additive = nothing,
+    treatment_additive = nothing,
+)
+    timepoints = sort(unique(long_df.Time))
     plt_df = @chain long_sampling_df begin
         @rsubset(:reaction_id == reaction_id)
-        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
+        @rtransform begin
+            :final_time_idx = findfirst(==(:final_time), timepoints)
+            :start_time_idx = :final_time_idx - 1
+            :time_span = "Week $(timepoints[:start_time_idx]) to $(timepoints[:final_time_idx])"
+        end
     end
     clean_reaction_id = replace(reaction_id, "R_" => "")
     title = "$clean_reaction_id ($subsystem)\n$reaction_string"
-    additive_palette = [
-        "01-Ctrl AS3" => :dodgerblue,
-        "02-Adenosine" => :orange,
-        "03-Glutamine" => :blueviolet,
-        "04-Methionine" => :crimson,
-        "07-NAC" => :brown,
-        "08-Taurine" => :magenta,
-    ]
+    additive_palette = additive_comparison_palette(control_additive, treatment_additive)
     density_layer =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
@@ -360,7 +393,9 @@ Plots histograms for a single reaction, with time points as separate panels and 
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 4. `subsystem`: Human-readable susbsytem of the reaction
-5. `bins`: Number of bins in the histograms.
+5. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+6. `treatment_additive = nothing`: See `control_additive` above.
+7. `bins`: Number of bins in the histograms.
 
 # Returns
 `Figure`
@@ -372,6 +407,8 @@ function histograms_for_reaction_v2(
     reaction_id,
     reaction_string,
     subsystem;
+    control_additive = nothing,
+    treatment_additive = nothing,
     bins = 20,
 )
     plt_df = @chain long_sampling_df begin
@@ -380,14 +417,7 @@ function histograms_for_reaction_v2(
     end
     clean_reaction_id = replace(reaction_id, "R_" => "")
     title = "$clean_reaction_id ($subsystem)\n$reaction_string"
-    additive_palette = [
-        "01-Ctrl AS3" => :dodgerblue,
-        "02-Adenosine" => :orange,
-        "03-Glutamine" => :blueviolet,
-        "04-Methionine" => :crimson,
-        "07-NAC" => :brown,
-        "08-Taurine" => :magenta,
-    ]
+    additive_palette = additive_comparison_palette(control_additive, treatment_additive)
     hist_layer =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
