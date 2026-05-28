@@ -344,6 +344,29 @@ function additive_comparison_palette(
     end
 end
 
+"""
+    subset_long_sampling_df(
+        long_sampling_df,
+        reaction_id;
+        control_additive = nothing,
+        treatment_additive = nothing,
+    )
+    
+Subset the long sampling DataFrame for plotting the given reaction. For the second relative quant dataset, the option of restricting to the given control and treatment additives is available.
+
+Note: **Both** control and treatment additives must be specified to filter down the additives.
+
+# Arguments
+1. `long_sampling_df`: Long sampling DataFrame
+2. `reaction_id`: Reaction id of interest.
+3. `control_additive = nothing`: If specified, this is the control additive to include.
+4. `treatment_additive = nothing`: If specified, this is the treatment additive to include.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame subsetted as specified.
+"""
 function subset_long_sampling_df(
     long_sampling_df,
     reaction_id;
