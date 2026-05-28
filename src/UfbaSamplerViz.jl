@@ -304,6 +304,23 @@ function plot_all_distributions_for_reactions(
     end
 end
 
+"""
+    additive_comparison_palette(
+        control_additive = nothing,
+        treatment_additive = nothing,
+    )
+
+Generates the color palette for the histograms and density plots. If **either** parameter is `nothing`, defaults to the color palette for the additives in the first relative quant dataset. If string values are supplied to both parameters, sets consistent color for control and additive treatments.
+
+# Arguments
+1. `control_additive = nothing`: If specified, the name of the control additive.
+2. `treatment_additive = nothing`: If specified, the name of the treatment additive.
+
+# Returns
+`Dict{String,Union{Symbol,String}}`
+
+Returns a dictionary mapping the additive names as keys to their colors as values. The values can be either symbols for Makie or hex codes.
+"""
 function additive_comparison_palette(
     control_additive = nothing,
     treatment_additive = nothing,
