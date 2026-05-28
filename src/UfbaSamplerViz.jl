@@ -284,13 +284,17 @@ function plot_all_distributions_for_reactions(
                 reaction_id,
                 reaction_string,
                 subsystem;
+                control_additive = control_additive,
+                treatment_additive = treatment_additive,
                 bins = bins,
             )
             fig_density = densities_for_reaction(
                 long_sampling_df,
                 reaction_id,
                 reaction_string,
-                subsystem,
+                subsystem;
+                control_additive = control_additive,
+                treatment_additive = treatment_additive,
             )
             filename_hist =
                 joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
@@ -341,33 +345,25 @@ function additive_comparison_palette(
 end
 
 function subset_long_sampling_df(
-    long_sampling_df;
+    long_sampling_df,
+    reaction_id;
     control_additive = nothing,
     treatment_additive = nothing,
 )
-    timepoints = sort(unique(long_sampling_df.final_time))
-    if isnothing(control_additive) || isnothing(treatment_additive)
+    if !isnothing(control_additive) && !isnothing(treatment_additive)
         interesting_additives = [control_additive, treatment_additive]
         plt_df = @chain long_sampling_df begin
-            @rsubset begin
-                :reaction_id == reaction_id
-                :additive in interesting_additives
-            end
-            @rtransform begin
-                :final_time_idx = findfirst(==(:final_time), timepoints)
-                :start_time_idx = :final_time_idx - 1
-                :time_span = "Week $(timepoints[:start_time_idx]) to $(timepoints[:final_time_idx])"
-            end
+            @rsubset(:reaction_id == reaction_id, :additive in interesting_additives)
+            @rtransform(:time_span = "Final Time $(:final_time)")
+        end
+        if nrow(plt_df) == 0
+            @warn "Empty plt_df for $reaction_id"
         end
         return plt_df
     else
         plt_df = @chain long_sampling_df begin
             @rsubset(:reaction_id == reaction_id)
-            @rtransform begin
-                :final_time_idx = findfirst(==(:final_time), timepoints)
-                :start_time_idx = :final_time_idx - 1
-                :time_span = "Week $(timepoints[:start_time_idx]) to $(timepoints[:final_time_idx])"
-            end
+            @rtransform(:time_span = "Timespan Ending at $(:final_time)")
         end
         return plt_df
     end
@@ -400,7 +396,8 @@ function densities_for_reaction(
     treatment_additive = nothing,
 )
     plt_df = subset_long_sampling_df(
-        long_sampling_df;
+        long_sampling_df,
+        reaction_id;
         control_additive = control_additive,
         treatment_additive = treatment_additive,
     )
@@ -458,7 +455,8 @@ function histograms_for_reaction_v2(
     bins = 20,
 )
     plt_df = subset_long_sampling_df(
-        long_sampling_df;
+        long_sampling_df,
+        reaction_id;
         control_additive = control_additive,
         treatment_additive = treatment_additive,
     )
