@@ -112,28 +112,28 @@ XLSX.writetable(
 )
 println("Wrote $reactions_metabolites_filename")
 
-@info "Comparing control vs. treatment fluxes"
-comparison_result_0 = compare_flux_distributions(
-    sampling_df,
-    working_models_df;
-    alpha = 0.01,
-    interesting_cohen_effect_z = 2.0,
-)
-comparison_result = remove_reaction_string_prefix(comparison_result_0)
-interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
-display(interesting_vs_uninteresting_df)
-comparison_result_filename = joinpath("output", "uFBA_heatmaps", "comparison_result.xlsx")
-XLSX.writetable(
-    comparison_result_filename,
-    "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
-    "control_vs_treatments" => comparison_result.interesting_df,
-    "score_ranking" => comparison_result.score_ranking_df,
-    "effects_wide" => comparison_result.effects_wide_df,
-    "significance_wide" => comparison_result.significance_wide_df,
-    "heatmap_rank" => comparison_result.heatmap_rank_df;
-    overwrite = true,
-)
-println("Wrote $comparison_result_filename")
+# @info "Comparing control vs. treatment fluxes"
+# comparison_result_0 = compare_flux_distributions(
+#     sampling_df,
+#     working_models_df;
+#     alpha = 0.01,
+#     interesting_cohen_effect_z = 2.0,
+# )
+# comparison_result = remove_reaction_string_prefix(comparison_result_0)
+# interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
+# display(interesting_vs_uninteresting_df)
+# comparison_result_filename = joinpath("output", "uFBA_heatmaps", "comparison_result.xlsx")
+# XLSX.writetable(
+#     comparison_result_filename,
+#     "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
+#     "control_vs_treatments" => comparison_result.interesting_df,
+#     "score_ranking" => comparison_result.score_ranking_df,
+#     "effects_wide" => comparison_result.effects_wide_df,
+#     "significance_wide" => comparison_result.significance_wide_df,
+#     "heatmap_rank" => comparison_result.heatmap_rank_df;
+#     overwrite = true,
+# )
+# println("Wrote $comparison_result_filename")
 
 # Uncomment to plot from first dataset
 # @info "Plotting uFBA histogram and density plots"
