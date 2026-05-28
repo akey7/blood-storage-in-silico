@@ -37,6 +37,18 @@ export diagnose_flux_stats,
     reactions_metabolites_report_dfs,
     load_sampling_results
 
+"""
+    load_sampling_results()
+
+First, loads sampling results from `UfbaSampler` run as stored in the `output/ufba_sampling.csv` file. Second, determine the additives and time points that represent working models and gathers the working model specifications into another DataFrame.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `sampling_df`: Wide format sampling DataFrame
+2. `working_models_df`: DataFrame listing worknig models in `:additive` and `:final_time` columns.
+"""
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
     sampling_df = CSV.read(sampling_filename, DataFrame)
@@ -793,7 +805,7 @@ TODO: These tests are ridiculously overpowered. In order to prevent taking -log1
 # Returns
 `NamedTuple`
 
-Returns a named tuple with data suitable for (1) diagnostics and (2) plotting with [`reaction_additive_heatmap`](@ref BloodStorageInSilico.UfbaSamplerViz.reaction_additive_heatmap).
+Returns a named tuple with data suitable for diagnostics.
 
 Available fields are:
 1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.
