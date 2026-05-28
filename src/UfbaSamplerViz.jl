@@ -328,7 +328,7 @@ function subset_long_sampling_df(
     control_additive = nothing,
     treatment_additive = nothing,
 )
-    timepoints = sort(unique(long_sampling_df.Time))
+    timepoints = sort(unique(long_sampling_df.final_time))
     if isnothing(control_additive) || isnothing(treatment_additive)
         interesting_additives = [control_additive, treatment_additive]
         plt_df = @chain long_sampling_df begin
