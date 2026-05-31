@@ -1055,7 +1055,7 @@ This function assumes that the same metaolties are measured across additives and
 2. `metabolite_ids_names_df`: A DataFrame that has `metabolite_id` and `metabolite_name` columns.
 3. `reaction_ids_to_strings_df`: DataFrame that is part of the output from [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings) mapping reaction ids to names, subsystems, and categories.
 4. `measurements_and_sinks_report_df`: DataFrame that is part of the output from [`prepare_measurements_and_sinks_report_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.prepare_measurements_and_sinks_report_df) that is the measurements and sinks report.
-5. `reference_additive = "01-Ctrl AS3"`: Optional. Reference additive for metabolite measurements.
+5. `reference_additive = "AS3"`: Optional. Reference additive for metabolite measurements.
 6. `reference_final_time = 2`: Optional. Reference final time for metabolite measurements.
 
 # Returns
@@ -1077,7 +1077,7 @@ function reactions_metabolites_report_dfs(
     metabolite_ids_names_df,
     reaction_ids_to_strings_df,
     measurements_and_sinks_report_df;
-    reference_additive = "01-Ctrl AS3",
+    reference_additive = "AS3",
     reference_final_time = 2,
 )
     is_measured_df = @chain measurements_and_sinks_report_df begin
