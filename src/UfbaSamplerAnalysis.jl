@@ -1041,8 +1041,9 @@ end
         fba_reactions_metabolites_df,
         metabolite_ids_names_df,
         reaction_ids_to_strings_df,
-        measurements_and_sinks_report_df;
-        reference_additive = "01-Ctrl AS3",
+        measurements_and_sinks_report_df,
+        interesting_metabolites_df;
+        reference_additive = "AS3",
         reference_final_time = 2,
     )
 
@@ -1055,8 +1056,9 @@ This function assumes that the same metaolties are measured across additives and
 2. `metabolite_ids_names_df`: A DataFrame that has `metabolite_id` and `metabolite_name` columns.
 3. `reaction_ids_to_strings_df`: DataFrame that is part of the output from [`map_reaction_ids_to_reaction_strings`](@ref BloodStorageInSilico.UfbaSampler.map_reaction_ids_to_reaction_strings) mapping reaction ids to names, subsystems, and categories.
 4. `measurements_and_sinks_report_df`: DataFrame that is part of the output from [`prepare_measurements_and_sinks_report_df`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.prepare_measurements_and_sinks_report_df) that is the measurements and sinks report.
-5. `reference_additive = "AS3"`: Optional. Reference additive for metabolite measurements.
-6. `reference_final_time = 2`: Optional. Reference final time for metabolite measurements.
+5. `interesting_metabolites_df`: DataFrame with a column called `interesting_metabolite_id` that contains metabolite ids of interesting metabolites.
+6. `reference_additive = "AS3"`: Optional. Reference additive for metabolite measurements.
+7. `reference_final_time = 2`: Optional. Reference final time for metabolite measurements.
 
 # Returns
 `NamedTuple`
@@ -1071,12 +1073,14 @@ Returns a named tuple with the following fields:
 2. `reactions_measured_df`: DataFrame counting the number of measured metabolites for each reaction.
 3. `subsystems_measured_df`: DataFrame counting the number of measured metabolites for each reaction subsystem.
 4. `categories_measured_df`: DataFrame counting the number of measured metabolites for each reaction category.
+5. `interesting_reactions_df`: DataFrame showing the "interesting" reactions that involve "interesting" metabolites.
 """
 function reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
     metabolite_ids_names_df,
     reaction_ids_to_strings_df,
-    measurements_and_sinks_report_df;
+    measurements_and_sinks_report_df,
+    interesting_metabolites_df;
     reference_additive = "AS3",
     reference_final_time = 2,
 )
@@ -1117,11 +1121,32 @@ function reactions_metabolites_report_dfs(
         @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
         @orderby(-:n_measured_metabolites, :reaction_category)
     end
+    interesting_metabolite_ids_0 =
+        sort(unique(interesting_metabolites_df.interesting_metabolite_id))
+    interesting_metabolite_ids = [
+        "M_$(interesting_metabolite_id)" for
+        interesting_metabolite_id in interesting_metabolite_ids_0
+    ]
+    interesting_reactions_df = @chain reactions_metabolites_df begin
+        @rsubset(:metabolite_id in interesting_metabolite_ids)
+        @rtransform(:reaction_classification = string(classify_reaction_id(:reaction_id)))
+        @orderby(:reaction_classification, :metabolite_id, :reaction_id, :coeff)
+        @select(
+            :reaction_classification,
+            :metabolite_id,
+            :metabolite_name,
+            :reaction_id,
+            :reaction_name,
+            :coeff,
+            :is_metabolite_measured,
+        )
+    end
     result = (
         reactions_metabolites_df = reactions_metabolites_df,
         reactions_measured_df = reactions_measured_df,
         subsystems_measured_df = subsystems_measured_df,
         categories_measured_df = categories_measured_df,
+        interesting_reactions_df = interesting_reactions_df,
     )
     return result
 end

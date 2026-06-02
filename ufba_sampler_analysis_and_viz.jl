@@ -81,6 +81,8 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Combining reactions, metabolites, and measurements report"
+interesting_metabolites_filename = joinpath("input", "interesting_metabolites.csv")
+interesting_metabolites_df = CSV.read(interesting_metabolites_filename, DataFrame)
 fba_reactions_metabolites_filename =
     joinpath("output", "fba_model_reactions_metabolites.csv")
 metabolite_ids_names_filename = joinpath("input", "Metabolite Id to Name Map.csv")
@@ -94,6 +96,7 @@ reactions_metabolites_result = reactions_metabolites_report_dfs(
     metabolite_ids_names_df,
     reaction_ids_to_strings_df,
     measurements_and_sinks_report_df,
+    interesting_metabolites_df,
 )
 reactions_metabolites_filename =
     joinpath("output", "reactions_metabolites_measurements.xlsx")
@@ -101,12 +104,14 @@ reactions_metabolites_df = reactions_metabolites_result.reactions_metabolites_df
 reactions_measured_df = reactions_metabolites_result.reactions_measured_df
 subsystems_measured_df = reactions_metabolites_result.subsystems_measured_df
 categories_measured_df = reactions_metabolites_result.categories_measured_df
+interesting_reactions_df = reactions_metabolites_result.interesting_reactions_df
 XLSX.writetable(
     reactions_metabolites_filename,
     "reactions_metabolites" => reactions_metabolites_df,
     "reactions_measured" => reactions_measured_df,
     "subsystems_measured" => subsystems_measured_df,
     "categories_measured" => categories_measured_df,
+    "interesting_reactions" => interesting_reactions_df,
     overwrite = true,
 )
 println("Wrote $reactions_metabolites_filename")
