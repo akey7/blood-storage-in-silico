@@ -1073,6 +1073,7 @@ Returns a named tuple with the following fields:
 2. `reactions_measured_df`: DataFrame counting the number of measured metabolites for each reaction.
 3. `subsystems_measured_df`: DataFrame counting the number of measured metabolites for each reaction subsystem.
 4. `categories_measured_df`: DataFrame counting the number of measured metabolites for each reaction category.
+5. `interesting_reactions_df`: DataFrame showing the "interesting" reactions that involve "interesting" metabolites.
 """
 function reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
