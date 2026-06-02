@@ -1120,13 +1120,15 @@ function reactions_metabolites_report_dfs(
         @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
         @orderby(-:n_measured_metabolites, :reaction_category)
     end
-    interesting_metabolite_ids =
+    interesting_metabolite_ids_0 =
         sort(unique(interesting_metabolites_df.interesting_metabolite_id))
-    interesting_reactions_df = @chain reactions_metabolites_df begin
-        @rsubset(:metabolite_id in interesting_metabolite_ids)
-        @groupby(:metabolite_id, :reaction_id)
-        @combine(:n_interesting = length(:reaction_id))
-    end
+    interesting_metabolite_ids = [
+        "M_$(interesting_metabolite_id)" for
+        interesting_metabolite_id in interesting_metabolite_ids_0
+    ]
+    display(interesting_metabolite_ids)
+    interesting_reactions_df =
+        @rsubset(reactions_metabolites_df, :metabolite_id in interesting_metabolite_ids)
     result = (
         reactions_metabolites_df = reactions_metabolites_df,
         reactions_measured_df = reactions_measured_df,
