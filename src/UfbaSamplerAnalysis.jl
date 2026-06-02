@@ -1128,14 +1128,16 @@ function reactions_metabolites_report_dfs(
     ]
     interesting_reactions_df = @chain reactions_metabolites_df begin
         @rsubset(:metabolite_id in interesting_metabolite_ids)
-        @orderby(:metabolite_id, :reaction_id, :coeff)
+        @rtransform(:reaction_classification = string(classify_reaction_id(:reaction_id)))
+        @orderby(:reaction_classification, :metabolite_id, :reaction_id, :coeff)
         @select(
+            :reaction_classification,
             :metabolite_id,
             :metabolite_name,
             :reaction_id,
             :reaction_name,
             :coeff,
-            :is_metabolite_measured
+            :is_metabolite_measured,
         )
     end
     result = (
