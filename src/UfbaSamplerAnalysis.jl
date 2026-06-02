@@ -1126,9 +1126,18 @@ function reactions_metabolites_report_dfs(
         "M_$(interesting_metabolite_id)" for
         interesting_metabolite_id in interesting_metabolite_ids_0
     ]
-    display(interesting_metabolite_ids)
-    interesting_reactions_df =
-        @rsubset(reactions_metabolites_df, :metabolite_id in interesting_metabolite_ids)
+    interesting_reactions_df = @chain reactions_metabolites_df begin
+        @rsubset(:metabolite_id in interesting_metabolite_ids)
+        @orderby(:metabolite_id, :reaction_id, :coeff)
+        @select(
+            :metabolite_id,
+            :metabolite_name,
+            :reaction_id,
+            :reaction_name,
+            :coeff,
+            :is_metabolite_measured
+        )
+    end
     result = (
         reactions_metabolites_df = reactions_metabolites_df,
         reactions_measured_df = reactions_measured_df,
