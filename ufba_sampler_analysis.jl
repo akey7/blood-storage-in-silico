@@ -17,6 +17,11 @@ sampling_results = load_sampling_results()
 sampling_df = sampling_results.sampling_df
 working_models_df = sampling_results.working_models_df
 
+@info "Loading reaction strings, subsystems, categories"
+reaction_ids_to_strings_filename =
+    joinpath("output", "rxn_strings_subsystems_categories.csv")
+reaction_ids_to_strings_df = CSV.read(reaction_ids_to_strings_filename, DataFrame)
+
 # Disabling because very long for second dataset
 # @info "Global mixed model analysis"
 # global_mixed_model_test(sampling_df)
@@ -97,11 +102,8 @@ interesting_metabolites_df = CSV.read(interesting_metabolites_filename, DataFram
 fba_reactions_metabolites_filename =
     joinpath("output", "fba_model_reactions_metabolites.csv")
 metabolite_ids_names_filename = joinpath("input", "Metabolite Id to Name Map.csv")
-reaction_ids_to_strings_filename =
-    joinpath("output", "rxn_strings_subsystems_categories.csv")
 fba_reactions_metabolites_df = CSV.read(fba_reactions_metabolites_filename, DataFrame)
 metabolite_ids_names_df = CSV.read(metabolite_ids_names_filename, DataFrame)
-reaction_ids_to_strings_df = CSV.read(reaction_ids_to_strings_filename, DataFrame)
 reactions_metabolites_result = reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
     metabolite_ids_names_df,
@@ -131,7 +133,8 @@ println("Wrote $reactions_metabolites_filename")
 control_vs_treatments_df = comparison_result_0.interesting_df  # Retain R_ prefix for reaction ids
 interesting_reactions_treatments_df = filter_reactions_treatments_df(
     interesting_reactions_df,
-    control_vs_treatments_df;
+    control_vs_treatments_df,
+    reaction_ids_to_strings_df;
     reaction_classifications = nothing,
 )
 reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.csv")

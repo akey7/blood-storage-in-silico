@@ -1154,16 +1154,19 @@ end
 
 function filter_reactions_treatments_df(
     interesting_reactions_df,
-    control_vs_treatments_df;
+    control_vs_treatments_df,
+    reaction_ids_to_strings_df;
     reaction_classifications = nothing,
 )
     reaction_classifications_2 =
         isnothing(reaction_classifications) ?
         ["exchange", "inner_reaction", "transporter"] : reaction_classifications
     control_vs_treatments_df_2 = @rsubset(control_vs_treatments_df, :all_interesting)
+    reaction_ids_to_strings_df_2 = select(reaction_ids_to_strings_df, Not(:reaction_name))
     interesting_reactions_treatments_df = @chain interesting_reactions_df begin
         @rsubset(:reaction_classification in reaction_classifications_2)
         innerjoin(control_vs_treatments_df_2, on = :reaction_id)
+        leftjoin(reaction_ids_to_strings_df_2, on = :reaction_id)
         select(Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status]))
         @orderby(:treatment_additive, :reaction_id, :final_time)
     end
