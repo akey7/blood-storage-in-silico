@@ -161,13 +161,13 @@ Outputs the following files:
 On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_analysis_and_viz.jl
+JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_analysis.jl
 ```
 
 On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 
 ```
-julia --project=. ufba_sampler_analysis_and_viz.jl
+julia --project=. ufba_sampler_analysis.jl
 ```
 
 ### (6) `ufba_sampler_viz.jl`: Visualize uFBA analysis results as plots
@@ -187,13 +187,13 @@ Outputs the following files:
 On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_analysis_and_viz.jl
+JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_viz.jl
 ```
 
 On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 
 ```
-julia --project=. ufba_sampler_analysis_and_viz.jl
+julia --project=. ufba_sampler_viz.jl
 ```
 
 ### (7) `model_graph.jl`: Analyze the uFBA models as graphs
