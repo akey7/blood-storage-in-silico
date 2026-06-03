@@ -157,6 +157,7 @@ Outputs the following files:
 6. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
 7. Writes a bunch of `.csv` files for use by an R script to plot correlation heatmaps and perform hierarchical clustering. These files are written to `output/correlation_matrices_1/`.
 8. Writes an Excel workbook that links reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category. Filename is `output/reactions_metabolites_measurements.xlsx`
+9. Writes an Excel workbook of comparing treatments with respect to reactions and time points. Filename is `output/reaction_treatment_comparison.xlsx`
 
 On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
