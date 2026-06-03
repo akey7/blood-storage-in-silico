@@ -1152,6 +1152,27 @@ function reactions_metabolites_report_dfs(
     return result
 end
 
+"""
+    filter_reactions_treatments_df(
+        interesting_reactions_df,
+        control_vs_treatments_df,
+        reaction_ids_to_strings_df;
+        reaction_classifications = nothing,
+    )
+
+Using the interesting reactions found by metabolites and the control vs treatments DataFrame, find which interesting reactions have significant changes based on treatment additives.
+
+# Arguments
+1. `interesting_reactions_df`: Interesting reaction DataFrame from [`reactions_metabolites_report_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.reactions_metabolites_report_dfs)
+2. `control_vs_treatments_df`: Control vs treatments DataFrame from [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
+3. `reaction_ids_to_strings_df`: DataFrame mapping reaction ids to reaction strings, subsystems, and categories.
+4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the report of interesting reactions and interesting treatments.
+"""
 function filter_reactions_treatments_df(
     interesting_reactions_df,
     control_vs_treatments_df,
