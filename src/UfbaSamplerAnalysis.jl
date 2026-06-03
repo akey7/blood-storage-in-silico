@@ -35,7 +35,8 @@ export diagnose_flux_stats,
     reaction_correlations_one_additive_one_time,
     write_all_flux_vector_matrices,
     reactions_metabolites_report_dfs,
-    load_sampling_results
+    load_sampling_results,
+    filter_reactions_treatments_df
 
 """
     load_sampling_results()
@@ -1149,6 +1150,24 @@ function reactions_metabolites_report_dfs(
         interesting_reactions_df = interesting_reactions_df,
     )
     return result
+end
+
+function filter_reactions_treatments_df(
+    interesting_reactions_df,
+    control_vs_treatments_df;
+    reaction_classifications = nothing,
+)
+    reaction_classifications_2 =
+        isnothing(reaction_classifications) ?
+        ["exchange", "inner_reaction", "transporter"] : reaction_classifications
+    control_vs_treatments_df_2 = @rsubset(control_vs_treatments_df, :all_interesting)
+    interesting_reactions_treatments_df = @chain interesting_reactions_df begin
+        @rsubset(:reaction_classification in reaction_classifications_2)
+        innerjoin(control_vs_treatments_df_2, on = :reaction_id)
+        select(Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status]))
+        @orderby(:treatment, :reaction_id, :final_time)
+    end
+    return reactions_treatments_df
 end
 
 end

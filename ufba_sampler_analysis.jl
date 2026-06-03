@@ -26,11 +26,11 @@ working_models_df = sampling_results.working_models_df
 # per_reaction_df = per_reaction_additive_time_test(sampling_df)
 # display(first(per_reaction_df, 20))
 
-@info "Diagnosing uFBA run"
-diagnostic_df = diagnose_flux_stats(sampling_df)
-diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
-CSV.write(diagnostic_filename, diagnostic_df)
-println("Wrote $diagnostic_filename")
+# @info "Diagnosing uFBA run"
+# diagnostic_df = diagnose_flux_stats(sampling_df)
+# diagnostic_filename = joinpath("output", "ufba_diagnostics.csv")
+# CSV.write(diagnostic_filename, diagnostic_df)
+# println("Wrote $diagnostic_filename")
 
 @info "Writing median flux DataFrame"
 median_flux_filename = joinpath("output", "ufba_median_fluxes.csv")
@@ -38,9 +38,9 @@ median_flux_df = calc_median_flux_df(sampling_df)
 CSV.write(median_flux_filename, median_flux_df)
 println("Wrote $median_flux_filename")
 
-@info "Writing flux vector data matrices"
-data_matrix_path = joinpath("output", "flux_vector_data_matrices")
-write_all_flux_vector_matrices(sampling_df, data_matrix_path)
+# @info "Writing flux vector data matrices"
+# data_matrix_path = joinpath("output", "flux_vector_data_matrices")
+# write_all_flux_vector_matrices(sampling_df, data_matrix_path)
 
 @info "Reporting measured and unmeasured metabolites, with and without sinks"
 absolute_quant_long_filename = joinpath("output", "absolute_quant_long.csv")
@@ -67,6 +67,29 @@ CSV.write(
     measurements_and_sinks_report_by_model_df,
 )
 println("Wrote $measurements_and_sinks_report_by_model_filename")
+
+@info "Comparing control vs. treatment fluxes"
+comparison_result_0 = compare_flux_distributions(
+    sampling_df,
+    working_models_df;
+    alpha = 0.01,
+    interesting_cohen_effect_z = 2.0,
+)
+comparison_result = remove_reaction_string_prefix(comparison_result_0)
+interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
+display(interesting_vs_uninteresting_df)
+comparison_result_filename = joinpath("output", "reaction_treatment_comparison.xlsx")
+XLSX.writetable(
+    comparison_result_filename,
+    "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
+    "control_vs_treatments" => comparison_result.interesting_df,
+    "score_ranking" => comparison_result.score_ranking_df,
+    "effects_wide" => comparison_result.effects_wide_df,
+    "significance_wide" => comparison_result.significance_wide_df,
+    "heatmap_rank" => comparison_result.heatmap_rank_df;
+    overwrite = true,
+)
+println("Wrote $comparison_result_filename")
 
 @info "Combining reactions, metabolites, and measurements report"
 interesting_metabolites_filename = joinpath("input", "interesting_metabolites.csv")
@@ -104,28 +127,16 @@ XLSX.writetable(
 )
 println("Wrote $reactions_metabolites_filename")
 
-@info "Comparing control vs. treatment fluxes"
-comparison_result_0 = compare_flux_distributions(
-    sampling_df,
-    working_models_df;
-    alpha = 0.01,
-    interesting_cohen_effect_z = 2.0,
+@info "Determining (interesting reaction)/treatment pairs"
+control_vs_treatments_df = comparison_result_0.interesting_df  # Retain R_ prefix for reaction ids
+reactions_treatments_df = filter_reactions_treatments_df(
+    interesting_reactions_df,
+    control_vs_treatments_df;
+    reaction_classifications = nothing,
 )
-comparison_result = remove_reaction_string_prefix(comparison_result_0)
-interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
-display(interesting_vs_uninteresting_df)
-comparison_result_filename = joinpath("output", "uFBA_heatmaps", "comparison_result.xlsx")
-XLSX.writetable(
-    comparison_result_filename,
-    "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
-    "control_vs_treatments" => comparison_result.interesting_df,
-    "score_ranking" => comparison_result.score_ranking_df,
-    "effects_wide" => comparison_result.effects_wide_df,
-    "significance_wide" => comparison_result.significance_wide_df,
-    "heatmap_rank" => comparison_result.heatmap_rank_df;
-    overwrite = true,
-)
-println("Wrote $comparison_result_filename")
+reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.csv")
+CSV.write(reactions_treatments_filename, reactions_treatments_df)
+println("Wrote $reactions_treatments_filename")
 
 @info "Reaction correlations"
 corr_1_dict = reaction_correlations_one_additive_one_time(
