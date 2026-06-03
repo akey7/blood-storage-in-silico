@@ -1167,7 +1167,7 @@ function filter_reactions_treatments_df(
         select(Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status]))
         @orderby(:treatment_additive, :reaction_id, :final_time)
     end
-    return reactions_treatments_df
+    return interesting_reactions_treatments_df
 end
 
 end
