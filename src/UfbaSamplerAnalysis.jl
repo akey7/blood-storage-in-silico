@@ -1059,6 +1059,7 @@ function filter_reactions_treatments_df(
         @rtransform(
             :is_complete = :n_reactions_final_times == n_complete_reactions_final_times
         )
+        @orderby(:is_complete, :treatment_additive)
     end
     completeness_filter_df = @chain complete_conditions_df begin
         @rsubset(:is_complete)
