@@ -1035,9 +1035,11 @@ Using the interesting reactions found by metabolites and the control vs treatmen
 4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
 
 # Returns
-`DataFrame`
+`NamedTuple`
 
-Returns a DataFrame with the report of interesting reactions and interesting treatments.
+Returns a named tuple with two fields:
+1. `interesting_reactions_treatments_df`: DataFrame of interesting reactions and treatments that merit further investigation.
+2. `complete_conditions_df`: DataFrame listing conditions from the sampling data and whether or not they are complete across all time points.
 """
 function filter_reactions_treatments_df(
     interesting_reactions_df,
