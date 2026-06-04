@@ -87,7 +87,7 @@ comparison_result_filename = joinpath("output", "reaction_treatment_comparison.x
 XLSX.writetable(
     comparison_result_filename,
     "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
-    "control_vs_treatments" => comparison_result.interesting_df,
+    "control_vs_treatments" => comparison_result.control_vs_treatments_df,
     "score_ranking" => comparison_result.score_ranking_df,
     "effects_wide" => comparison_result.effects_wide_df,
     "significance_wide" => comparison_result.significance_wide_df,
@@ -130,7 +130,7 @@ XLSX.writetable(
 println("Wrote $reactions_metabolites_filename")
 
 @info "Determining (interesting reaction)/treatment pairs"
-control_vs_treatments_df = comparison_result_0.interesting_df  # Retain R_ prefix for reaction ids
+control_vs_treatments_df = comparison_result_0.control_vs_treatments_df  # Retain R_ prefix for reaction ids
 interesting_reactions_treatments_df = filter_reactions_treatments_df(
     interesting_reactions_df,
     control_vs_treatments_df,

@@ -517,7 +517,7 @@ function compare_flux_distributions(
         @transform(:reaction_cohen_effect_z = zscore(:cohen_effect))
         @select(:treatment_additive, :final_time, :reaction_id, :reaction_cohen_effect_z)
     end
-    interesting_df = @chain test_df begin
+    control_vs_treatments_df = @chain test_df begin
         leftjoin(
             reaction_cohen_effect_z_df;
             on = [:treatment_additive, :final_time, :reaction_id],
@@ -532,7 +532,7 @@ function compare_flux_distributions(
         )
         @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
     end
-    interesting_vs_uninteresting_df = @chain interesting_df begin
+    interesting_vs_uninteresting_df = @chain control_vs_treatments_df begin
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
     end
@@ -562,7 +562,7 @@ function compare_flux_distributions(
         @combine(:max_max_score = maximum(:max_score))
         @orderby(-:max_max_score)
     end
-    effects_wide_df = @chain interesting_df begin
+    effects_wide_df = @chain control_vs_treatments_df begin
         @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
         unstack(
             :reaction_id,
@@ -574,7 +574,7 @@ function compare_flux_distributions(
         @orderby(-:max_max_score)
         @select(Not(:max_max_score))
     end
-    significance_wide_df = @chain interesting_df begin
+    significance_wide_df = @chain control_vs_treatments_df begin
         @select(:reaction_id, :treatment_additive, :adj_t_test_p)
         unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
         innerjoin(heatmap_rank_df, on = :reaction_id)
@@ -582,7 +582,7 @@ function compare_flux_distributions(
         @select(Not(:max_max_score))
     end
     result = (
-        interesting_df = interesting_df,
+        control_vs_treatments_df = control_vs_treatments_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
