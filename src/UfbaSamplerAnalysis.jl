@@ -30,12 +30,12 @@ export diagnose_flux_stats,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    reaction_additive_timecourse_heatmap_dfs,
     remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
     write_all_flux_vector_matrices,
     reactions_metabolites_report_dfs,
-    load_sampling_results
+    load_sampling_results,
+    filter_reactions_treatments_df
 
 """
     load_sampling_results()
@@ -411,7 +411,7 @@ For each (non-control) additive, time point, and reaction, compare all additives
 `NamedTuple`
 
 Returns a tuple of two DataFrames:
-1. `interesting_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
+1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
 2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
 3. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
 4. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
@@ -517,7 +517,7 @@ function compare_flux_distributions(
         @transform(:reaction_cohen_effect_z = zscore(:cohen_effect))
         @select(:treatment_additive, :final_time, :reaction_id, :reaction_cohen_effect_z)
     end
-    interesting_df = @chain test_df begin
+    control_vs_treatments_df = @chain test_df begin
         leftjoin(
             reaction_cohen_effect_z_df;
             on = [:treatment_additive, :final_time, :reaction_id],
@@ -532,7 +532,7 @@ function compare_flux_distributions(
         )
         @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
     end
-    interesting_vs_uninteresting_df = @chain interesting_df begin
+    interesting_vs_uninteresting_df = @chain control_vs_treatments_df begin
         @groupby(:all_interesting)
         DataFrames.combine(nrow => :count)
     end
@@ -562,7 +562,7 @@ function compare_flux_distributions(
         @combine(:max_max_score = maximum(:max_score))
         @orderby(-:max_max_score)
     end
-    effects_wide_df = @chain interesting_df begin
+    effects_wide_df = @chain control_vs_treatments_df begin
         @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
         unstack(
             :reaction_id,
@@ -574,7 +574,7 @@ function compare_flux_distributions(
         @orderby(-:max_max_score)
         @select(Not(:max_max_score))
     end
-    significance_wide_df = @chain interesting_df begin
+    significance_wide_df = @chain control_vs_treatments_df begin
         @select(:reaction_id, :treatment_additive, :adj_t_test_p)
         unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
         innerjoin(heatmap_rank_df, on = :reaction_id)
@@ -582,7 +582,7 @@ function compare_flux_distributions(
         @select(Not(:max_max_score))
     end
     result = (
-        interesting_df = interesting_df,
+        control_vs_treatments_df = control_vs_treatments_df,
         interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
@@ -606,8 +606,8 @@ Goes through all DataFrames in the comparison result and removes the leading `R_
 Returns a named tuple with the same fields containing DataFrames that have reaction ids with the `R_` removed.
 """
 function remove_reaction_string_prefix(comparison_result)
-    interesting_df = @rtransform(
-        comparison_result.interesting_df,
+    control_vs_treatments_df = @rtransform(
+        comparison_result.control_vs_treatments_df,
         :reaction_id = replace(:reaction_id, "R_" => "")
     )
     score_ranking_df = @rtransform(
@@ -627,7 +627,7 @@ function remove_reaction_string_prefix(comparison_result)
         :reaction_id = replace(:reaction_id, "R_" => "")
     )
     result = (
-        interesting_df = interesting_df,
+        control_vs_treatments_df = control_vs_treatments_df,
         interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
@@ -786,139 +786,6 @@ function per_reaction_additive_time_test(sampling_df)
         @orderby(:reaction_id)
     end
     return sorted_and_adjusted_df
-end
-
-"""
-    reaction_additive_timecourse_heatmap_dfs(
-        sampling_df;
-        control_additive = "01-Ctrl AS3",
-    )
-
-Splits the samples per reaction and additives into pairs of control and treatment groups. Then it fits models that (1) test the effect of time only vs (2) the effects of additive and time. It then does an f-test for the statistical difference between the models to determine if additive has additional explanatory power beyond just time alone.
-
-TODO: These tests are ridiculously overpowered. In order to prevent taking -log10(0.0), which many adjusted p-values are, the minimum adjusted p-value is clamped at `eps(Float64)` on the low end. This is higher than even the maximum adjusted p-values. This means that the `significance_value` for all reactions is fixed at approximately ~15. Perhaps thinning of the samples could be done in the future to fix this? Or sorting reactions not by significance but by order of magnitude of the F-statistic? I am keeping this here in case it is useful in the future, but am not generating the plot based on this in the current release.
-
-# Arguments
-1. `sampling_df`: Wide-format sampling DataFrame.
-2. `control_additive`: The additive that is considered the "control" group for all the tests.
-
-# Returns
-`NamedTuple`
-
-Returns a named tuple with data suitable for diagnostics.
-
-Available fields are:
-1. `effects_wide_df`: The wide format of the F-tests for each test. Reactions on rows, additives on columns.
-2. `significance_wide_df`: The wide format of `-log10.(max.(results_long_df.adj_p_value, eps(Float64)))`, with reactions on rows and additives on columns. See the TODO caveat above.
-3. `results_long_df`: Long format of the results of all tests.
-4. `rank_df`: DataFrame that controls the ranking of additives.
-"""
-function reaction_additive_timecourse_heatmap_dfs(
-    sampling_df;
-    control_additive = "01-Ctrl AS3",
-)
-    analysis_df = pivot_sampling_df_long(sampling_df)
-    reactions = unique(analysis_df.reaction_id)
-    additives = sort(unique(analysis_df.additive))
-    treatment_additives = [a for a in additives if a != control_additive]
-    isempty(treatment_additives) && throw(ArgumentError("No non-control additives found."))
-    jobs = [
-        (reaction_id, additive) for reaction_id in reactions for
-        additive in treatment_additives
-    ]
-    n_jobs = length(jobs)
-    println("n_jobs: $n_jobs")
-    result_rows = ThreadsX.map(jobs) do (reaction_id, additive)
-        pair_df = @chain analysis_df begin
-            @rsubset(:reaction_id == reaction_id)
-            @rsubset(:additive == control_additive || :additive == additive)
-            @rtransform(:group = :additive == control_additive ? "control" : "treatment")
-        end
-        pair_df.group = categorical(pair_df.group)
-        pair_df.final_time = categorical(pair_df.final_time)
-        try
-            reduced_model = lm(@formula(flux ~ final_time), pair_df)
-            full_model =
-                lm(@formula(flux ~ final_time + group + final_time & group), pair_df)
-            ft = GLM.ftest(reduced_model.model, full_model.model)
-            statistic = Float64(ft.fstat[2])
-            p_value = Float64(ft.pval[2])
-            print(".")
-            return (
-                reaction_id = reaction_id,
-                additive = additive,
-                statistic = statistic,
-                p_value = p_value,
-                n_obs = nrow(pair_df),
-                model_ok = true,
-            )
-        catch err
-            @warn "ANOVA fit failed for reaction/additive pair" reaction_id additive exception =
-                (err, catch_backtrace())
-            print(".")
-            return (
-                reaction_id = reaction_id,
-                additive = additive,
-                statistic = NaN,
-                p_value = NaN,
-                n_obs = nrow(pair_df),
-                model_ok = false,
-            )
-        end
-    end
-    println("done")
-    results_long_df = DataFrame(result_rows)
-    results_long_df.adj_p_value = fill(NaN, nrow(results_long_df))
-    valid_idx = findall(x -> !isnan(x), results_long_df.p_value)
-    if !isempty(valid_idx)
-        results_long_df.adj_p_value[valid_idx] =
-            adjust(results_long_df.p_value[valid_idx], BenjaminiHochberg())
-    end
-    results_long_df.significance_value =
-        -log10.(max.(results_long_df.adj_p_value, eps(Float64)))
-
-    rank_df = @chain results_long_df begin
-        @rsubset(:adj_p_value < 0.05)
-        @groupby(:reaction_id)
-        @combine(:sort_order = maximum(:significance_value))
-        @orderby(-:sort_order)
-    end
-
-    effects_wide_df = @chain results_long_df begin
-        @select(:reaction_id, :additive, :statistic)
-        unstack(:reaction_id, :additive, :statistic)
-    end
-    significance_wide_df = @chain results_long_df begin
-        @select(:reaction_id, :additive, :significance_value)
-        unstack(:reaction_id, :additive, :significance_value)
-    end
-    for additive in treatment_additives
-        if !(additive in names(effects_wide_df))
-            effects_wide_df[!, additive] = fill(NaN, nrow(effects_wide_df))
-        end
-        if !(additive in names(significance_wide_df))
-            significance_wide_df[!, additive] = fill(NaN, nrow(significance_wide_df))
-        end
-    end
-    effects_wide_df = select(effects_wide_df, :reaction_id, treatment_additives...)
-    significance_wide_df =
-        select(significance_wide_df, :reaction_id, treatment_additives...)
-    effects_wide_sorted_df = @chain effects_wide_df begin
-        innerjoin(rank_df, on = :reaction_id)
-        @orderby(-:sort_order)
-        @select(Not(:sort_order))
-    end
-    significance_wide_sorted_df = @chain significance_wide_df begin
-        innerjoin(rank_df, on = :reaction_id)
-        @orderby(-:sort_order)
-        @select(Not(:sort_order))
-    end
-    return (
-        effects_wide_df = effects_wide_sorted_df,
-        significance_wide_df = significance_wide_sorted_df,
-        results_long_df = results_long_df,
-        rank_df = rank_df,
-    )
 end
 
 """
@@ -1149,6 +1016,48 @@ function reactions_metabolites_report_dfs(
         interesting_reactions_df = interesting_reactions_df,
     )
     return result
+end
+
+"""
+    filter_reactions_treatments_df(
+        interesting_reactions_df,
+        control_vs_treatments_df,
+        reaction_ids_to_strings_df;
+        reaction_classifications = nothing,
+    )
+
+Using the interesting reactions found by metabolites and the control vs treatments DataFrame, find which interesting reactions have significant changes based on treatment additives.
+
+# Arguments
+1. `interesting_reactions_df`: Interesting reaction DataFrame from [`reactions_metabolites_report_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.reactions_metabolites_report_dfs)
+2. `control_vs_treatments_df`: Control vs treatments DataFrame from [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
+3. `reaction_ids_to_strings_df`: DataFrame mapping reaction ids to reaction strings, subsystems, and categories.
+4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame with the report of interesting reactions and interesting treatments.
+"""
+function filter_reactions_treatments_df(
+    interesting_reactions_df,
+    control_vs_treatments_df,
+    reaction_ids_to_strings_df;
+    reaction_classifications = nothing,
+)
+    reaction_classifications_2 =
+        isnothing(reaction_classifications) ?
+        ["exchange", "inner_reaction", "transporter"] : reaction_classifications
+    control_vs_treatments_df_2 = @rsubset(control_vs_treatments_df, :all_interesting)
+    reaction_ids_to_strings_df_2 = select(reaction_ids_to_strings_df, Not(:reaction_name))
+    interesting_reactions_treatments_df = @chain interesting_reactions_df begin
+        @rsubset(:reaction_classification in reaction_classifications_2)
+        innerjoin(control_vs_treatments_df_2, on = :reaction_id)
+        leftjoin(reaction_ids_to_strings_df_2, on = :reaction_id)
+        select(Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status, :subsystem]))
+        @orderby(:treatment_additive, :reaction_id, :final_time)
+    end
+    return interesting_reactions_treatments_df
 end
 
 end
