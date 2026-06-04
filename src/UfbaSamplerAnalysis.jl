@@ -606,8 +606,8 @@ Goes through all DataFrames in the comparison result and removes the leading `R_
 Returns a named tuple with the same fields containing DataFrames that have reaction ids with the `R_` removed.
 """
 function remove_reaction_string_prefix(comparison_result)
-    interesting_df = @rtransform(
-        comparison_result.interesting_df,
+    control_vs_treatments_df = @rtransform(
+        comparison_result.control_vs_treatments_df,
         :reaction_id = replace(:reaction_id, "R_" => "")
     )
     score_ranking_df = @rtransform(
@@ -627,7 +627,7 @@ function remove_reaction_string_prefix(comparison_result)
         :reaction_id = replace(:reaction_id, "R_" => "")
     )
     result = (
-        interesting_df = interesting_df,
+        control_vs_treatments_df = control_vs_treatments_df,
         interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
