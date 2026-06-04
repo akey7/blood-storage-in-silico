@@ -1055,7 +1055,7 @@ function filter_reactions_treatments_df(
     n_complete_reactions_final_times = n_final_times * n_reaction_ids
     complete_conditions_df = @chain control_vs_treatments_df begin
         @groupby(:treatment_additive)
-        combine(nrow => :n_reactions_final_times)
+        DataFrames.combine(nrow => :n_reactions_final_times)
         @rtransform(
             :is_complete = :n_reactions_final_times == n_complete_reactions_final_times
         )
