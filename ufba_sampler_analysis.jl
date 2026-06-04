@@ -131,14 +131,20 @@ println("Wrote $reactions_metabolites_filename")
 
 @info "Determining (interesting reaction)/treatment pairs"
 control_vs_treatments_df = comparison_result_0.control_vs_treatments_df  # Retain R_ prefix for reaction ids
-interesting_reactions_treatments_df = filter_reactions_treatments_df(
+filter_reactions_treatments_result = filter_reactions_treatments_df(
     interesting_reactions_df,
     control_vs_treatments_df,
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
 )
-reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.csv")
-CSV.write(reactions_treatments_filename, interesting_reactions_treatments_df)
+reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.xlsx")
+XLSX.writetable(
+    reactions_treatments_filename,
+    "reactions_treatments" =>
+        filter_reactions_treatments_result.interesting_reactions_treatments_df,
+    "complete_conditions" => filter_reactions_treatments_result.complete_conditions_df,
+    overwrite = true,
+)
 println("Wrote $reactions_treatments_filename")
 
 @info "Reaction correlations"

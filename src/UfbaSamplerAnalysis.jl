@@ -1048,16 +1048,41 @@ function filter_reactions_treatments_df(
     reaction_classifications_2 =
         isnothing(reaction_classifications) ?
         ["exchange", "inner_reaction", "transporter"] : reaction_classifications
-    control_vs_treatments_df_2 = @rsubset(control_vs_treatments_df, :all_interesting)
+    final_times = sort(unique(control_vs_treatments_df.final_time))
+    n_final_times = length(final_times)
+    reaction_ids = sort(unique(control_vs_treatments_df.reaction_id))
+    n_reaction_ids = length(reaction_ids)
+    n_complete_reactions_final_times = n_final_times * n_reaction_ids
+    complete_conditions_df = @chain control_vs_treatments_df begin
+        @groupby(:treatment_additive)
+        combine(nrow => :n_reactions_final_times)
+        @rtransform(
+            :is_complete = :n_reactions_final_times == n_complete_reactions_final_times
+        )
+    end
+    completeness_filter_df = @chain complete_conditions_df begin
+        @rsubset(:is_complete)
+        @select(:treatment_additive)
+    end
+    control_vs_treatments_df_2 = @chain control_vs_treatments_df begin
+        @rsubset(:all_interesting)
+        innerjoin(completeness_filter_df, on = :treatment_additive)
+    end
     reaction_ids_to_strings_df_2 = select(reaction_ids_to_strings_df, Not(:reaction_name))
     interesting_reactions_treatments_df = @chain interesting_reactions_df begin
         @rsubset(:reaction_classification in reaction_classifications_2)
         innerjoin(control_vs_treatments_df_2, on = :reaction_id)
         leftjoin(reaction_ids_to_strings_df_2, on = :reaction_id)
-        select(Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status, :subsystem]))
+        select(
+            Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status, :subsystem]),
+        )
         @orderby(:treatment_additive, :reaction_id, :final_time)
     end
-    return interesting_reactions_treatments_df
+    result = (
+        interesting_reactions_treatments_df = interesting_reactions_treatments_df,
+        complete_conditions_df = complete_conditions_df,
+    )
+    return result
 end
 
 end
