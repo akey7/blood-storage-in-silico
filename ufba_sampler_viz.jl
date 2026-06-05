@@ -26,7 +26,8 @@ println("Num threads $num_threads")
 
 # Uncomment to select an interesting treatement and compare with control
 control_additive = "AS3"
-treatment_additive = "adenosine-10uM"
+treatment_additive = "adenine"
+# treatment_additive = "arginine"
 @info "Plotting uFBA histogram and density plots for $control_additive vs $treatment_additive"
 plot_all_distributions_for_reactions(
     sampling_df,
