@@ -405,7 +405,6 @@ For each (non-control) additive, time point, and reaction, compare all additives
 3. `control_additive = "AS3"`: The name of the additive to use as the "control".
 4. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
 5. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
-6. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
 `NamedTuple`
@@ -424,7 +423,6 @@ function compare_flux_distributions(
     control_additive = "AS3",
     n_samples = nothing,
     alpha = 0.01,
-    interesting_cohen_effect_z = 2.0,
 )
     Random.seed!(123)
     ci_quantile = 1.0 - alpha
@@ -524,17 +522,9 @@ function compare_flux_distributions(
         )
         @rtransform(
             :t_test_significant = :adj_t_test_p <= alpha,
-            :mw_significant = :adj_mw_p <= alpha,
-            :large_effect = abs(:reaction_cohen_effect_z) >= interesting_cohen_effect_z
-        )
-        @rtransform(
-            :all_interesting = :t_test_significant && :mw_significant && :large_effect
+            :mw_significant = :adj_mw_p <= alpha
         )
         @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
-    end
-    interesting_vs_uninteresting_df = @chain control_vs_treatments_df begin
-        @groupby(:all_interesting)
-        DataFrames.combine(nrow => :count)
     end
     log_p_max = 2.0
     score_ranking_df = @chain test_df begin
@@ -583,7 +573,6 @@ function compare_flux_distributions(
     end
     result = (
         control_vs_treatments_df = control_vs_treatments_df,
-        interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
@@ -1033,6 +1022,7 @@ Using the interesting reactions found by metabolites and the control vs treatmen
 2. `control_vs_treatments_df`: Control vs treatments DataFrame from [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 3. `reaction_ids_to_strings_df`: DataFrame mapping reaction ids to reaction strings, subsystems, and categories.
 4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
+5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
 `NamedTuple`
@@ -1046,6 +1036,7 @@ function filter_reactions_treatments_df(
     control_vs_treatments_df,
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
+    interesting_cohen_effect_z = 2.0,
 )
     reaction_classifications_2 =
         isnothing(reaction_classifications) ?
@@ -1068,7 +1059,8 @@ function filter_reactions_treatments_df(
         @select(:treatment_additive)
     end
     control_vs_treatments_df_2 = @chain control_vs_treatments_df begin
-        @rsubset(:all_interesting)
+        @rtransform(:large_effect = abs(:reaction_cohen_effect_z) >= interesting_cohen_effect_z)
+        @rsubset(:t_test_significant && :mw_significant && :large_effect)
         innerjoin(completeness_filter_df, on = :treatment_additive)
     end
     reaction_ids_to_strings_df_2 = select(reaction_ids_to_strings_df, Not(:reaction_name))
