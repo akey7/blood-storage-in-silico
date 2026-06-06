@@ -128,7 +128,6 @@ filter_reactions_treatments_result = filter_reactions_treatments_df(
     control_vs_treatments_df,
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
-    interesting_cohen_effect_z = 2.0,
 )
 reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.xlsx")
 XLSX.writetable(
