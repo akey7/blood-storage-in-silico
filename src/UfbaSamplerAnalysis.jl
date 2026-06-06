@@ -616,7 +616,6 @@ function remove_reaction_string_prefix(comparison_result)
     )
     result = (
         control_vs_treatments_df = control_vs_treatments_df,
-        interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
@@ -1021,7 +1020,6 @@ Using the interesting reactions found by metabolites and the control vs treatmen
 2. `control_vs_treatments_df`: Control vs treatments DataFrame from [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 3. `reaction_ids_to_strings_df`: DataFrame mapping reaction ids to reaction strings, subsystems, and categories.
 4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
-5. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
 `NamedTuple`
@@ -1035,7 +1033,6 @@ function filter_reactions_treatments_df(
     control_vs_treatments_df,
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
-    interesting_cohen_effect_z = 2.0,
 )
     reaction_classifications_2 =
         isnothing(reaction_classifications) ?
