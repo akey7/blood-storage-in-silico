@@ -76,18 +76,17 @@ println("Wrote $measurements_and_sinks_report_by_model_filename")
 @info "Comparing control vs. treatment fluxes"
 comparison_result_0 =
     compare_flux_distributions(sampling_df, working_models_df; alpha = 0.01)
-comparison_result = remove_reaction_string_prefix(comparison_result_0)
-comparison_result_filename = joinpath("output", "reaction_treatment_comparison.xlsx")
-XLSX.writetable(
-    comparison_result_filename,
-    "control_vs_treatments" => comparison_result.control_vs_treatments_df,
-    "score_ranking" => comparison_result.score_ranking_df,
-    "effects_wide" => comparison_result.effects_wide_df,
-    "significance_wide" => comparison_result.significance_wide_df,
-    "heatmap_rank" => comparison_result.heatmap_rank_df;
-    overwrite = true,
-)
-println("Wrote $comparison_result_filename")
+# comparison_result = remove_reaction_string_prefix(comparison_result_0)
+# comparison_result_filename = joinpath("output", "reaction_treatment_comparison.xlsx")
+# XLSX.writetable(
+#     comparison_result_filename,
+#     "score_ranking" => comparison_result.score_ranking_df,
+#     "effects_wide" => comparison_result.effects_wide_df,
+#     "significance_wide" => comparison_result.significance_wide_df,
+#     "heatmap_rank" => comparison_result.heatmap_rank_df;
+#     overwrite = true,
+# )
+# println("Wrote $comparison_result_filename")
 
 @info "Combining reactions, metabolites, and measurements report"
 interesting_metabolites_filename = joinpath("input", "interesting_metabolites.csv")

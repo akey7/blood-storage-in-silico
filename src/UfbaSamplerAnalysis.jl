@@ -1058,7 +1058,7 @@ function filter_reactions_treatments_df(
         @select(:treatment_additive)
     end
     control_vs_treatments_df_2 = @chain control_vs_treatments_df begin
-        @rtransform(:large_effect = abs(:reaction_cohen_effect_z) >= interesting_cohen_effect_z)
+        @rtransform(:abs_cohen_effect_z = abs(:reaction_cohen_effect_z))
         @rsubset(:t_test_significant && :mw_significant && :large_effect)
         innerjoin(completeness_filter_df, on = :treatment_additive)
     end
@@ -1070,7 +1070,7 @@ function filter_reactions_treatments_df(
         select(
             Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status, :subsystem]),
         )
-        @orderby(:treatment_additive, :reaction_id, :final_time)
+        @orderby(:treatment_additive, :reaction_id, -:abs_cohen_effect_z)
     end
     result = (
         interesting_reactions_treatments_df = interesting_reactions_treatments_df,
