@@ -410,12 +410,11 @@ For each (non-control) additive, time point, and reaction, compare all additives
 `NamedTuple`
 
 Returns a tuple of two DataFrames:
-1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
-2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
-3. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
-4. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
-5. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
-6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
+1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, and `reaction_id`.
+2. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
+3. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
+4. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
+5. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
     sampling_df,
@@ -524,7 +523,7 @@ function compare_flux_distributions(
             :t_test_significant = :adj_t_test_p <= alpha,
             :mw_significant = :adj_mw_p <= alpha
         )
-        @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
+        @orderby(:treatment_additive, :final_time, :reaction_id)
     end
     log_p_max = 2.0
     score_ranking_df = @chain test_df begin

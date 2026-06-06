@@ -74,11 +74,8 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
-comparison_result_0 = compare_flux_distributions(
-    sampling_df,
-    working_models_df;
-    alpha = 0.01,
-)
+comparison_result_0 =
+    compare_flux_distributions(sampling_df, working_models_df; alpha = 0.01)
 comparison_result = remove_reaction_string_prefix(comparison_result_0)
 comparison_result_filename = joinpath("output", "reaction_treatment_comparison.xlsx")
 XLSX.writetable(
