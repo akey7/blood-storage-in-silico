@@ -1056,7 +1056,7 @@ function filter_reactions_treatments_df(
     end
     control_vs_treatments_df_2 = @chain control_vs_treatments_df begin
         @rtransform(:abs_cohen_effect_z = abs(:reaction_cohen_effect_z))
-        @rsubset(:t_test_significant && :mw_significant && :large_effect)
+        @rsubset(:t_test_significant && :mw_significant)
         innerjoin(completeness_filter_df, on = :treatment_additive)
     end
     reaction_ids_to_strings_df_2 = select(reaction_ids_to_strings_df, Not(:reaction_name))
