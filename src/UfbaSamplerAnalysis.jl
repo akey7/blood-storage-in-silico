@@ -955,7 +955,7 @@ function reactions_metabolites_report_dfs(
             :reaction_category,
             :reaction_string,
             :metabolite_id,
-            :coeff,
+            :reaction_metabolite_coeff = :coeff,
             :metabolite_name,
             :is_metabolite_measured = :is_measured
         )
@@ -984,14 +984,19 @@ function reactions_metabolites_report_dfs(
     interesting_reactions_df = @chain reactions_metabolites_df begin
         @rsubset(:metabolite_id in interesting_metabolite_ids)
         @rtransform(:reaction_classification = string(classify_reaction_id(:reaction_id)))
-        @orderby(:reaction_classification, :metabolite_id, :reaction_id, :coeff)
+        @orderby(
+            :reaction_classification,
+            :metabolite_id,
+            :reaction_id,
+            :reaction_metabolite_coeff
+        )
         @select(
             :reaction_classification,
             :metabolite_id,
             :metabolite_name,
             :reaction_id,
             :reaction_name,
-            :coeff,
+            :reaction_metabolite_coeff,
             :is_metabolite_measured,
         )
     end
