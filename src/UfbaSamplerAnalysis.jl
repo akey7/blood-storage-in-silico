@@ -405,18 +405,16 @@ For each (non-control) additive, time point, and reaction, compare all additives
 3. `control_additive = "AS3"`: The name of the additive to use as the "control".
 4. `n_samples = nothing`: If specified, number of samples without replacement to take from the control and treatment fluxes. The use of this is to reduce the power of the statistical tests, because with thousands of samples, most of the adjusted p-values tend to be significant.
 5. `alpha = 0.01`: Either the adjusted p-value considered significant or `1.0 - alpha` is the confidence interval for the Cohen's effect measurement.
-6. `interesting_cohen_effect_z = 2.0`: Z-scores for the Cohen's effect sizes are computed per reaction across all additives and time points. For an effect size to be considered interesting, its z-score must be greater than mor equal to this value.
 
 # Returns
 `NamedTuple`
 
 Returns a tuple of two DataFrames:
-1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, `reaction_id`, `all_interesting`. If `all_interesting` is `true`, that row might be worth a look!
-2. `interesting_vs_uninteresting_df`: An aggregated report of the number of rows that are `all_interesting` or not. Shows if the statistical test thresholds are too permissive or too tight.
-3. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
-4. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
-5. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
-6. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
+1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, and `reaction_id`.
+2. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
+3. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
+4. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
+5. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
 """
 function compare_flux_distributions(
     sampling_df,
@@ -424,7 +422,6 @@ function compare_flux_distributions(
     control_additive = "AS3",
     n_samples = nothing,
     alpha = 0.01,
-    interesting_cohen_effect_z = 2.0,
 )
     Random.seed!(123)
     ci_quantile = 1.0 - alpha
@@ -524,17 +521,9 @@ function compare_flux_distributions(
         )
         @rtransform(
             :t_test_significant = :adj_t_test_p <= alpha,
-            :mw_significant = :adj_mw_p <= alpha,
-            :large_effect = abs(:reaction_cohen_effect_z) >= interesting_cohen_effect_z
+            :mw_significant = :adj_mw_p <= alpha
         )
-        @rtransform(
-            :all_interesting = :t_test_significant && :mw_significant && :large_effect
-        )
-        @orderby(:treatment_additive, :final_time, :all_interesting, :reaction_id)
-    end
-    interesting_vs_uninteresting_df = @chain control_vs_treatments_df begin
-        @groupby(:all_interesting)
-        DataFrames.combine(nrow => :count)
+        @orderby(:treatment_additive, :final_time, :reaction_id)
     end
     log_p_max = 2.0
     score_ranking_df = @chain test_df begin
@@ -583,7 +572,6 @@ function compare_flux_distributions(
     end
     result = (
         control_vs_treatments_df = control_vs_treatments_df,
-        interesting_vs_uninteresting_df = interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
@@ -628,7 +616,6 @@ function remove_reaction_string_prefix(comparison_result)
     )
     result = (
         control_vs_treatments_df = control_vs_treatments_df,
-        interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df,
         score_ranking_df = score_ranking_df,
         effects_wide_df = effects_wide_df,
         significance_wide_df = significance_wide_df,
@@ -1035,9 +1022,11 @@ Using the interesting reactions found by metabolites and the control vs treatmen
 4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
 
 # Returns
-`DataFrame`
+`NamedTuple`
 
-Returns a DataFrame with the report of interesting reactions and interesting treatments.
+Returns a named tuple with two fields:
+1. `interesting_reactions_treatments_df`: DataFrame of interesting reactions and treatments that merit further investigation.
+2. `complete_conditions_df`: DataFrame listing conditions from the sampling data and whether or not they are complete across all time points.
 """
 function filter_reactions_treatments_df(
     interesting_reactions_df,
@@ -1048,16 +1037,43 @@ function filter_reactions_treatments_df(
     reaction_classifications_2 =
         isnothing(reaction_classifications) ?
         ["exchange", "inner_reaction", "transporter"] : reaction_classifications
-    control_vs_treatments_df_2 = @rsubset(control_vs_treatments_df, :all_interesting)
+    final_times = sort(unique(control_vs_treatments_df.final_time))
+    n_final_times = length(final_times)
+    reaction_ids = sort(unique(control_vs_treatments_df.reaction_id))
+    n_reaction_ids = length(reaction_ids)
+    n_complete_reactions_final_times = n_final_times * n_reaction_ids
+    complete_conditions_df = @chain control_vs_treatments_df begin
+        @groupby(:treatment_additive)
+        DataFrames.combine(nrow => :n_reactions_final_times)
+        @rtransform(
+            :is_complete = :n_reactions_final_times == n_complete_reactions_final_times
+        )
+        @orderby(:is_complete, :treatment_additive)
+    end
+    completeness_filter_df = @chain complete_conditions_df begin
+        @rsubset(:is_complete)
+        @select(:treatment_additive)
+    end
+    control_vs_treatments_df_2 = @chain control_vs_treatments_df begin
+        @rtransform(:abs_cohen_effect_z = abs(:reaction_cohen_effect_z))
+        @rsubset(:t_test_significant && :mw_significant)
+        innerjoin(completeness_filter_df, on = :treatment_additive)
+    end
     reaction_ids_to_strings_df_2 = select(reaction_ids_to_strings_df, Not(:reaction_name))
     interesting_reactions_treatments_df = @chain interesting_reactions_df begin
         @rsubset(:reaction_classification in reaction_classifications_2)
         innerjoin(control_vs_treatments_df_2, on = :reaction_id)
         leftjoin(reaction_ids_to_strings_df_2, on = :reaction_id)
-        select(Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status, :subsystem]))
-        @orderby(:treatment_additive, :reaction_id, :final_time)
+        select(
+            Not([:t_test_p, :mw_p, :cohen_effect, :t_test_verification_status, :subsystem]),
+        )
+        @orderby(:treatment_additive, :reaction_id, -:abs_cohen_effect_z)
     end
-    return interesting_reactions_treatments_df
+    result = (
+        interesting_reactions_treatments_df = interesting_reactions_treatments_df,
+        complete_conditions_df = complete_conditions_df,
+    )
+    return result
 end
 
 end

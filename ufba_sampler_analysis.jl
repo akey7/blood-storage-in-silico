@@ -74,27 +74,19 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
-comparison_result_0 = compare_flux_distributions(
-    sampling_df,
-    working_models_df;
-    alpha = 0.01,
-    interesting_cohen_effect_z = 2.0,
-)
-comparison_result = remove_reaction_string_prefix(comparison_result_0)
-interesting_vs_uninteresting_df = comparison_result.interesting_vs_uninteresting_df
-display(interesting_vs_uninteresting_df)
-comparison_result_filename = joinpath("output", "reaction_treatment_comparison.xlsx")
-XLSX.writetable(
-    comparison_result_filename,
-    "interesting_vs_uninteresting" => interesting_vs_uninteresting_df,
-    "control_vs_treatments" => comparison_result.control_vs_treatments_df,
-    "score_ranking" => comparison_result.score_ranking_df,
-    "effects_wide" => comparison_result.effects_wide_df,
-    "significance_wide" => comparison_result.significance_wide_df,
-    "heatmap_rank" => comparison_result.heatmap_rank_df;
-    overwrite = true,
-)
-println("Wrote $comparison_result_filename")
+comparison_result_0 =
+    compare_flux_distributions(sampling_df, working_models_df; alpha = 0.01)
+# comparison_result = remove_reaction_string_prefix(comparison_result_0)
+# comparison_result_filename = joinpath("output", "reaction_treatment_comparison.xlsx")
+# XLSX.writetable(
+#     comparison_result_filename,
+#     "score_ranking" => comparison_result.score_ranking_df,
+#     "effects_wide" => comparison_result.effects_wide_df,
+#     "significance_wide" => comparison_result.significance_wide_df,
+#     "heatmap_rank" => comparison_result.heatmap_rank_df;
+#     overwrite = true,
+# )
+# println("Wrote $comparison_result_filename")
 
 @info "Combining reactions, metabolites, and measurements report"
 interesting_metabolites_filename = joinpath("input", "interesting_metabolites.csv")
@@ -117,28 +109,34 @@ reactions_metabolites_df = reactions_metabolites_result.reactions_metabolites_df
 reactions_measured_df = reactions_metabolites_result.reactions_measured_df
 subsystems_measured_df = reactions_metabolites_result.subsystems_measured_df
 categories_measured_df = reactions_metabolites_result.categories_measured_df
-interesting_reactions_df = reactions_metabolites_result.interesting_reactions_df
 XLSX.writetable(
     reactions_metabolites_filename,
     "reactions_metabolites" => reactions_metabolites_df,
     "reactions_measured" => reactions_measured_df,
     "subsystems_measured" => subsystems_measured_df,
     "categories_measured" => categories_measured_df,
-    "interesting_reactions" => interesting_reactions_df,
     overwrite = true,
 )
 println("Wrote $reactions_metabolites_filename")
 
 @info "Determining (interesting reaction)/treatment pairs"
+interesting_reactions_df = reactions_metabolites_result.interesting_reactions_df
 control_vs_treatments_df = comparison_result_0.control_vs_treatments_df  # Retain R_ prefix for reaction ids
-interesting_reactions_treatments_df = filter_reactions_treatments_df(
+filter_reactions_treatments_result = filter_reactions_treatments_df(
     interesting_reactions_df,
     control_vs_treatments_df,
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
 )
-reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.csv")
-CSV.write(reactions_treatments_filename, interesting_reactions_treatments_df)
+reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.xlsx")
+XLSX.writetable(
+    reactions_treatments_filename,
+    "reactions_treatments" =>
+        filter_reactions_treatments_result.interesting_reactions_treatments_df,
+    "complete_conditions" => filter_reactions_treatments_result.complete_conditions_df,
+    "interesting_reactions" => interesting_reactions_df,
+    overwrite = true,
+)
 println("Wrote $reactions_treatments_filename")
 
 @info "Reaction correlations"

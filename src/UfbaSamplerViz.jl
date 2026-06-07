@@ -1,5 +1,7 @@
 module UfbaSamplerViz
 
+using Base.Iterators
+using CSV
 using DataFrames
 using DataFramesMeta
 using Chain
@@ -13,7 +15,32 @@ using ColorSchemes
 using ProgressMeter
 
 export stacked_flux_kde_3d,
-    plot_all_distributions_for_reactions, densities_for_reaction, histograms_for_reaction_v2
+    plot_all_distributions_for_reactions,
+    densities_for_reaction,
+    histograms_for_reaction_v2,
+    load_sampling_results
+
+function load_sampling_results()
+    sampling_filename = joinpath("output", "ufba_sampling.csv")
+    sampling_df = CSV.read(sampling_filename, DataFrame)
+    additives = sort(unique(sampling_df.additive))
+    final_times = sort(unique(sampling_df.final_time))
+    all_possible = product(additives, final_times)
+    working_model_rows = []
+    for (additive, final_time) in all_possible
+        trial_df = @rsubset(sampling_df, :additive == additive, :final_time == final_time)
+        if nrow(trial_df) > 0
+            row = (additive = additive, final_time = final_time)
+            push!(working_model_rows, row)
+        end
+    end
+    working_models_df = @chain working_model_rows begin
+        DataFrame()
+        @orderby(:additive, :final_time)
+    end
+    result = (sampling_df = sampling_df, working_models_df = working_models_df)
+    return result
+end
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -296,10 +323,16 @@ function plot_all_distributions_for_reactions(
                 control_additive = control_additive,
                 treatment_additive = treatment_additive,
             )
-            filename_hist =
-                joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
-            filename_density =
-                joinpath("output", "uFBA_densities", "$reaction_id Densities.png")
+            filename_hist = joinpath(
+                "output",
+                "uFBA_histograms_v2",
+                "$treatment_additive $reaction_id Histograms.png",
+            )
+            filename_density = joinpath(
+                "output",
+                "uFBA_densities",
+                "$treatment_additive $reaction_id Densities.png",
+            )
             save(filename_hist, fig_hist)
             save(filename_density, fig_density)
             next!(prog)
