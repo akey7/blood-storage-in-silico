@@ -928,6 +928,7 @@ Returns a named tuple with the following fields:
 3. `subsystems_measured_df`: DataFrame counting the number of measured metabolites for each reaction subsystem.
 4. `categories_measured_df`: DataFrame counting the number of measured metabolites for each reaction category.
 5. `interesting_reactions_df`: DataFrame showing the "interesting" reactions that involve "interesting" metabolites.
+6. `m_interesting_metabolites_df`: DataFrame of interesting metabolites with metabolite ids transformed so they are prefixed with `M_`.
 """
 function reactions_metabolites_report_dfs(
     fba_reactions_metabolites_df,
@@ -975,14 +976,18 @@ function reactions_metabolites_report_dfs(
         @combine(:n_measured_metabolites = sum(:is_metabolite_measured))
         @orderby(-:n_measured_metabolites, :reaction_category)
     end
-    interesting_metabolite_ids_0 =
-        sort(unique(interesting_metabolites_df.interesting_metabolite_id))
-    interesting_metabolite_ids = [
-        "M_$(interesting_metabolite_id)" for
-        interesting_metabolite_id in interesting_metabolite_ids_0
-    ]
+    m_interesting_metabolites_df = @rtransform(
+        interesting_metabolites_df,
+        :interesting_metabolite_id = "M_$(:interesting_metabolite_id)"
+    )
+    # interesting_metabolite_ids =
+    #     sort(unique(m_interesting_metabolites_df.interesting_metabolite_id))
     interesting_reactions_df = @chain reactions_metabolites_df begin
-        @rsubset(:metabolite_id in interesting_metabolite_ids)
+        # @rsubset(:metabolite_id in interesting_metabolite_ids)
+        innerjoin(
+            m_interesting_metabolites_df;
+            on = :metabolite_id => :interesting_metabolite_id,
+        )
         @rtransform(:reaction_classification = string(classify_reaction_id(:reaction_id)))
         @orderby(
             :reaction_classification,
@@ -998,6 +1003,7 @@ function reactions_metabolites_report_dfs(
             :reaction_name,
             :reaction_metabolite_coeff,
             :is_metabolite_measured,
+            :good_metabolite_direction,
         )
     end
     result = (
@@ -1006,6 +1012,7 @@ function reactions_metabolites_report_dfs(
         subsystems_measured_df = subsystems_measured_df,
         categories_measured_df = categories_measured_df,
         interesting_reactions_df = interesting_reactions_df,
+        m_interesting_metabolites_df = m_interesting_metabolites_df,
     )
     return result
 end
