@@ -120,6 +120,7 @@ XLSX.writetable(
 println("Wrote $reactions_metabolites_filename")
 
 @info "Determining (interesting reaction)/treatment pairs"
+interesting_reactions_df = reactions_metabolites_result.interesting_reactions_df
 control_vs_treatments_df = comparison_result_0.control_vs_treatments_df  # Retain R_ prefix for reaction ids
 filter_reactions_treatments_result = filter_reactions_treatments_df(
     interesting_reactions_df,
@@ -127,7 +128,6 @@ filter_reactions_treatments_result = filter_reactions_treatments_df(
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
 )
-interesting_reactions_df = reactions_metabolites_result.interesting_reactions_df
 reactions_treatments_filename = joinpath("output", "analysis_reactions_treatments.xlsx")
 XLSX.writetable(
     reactions_treatments_filename,
