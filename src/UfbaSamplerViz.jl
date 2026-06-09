@@ -18,7 +18,8 @@ export stacked_flux_kde_3d,
     plot_all_distributions_for_reactions,
     densities_for_reaction,
     histograms_for_reaction_v2,
-    load_sampling_results
+    load_sampling_results,
+    calc_treatment_effects_pca
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -539,6 +540,22 @@ function histograms_for_reaction_v2(
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
     )
+end
+
+function calc_treatment_effects_pca(control_vs_treatments_signif_df)
+    final_times = sort(unique(control_vs_treatments_signif_df.final_time))
+    final_times_dfs = Dict{Int64,DataFrame}()
+    for final_time in final_times
+        df = @chain control_vs_treatments_signif_df begin
+            @rsubset(:final_time == final_time)
+            @select(Not(:final_time))
+            # unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
+            unstack(:treatment_additive, :reaction_id, :reaction_cohen_effect_z)
+        end
+        final_times_dfs[final_time] = df
+    end
+    result = (final_times_dfs = final_times_dfs)
+    return result
 end
 
 end
