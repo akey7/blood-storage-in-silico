@@ -6,6 +6,8 @@ using DataFrames
 using DataFramesMeta
 using Chain
 using StatsBase
+using StatsModels
+using MultivariateStats
 using Statistics
 using PlotlyJS
 using KernelDensity
@@ -542,22 +544,37 @@ function histograms_for_reaction_v2(
     )
 end
 
-function calc_treatment_effects_pca(control_vs_treatments_signif_df)
+function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
-    final_times_dfs = Dict{Int64,DataFrame}()
+    pc_names = Symbol.("PC", 1:n_pcs)
+    effects_dfs = Dict{Int64,DataFrame}()
     for final_time in final_times
         df = @chain control_vs_treatments_signif_df begin
             @rsubset(:final_time == final_time)
             @select(Not(:final_time))
             unstack(:treatment_additive, :reaction_id, :reaction_cohen_effect_z)
-            transform(
+            DataFrames.transform(
                 Not(:treatment_additive) .=>
                     (x -> coalesce.(x, median(collect(skipmissing(x))))) .=> identity,
             )
         end
-        final_times_dfs[final_time] = df
+        effects_dfs[final_time] = df
     end
-    result = (final_times_dfs = final_times_dfs)
+    pca_dfs = Dict{Int64,DataFrame}()
+    for final_time in final_times
+        df = effects_dfs[final_time]
+        X = Matrix(select(df, Not(:treatment_additive)))
+        Xt = copy(X')
+        M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
+        scores = MultivariateStats.transform(M, Xt)
+        pca_df = DataFrame(collect(scores'), pc_names)
+        insertcols!(pca_df, 1, :treatment_additive => df.treatment_additive)
+        pca_dfs[final_time] = pca_df
+    end
+    result = (
+        effects_dfs = effects_dfs,
+        pca_dfs = pca_dfs,
+    )
     return result
 end
 

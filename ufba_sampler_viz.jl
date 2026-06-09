@@ -47,6 +47,7 @@ println("Num threads $num_threads")
 # savefig(p_kde, p_kde_filename)
 # println("Wrote $p_kde_filename")
 
+@info "Plotting PCAs of Cohen's effects"
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
