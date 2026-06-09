@@ -49,6 +49,5 @@ println("Num threads $num_threads")
 
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
-control_vs_treatments_signif_df =
-    CSV.read(control_vs_treatments_signif_filename, DataFrame)
+control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
 treatement_effects_result = calc_treatment_effects_pca(control_vs_treatments_signif_df)

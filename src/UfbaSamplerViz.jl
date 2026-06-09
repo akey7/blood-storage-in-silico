@@ -549,8 +549,11 @@ function calc_treatment_effects_pca(control_vs_treatments_signif_df)
         df = @chain control_vs_treatments_signif_df begin
             @rsubset(:final_time == final_time)
             @select(Not(:final_time))
-            # unstack([:Sample, :Time, :Additive], :Metabolite, :absolute_mM, combine = first)
             unstack(:treatment_additive, :reaction_id, :reaction_cohen_effect_z)
+            transform(
+                Not(:treatment_additive) .=>
+                    (x -> coalesce.(x, median(collect(skipmissing(x))))) .=> identity,
+            )
         end
         final_times_dfs[final_time] = df
     end
