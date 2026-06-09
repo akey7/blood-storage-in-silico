@@ -1032,6 +1032,7 @@ Using the interesting reactions found by metabolites and the control vs treatmen
 2. `control_vs_treatments_df`: Control vs treatments DataFrame from [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
 3. `reaction_ids_to_strings_df`: DataFrame mapping reaction ids to reaction strings, subsystems, and categories.
 4. `reaction_classifications = nothing`: If unspecified, keeps `["exchange", "inner_reaction", "transporter"]` reactions in the analysis. If a vector of **strings** is specified, limits the results to only those in the vector.
+5. `filter_out_incomplete_conditions = true`: If `true`, filters out incomplete conditions.
 
 # Returns
 `NamedTuple`
@@ -1045,6 +1046,7 @@ function filter_reactions_treatments_df(
     control_vs_treatments_df,
     reaction_ids_to_strings_df;
     reaction_classifications = nothing,
+    filter_out_incomplete_conditions = true,
 )
     reaction_classifications_2 =
         isnothing(reaction_classifications) ?
@@ -1062,10 +1064,10 @@ function filter_reactions_treatments_df(
         )
         @orderby(:is_complete, :treatment_additive)
     end
-    completeness_filter_df = @chain complete_conditions_df begin
-        @rsubset(:is_complete)
-        @select(:treatment_additive)
-    end
+    completeness_filter_df_0 =
+        filter_out_incomplete_conditions ? @rsubset(complete_conditions_df, :is_complete) :
+        complete_conditions_df
+    completeness_filter_df = @select(completeness_filter_df_0, :treatment_additive)
     control_vs_treatments_df_2 = @chain control_vs_treatments_df begin
         @rtransform(:abs_cohen_effect_z = abs(:reaction_cohen_effect_z))
         @rsubset(:t_test_significant && :mw_significant)
