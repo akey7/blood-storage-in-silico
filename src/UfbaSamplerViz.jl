@@ -547,22 +547,25 @@ end
 function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
     pc_names = Symbol.("PC", 1:n_pcs)
-    effects_dfs = Dict{Int64,DataFrame}()
+    effects_dfs = DataFrame[]
     for final_time in final_times
         df = @chain control_vs_treatments_signif_df begin
             @rsubset(:final_time == final_time)
-            unstack([:treatment_additive, :final_time], :reaction_id, :reaction_cohen_effect_z)
+            unstack(
+                [:treatment_additive, :final_time],
+                :reaction_id,
+                :reaction_cohen_effect_z,
+            )
             DataFrames.transform(
                 Not([:treatment_additive, :final_time]) .=>
                     (x -> coalesce.(x, median(collect(skipmissing(x))))) .=> identity,
             )
         end
-        effects_dfs[final_time] = df
+        push!(effects_dfs, df)
     end
-    scores_dfs = Dict{Int64,DataFrame}()
-    loadings_dfs = Dict{Int64,DataFrame}()
-    for final_time in final_times
-        df = effects_dfs[final_time]
+    pca_dfs = DataFrame[]
+    loadings_dfs = DataFrame[]
+    for (final_time, df) in zip(final_times, effects_dfs)
         reaction_ids = names(select(df, Not([:treatment_additive, :final_time])))
         X = Matrix(select(df, Not([:treatment_additive, :final_time])))
         Xt = copy(X')
@@ -575,7 +578,7 @@ function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
             :treatment_additive => df.treatment_additive,
             :final_time => fill(final_time, nrow(pca_df)),
         )
-        scores_dfs[final_time] = pca_df
+        push!(pca_dfs, pca_df)
         loadings = projection(M)
         loadings_df = DataFrame(collect(loadings), pc_names)
         insertcols!(
@@ -584,10 +587,11 @@ function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
             :reaction_id => reaction_ids,
             :final_time => fill(final_time, nrow(loadings_df)),
         )
-        loadings_dfs[final_time] = loadings_df
+        push!(loadings_dfs, loadings_df)
     end
-    result =
-        (effects_dfs = effects_dfs, scores_dfs = scores_dfs, loadings_dfs = loadings_dfs)
+    pca_df = @orderby(vcat(pca_dfs...), :treatment_additive, :final_time)
+    loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
+    result = (pca_df = pca_df, loadings_df = loadings_df)
     return result
 end
 
