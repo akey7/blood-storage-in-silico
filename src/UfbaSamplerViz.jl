@@ -21,7 +21,8 @@ export stacked_flux_kde_3d,
     densities_for_reaction,
     histograms_for_reaction_v2,
     load_sampling_results,
-    calc_treatment_effects_pca
+    pca_treatment_effects,
+    prepare_treatment_effects_dfs
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -544,9 +545,8 @@ function histograms_for_reaction_v2(
     )
 end
 
-function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
+function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
-    pc_names = Symbol.("PC", 1:n_pcs)
     effects_dfs = DataFrame[]
     for final_time in final_times
         df = @chain control_vs_treatments_signif_df begin
@@ -563,6 +563,18 @@ function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
         end
         push!(effects_dfs, df)
     end
+    result = (final_times = final_times, effects_dfs = effects_dfs)
+    return result
+end
+
+# function k_means_treatment_effects(df; k = 3)
+    
+# end
+
+function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
+    final_times = prepared_treatments_result.final_times
+    effects_dfs = prepared_treatments_result.effects_dfs
+    pc_names = Symbol.("PC", 1:n_pcs)
     pca_dfs = DataFrame[]
     loadings_dfs = DataFrame[]
     for (final_time, df) in zip(final_times, effects_dfs)
