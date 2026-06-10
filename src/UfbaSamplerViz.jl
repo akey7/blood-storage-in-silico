@@ -1,11 +1,16 @@
 module UfbaSamplerViz
 
 using Base.Iterators
+using Random
 using CSV
 using DataFrames
 using DataFramesMeta
+using CategoricalArrays
 using Chain
 using StatsBase
+using StatsModels
+using Clustering
+using MultivariateStats
 using Statistics
 using PlotlyJS
 using KernelDensity
@@ -18,7 +23,11 @@ export stacked_flux_kde_3d,
     plot_all_distributions_for_reactions,
     densities_for_reaction,
     histograms_for_reaction_v2,
-    load_sampling_results
+    load_sampling_results,
+    pca_treatment_effects,
+    prepare_treatment_effects_dfs,
+    k_means_treatment_effects,
+    plot_treatment_effects_kmeans_pca
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -539,6 +548,128 @@ function histograms_for_reaction_v2(
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
     )
+end
+
+function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
+    final_times = sort(unique(control_vs_treatments_signif_df.final_time))
+    effects_dfs = DataFrame[]
+    for final_time in final_times
+        df = @chain control_vs_treatments_signif_df begin
+            @rsubset(:final_time == final_time)
+            unstack(
+                [:treatment_additive, :final_time],
+                :reaction_id,
+                :reaction_cohen_effect_z,
+            )
+            DataFrames.transform(
+                Not([:treatment_additive, :final_time]) .=>
+                    (x -> coalesce.(x, median(collect(skipmissing(x))))) .=> identity,
+            )
+        end
+        push!(effects_dfs, df)
+    end
+    result = (final_times = final_times, effects_dfs = effects_dfs)
+    return result
+end
+
+function k_means_treatment_effects(
+    prepared_treatments_result;
+    k = 5,
+    seed = 123,
+    maxiter = 300,
+)
+    final_times = prepared_treatments_result.final_times
+    effects_dfs = prepared_treatments_result.effects_dfs
+    feature_cols = names(effects_dfs[1], Not([:treatment_additive, :final_time]))
+    cluster_dfs = DataFrame[]
+    for (final_time, effects_df) in zip(final_times, effects_dfs)
+        X = Matrix{Float64}(effects_df[:, feature_cols])'
+        Random.seed!(seed)
+        result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
+        if !result.converged
+            @warn "k-means did not converge" k=k seed=seed maxiter=maxiter
+        end
+        cluster_df = DataFrame(
+            treatment_additive = effects_df.treatment_additive,
+            final_time = fill(final_time, nrow(effects_df)),
+            n_clusters = fill(k, nrow(effects_df)),
+            cluster = result.assignments,
+        )
+        push!(cluster_dfs, cluster_df)
+    end
+    treatment_k_means_df = @orderby(vcat(cluster_dfs...), :treatment_additive, :final_time)
+    return treatment_k_means_df
+end
+
+function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
+    final_times = prepared_treatments_result.final_times
+    effects_dfs = prepared_treatments_result.effects_dfs
+    pc_names = Symbol.("PC", 1:n_pcs)
+    pca_dfs = DataFrame[]
+    loadings_dfs = DataFrame[]
+    for (final_time, df) in zip(final_times, effects_dfs)
+        reaction_ids = names(select(df, Not([:treatment_additive, :final_time])))
+        X = Matrix(select(df, Not([:treatment_additive, :final_time])))
+        Xt = copy(X')
+        M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
+        scores = MultivariateStats.transform(M, Xt)
+        pca_df = DataFrame(collect(scores'), pc_names)
+        insertcols!(
+            pca_df,
+            1,
+            :treatment_additive => df.treatment_additive,
+            :final_time => fill(final_time, nrow(pca_df)),
+        )
+        push!(pca_dfs, pca_df)
+        loadings = projection(M)
+        loadings_df = DataFrame(collect(loadings), pc_names)
+        insertcols!(
+            loadings_df,
+            1,
+            :reaction_id => reaction_ids,
+            :final_time => fill(final_time, nrow(loadings_df)),
+        )
+        push!(loadings_dfs, loadings_df)
+    end
+    pca_df = @orderby(vcat(pca_dfs...), :treatment_additive, :final_time)
+    loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
+    result = (pca_df = pca_df, loadings_df = loadings_df)
+    return result
+end
+
+function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
+    n_clusters = maximum(treatment_k_means_df.cluster)
+    all_time_df = @chain pca_df begin
+        innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2)
+    end
+    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing effects k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_effects_kmeans_pca",
+            "effects_kmeans_pca_$(final_time).png",
+        )
+        title = "Effects K-Means PCA $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        scatter_plt =
+            data(plt_df) *
+            mapping(:PC1, :PC2, color = :cluster) *
+            visual(Scatter, markersize = 14, alpha = 0.75)
+        fig = draw(
+            scatter_plt,
+            scales(Color = (; palette = cluster_colors)),
+            figure = (; size = (500, 500)),
+            axis = (; title = title),
+        )
+        save(filename, fig)
+        next!(prog)
+    end
 end
 
 end
