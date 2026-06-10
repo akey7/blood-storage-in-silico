@@ -551,10 +551,9 @@ function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
     for final_time in final_times
         df = @chain control_vs_treatments_signif_df begin
             @rsubset(:final_time == final_time)
-            @select(Not(:final_time))
-            unstack(:treatment_additive, :reaction_id, :reaction_cohen_effect_z)
+            unstack([:treatment_additive, :final_time], :reaction_id, :reaction_cohen_effect_z)
             DataFrames.transform(
-                Not(:treatment_additive) .=>
+                Not([:treatment_additive, :final_time]) .=>
                     (x -> coalesce.(x, median(collect(skipmissing(x))))) .=> identity,
             )
         end
@@ -564,17 +563,27 @@ function calc_treatment_effects_pca(control_vs_treatments_signif_df; n_pcs = 5)
     loadings_dfs = Dict{Int64,DataFrame}()
     for final_time in final_times
         df = effects_dfs[final_time]
-        reaction_ids = names(select(df, Not(:treatment_additive)))
-        X = Matrix(select(df, Not(:treatment_additive)))
+        reaction_ids = names(select(df, Not([:treatment_additive, :final_time])))
+        X = Matrix(select(df, Not([:treatment_additive, :final_time])))
         Xt = copy(X')
         M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
         scores = MultivariateStats.transform(M, Xt)
         pca_df = DataFrame(collect(scores'), pc_names)
-        insertcols!(pca_df, 1, :treatment_additive => df.treatment_additive)
+        insertcols!(
+            pca_df,
+            1,
+            :treatment_additive => df.treatment_additive,
+            :final_time => fill(final_time, nrow(pca_df)),
+        )
         scores_dfs[final_time] = pca_df
         loadings = projection(M)
         loadings_df = DataFrame(collect(loadings), pc_names)
-        insertcols!(loadings_df, 1, :reaction_id => reaction_ids)
+        insertcols!(
+            loadings_df,
+            1,
+            :reaction_id => reaction_ids,
+            :final_time => fill(final_time, nrow(loadings_df)),
+        )
         loadings_dfs[final_time] = loadings_df
     end
     result =
