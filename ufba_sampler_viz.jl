@@ -54,11 +54,13 @@ control_vs_treatments_signif_filename =
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
 prepared_treatments_result = prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
 treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
-treatement_pca_filename = joinpath("output", "viz_treatment_pca.xlsx")
+treatement_pca_filename = joinpath("output", "viz_treatment_cluster_pca.xlsx")
+treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
 XLSX.writetable(
     treatement_pca_filename,
     "pca" => treatement_pca_result.pca_df,
     "loadings" => treatement_pca_result.loadings_df,
+    "k_means" => treatment_k_means_df,
     overwrite = true,
 )
 println("Wrote $treatement_pca_filename")
