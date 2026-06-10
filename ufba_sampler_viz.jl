@@ -1,4 +1,5 @@
 using CSV
+using XLSX
 using YAML
 using DataFrames
 using CairoMakie
@@ -51,4 +52,12 @@ println("Num threads $num_threads")
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
-treatement_effects_result = calc_treatment_effects_pca(control_vs_treatments_signif_df)
+treatement_pca_result = calc_treatment_effects_pca(control_vs_treatments_signif_df)
+treatement_pca_filename = joinpath("output", "viz_treatment_pca.xlsx")
+XLSX.writetable(
+    treatement_pca_filename,
+    "pca" => treatement_pca_result.pca_df,
+    "loadings" => treatement_pca_result.loadings_df,
+    overwrite = true,
+)
+println("Wrote $treatement_pca_filename")
