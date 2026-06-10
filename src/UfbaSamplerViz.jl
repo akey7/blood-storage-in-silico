@@ -550,6 +550,10 @@ function histograms_for_reaction_v2(
     )
 end
 
+#####################################################################
+# EFFECT SIZE PCA/K-MEANS                                           #
+#####################################################################
+
 function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
     effects_dfs = DataFrame[]
@@ -670,6 +674,48 @@ function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
         save(filename, fig)
         next!(prog)
     end
+end
+
+#####################################################################
+# MEDIAN FLUX PCA/K-MEANS                                           #
+#####################################################################
+
+function prepare_median_fluxes_dfs(median_fluxes_df)
+    final_times = sort(unique(median_fluxes_df.final_time))
+    median_fluxes_dfs = DataFrame[]
+    for final_time in final_times
+        df = @chain median_fluxes_df begin
+            @rsubset(:final_time == final_time)
+            unstack([:additive, :final_time], :reaction_id, :median_flux)
+        end
+        push!(median_fluxes_dfs, df)
+    end
+    result = (final_times = final_times, median_fluxes_dfs = median_fluxes_dfs)
+    return result
+end
+
+function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
+    final_times = prepared_medians_result.final_times
+    median_fluxes_dfs = prepare_median_fluxes_dfs.median_fluxes_dfs
+    feature_cols = names(median_fluxes_dfs[1], Not([:additive, :final_time]))
+    cluster_dfs = DataFrame[]
+    for (final_time, median_fluxes_df) in zip(final_times, median_fluxes_dfs)
+        X = Matrix{Float64}(median_fluxes_df[:, feature_cols])'
+        Random.seed!(seed)
+        result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
+        if !result.converged
+            @warn "k-means did not converge" k=k seed=seed maxiter=maxiter
+        end
+        cluster_df = DataFrame(
+            treatment_additive = median_fluxes_df.treatment_additive,
+            final_time = fill(final_time, nrow(median_fluxes_df)),
+            n_clusters = fill(k, nrow(median_fluxes_df)),
+            cluster = result.assignments,
+        )
+        push!(cluster_dfs, cluster_df)
+    end
+    fluxes_k_means_df = @orderby(vcat(cluster_dfs...), :additive, :final_time)
+    return fluxes_k_means_df
 end
 
 end
