@@ -5,6 +5,7 @@ using Random
 using CSV
 using DataFrames
 using DataFramesMeta
+using CategoricalArrays
 using Chain
 using StatsBase
 using StatsModels
@@ -25,7 +26,8 @@ export stacked_flux_kde_3d,
     load_sampling_results,
     pca_treatment_effects,
     prepare_treatment_effects_dfs,
-    k_means_treatment_effects
+    k_means_treatment_effects,
+    plot_treatment_effects_kmeans_pca
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -633,6 +635,34 @@ function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
     loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
     result = (pca_df = pca_df, loadings_df = loadings_df)
     return result
+end
+
+function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
+    all_time_df = @chain pca_df begin
+        innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2)
+    end
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing effects k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_effects_kmeans_pca",
+            "effects_kmeans_pca_$(final_time).png",
+        )
+        title = "Effects K-Means PCA $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        scatter_plt =
+            data(plt_df) *
+            mapping(:PC1, :PC2, color = :cluster) *
+            visual(Scatter, markersize = 14, alpha = 0.5)
+        fig = draw(scatter_plt, figure = (; size = (500, 500)), axis = (; title = title))
+        save(filename, fig)
+        next!(prog)
+    end
 end
 
 end
