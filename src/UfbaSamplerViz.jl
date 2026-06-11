@@ -27,7 +27,9 @@ export stacked_flux_kde_3d,
     pca_treatment_effects,
     prepare_treatment_effects_dfs,
     k_means_treatment_effects,
-    plot_treatment_effects_kmeans_pca
+    plot_treatment_effects_kmeans_pca,
+    prepare_median_fluxes_dfs,
+    k_means_median_fluxes
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -680,26 +682,40 @@ end
 # MEDIAN FLUX PCA/K-MEANS                                           #
 #####################################################################
 
+function zscore_col(xs)
+    μ = mean(skipmissing(xs))
+    σ = std(skipmissing(xs))
+    if isapprox(σ, 0.0)
+        return fill(0.0, length(xs))
+    else
+        return (xs .- μ) ./ σ
+    end
+end
+
 function prepare_median_fluxes_dfs(median_fluxes_df)
     final_times = sort(unique(median_fluxes_df.final_time))
-    median_fluxes_dfs = DataFrame[]
+    centered_scaled_dfs = DataFrame[]
     for final_time in final_times
         df = @chain median_fluxes_df begin
             @rsubset(:final_time == final_time)
             unstack([:additive, :final_time], :reaction_id, :median_flux)
         end
-        push!(median_fluxes_dfs, df)
+        feature_cols = names(df, Not([:additive, :final_time]))
+        for col in feature_cols
+            @transform!(df, $col = zscore_col($col))
+        end
+        push!(centered_scaled_dfs, df)
     end
-    result = (final_times = final_times, median_fluxes_dfs = median_fluxes_dfs)
+    result = (final_times = final_times, centered_scaled_dfs = centered_scaled_dfs)
     return result
 end
 
 function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
     final_times = prepared_medians_result.final_times
-    median_fluxes_dfs = prepare_median_fluxes_dfs.median_fluxes_dfs
-    feature_cols = names(median_fluxes_dfs[1], Not([:additive, :final_time]))
+    centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
+    feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
     cluster_dfs = DataFrame[]
-    for (final_time, median_fluxes_df) in zip(final_times, median_fluxes_dfs)
+    for (final_time, median_fluxes_df) in zip(final_times, centered_scaled_dfs)
         X = Matrix{Float64}(median_fluxes_df[:, feature_cols])'
         Random.seed!(seed)
         result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
@@ -707,7 +723,7 @@ function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxit
             @warn "k-means did not converge" k=k seed=seed maxiter=maxiter
         end
         cluster_df = DataFrame(
-            treatment_additive = median_fluxes_df.treatment_additive,
+            additive = median_fluxes_df.additive,
             final_time = fill(final_time, nrow(median_fluxes_df)),
             n_clusters = fill(k, nrow(median_fluxes_df)),
             cluster = result.assignments,

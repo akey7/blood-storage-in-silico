@@ -48,24 +48,32 @@ println("Num threads $num_threads")
 # savefig(p_kde, p_kde_filename)
 # println("Wrote $p_kde_filename")
 
-@info "K-Means/PCA analysis and plots of Cohen's effects"
-control_vs_treatments_signif_filename =
-    joinpath("output", "analysis_control_vs_treatments_signif.csv")
-control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
-prepared_treatments_result = prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
-treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
-treatement_pca_filename = joinpath("output", "viz_treatment_cluster_pca.xlsx")
-treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
-XLSX.writetable(
-    treatement_pca_filename,
-    "pca" => treatement_pca_result.pca_df,
-    "loadings" => treatement_pca_result.loadings_df,
-    "k_means" => treatment_k_means_df,
-    overwrite = true,
-)
-println("Wrote $treatement_pca_filename")
-plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
+# @info "K-Means/PCA analysis and plots of Cohen's effects"
+# control_vs_treatments_signif_filename =
+#     joinpath("output", "analysis_control_vs_treatments_signif.csv")
+# control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
+# prepared_treatments_result = prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
+# treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
+# treatement_pca_filename = joinpath("output", "viz_treatment_cluster_pca.xlsx")
+# treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
+# XLSX.writetable(
+#     treatement_pca_filename,
+#     "pca" => treatement_pca_result.pca_df,
+#     "loadings" => treatement_pca_result.loadings_df,
+#     "k_means" => treatment_k_means_df,
+#     overwrite = true,
+# )
+# println("Wrote $treatement_pca_filename")
+# plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
 
 @info "K-Means/PCA analysis and plots of median fluxes"
 median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
+prepare_median_fluxes_result = prepare_median_fluxes_dfs(median_fluxes_df)
+fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
+flux_k_means_pca_filename = joinpath("output", "viz_flux_k_means_pca.xlsx")
+XLSX.writetable(
+    flux_k_means_pca_filename,
+    "k_means" => fluxes_k_means_df,
+    overwrite = true,
+)
