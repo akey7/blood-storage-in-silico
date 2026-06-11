@@ -735,15 +735,22 @@ function treatment_distances_from_control(
         distances = norm.(eachrow(X .- x_control'))
         out = copy(sdf)
         out[!, :distance_127D] = distances
-        out[!, :is_as3_control] = out[!, :additive] .== control_additive
+        out[!, :is_control] = out[!, :additive] .== control_additive
         push!(results, out)
     end
     result_df = vcat(results...)
     ranked_df = @chain result_df begin
         @orderby(:final_time, :distance_127D)
         @groupby(:final_time)
-        @transform(:rank_127D_most_AS3_like = 1:length(:distance_127D))
-        @orderby(:final_time, :rank_127D_most_AS3_like)
+        @transform(:rank_127D_most_control_like = 1:length(:distance_127D))
+        @orderby(:final_time, :rank_127D_most_control_like)
+        @select(
+            :additive,
+            :is_control,
+            :final_time,
+            :distance_127D,
+            :rank_127D_most_control_like
+        )
     end
     return ranked_df
 end
