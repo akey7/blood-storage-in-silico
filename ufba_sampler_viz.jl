@@ -60,8 +60,8 @@ median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
 prepare_median_fluxes_result = prepare_median_fluxes_dfs(median_fluxes_df)
 fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
 fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
-flux_distance_ranks_df =
-    calc_flux_distances_from_control(prepare_median_fluxes_result; control_additive = "AS3")
+treatement_distances_df =
+    treatment_distances_from_control(prepare_median_fluxes_result; control_additive = "AS3")
 k_means_pca_filename = joinpath("output", "viz_k_means_pca_distance.xlsx")
 XLSX.writetable(
     k_means_pca_filename,
@@ -71,7 +71,7 @@ XLSX.writetable(
     "effects_pca" => treatement_pca_result.pca_df,
     "effects_pca_loadings" => treatement_pca_result.loadings_df,
     "effects_k_means" => treatment_k_means_df,
-    "flux_distance_ranks" => flux_distance_ranks_df,
+    "treatement_distances" => treatement_distances_df,
     overwrite = true,
 )
 println("Wrote $k_means_pca_filename")

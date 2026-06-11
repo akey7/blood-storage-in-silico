@@ -33,7 +33,7 @@ export stacked_flux_kde_3d,
     k_means_median_fluxes,
     pca_median_fluxes,
     plot_median_fluxes_kmeans_pca,
-    calc_flux_distances_from_control
+    treatment_distances_from_control
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -714,7 +714,7 @@ function prepare_median_fluxes_dfs(median_fluxes_df)
     return result
 end
 
-function calc_flux_distances_from_control(
+function treatment_distances_from_control(
     prepare_median_fluxes_result;
     control_additive = "AS3",
 )
@@ -723,20 +723,21 @@ function calc_flux_distances_from_control(
     distance_dfs = DataFrame[]
     for centered_scaled_df in centered_scaled_dfs
         control_df = @rsubset(centered_scaled_df, :additive == control_additive)
-        X = Matrix(select(centered_scaled_df, feature_cols))
+        treatments_df = @rsubset(centered_scaled_df, :additive != control_additive)
+        X = Matrix(select(treatments_df, feature_cols))
         x_control = vec(Matrix(select(control_df, feature_cols)))
         distances = norm.(eachrow(X .- x_control'))
-        distance_df = copy(centered_scaled_df)
-        distance_df[!, :flux_distance] = distances
+        distance_df = DataFrame(
+            additive = treatments_df.additive,
+            final_time = treatments_df.final_time,
+            flux_distance = distances,
+        )
         push!(distance_dfs, distance_df)
     end
     all_distances_df = vcat(distance_dfs...)
     ranked_df = @chain all_distances_df begin
         @rsubset(:additive != control_additive)
         @orderby(:final_time, :flux_distance)
-        @groupby(:final_time)
-        @transform(:rank_flux_distance = 1:length(:flux_distance))
-        @orderby(:final_time, :rank_flux_distance)
     end
     return ranked_df
 end
