@@ -29,7 +29,8 @@ export stacked_flux_kde_3d,
     k_means_treatment_effects,
     plot_treatment_effects_kmeans_pca,
     prepare_median_fluxes_dfs,
-    k_means_median_fluxes
+    k_means_median_fluxes,
+    pca_median_fluxes
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -732,6 +733,42 @@ function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxit
     end
     fluxes_k_means_df = @orderby(vcat(cluster_dfs...), :additive, :final_time)
     return fluxes_k_means_df
+end
+
+function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
+    final_times = prepared_medians_result.final_times
+    centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
+    pc_names = Symbol.("PC", 1:n_pcs)
+    pca_dfs = DataFrame[]
+    loadings_dfs = DataFrame[]
+    for (final_time, df) in zip(final_times, centered_scaled_dfs)
+        reaction_ids = names(select(df, Not([:additive, :final_time])))
+        X = Matrix(select(df, Not([:additive, :final_time])))
+        Xt = copy(X')
+        M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
+        scores = MultivariateStats.transform(M, Xt)
+        pca_df = DataFrame(collect(scores'), pc_names)
+        insertcols!(
+            pca_df,
+            1,
+            :additive => df.additive,
+            :final_time => fill(final_time, nrow(pca_df)),
+        )
+        push!(pca_dfs, pca_df)
+        loadings = projection(M)
+        loadings_df = DataFrame(collect(loadings), pc_names)
+        insertcols!(
+            loadings_df,
+            1,
+            :reaction_id => reaction_ids,
+            :final_time => fill(final_time, nrow(loadings_df)),
+        )
+        push!(loadings_dfs, loadings_df)
+    end
+    pca_df = @orderby(vcat(pca_dfs...), :additive, :final_time)
+    loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
+    result = (pca_df = pca_df, loadings_df = loadings_df)
+    return result
 end
 
 end

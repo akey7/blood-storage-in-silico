@@ -59,7 +59,7 @@ println("Num threads $num_threads")
 # XLSX.writetable(
 #     treatement_pca_filename,
 #     "pca" => treatement_pca_result.pca_df,
-#     "loadings" => treatement_pca_result.loadings_df,
+#     "pca_loadings" => treatement_pca_result.loadings_df,
 #     "k_means" => treatment_k_means_df,
 #     overwrite = true,
 # )
@@ -71,9 +71,12 @@ median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
 prepare_median_fluxes_result = prepare_median_fluxes_dfs(median_fluxes_df)
 fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
+fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 flux_k_means_pca_filename = joinpath("output", "viz_flux_k_means_pca.xlsx")
 XLSX.writetable(
     flux_k_means_pca_filename,
+    "pca" => fluxes_pca_result.pca_df,
+    "pca_loadings" => fluxes_pca_result.loadings_df,
     "k_means" => fluxes_k_means_df,
     overwrite = true,
 )
