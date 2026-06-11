@@ -720,24 +720,30 @@ function treatment_distances_from_control(
 )
     centered_scaled_dfs = prepare_median_fluxes_result.centered_scaled_dfs
     feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
-    distance_dfs = DataFrame[]
-    for centered_scaled_df in centered_scaled_dfs
-        control_df = @rsubset(centered_scaled_df, :additive == control_additive)
-        treatments_df = @rsubset(centered_scaled_df, :additive != control_additive)
-        X = Matrix(select(treatments_df, feature_cols))
+    results = DataFrame[]
+    for sdf in centered_scaled_dfs
+        time_value = sdf[1, :final_time]
+        control_df = @rsubset(sdf, :additive == control_additive)
+        if nrow(control_df) != 1
+            error(
+                "Expected exactly one AS3 control row for $(time_col) = $(time_value); " *
+                "found $(nrow(control_df)).",
+            )
+        end
+        X = Matrix(select(sdf, feature_cols))
         x_control = vec(Matrix(select(control_df, feature_cols)))
         distances = norm.(eachrow(X .- x_control'))
-        distance_df = DataFrame(
-            additive = treatments_df.additive,
-            final_time = treatments_df.final_time,
-            flux_distance = distances,
-        )
-        push!(distance_dfs, distance_df)
+        out = copy(sdf)
+        out[!, :distance_127D] = distances
+        out[!, :is_as3_control] = out[!, :additive] .== control_additive
+        push!(results, out)
     end
-    all_distances_df = vcat(distance_dfs...)
-    ranked_df = @chain all_distances_df begin
-        @rsubset(:additive != control_additive)
-        @orderby(:final_time, :flux_distance)
+    result_df = vcat(results...)
+    ranked_df = @chain result_df begin
+        @orderby(:final_time, :distance_127D)
+        @groupby(:final_time)
+        @transform(:rank_127D_most_AS3_like = 1:length(:distance_127D))
+        @orderby(:final_time, :rank_127D_most_AS3_like)
     end
     return ranked_df
 end
