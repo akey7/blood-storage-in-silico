@@ -58,9 +58,9 @@ println("Num threads $num_threads")
 # treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
 # XLSX.writetable(
 #     treatement_pca_filename,
-#     "pca" => treatement_pca_result.pca_df,
-#     "pca_loadings" => treatement_pca_result.loadings_df,
-#     "k_means" => treatment_k_means_df,
+#     "effects_pca" => treatement_pca_result.pca_df,
+#     "effects_pca_loadings" => treatement_pca_result.loadings_df,
+#     "effects_k_means" => treatment_k_means_df,
 #     overwrite = true,
 # )
 # println("Wrote $treatement_pca_filename")
@@ -75,8 +75,8 @@ fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 flux_k_means_pca_filename = joinpath("output", "viz_flux_k_means_pca.xlsx")
 XLSX.writetable(
     flux_k_means_pca_filename,
-    "pca" => fluxes_pca_result.pca_df,
-    "pca_loadings" => fluxes_pca_result.loadings_df,
-    "k_means" => fluxes_k_means_df,
+    "flux_pca" => fluxes_pca_result.pca_df,
+    "flux_pca_loadings" => fluxes_pca_result.loadings_df,
+    "flux_k_means" => fluxes_k_means_df,
     overwrite = true,
 )
