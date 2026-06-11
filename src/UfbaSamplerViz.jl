@@ -657,6 +657,7 @@ function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
     n_plots = length(final_times)
     prog = Progress(n_plots, "Writing effects k-means PCA plots")
     for final_time in final_times
+        # viz_fluxes_kmeans_pca
         filename = joinpath(
             "output",
             "viz_effects_kmeans_pca",
