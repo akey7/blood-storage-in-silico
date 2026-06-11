@@ -3,6 +3,7 @@ module UfbaSamplerViz
 using Base.Iterators
 using Random
 using CSV
+using LinearAlgebra
 using DataFrames
 using DataFramesMeta
 using CategoricalArrays
@@ -31,7 +32,8 @@ export stacked_flux_kde_3d,
     prepare_median_fluxes_dfs,
     k_means_median_fluxes,
     pca_median_fluxes,
-    plot_median_fluxes_kmeans_pca
+    plot_median_fluxes_kmeans_pca,
+    calc_flux_distances_from_control
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -710,6 +712,33 @@ function prepare_median_fluxes_dfs(median_fluxes_df)
     end
     result = (final_times = final_times, centered_scaled_dfs = centered_scaled_dfs)
     return result
+end
+
+function calc_flux_distances_from_control(
+    prepare_median_fluxes_result;
+    control_additive = "AS3",
+)
+    centered_scaled_dfs = prepare_median_fluxes_result.centered_scaled_dfs
+    feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
+    distance_dfs = DataFrame[]
+    for centered_scaled_df in centered_scaled_dfs
+        control_df = @rsubset(centered_scaled_df, :additive == control_additive)
+        X = Matrix(select(centered_scaled_df, feature_cols))
+        x_control = vec(Matrix(select(control_df, feature_cols)))
+        distances = norm.(eachrow(X .- x_control'))
+        distance_df = copy(centered_scaled_df)
+        distance_df[!, :flux_distance] = distances
+        push!(distance_dfs, distance_df)
+    end
+    all_distances_df = vcat(distance_dfs...)
+    ranked_df = @chain all_distances_df begin
+        @rsubset(:additive != control_additive)
+        @orderby(:final_time, :flux_distance)
+        @groupby(:final_time)
+        @transform(:rank_flux_distance = 1:length(:flux_distance))
+        @orderby(:final_time, :rank_flux_distance)
+    end
+    return ranked_df
 end
 
 function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
