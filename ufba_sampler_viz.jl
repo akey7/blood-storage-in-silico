@@ -72,4 +72,5 @@ XLSX.writetable(
     overwrite = true,
 )
 println("Wrote $k_means_pca_filename")
-# plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
+plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
+plot_median_fluxes_kmeans_pca(fluxes_pca_result.pca_df, fluxes_k_means_df)
