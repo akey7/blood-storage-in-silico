@@ -3,6 +3,7 @@ module UfbaSamplerViz
 using Base.Iterators
 using Random
 using CSV
+using LinearAlgebra
 using DataFrames
 using DataFramesMeta
 using CategoricalArrays
@@ -27,7 +28,12 @@ export stacked_flux_kde_3d,
     pca_treatment_effects,
     prepare_treatment_effects_dfs,
     k_means_treatment_effects,
-    plot_treatment_effects_kmeans_pca
+    plot_treatment_effects_kmeans_pca,
+    prepare_median_fluxes_dfs,
+    k_means_median_fluxes,
+    pca_median_fluxes,
+    plot_median_fluxes_kmeans_pca,
+    treatment_distances_from_control
 
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
@@ -550,6 +556,10 @@ function histograms_for_reaction_v2(
     )
 end
 
+#####################################################################
+# EFFECT SIZE PCA/K-MEANS                                           #
+#####################################################################
+
 function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
     effects_dfs = DataFrame[]
@@ -655,7 +665,175 @@ function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
             "viz_effects_kmeans_pca",
             "effects_kmeans_pca_$(final_time).png",
         )
-        title = "Effects K-Means PCA $final_time"
+        title = "Effects K-Means PCA Final Time $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        scatter_plt =
+            data(plt_df) *
+            mapping(:PC1, :PC2, color = :cluster) *
+            visual(Scatter, markersize = 14, alpha = 0.75)
+        fig = draw(
+            scatter_plt,
+            scales(Color = (; palette = cluster_colors)),
+            figure = (; size = (500, 500)),
+            axis = (; title = title),
+        )
+        save(filename, fig)
+        next!(prog)
+    end
+end
+
+#####################################################################
+# MEDIAN FLUX PCA/K-MEANS                                           #
+#####################################################################
+
+function zscore_col(xs)
+    μ = mean(skipmissing(xs))
+    σ = std(skipmissing(xs))
+    if isapprox(σ, 0.0)
+        return fill(0.0, length(xs))
+    else
+        return (xs .- μ) ./ σ
+    end
+end
+
+function prepare_median_fluxes_dfs(median_fluxes_df)
+    final_times = sort(unique(median_fluxes_df.final_time))
+    centered_scaled_dfs = DataFrame[]
+    for final_time in final_times
+        df = @chain median_fluxes_df begin
+            @rsubset(:final_time == final_time)
+            unstack([:additive, :final_time], :reaction_id, :median_flux)
+        end
+        feature_cols = names(df, Not([:additive, :final_time]))
+        for col in feature_cols
+            @transform!(df, $col = zscore_col($col))
+        end
+        push!(centered_scaled_dfs, df)
+    end
+    result = (final_times = final_times, centered_scaled_dfs = centered_scaled_dfs)
+    return result
+end
+
+function treatment_distances_from_control(
+    prepare_median_fluxes_result;
+    control_additive = "AS3",
+)
+    centered_scaled_dfs = prepare_median_fluxes_result.centered_scaled_dfs
+    feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
+    results = DataFrame[]
+    for sdf in centered_scaled_dfs
+        time_value = sdf[1, :final_time]
+        control_df = @rsubset(sdf, :additive == control_additive)
+        if nrow(control_df) != 1
+            error(
+                "Expected exactly one AS3 control row for $(time_col) = $(time_value); " *
+                "found $(nrow(control_df)).",
+            )
+        end
+        X = Matrix(select(sdf, feature_cols))
+        x_control = vec(Matrix(select(control_df, feature_cols)))
+        distances = norm.(eachrow(X .- x_control'))
+        out = copy(sdf)
+        out[!, :distance_127D] = distances
+        out[!, :is_control] = out[!, :additive] .== control_additive
+        push!(results, out)
+    end
+    result_df = vcat(results...)
+    ranked_df = @chain result_df begin
+        @orderby(:final_time, :distance_127D)
+        @groupby(:final_time)
+        @transform(:rank_127D_most_control_like = 1:length(:distance_127D))
+        @orderby(:final_time, :rank_127D_most_control_like)
+        @select(
+            :additive,
+            :is_control,
+            :final_time,
+            :distance_127D,
+            :rank_127D_most_control_like
+        )
+    end
+    return ranked_df
+end
+
+function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
+    final_times = prepared_medians_result.final_times
+    centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
+    feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
+    cluster_dfs = DataFrame[]
+    for (final_time, median_fluxes_df) in zip(final_times, centered_scaled_dfs)
+        X = Matrix{Float64}(median_fluxes_df[:, feature_cols])'
+        Random.seed!(seed)
+        result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
+        if !result.converged
+            @warn "k-means did not converge" k=k seed=seed maxiter=maxiter
+        end
+        cluster_df = DataFrame(
+            additive = median_fluxes_df.additive,
+            final_time = fill(final_time, nrow(median_fluxes_df)),
+            n_clusters = fill(k, nrow(median_fluxes_df)),
+            cluster = result.assignments,
+        )
+        push!(cluster_dfs, cluster_df)
+    end
+    fluxes_k_means_df = @orderby(vcat(cluster_dfs...), :additive, :final_time)
+    return fluxes_k_means_df
+end
+
+function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
+    final_times = prepared_medians_result.final_times
+    centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
+    pc_names = Symbol.("PC", 1:n_pcs)
+    pca_dfs = DataFrame[]
+    loadings_dfs = DataFrame[]
+    for (final_time, df) in zip(final_times, centered_scaled_dfs)
+        reaction_ids = names(select(df, Not([:additive, :final_time])))
+        X = Matrix(select(df, Not([:additive, :final_time])))
+        Xt = copy(X')
+        M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
+        scores = MultivariateStats.transform(M, Xt)
+        pca_df = DataFrame(collect(scores'), pc_names)
+        insertcols!(
+            pca_df,
+            1,
+            :additive => df.additive,
+            :final_time => fill(final_time, nrow(pca_df)),
+        )
+        push!(pca_dfs, pca_df)
+        loadings = projection(M)
+        loadings_df = DataFrame(collect(loadings), pc_names)
+        insertcols!(
+            loadings_df,
+            1,
+            :reaction_id => reaction_ids,
+            :final_time => fill(final_time, nrow(loadings_df)),
+        )
+        push!(loadings_dfs, loadings_df)
+    end
+    pca_df = @orderby(vcat(pca_dfs...), :additive, :final_time)
+    loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
+    result = (pca_df = pca_df, loadings_df = loadings_df)
+    return result
+end
+
+function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
+    n_clusters = maximum(fluxes_k_means_df.cluster)
+    all_time_df = @chain pca_df begin
+        innerjoin(fluxes_k_means_df; on = [:additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2)
+    end
+    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing median flux k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_fluxes_kmeans_pca",
+            "median_flux_kmeans_pca_$(final_time).png",
+        )
+        title = "Median Flux K-Means PCA Final Time $final_time"
         plt_df = @rsubset(all_time_df, :final_time == final_time)
         scatter_plt =
             data(plt_df) *
