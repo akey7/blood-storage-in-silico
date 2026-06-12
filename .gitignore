@@ -31,6 +31,7 @@ JuliaLocalPreferences.toml
 input/
 output/
 output_archive/
+output_15_chains/
 *.csv
 *.png
 
