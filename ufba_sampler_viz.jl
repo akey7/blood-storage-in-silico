@@ -12,32 +12,32 @@ using .UfbaSamplerViz
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
-# @info "Reading sampling file and valid additive / time combinations"
-# sampling_results = load_sampling_results()
-# sampling_df = sampling_results.sampling_df
-# working_models_df = sampling_results.working_models_df
+@info "Reading sampling file and valid additive / time combinations"
+sampling_results = load_sampling_results()
+sampling_df = sampling_results.sampling_df
+working_models_df = sampling_results.working_models_df
 
-# @info "Loading reaction ids to strings..."
-# rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
-# rxn_ids_to_strings =
-#     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
+@info "Loading reaction ids to strings..."
+rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
+rxn_ids_to_strings =
+    YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
 # Uncomment to plot from first dataset
 # @info "Plotting uFBA histogram and density plots"
 # plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 
 # Uncomment to select an interesting treatement and compare with control
-# control_additive = "AS3"
-# treatment_additive = "adenine"
+control_additive = "AS3"
+treatment_additive = "adenine"
 # treatment_additive = "arginine"
-# @info "Plotting uFBA histogram and density plots for $control_additive vs $treatment_additive"
-# plot_all_distributions_for_reactions(
-#     sampling_df,
-#     rxn_ids_to_strings;
-#     control_additive = control_additive,
-#     treatment_additive = treatment_additive,
-#     bins = 80,
-# )
+@info "Plotting uFBA histogram and density plots for $control_additive vs $treatment_additive"
+plot_all_distributions_for_reactions(
+    sampling_df,
+    rxn_ids_to_strings;
+    control_additive = control_additive,
+    treatment_additive = treatment_additive,
+    bins = 80,
+)
 
 # @info "3D histogram/KDE plot things"
 # long_sampling_df = pivot_sampling_df_long(sampling_df)
