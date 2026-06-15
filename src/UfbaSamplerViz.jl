@@ -562,6 +562,14 @@ end
 
 function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
+    n_final_times = length(final_times)
+    complete_df = @chain control_vs_treatments_signif_df begin
+        @groupby(:treatment_additive)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @select(:treatment_additive)
+    end
+    display(complete_df)
     effects_dfs = DataFrame[]
     for final_time in final_times
         df = @chain control_vs_treatments_signif_df begin
