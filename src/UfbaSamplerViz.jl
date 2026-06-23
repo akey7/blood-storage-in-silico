@@ -560,7 +560,10 @@ end
 # EFFECT SIZE PCA/K-MEANS                                           #
 #####################################################################
 
-function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
+function prepare_treatment_effects_dfs(
+    control_vs_treatments_signif_df;
+    complete_only = true,
+)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
     n_final_times = length(final_times)
     complete_df = @chain control_vs_treatments_signif_df begin
@@ -569,10 +572,13 @@ function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
         @rsubset(:n_unique_final_times == n_final_times)
         @select(:treatment_additive)
     end
-    display(complete_df)
+    complete_vs_treatments_df =
+        complete_only ?
+        innerjoin(control_vs_treatments_signif_df, complete_df; on = :treatment_additive) :
+        control_vs_treatments_signif_df
     effects_dfs = DataFrame[]
     for final_time in final_times
-        df = @chain control_vs_treatments_signif_df begin
+        df = @chain complete_vs_treatments_df begin
             @rsubset(:final_time == final_time)
             unstack(
                 [:treatment_additive, :final_time],
