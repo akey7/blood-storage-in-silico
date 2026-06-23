@@ -710,11 +710,22 @@ function zscore_col(xs)
     end
 end
 
-function prepare_median_fluxes_dfs(median_fluxes_df)
+function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
     final_times = sort(unique(median_fluxes_df.final_time))
+    n_final_times = length(final_times)
+    complete_df = @chain median_fluxes_df begin
+        @groupby(:additive, :reaction_id)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @combine(:additive = unique(:additive))
+        @select(:additive)
+    end
+    median_fluxes_df_2 =
+        complete_only ? innerjoin(median_fluxes_df, complete_df; on = :additive) :
+        median_fluxes_df
     centered_scaled_dfs = DataFrame[]
     for final_time in final_times
-        df = @chain median_fluxes_df begin
+        df = @chain median_fluxes_df_2 begin
             @rsubset(:final_time == final_time)
             unstack([:additive, :final_time], :reaction_id, :median_flux)
         end
