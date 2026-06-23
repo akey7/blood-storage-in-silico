@@ -52,12 +52,14 @@ println("Num threads $num_threads")
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
-prepared_treatments_result = prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
+prepared_treatments_result =
+    prepare_treatment_effects_dfs(control_vs_treatments_signif_df; complete_only = true)
 treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
 treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
 median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
-prepare_median_fluxes_result = prepare_median_fluxes_dfs(median_fluxes_df)
+prepare_median_fluxes_result =
+    prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
 fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
 fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 treatement_distances_df =
