@@ -16,6 +16,9 @@ println("Num threads $num_threads")
 sampling_results = load_sampling_results()
 sampling_df = sampling_results.sampling_df
 working_models_df = sampling_results.working_models_df
+working_model_filename = joinpath("output", "ufba_sampling_complete_additives.csv")
+CSV.write(working_model_filename, working_models_df)
+println("Wrote $working_model_filename")
 
 # @info "Loading reaction ids to strings..."
 # rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
