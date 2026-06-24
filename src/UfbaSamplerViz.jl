@@ -38,19 +38,16 @@ export stacked_flux_kde_3d,
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
     sampling_df = CSV.read(sampling_filename, DataFrame)
-    additives = sort(unique(sampling_df.additive))
     final_times = sort(unique(sampling_df.final_time))
-    all_possible = product(additives, final_times)
-    working_model_rows = []
-    for (additive, final_time) in all_possible
-        trial_df = @rsubset(sampling_df, :additive == additive, :final_time == final_time)
-        if nrow(trial_df) > 0
-            row = (additive = additive, final_time = final_time)
-            push!(working_model_rows, row)
-        end
+    n_final_times = length(final_times)
+    complete_additives_df = @chain sampling_df begin
+        @groupby(:additive)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @select(:additive)
     end
-    working_models_df = @chain working_model_rows begin
-        DataFrame()
+    working_models_df = @chain sampling_df begin
+        innerjoin(complete_additives_df; on = :additive)
         @orderby(:additive, :final_time)
     end
     result = (sampling_df = sampling_df, working_models_df = working_models_df)
@@ -560,11 +557,25 @@ end
 # EFFECT SIZE PCA/K-MEANS                                           #
 #####################################################################
 
-function prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
+function prepare_treatment_effects_dfs(
+    control_vs_treatments_signif_df;
+    complete_only = true,
+)
     final_times = sort(unique(control_vs_treatments_signif_df.final_time))
+    n_final_times = length(final_times)
+    complete_df = @chain control_vs_treatments_signif_df begin
+        @groupby(:treatment_additive)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @select(:treatment_additive)
+    end
+    complete_vs_treatments_df =
+        complete_only ?
+        innerjoin(control_vs_treatments_signif_df, complete_df; on = :treatment_additive) :
+        control_vs_treatments_signif_df
     effects_dfs = DataFrame[]
     for final_time in final_times
-        df = @chain control_vs_treatments_signif_df begin
+        df = @chain complete_vs_treatments_df begin
             @rsubset(:final_time == final_time)
             unstack(
                 [:treatment_additive, :final_time],
@@ -696,11 +707,22 @@ function zscore_col(xs)
     end
 end
 
-function prepare_median_fluxes_dfs(median_fluxes_df)
+function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
     final_times = sort(unique(median_fluxes_df.final_time))
+    n_final_times = length(final_times)
+    complete_df = @chain median_fluxes_df begin
+        @groupby(:additive, :reaction_id)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @combine(:additive = unique(:additive))
+        @select(:additive)
+    end
+    median_fluxes_df_2 =
+        complete_only ? innerjoin(median_fluxes_df, complete_df; on = :additive) :
+        median_fluxes_df
     centered_scaled_dfs = DataFrame[]
     for final_time in final_times
-        df = @chain median_fluxes_df begin
+        df = @chain median_fluxes_df_2 begin
             @rsubset(:final_time == final_time)
             unstack([:additive, :final_time], :reaction_id, :median_flux)
         end

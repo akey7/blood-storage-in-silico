@@ -12,10 +12,17 @@ using .UfbaSamplerViz
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
-# @info "Reading sampling file and valid additive / time combinations"
-# sampling_results = load_sampling_results()
-# sampling_df = sampling_results.sampling_df
-# working_models_df = sampling_results.working_models_df
+###########################################################
+# FILTERING SAMPLING DATAFRAME FOR ANALYSIS PIPELINE      #
+###########################################################
+
+@info "Reading sampling file and valid additive / time combinations"
+sampling_results = load_sampling_results()
+sampling_df = sampling_results.sampling_df
+working_models_df = sampling_results.working_models_df
+working_model_filename = joinpath("output", "ufba_sampling_complete_additives.csv")
+CSV.write(working_model_filename, working_models_df)
+println("Wrote $working_model_filename")
 
 # @info "Loading reaction ids to strings..."
 # rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
@@ -48,16 +55,22 @@ println("Num threads $num_threads")
 # savefig(p_kde, p_kde_filename)
 # println("Wrote $p_kde_filename")
 
+###########################################################
+# ANALYSIS FOR DATA VIZ PIPELINE                          #
+###########################################################
+
 @info "K-Means/PCA analysis and plots of median fluxes and Cohen's effects"
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
-prepared_treatments_result = prepare_treatment_effects_dfs(control_vs_treatments_signif_df)
+prepared_treatments_result =
+    prepare_treatment_effects_dfs(control_vs_treatments_signif_df; complete_only = true)
 treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
 treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
 median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
-prepare_median_fluxes_result = prepare_median_fluxes_dfs(median_fluxes_df)
+prepare_median_fluxes_result =
+    prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
 fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
 fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 treatement_distances_df =
