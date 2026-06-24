@@ -12,6 +12,10 @@ using .UfbaSamplerViz
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
+###########################################################
+# FILTERING SAMPLING DATAFRAME FOR ANALYSIS PIPELINE      #
+###########################################################
+
 @info "Reading sampling file and valid additive / time combinations"
 sampling_results = load_sampling_results()
 sampling_df = sampling_results.sampling_df
@@ -52,7 +56,7 @@ println("Wrote $working_model_filename")
 # println("Wrote $p_kde_filename")
 
 ###########################################################
-# EXPORTS FOR DATA VIZ PIPELINE                           #
+# ANALYSIS FOR DATA VIZ PIPELINE                          #
 ###########################################################
 
 # @info "K-Means/PCA analysis and plots of median fluxes and Cohen's effects"
