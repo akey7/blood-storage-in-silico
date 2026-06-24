@@ -38,19 +38,16 @@ export stacked_flux_kde_3d,
 function load_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
     sampling_df = CSV.read(sampling_filename, DataFrame)
-    additives = sort(unique(sampling_df.additive))
     final_times = sort(unique(sampling_df.final_time))
-    all_possible = product(additives, final_times)
-    working_model_rows = []
-    for (additive, final_time) in all_possible
-        trial_df = @rsubset(sampling_df, :additive == additive, :final_time == final_time)
-        if nrow(trial_df) > 0
-            row = (additive = additive, final_time = final_time)
-            push!(working_model_rows, row)
-        end
+    n_final_times = length(final_times)
+    complete_additives_df = @chain sampling_df begin
+        @groupby(:additive)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @select(:additive)
     end
-    working_models_df = @chain working_model_rows begin
-        DataFrame()
+    working_models_df = @chain sampling_df begin
+        innerjoin(complete_additives_df; on = :additive)
         @orderby(:additive, :final_time)
     end
     result = (sampling_df = sampling_df, working_models_df = working_models_df)

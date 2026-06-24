@@ -12,10 +12,10 @@ using .UfbaSamplerViz
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
-# @info "Reading sampling file and valid additive / time combinations"
-# sampling_results = load_sampling_results()
-# sampling_df = sampling_results.sampling_df
-# working_models_df = sampling_results.working_models_df
+@info "Reading sampling file and valid additive / time combinations"
+sampling_results = load_sampling_results()
+sampling_df = sampling_results.sampling_df
+working_models_df = sampling_results.working_models_df
 
 # @info "Loading reaction ids to strings..."
 # rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
@@ -48,34 +48,38 @@ println("Num threads $num_threads")
 # savefig(p_kde, p_kde_filename)
 # println("Wrote $p_kde_filename")
 
-@info "K-Means/PCA analysis and plots of median fluxes and Cohen's effects"
-control_vs_treatments_signif_filename =
-    joinpath("output", "analysis_control_vs_treatments_signif.csv")
-control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
-prepared_treatments_result =
-    prepare_treatment_effects_dfs(control_vs_treatments_signif_df; complete_only = true)
-treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
-treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
-median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
-median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
-prepare_median_fluxes_result =
-    prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
-fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
-fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
-treatement_distances_df =
-    treatment_distances_from_control(prepare_median_fluxes_result; control_additive = "AS3")
-k_means_pca_filename = joinpath("output", "viz_k_means_pca_distance.xlsx")
-XLSX.writetable(
-    k_means_pca_filename,
-    "flux_pca" => fluxes_pca_result.pca_df,
-    "flux_pca_loadings" => fluxes_pca_result.loadings_df,
-    "flux_k_means" => fluxes_k_means_df,
-    "effects_pca" => treatement_pca_result.pca_df,
-    "effects_pca_loadings" => treatement_pca_result.loadings_df,
-    "effects_k_means" => treatment_k_means_df,
-    "treatement_distances" => treatement_distances_df,
-    overwrite = true,
-)
-println("Wrote $k_means_pca_filename")
-plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
-plot_median_fluxes_kmeans_pca(fluxes_pca_result.pca_df, fluxes_k_means_df)
+###########################################################
+# EXPORTS FOR DATA VIZ PIPELINE                           #
+###########################################################
+
+# @info "K-Means/PCA analysis and plots of median fluxes and Cohen's effects"
+# control_vs_treatments_signif_filename =
+#     joinpath("output", "analysis_control_vs_treatments_signif.csv")
+# control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
+# prepared_treatments_result =
+#     prepare_treatment_effects_dfs(control_vs_treatments_signif_df; complete_only = true)
+# treatement_pca_result = pca_treatment_effects(prepared_treatments_result)
+# treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
+# median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
+# median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
+# prepare_median_fluxes_result =
+#     prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
+# fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
+# fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
+# treatement_distances_df =
+#     treatment_distances_from_control(prepare_median_fluxes_result; control_additive = "AS3")
+# k_means_pca_filename = joinpath("output", "viz_k_means_pca_distance.xlsx")
+# XLSX.writetable(
+#     k_means_pca_filename,
+#     "flux_pca" => fluxes_pca_result.pca_df,
+#     "flux_pca_loadings" => fluxes_pca_result.loadings_df,
+#     "flux_k_means" => fluxes_k_means_df,
+#     "effects_pca" => treatement_pca_result.pca_df,
+#     "effects_pca_loadings" => treatement_pca_result.loadings_df,
+#     "effects_k_means" => treatment_k_means_df,
+#     "treatement_distances" => treatement_distances_df,
+#     overwrite = true,
+# )
+# println("Wrote $k_means_pca_filename")
+# plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
+# plot_median_fluxes_kmeans_pca(fluxes_pca_result.pca_df, fluxes_k_means_df)
