@@ -50,20 +50,6 @@ function load_sampling_results()
         innerjoin(complete_additives_df; on = :additive)
         @orderby(:additive, :final_time)
     end
-
-    # rows_with_missing = @chain working_models_df begin
-    #     @rsubset any(ismissing, AsTable(:))
-    # end
-    # n_missing_rows = nrow(rows_with_missing)
-    # println("Missing rows: $n_missing_rows")
-
-    n_samples_df = @chain working_models_df begin
-        @groupby(:additive, :final_time)
-        combine(nrow => :n_samples)
-        @orderby(:n_samples)
-    end
-    display(first(n_samples_df, 10))
-
     result = (sampling_df = sampling_df, working_models_df = working_models_df)
     return result
 end
