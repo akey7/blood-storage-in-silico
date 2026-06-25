@@ -471,6 +471,7 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             n_all_zero_fluxes = job_result.n_all_zero_fluxes,
             n_samples = job_result.n_samples,
             n_expected_samples = job_result.n_expected_samples,
+            pct_samples_complete = job_result.n_samples / job_result.n_expected_samples * 100,
         )
         push!(status_rows, status_row)
         blocked_reaction_ids = job_result.blocked_reaction_ids
