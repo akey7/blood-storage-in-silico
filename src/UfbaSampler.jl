@@ -369,12 +369,16 @@ function execute_ufba_job(job, n_chains = 10)
         else
             # println("Simple optimization succeeded! Sampling fluxes...")
             workers_config = workers()
-            samples_df, sinks_df = sample_fluxes(
+            sample_fluxes_result = sample_fluxes(
                 pruned_with_metabolite_bounds_ct,
                 workers_config;
                 n_chains = n_chains,
             )
+            samples_df = sample_fluxes_result.samples_df
+            sinks_df = sample_fluxes_result.sinks_df
+            n_expected_samples = sample_fluxes_result.n_expected_samples
             n_all_zero_fluxes, blocked_reaction_ids = count_n_all_zero_fluxes(samples_df)
+            n_samples = nrow(samples_df)
             samples_df[!, :additive] .= additive
             samples_df[!, :final_time] .= final_time
             if !isnothing(sinks_df)
@@ -404,6 +408,8 @@ function execute_ufba_job(job, n_chains = 10)
                 fba_status = fba_status,
                 fba_breaks = fba_breaks,
                 job_status = :ok,
+                n_samples = n_samples,
+                n_expected_samples = n_expected_samples,
             )
             return result
         end
@@ -418,6 +424,8 @@ function execute_ufba_job(job, n_chains = 10)
             fba_status = missing,
             fba_breaks = nothing,
             job_status = :prune_fail_fba_fail,
+            n_samples = missing,
+            n_expected_samples = missing,
         )
         return result
     end
@@ -461,6 +469,9 @@ function execute_all_ufba_jobs(jobs, rxn_ids_to_strings_df; n_chains = 10)
             final_time = job.final_time,
             job_status = job_result.job_status,
             n_all_zero_fluxes = job_result.n_all_zero_fluxes,
+            n_samples = job_result.n_samples,
+            n_expected_samples = job_result.n_expected_samples,
+            pct_samples_complete = job_result.n_samples / job_result.n_expected_samples * 100,
         )
         push!(status_rows, status_row)
         blocked_reaction_ids = job_result.blocked_reaction_ids
@@ -1176,6 +1187,8 @@ function sample_fluxes(
         )...,
     )
 
+    n_expected_samples = n_chains * size(warmup, 1) * length(collect_iterations)
+
     # I could use kwargs... in the following call but am not using that at
     # this time as I find kwargs to make the code a confusing mess.
 
@@ -1204,9 +1217,19 @@ function sample_fluxes(
     ]
     if length(sinks_rows) > 0
         sinks_df = DataFrame(sinks_rows)
-        return samples_df, sinks_df
+        result = (
+            samples_df = samples_df,
+            sinks_df = sinks_df,
+            n_expected_samples = n_expected_samples,
+        )
+        return result
     else
-        return samples_df, nothing
+        result = (
+            samples_df = samples_df,
+            sinks_df = nothing,
+            n_expected_samples = n_expected_samples,
+        )
+        return result
     end
 end
 

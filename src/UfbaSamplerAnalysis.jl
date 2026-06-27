@@ -425,6 +425,13 @@ function compare_flux_distributions(
 )
     Random.seed!(123)
     ci_quantile = 1.0 - alpha
+
+    rows_with_missing_df = @chain sampling_df begin
+        @rsubset any(ismissing, AsTable(:))
+    end
+    println("compare_flux_distributions(): First 10 missing rows")
+    display(first(rows_with_missing_df, 10))
+
     long_sampling_df = pivot_sampling_df_long(sampling_df)
     treatments_df = @rsubset(long_sampling_df, :additive != control_additive)
     control_df = @rsubset(long_sampling_df, :additive == control_additive)
