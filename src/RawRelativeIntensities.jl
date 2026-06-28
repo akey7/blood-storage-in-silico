@@ -22,12 +22,13 @@ export load_relative_intensities,
     pca_loadings_report,
     plot_single_additive_2d_pcas,
     plot_additive_pair_2d_pcas,
-    detect_week_1_side
+    detect_week_1_side,
+    load_relative_intensities_2
 
 """
     load_relative_intensities()
 
-Loads the relative quantification (intensity) and pivots it long.
+Loads the first relative quantification (intensity) dataset and pivots it long. Along the way, it transforms days to weeks and matches the column names to the output of the original function.
 
 # Returns
 `DataFrame`
@@ -52,6 +53,48 @@ function load_relative_intensities()
     return long_df
 end
 
+
+"""
+    load_relative_intensities_2()
+
+Loads the SECOND relative quantification (intensity) and pivots it long.
+
+# Returns
+`DataFrame`
+
+Returns a long DataFrame with the following columns: 
+
+1. `:Sample`, the sample id
+2. `:Time` the time point of the measurement (in weeks)
+3. `:Additive`: Additive the measurement was taken in.
+4. `:MixedName`: The name of either a single compound or group of compounds under the same peak.
+5. `:Intensity`: The integrated area of the peak.
+"""
+function load_relative_intensities_2()
+    relative_filename = joinpath("input", "AS Dev Library Trial 1.csv")
+    wide_df = CSV.read(relative_filename, DataFrame)
+    long_df = stack(
+        wide_df,
+        Not([:Sample, :Day, :Condition]),
+        variable_name = :MixedName,
+        value_name = :Intensity,
+    )
+    result_df = @chain long_df begin
+        @rtransform(:Time = div(:Day, 7, RoundUp))
+        @select(:Sample, :Time, :Additive = :Condition, :MixedName, :Intensity)
+    end
+    return result_df
+end
+
+function parse_patient_from_sample_id(sample_id)
+    # First dataset sample id: "B7_C1_P1-E-D7_r24"
+    # Second dataset sample id: "C-d0-B12"
+    sample_id_pattern_2 = r"^[A-Z]-d\d+-[A-H]\d+$"
+    is_id_pattern_2 = occursin(sample_id_pattern_2, sample_id)
+    patient_id = is_id_pattern_2 ? split(sample_id, "-")[1] : split(sample_id, "_")[3][1:2]
+    return patient_id
+end
+
 """
     pca_relative_intensities(long_df, additive)
 
@@ -72,16 +115,15 @@ Perform a robust PCA of the relative intensity data of metabolites within a give
 6. `additive`: The additive the PCA was performed for.
 """
 function pca_relative_intensities(long_df, additive)
-    # @info "Beginning PCA for $additive"
     wide_df = @chain long_df begin
         @rsubset(:Additive == additive)
-        @rtransform(:Patient = split(:Sample, "_")[3][1:2])
+        @rtransform(:Patient = parse_patient_from_sample_id(:Sample))
         @select(:MixedName, :Patient, :Time, :Intensity)
         unstack([:Patient, :Time], :MixedName, :Intensity, combine = first)
         @orderby(:Patient, :Time)
     end
     metabolite_names = names(wide_df)[3:end]
-    # display(metabolite_names) 
+    # display(metabolite_names)
     patient_time_labels = @select(wide_df, :Patient, :Time)
     # display(patient_time_labels)
     X = Matrix(select(wide_df, Not([:Patient, :Time])))
@@ -130,7 +172,7 @@ function pca_relative_intensities(long_df, additive)
     zt = StatsBase.fit(StatsBase.ZScoreTransform, Xf; dims = 1)
     Xz = StatsBase.transform(zt, Xf)
     # Check for NaN and missing
-    for j in axes(X, 2), i in axes(X, 1)
+    for j in axes(Xf, 2), i in axes(Xf, 1)
         if isnan(Xf[i, j]) || ismissing(Xf[i, j])
             println("Xf[$i, $j] is NaN or missing")
         end
@@ -243,6 +285,7 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
     pc2 = scores[2, :]
     time_labels = pca_result.patient_time_labels.Time
     time_color_map = Dict(
+        0 => "#FF0000",
         1 => "#006CD1",
         2 => "#E66100",
         3 => "#5D3A9B",
@@ -251,6 +294,7 @@ function plot_pca_scores(pca_result, fig; side = :right, limits = nothing)
         6 => "#222222",
     )
     time_shape_map = Dict(
+        0 => :star4,
         1 => :circle,
         2 => :rect,
         3 => :diamond,
@@ -429,8 +473,14 @@ Returns `:left` for left side, `:right` for right side.
 """
 function detect_week_1_side(pca_result)
     result_df = gather_pca_scores(pca_result)
-    week_1_df = @rsubset(result_df, :time == 1)
-    direction = sign(week_1_df[1, :pc1]) <= 0.0 ? :left : :right
+    # println(
+    #     "detect_week_1_side(): result_df row count: $(nrow(result_df)), additive: $(pca_result.additive)",
+    # )
+    # display(result_df)
+    first_week_number = minimum(result_df.time)
+    first_week_df = @rsubset(result_df, :time == first_week_number)
+    direction = sign(first_week_df[1, :pc1]) <= 0.0 ? :left : :right
+    # println(direction)
     return direction
 end
 
@@ -514,40 +564,23 @@ Extracts the loadings of the metabolite features on each of the PCs. Used by [`p
 # Returns
 `DataFrame`
 
-Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns:
+Returns a DataFrame, ordered by the column `pc1_loading`, that has the following columns (though with the additive and metabolite name on the right):
 
 1. `additive`: Additive the PCA was performed for.
 2. `metabolite_name`: Names of the metabolites.
-3. `pc1_loading`: Loadings on the first PC.
-4. `pc2_loading`: Loadings on the second PC.
-5. `pc3_loading`: Loadings on the third PC.
-6. `pc4_loading`: Loadings on the fourth PC.
-7. `pc5_loading`: Loadings on the fifth PC.
-8. `pc6_loading`: Loadings on the sixth PC.
+3. This is an subsequent columns `:pcX_loading`: Loading on xth PC.
 """
 function extract_pca_loadings(pca_result)
     additive = pca_result.additive
     M = pca_result.model
-    L = loadings(M)
-    pc1_loadings = L[:, 1]
-    pc2_loadings = L[:, 2]
-    pc3_loadings = L[:, 3]
-    pc4_loadings = L[:, 4]
-    pc5_loadings = L[:, 5]
-    pc6_loadings = L[:, 6]
     kept_columns = pca_result.kept_columns
     wide_df = pca_result.wide_df
     metabolite_names = names(select(wide_df, Not(:Time)))[kept_columns]
-    loadings_df = DataFrame(
-        additive = additive,
-        metabolite_name = metabolite_names,
-        pc1_loading = pc1_loadings,
-        pc2_loading = pc2_loadings,
-        pc3_loading = pc3_loadings,
-        pc4_loading = pc4_loadings,
-        pc5_loading = pc5_loadings,
-        pc6_loading = pc6_loadings,
-    )
+    L = loadings(M)
+    colnames = ["pc$(i)_loading" for i in axes(L, 2)]
+    loadings_df = DataFrame(L, colnames)
+    loadings_df[!, :metabolite_name] = metabolite_names
+    loadings_df[!, :additive] = fill(additive, nrow(loadings_df))
     result_df = @orderby(loadings_df, :pc1_loading)
     return result_df
 end
@@ -576,7 +609,8 @@ Returns a DataFrame, ordered by the column `pc1_loading`, that has the following
 """
 function pca_loadings_report(long_df)
     additives = sort(unique(long_df.Additive))
-    all_pca_results = ThreadsX.map(additives) do additive
+    # all_pca_results = ThreadsX.map(additives) do additive
+    all_pca_results = map(additives) do additive
         pca_result = pca_relative_intensities(long_df, additive)
         extract_pca_loadings(pca_result)
     end

@@ -17,6 +17,7 @@ input
 ├── Absolute Quant Data Sheet.xlsx
 ├── Absolute Quant Extracellular Datasheet.xlsx
 ├── Data Sheet 1.CSV
+├── AS Dev Library Trial 1.csv
 ├── Proportionation Sheet 2.csv
 ├── RBC-GEM.json
 ├── RBC-GEM.xml
@@ -44,6 +45,8 @@ Here are purposes of the input files:
 
 8. `Reaction Id to Subsystem and Name Map.csv`: maps reaction ids to human-readable names and subsystems.
 
+9. `AS Dev Library Trial 1.csv`: Second set of relative quantification data.
+
 ### Create the `output/` Folders
 
 There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
@@ -63,6 +66,9 @@ output
 ├── gem_dfs
 ├── ufba_models
 ├── flux_vector_data_matrices
+├── relative_quant_2
+├── viz_effects_kmeans_pca
+├── viz_fluxes_kmeans_pca
 ```
 
 ### Install Dependencies

@@ -1,9 +1,17 @@
 module UfbaSamplerViz
 
+using Base.Iterators
+using Random
+using CSV
+using LinearAlgebra
 using DataFrames
 using DataFramesMeta
+using CategoricalArrays
 using Chain
 using StatsBase
+using StatsModels
+using Clustering
+using MultivariateStats
 using Statistics
 using PlotlyJS
 using KernelDensity
@@ -12,12 +20,39 @@ using AlgebraOfGraphics
 using ColorSchemes
 using ProgressMeter
 
-export stacked_flux_histogram_steps_3d_colored,
-    stacked_flux_kde_3d,
-    reaction_additive_heatmap,
+export stacked_flux_kde_3d,
     plot_all_distributions_for_reactions,
     densities_for_reaction,
-    histograms_for_reaction_v2
+    histograms_for_reaction_v2,
+    load_sampling_results,
+    pca_treatment_effects,
+    prepare_treatment_effects_dfs,
+    k_means_treatment_effects,
+    plot_treatment_effects_kmeans_pca,
+    prepare_median_fluxes_dfs,
+    k_means_median_fluxes,
+    pca_median_fluxes,
+    plot_median_fluxes_kmeans_pca,
+    treatment_distances_from_control
+
+function load_sampling_results()
+    sampling_filename = joinpath("output", "ufba_sampling.csv")
+    sampling_df = CSV.read(sampling_filename, DataFrame)
+    final_times = sort(unique(sampling_df.final_time))
+    n_final_times = length(final_times)
+    complete_additives_df = @chain sampling_df begin
+        @groupby(:additive)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @select(:additive)
+    end
+    working_models_df = @chain sampling_df begin
+        innerjoin(complete_additives_df; on = :additive)
+        @orderby(:additive, :final_time)
+    end
+    result = (sampling_df = sampling_df, working_models_df = working_models_df)
+    return result
+end
 
 """
     pivot_sampling_df_long(sampling_df)
@@ -44,212 +79,6 @@ function pivot_sampling_df_long(sampling_df)
         value_name = :flux,
     )
     return long_sampling_df
-end
-
-"""
-    stacked_flux_histogram_steps_3d_colored(
-        flux_df::DataFrame;
-        edges = nothing,
-        nbins::Int = 25,
-        line_width::Real = 5,
-        plane_opacity::Real = 0.12,
-        tie_method::Symbol = :first,
-        fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks",
-    )
-
-Makes a 3D plot of a given flux distribution trajectory through time. Histograms are plotted up the z axis and a line connecting the mode bins of all the histograms is plotted behind these histograms to show the trajectory of flux over time.
-
-# Arguments
-1. `flux_df::DataFrame`: Long format DataFrame of flux sampling results.
-2. `edges = nothing`: Edges for bins, leave as `nothing` to accept default assignment.
-3. `nbins::Int = 25`: Number of bins.
-4. `line_width::Real = 5`: Line width for the plot.
-5. `plane_opacity::Real = 0.12`: Opactiy behind the lines
-6. `tie_method::Symbol = :first`: How to resolve ties in the mode bin selection. In practice, ties shouldn't happen, but it is here just in case.
-7. `z_spacing::Real = 0.45`: How far apart each histogram is up the z axis.
-8. `fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks"`: Title for the figure.
-
-# Returns
-`PlotlyJS.Plot`
-
-A PlotlyJS plot to display or save.
-"""
-function stacked_flux_histogram_steps_3d_colored(
-    df::DataFrame;
-    edges = nothing,
-    nbins::Int = 25,
-    line_width::Real = 5,
-    plane_opacity::Real = 0.12,
-    tie_method::Symbol = :first,
-    z_spacing::Real = 0.45,
-    fig_title::AbstractString = "3D Flux Histogram Step Plots Across Weeks",
-)
-    weeks = sort(unique(df.final_time))
-    length(weeks) > 0 || error("No weeks found in flux_df")
-    z_spacing > 0 || error("z_spacing must be positive")
-    all_flux = Float64.(df.flux)
-    if edges === nothing
-        flux_min = minimum(all_flux)
-        flux_max = maximum(all_flux)
-        if isapprox(flux_min, flux_max)
-            δ = max(abs(flux_min) * 0.05, 1e-6)
-            flux_min -= δ
-            flux_max += δ
-        end
-        edges = collect(range(flux_min, flux_max; length = nbins + 1))
-    else
-        edges = collect(edges)
-    end
-    issorted(edges) || error("Histogram edges must be sorted")
-    length(edges) >= 2 || error("Histogram edges must contain at least two values")
-    bin_centers = (edges[1:(end-1)] .+ edges[2:end]) ./ 2
-    palette = [
-        "#1f77b4",
-        "#d62728",
-        "#2ca02c",
-        "#ff7f0e",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-        "#7f7f7f",
-        "#bcbd22",
-        "#17becf",
-    ]
-    week_colors =
-        Dict(week => palette[mod1(i, length(palette))] for (i, week) in enumerate(weeks))
-    week_z = Dict(week => (i - 1) * z_spacing for (i, week) in enumerate(weeks))
-    zvals = [week_z[w] for w in weeks]
-    counts_by_week = Dict{eltype(weeks),Vector{Int}}()
-    max_count = 0
-    for week in weeks
-        vals = Float64.(df[df.final_time .== week, :flux])
-        h = fit(Histogram, vals, edges)
-        counts = Int.(h.weights)
-        counts_by_week[week] = counts
-        max_count = max(max_count, maximum(counts))
-    end
-    xmin, xmax = first(edges), last(edges)
-    zmin = minimum(zvals) - 0.15
-    zmax = maximum(zvals) + 0.15
-    traces = GenericTrace[]
-    push!(
-        traces,
-        PlotlyJS.surface(
-            x = [xmin, xmax],
-            y = [0.0, max_count],
-            z = fill(zmin, 2, 2),
-            colorscale = [[0.0, "white"], [1.0, "white"]],
-            opacity = plane_opacity,
-            showscale = false,
-            hoverinfo = "skip",
-            showlegend = false,
-            name = "XY plane",
-        ),
-    )
-    push!(
-        traces,
-        PlotlyJS.surface(
-            x = [xmin, xmax],
-            y = fill(0.0, 2, 2),
-            z = [zmin zmin; zmax zmax],
-            colorscale = [[0.0, "white"], [1.0, "white"]],
-            opacity = plane_opacity,
-            showscale = false,
-            hoverinfo = "skip",
-            showlegend = false,
-            name = "XZ plane",
-        ),
-    )
-    mode_x = Float64[]
-    mode_y = Float64[]
-    mode_z = Float64[]
-    for week in weeks
-        counts = counts_by_week[week]
-        zpos = week_z[week]
-        x_step = Float64[]
-        y_step = Float64[]
-        push!(x_step, edges[1])
-        push!(y_step, 0.0)
-        for i in eachindex(counts)
-            left = edges[i]
-            right = edges[i+1]
-            c = counts[i]
-            push!(x_step, left)
-            push!(y_step, c)
-            push!(x_step, right)
-            push!(y_step, c)
-        end
-        push!(x_step, edges[end])
-        push!(y_step, 0.0)
-        z_step = fill(zpos, length(x_step))
-        push!(
-            traces,
-            scatter3d(
-                x = x_step,
-                y = y_step,
-                z = z_step,
-                mode = "lines",
-                name = "Week $week",
-                line = attr(width = line_width, color = week_colors[week]),
-                hovertemplate = "Week $week<br>Flux: %{x:.4f}<br>Count: %{y}<extra></extra>",
-            ),
-        )
-        max_bins = findall(==(maximum(counts)), counts)
-        mode_center =
-            tie_method == :mean ? mean(bin_centers[max_bins]) :
-            tie_method == :first ? bin_centers[first(max_bins)] :
-            error("Unsupported tie_method: $tie_method. Use :first or :mean.")
-        push!(mode_x, mode_center)
-        push!(mode_y, 0.0)
-        push!(mode_z, zpos)
-    end
-    push!(
-        traces,
-        scatter3d(
-            x = mode_x,
-            y = mode_y,
-            z = mode_z,
-            mode = "lines+markers",
-            name = "Mode trajectory",
-            line = attr(width = 6, color = "black"),
-            marker = attr(size = 5, color = "black"),
-            hovertemplate = "Week: %{text}<br>Mode bin center: %{x:.4f}<extra></extra>",
-            text = string.(weeks),
-        ),
-    )
-    layout = Layout(
-        title = fig_title,
-        paper_bgcolor = "white",
-        plot_bgcolor = "white",
-        scene = attr(
-            xaxis = attr(
-                title = "Flux",
-                backgroundcolor = "white",
-                gridcolor = "lightgray",
-                zerolinecolor = "lightgray",
-            ),
-            yaxis = attr(
-                title = "Bin count",
-                backgroundcolor = "white",
-                gridcolor = "lightgray",
-                zerolinecolor = "lightgray",
-            ),
-            zaxis = attr(
-                title = "Week",
-                tickmode = "array",
-                tickvals = zvals,
-                ticktext = ["Week $w" for w in weeks],
-                backgroundcolor = "white",
-                gridcolor = "lightgray",
-                zerolinecolor = "lightgray",
-            ),
-            aspectmode = "manual",
-            aspectratio = attr(x = 1.6, y = 1.0, z = 0.7),
-            camera = attr(eye = attr(x = 1.7, y = 1.4, z = 1.1)),
-        ),
-        showlegend = true,
-    )
-    return PlotlyJS.plot(traces, layout)
 end
 
 """
@@ -460,95 +289,24 @@ function stacked_flux_kde_3d(
 end
 
 """
-    reaction_additive_heatmap(
-        effects_result;
-        top_n = 20,
-        fig_size = (800, 800),
-    )
+    plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
 
-Plots a pair of heatmaps side-by-side, one with effect sizes and the other with significance values. Meant to be useful for a variety of tests.
-
-# Arguments
-1. `effects_result`: A named tuple with at least two fields `effects_wide_df` (the effects taken over time) and `significance_wide_df` (significance of each effect test). Both DataFrames need reactions on the rows and additives on the columns, and the reactions should be ordered in some way and the same in both DataFrames.
-2. `top_n = 20`: Limit the plot to the top n reactions. Defaults to 20.
-3. `fig_size = (800, 800)`: Size of the figure, to accomodate total vertical height and a width for both heatmaps and their color legends.
-4. `include_significance = false`: If true, includes the significance heatmap.
-5. `effect_title = "Heatmap"`: Plot title for the effect heatmap.
-6. `effect_colorbar_label = "Legend"`: Title for the colorbar legend.
-
-# Returns
-`Figure`
-
-Returns a figure suitable for display or plotting.
-"""
-function reaction_additive_heatmap(
-    effects_result;
-    top_n = 20,
-    fig_size = (800, 800),
-    include_significance = false,
-    effect_title = "Heatmap",
-    effect_colorbar_label = "Legend",
-)
-    effects_wide_df = effects_result.effects_wide_df
-    effects_plot_df = reverse(first(effects_wide_df, top_n))
-    effects_row_labels = effects_plot_df.reaction_id
-    effects_col_labels = names(effects_plot_df)[2:end]
-    effects_heatmap_mat = Matrix(effects_plot_df[:, 2:end])
-    effects_clims = (-maximum(abs, effects_heatmap_mat), maximum(abs, effects_heatmap_mat))
-    fig = Figure(size = fig_size)
-    effects_ax = Axis(
-        fig[1, 1],
-        title = effect_title,
-        xticks = (1:length(effects_col_labels), effects_col_labels),
-        yticks = (1:length(effects_row_labels), effects_row_labels),
-        xticklabelrotation = π/4,
-    )
-    effects_hm = heatmap!(
-        effects_ax,
-        effects_heatmap_mat';
-        colormap = Reverse(:RdBu_9),
-        colorrange = effects_clims,
-    )
-    Colorbar(fig[1, 2], effects_hm; label = effect_colorbar_label, labelsize = 14)
-    if include_significance
-        significance_wide_df = effects_result.significance_wide_df
-        significance_plot_df = reverse(first(significance_wide_df, top_n))
-        significance_row_labels = significance_plot_df.reaction_id
-        significance_col_labels = names(significance_plot_df)[2:end]
-        significance_heatmap_mat = Matrix(significance_plot_df[:, 2:end])
-        significance_clims = (
-            -maximum(abs, significance_heatmap_mat),
-            maximum(abs, significance_heatmap_mat),
-        )
-        significance_ax = Axis(
-            fig[1, 3],
-            title = "Significance",
-            xticks = (1:length(significance_col_labels), significance_col_labels),
-            yticks = (1:length(significance_row_labels), significance_row_labels),
-            xticklabelrotation = π/4,
-        )
-        significance_hm = heatmap!(
-            significance_ax,
-            significance_heatmap_mat';
-            colormap = :Blues,
-            colorrange = significance_clims,
-        )
-        Colorbar(fig[1, 4], significance_hm; label = "Significance", labelsize = 14)
-    end
-    return fig
-end
-
-"""
-    plot_all_densities_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
-
-Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made.
+Plots histograms and densities for all reactions in all additives at all time points. This function saves each figure as they are made to `output/uFBA_histograms_v2` or `output/uFBA_densities` as appropriate. Displays a progress meter as the plots are made. Returns nothing since it saves as it goes.
 
 # Arguments
 1. `sampling_df`: Wide DataFrame of uFBA sampling results.
 2. `rxn_ids_to_strings`: Dictionary mapping reaction ids to human readable strings for plot subtitles.
-3. `bins`: Number of bins to put onto histograms.
+3. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+4. `treatment_additive = nothing`: See `control_additive` above.
+5. `bins`: Number of bins to put onto histograms.
 """
-function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 20)
+function plot_all_distributions_for_reactions(
+    sampling_df,
+    rxn_ids_to_strings;
+    control_additive = nothing,
+    treatment_additive = nothing,
+    bins = 20,
+)
     if nrow(sampling_df) == 0
         @warn "uFBA: Nothing to plot"
     else
@@ -565,23 +323,117 @@ function plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; b
                 reaction_id,
                 reaction_string,
                 subsystem;
+                control_additive = control_additive,
+                treatment_additive = treatment_additive,
                 bins = bins,
             )
             fig_density = densities_for_reaction(
                 long_sampling_df,
                 reaction_id,
                 reaction_string,
-                subsystem,
+                subsystem;
+                control_additive = control_additive,
+                treatment_additive = treatment_additive,
             )
-            filename_hist =
-                joinpath("output", "uFBA_histograms_v2", "$reaction_id Histograms.png")
-            filename_density =
-                joinpath("output", "uFBA_densities", "$reaction_id Densities.png")
+            filename_hist = joinpath(
+                "output",
+                "uFBA_histograms_v2",
+                "$treatment_additive $reaction_id Histograms.png",
+            )
+            filename_density = joinpath(
+                "output",
+                "uFBA_densities",
+                "$treatment_additive $reaction_id Densities.png",
+            )
             save(filename_hist, fig_hist)
             save(filename_density, fig_density)
             next!(prog)
         end
         finish!(prog)
+    end
+end
+
+"""
+    additive_comparison_palette(
+        control_additive = nothing,
+        treatment_additive = nothing,
+    )
+
+Generates the color palette for the histograms and density plots. If **either** parameter is `nothing`, defaults to the color palette for the additives in the first relative quant dataset. If string values are supplied to both parameters, sets consistent color for control and additive treatments.
+
+# Arguments
+1. `control_additive = nothing`: If specified, the name of the control additive.
+2. `treatment_additive = nothing`: If specified, the name of the treatment additive.
+
+# Returns
+`Dict{String,Union{Symbol,String}}`
+
+Returns a dictionary mapping the additive names as keys to their colors as values. The values can be either symbols for Makie or hex codes.
+"""
+function additive_comparison_palette(
+    control_additive = nothing,
+    treatment_additive = nothing,
+)
+    if isnothing(control_additive) || isnothing(treatment_additive)
+        additive_palette = [
+            "01-Ctrl AS3" => :dodgerblue,
+            "02-Adenosine" => :orange,
+            "03-Glutamine" => :blueviolet,
+            "04-Methionine" => :crimson,
+            "07-NAC" => :brown,
+            "08-Taurine" => :magenta,
+        ]
+        return additive_palette
+    else
+        additive_palette = [control_additive => :dodgerblue, treatment_additive => :orange]
+    end
+end
+
+"""
+    subset_long_sampling_df(
+        long_sampling_df,
+        reaction_id;
+        control_additive = nothing,
+        treatment_additive = nothing,
+    )
+    
+Subset the long sampling DataFrame for plotting the given reaction. For the second relative quant dataset, the option of restricting to the given control and treatment additives is available.
+
+Note: **Both** control and treatment additives must be specified to filter down the additives.
+
+# Arguments
+1. `long_sampling_df`: Long sampling DataFrame
+2. `reaction_id`: Reaction id of interest.
+3. `control_additive = nothing`: If specified, this is the control additive to include.
+4. `treatment_additive = nothing`: If specified, this is the treatment additive to include.
+
+# Returns
+`DataFrame`
+
+Returns a DataFrame subsetted as specified.
+"""
+function subset_long_sampling_df(
+    long_sampling_df,
+    reaction_id;
+    control_additive = nothing,
+    treatment_additive = nothing,
+)
+    if !isnothing(control_additive) && !isnothing(treatment_additive)
+        interesting_additives = [control_additive, treatment_additive]
+        plt_df = @chain long_sampling_df begin
+            @rsubset(:reaction_id == reaction_id, :additive in interesting_additives)
+            @rtransform(:time_span = "Final Time $(:final_time)")
+        end
+        if nrow(plt_df) == 0
+            @warn "Empty plt_df for $reaction_id"
+        end
+        return plt_df
+    else
+        plt_df = @chain long_sampling_df begin
+            @rsubset(:reaction_id == reaction_id)
+            @rtransform(:time_span = "Timespan Ending at $(:final_time)")
+        end
+        return plt_df
     end
 end
 
@@ -595,28 +447,31 @@ Plots KDEs of the flux distributions for the reaction in the various additives.
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 4. `subsystem`: Human-readable susbsytem of the reaction
-5. `bins`: Number of bins in the histograms.
+5. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+6. `treatment_additive = nothing`: See `control_additive` above.
 
 # Returns
 `Figure`
 
 Returns a Makie `Figure` to display or save.
 """
-function densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:reaction_id == reaction_id)
-        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
-    end
+function densities_for_reaction(
+    long_sampling_df,
+    reaction_id,
+    reaction_string,
+    subsystem;
+    control_additive = nothing,
+    treatment_additive = nothing,
+)
+    plt_df = subset_long_sampling_df(
+        long_sampling_df,
+        reaction_id;
+        control_additive = control_additive,
+        treatment_additive = treatment_additive,
+    )
     clean_reaction_id = replace(reaction_id, "R_" => "")
     title = "$clean_reaction_id ($subsystem)\n$reaction_string"
-    additive_palette = [
-        "01-Ctrl AS3" => :dodgerblue,
-        "02-Adenosine" => :orange,
-        "03-Glutamine" => :blueviolet,
-        "04-Methionine" => :crimson,
-        "07-NAC" => :brown,
-        "08-Taurine" => :magenta,
-    ]
+    additive_palette = additive_comparison_palette(control_additive, treatment_additive)
     density_layer =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
@@ -649,7 +504,9 @@ Plots histograms for a single reaction, with time points as separate panels and 
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
 4. `subsystem`: Human-readable susbsytem of the reaction
-5. `bins`: Number of bins in the histograms.
+5. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+6. `treatment_additive = nothing`: See `control_additive` above.
+7. `bins`: Number of bins in the histograms.
 
 # Returns
 `Figure`
@@ -661,22 +518,19 @@ function histograms_for_reaction_v2(
     reaction_id,
     reaction_string,
     subsystem;
+    control_additive = nothing,
+    treatment_additive = nothing,
     bins = 20,
 )
-    plt_df = @chain long_sampling_df begin
-        @rsubset(:reaction_id == reaction_id)
-        @rtransform(:time_span = "Week $(:final_time - 1) to $(:final_time)")
-    end
+    plt_df = subset_long_sampling_df(
+        long_sampling_df,
+        reaction_id;
+        control_additive = control_additive,
+        treatment_additive = treatment_additive,
+    )
     clean_reaction_id = replace(reaction_id, "R_" => "")
     title = "$clean_reaction_id ($subsystem)\n$reaction_string"
-    additive_palette = [
-        "01-Ctrl AS3" => :dodgerblue,
-        "02-Adenosine" => :orange,
-        "03-Glutamine" => :blueviolet,
-        "04-Methionine" => :crimson,
-        "07-NAC" => :brown,
-        "08-Taurine" => :magenta,
-    ]
+    additive_palette = additive_comparison_palette(control_additive, treatment_additive)
     hist_layer =
         data(plt_df) *
         mapping(:flux; color = :additive, row = :time_span => nonnumeric) *
@@ -697,6 +551,325 @@ function histograms_for_reaction_v2(
         facet = (; linkxaxes = :all, linkyaxes = :all),
         figure = (; title = title, size = (700, 700)),
     )
+end
+
+#####################################################################
+# EFFECT SIZE PCA/K-MEANS                                           #
+#####################################################################
+
+function prepare_treatment_effects_dfs(
+    control_vs_treatments_signif_df;
+    complete_only = true,
+)
+    final_times = sort(unique(control_vs_treatments_signif_df.final_time))
+    n_final_times = length(final_times)
+    complete_df = @chain control_vs_treatments_signif_df begin
+        @groupby(:treatment_additive)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @select(:treatment_additive)
+    end
+    complete_vs_treatments_df =
+        complete_only ?
+        innerjoin(control_vs_treatments_signif_df, complete_df; on = :treatment_additive) :
+        control_vs_treatments_signif_df
+    effects_dfs = DataFrame[]
+    for final_time in final_times
+        df = @chain complete_vs_treatments_df begin
+            @rsubset(:final_time == final_time)
+            unstack(
+                [:treatment_additive, :final_time],
+                :reaction_id,
+                :reaction_cohen_effect_z,
+            )
+            DataFrames.transform(
+                Not([:treatment_additive, :final_time]) .=>
+                    (x -> coalesce.(x, median(collect(skipmissing(x))))) .=> identity,
+            )
+        end
+        push!(effects_dfs, df)
+    end
+    result = (final_times = final_times, effects_dfs = effects_dfs)
+    return result
+end
+
+function k_means_treatment_effects(
+    prepared_treatments_result;
+    k = 5,
+    seed = 123,
+    maxiter = 300,
+)
+    final_times = prepared_treatments_result.final_times
+    effects_dfs = prepared_treatments_result.effects_dfs
+    feature_cols = names(effects_dfs[1], Not([:treatment_additive, :final_time]))
+    cluster_dfs = DataFrame[]
+    for (final_time, effects_df) in zip(final_times, effects_dfs)
+        X = Matrix{Float64}(effects_df[:, feature_cols])'
+        Random.seed!(seed)
+        result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
+        if !result.converged
+            @warn "k-means did not converge" k=k seed=seed maxiter=maxiter
+        end
+        cluster_df = DataFrame(
+            treatment_additive = effects_df.treatment_additive,
+            final_time = fill(final_time, nrow(effects_df)),
+            n_clusters = fill(k, nrow(effects_df)),
+            cluster = result.assignments,
+        )
+        push!(cluster_dfs, cluster_df)
+    end
+    treatment_k_means_df = @orderby(vcat(cluster_dfs...), :treatment_additive, :final_time)
+    return treatment_k_means_df
+end
+
+function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
+    final_times = prepared_treatments_result.final_times
+    effects_dfs = prepared_treatments_result.effects_dfs
+    pc_names = Symbol.("PC", 1:n_pcs)
+    pca_dfs = DataFrame[]
+    loadings_dfs = DataFrame[]
+    for (final_time, df) in zip(final_times, effects_dfs)
+        reaction_ids = names(select(df, Not([:treatment_additive, :final_time])))
+        X = Matrix(select(df, Not([:treatment_additive, :final_time])))
+        Xt = copy(X')
+        M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
+        scores = MultivariateStats.transform(M, Xt)
+        pca_df = DataFrame(collect(scores'), pc_names)
+        insertcols!(
+            pca_df,
+            1,
+            :treatment_additive => df.treatment_additive,
+            :final_time => fill(final_time, nrow(pca_df)),
+        )
+        push!(pca_dfs, pca_df)
+        loadings = projection(M)
+        loadings_df = DataFrame(collect(loadings), pc_names)
+        insertcols!(
+            loadings_df,
+            1,
+            :reaction_id => reaction_ids,
+            :final_time => fill(final_time, nrow(loadings_df)),
+        )
+        push!(loadings_dfs, loadings_df)
+    end
+    pca_df = @orderby(vcat(pca_dfs...), :treatment_additive, :final_time)
+    loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
+    result = (pca_df = pca_df, loadings_df = loadings_df)
+    return result
+end
+
+function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
+    n_clusters = maximum(treatment_k_means_df.cluster)
+    all_time_df = @chain pca_df begin
+        innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2)
+    end
+    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing effects k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_effects_kmeans_pca",
+            "effects_kmeans_pca_$(final_time).png",
+        )
+        title = "Effects K-Means PCA Final Time $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        scatter_plt =
+            data(plt_df) *
+            mapping(:PC1, :PC2, color = :cluster) *
+            visual(Scatter, markersize = 14, alpha = 0.75)
+        fig = draw(
+            scatter_plt,
+            scales(Color = (; palette = cluster_colors)),
+            figure = (; size = (500, 500)),
+            axis = (; title = title),
+        )
+        save(filename, fig)
+        next!(prog)
+    end
+end
+
+#####################################################################
+# MEDIAN FLUX PCA/K-MEANS                                           #
+#####################################################################
+
+function zscore_col(xs)
+    μ = mean(skipmissing(xs))
+    σ = std(skipmissing(xs))
+    if isapprox(σ, 0.0)
+        return fill(0.0, length(xs))
+    else
+        return (xs .- μ) ./ σ
+    end
+end
+
+function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
+    final_times = sort(unique(median_fluxes_df.final_time))
+    n_final_times = length(final_times)
+    complete_df = @chain median_fluxes_df begin
+        @groupby(:additive, :reaction_id)
+        @combine(:n_unique_final_times = length(unique(:final_time)))
+        @rsubset(:n_unique_final_times == n_final_times)
+        @combine(:additive = unique(:additive))
+        @select(:additive)
+    end
+    median_fluxes_df_2 =
+        complete_only ? innerjoin(median_fluxes_df, complete_df; on = :additive) :
+        median_fluxes_df
+    centered_scaled_dfs = DataFrame[]
+    for final_time in final_times
+        df = @chain median_fluxes_df_2 begin
+            @rsubset(:final_time == final_time)
+            unstack([:additive, :final_time], :reaction_id, :median_flux)
+        end
+        feature_cols = names(df, Not([:additive, :final_time]))
+        for col in feature_cols
+            @transform!(df, $col = zscore_col($col))
+        end
+        push!(centered_scaled_dfs, df)
+    end
+    result = (final_times = final_times, centered_scaled_dfs = centered_scaled_dfs)
+    return result
+end
+
+function treatment_distances_from_control(
+    prepare_median_fluxes_result;
+    control_additive = "AS3",
+)
+    centered_scaled_dfs = prepare_median_fluxes_result.centered_scaled_dfs
+    feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
+    results = DataFrame[]
+    for sdf in centered_scaled_dfs
+        time_value = sdf[1, :final_time]
+        control_df = @rsubset(sdf, :additive == control_additive)
+        if nrow(control_df) != 1
+            error(
+                "Expected exactly one AS3 control row for $(time_col) = $(time_value); " *
+                "found $(nrow(control_df)).",
+            )
+        end
+        X = Matrix(select(sdf, feature_cols))
+        x_control = vec(Matrix(select(control_df, feature_cols)))
+        distances = norm.(eachrow(X .- x_control'))
+        out = copy(sdf)
+        out[!, :distance_127D] = distances
+        out[!, :is_control] = out[!, :additive] .== control_additive
+        push!(results, out)
+    end
+    result_df = vcat(results...)
+    ranked_df = @chain result_df begin
+        @orderby(:final_time, :distance_127D)
+        @groupby(:final_time)
+        @transform(:rank_127D_most_control_like = 1:length(:distance_127D))
+        @orderby(:final_time, :rank_127D_most_control_like)
+        @select(
+            :additive,
+            :is_control,
+            :final_time,
+            :distance_127D,
+            :rank_127D_most_control_like
+        )
+    end
+    return ranked_df
+end
+
+function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
+    final_times = prepared_medians_result.final_times
+    centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
+    feature_cols = names(centered_scaled_dfs[1], Not([:additive, :final_time]))
+    cluster_dfs = DataFrame[]
+    for (final_time, median_fluxes_df) in zip(final_times, centered_scaled_dfs)
+        X = Matrix{Float64}(median_fluxes_df[:, feature_cols])'
+        Random.seed!(seed)
+        result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
+        if !result.converged
+            @warn "k-means did not converge" k=k seed=seed maxiter=maxiter
+        end
+        cluster_df = DataFrame(
+            additive = median_fluxes_df.additive,
+            final_time = fill(final_time, nrow(median_fluxes_df)),
+            n_clusters = fill(k, nrow(median_fluxes_df)),
+            cluster = result.assignments,
+        )
+        push!(cluster_dfs, cluster_df)
+    end
+    fluxes_k_means_df = @orderby(vcat(cluster_dfs...), :additive, :final_time)
+    return fluxes_k_means_df
+end
+
+function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
+    final_times = prepared_medians_result.final_times
+    centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
+    pc_names = Symbol.("PC", 1:n_pcs)
+    pca_dfs = DataFrame[]
+    loadings_dfs = DataFrame[]
+    for (final_time, df) in zip(final_times, centered_scaled_dfs)
+        reaction_ids = names(select(df, Not([:additive, :final_time])))
+        X = Matrix(select(df, Not([:additive, :final_time])))
+        Xt = copy(X')
+        M = fit(PCA, Xt; maxoutdim = n_pcs, mean = false)
+        scores = MultivariateStats.transform(M, Xt)
+        pca_df = DataFrame(collect(scores'), pc_names)
+        insertcols!(
+            pca_df,
+            1,
+            :additive => df.additive,
+            :final_time => fill(final_time, nrow(pca_df)),
+        )
+        push!(pca_dfs, pca_df)
+        loadings = projection(M)
+        loadings_df = DataFrame(collect(loadings), pc_names)
+        insertcols!(
+            loadings_df,
+            1,
+            :reaction_id => reaction_ids,
+            :final_time => fill(final_time, nrow(loadings_df)),
+        )
+        push!(loadings_dfs, loadings_df)
+    end
+    pca_df = @orderby(vcat(pca_dfs...), :additive, :final_time)
+    loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
+    result = (pca_df = pca_df, loadings_df = loadings_df)
+    return result
+end
+
+function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
+    n_clusters = maximum(fluxes_k_means_df.cluster)
+    all_time_df = @chain pca_df begin
+        innerjoin(fluxes_k_means_df; on = [:additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2)
+    end
+    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing median flux k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_fluxes_kmeans_pca",
+            "median_flux_kmeans_pca_$(final_time).png",
+        )
+        title = "Median Flux K-Means PCA Final Time $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        scatter_plt =
+            data(plt_df) *
+            mapping(:PC1, :PC2, color = :cluster) *
+            visual(Scatter, markersize = 14, alpha = 0.75)
+        fig = draw(
+            scatter_plt,
+            scales(Color = (; palette = cluster_colors)),
+            figure = (; size = (500, 500)),
+            axis = (; title = title),
+        )
+        save(filename, fig)
+        next!(prog)
+    end
 end
 
 end

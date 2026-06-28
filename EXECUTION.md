@@ -137,44 +137,67 @@ Outputs the following files:
 10. `output/ufba_fba_breaks.csv`: Constraints broken in simple FBA attempts executed before the uFBA runs.
 11. `output/ufba_pruning_overview.csv`: Zero and non-zero sinks found in the pruning process. Helpful to see what decisions the pruning algorithm made.
 
-### (5) `ufba_sampler_analysis_and_viz.jl`: Analyze and visualize the results of the uFBA Runs
+### (5) `ufba_sampler_analysis.jl`: Analyze the results of the uFBA Runs
 
-Outputs csv and plot files of analyses of the uFBA results.
+Outputs `.csv` and `.xlsx` analyses of the uFBA results. These files can be used by themselves and they also feed into the next step of making visualizations.
 
-Runs code in the `src/UfbaSamplerAnalysisAndViz.jl`. Shows nifty status bars to indicate progress.
+Runs code in the `src/UfbaSamplerAnalysis.jl`. Shows nifty status bars to indicate progress.
 
-Uses the following input file:
+Uses the following input files:
 
 1. Reads the uFBA sampling results file at `output/ufba_sampling.csv`.
 
 Outputs the following files:
 
-1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
-2. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
-3. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
-4. Writes data matrices of median fluxes to `output/flux_vector_data_matrices`. One matrix contains all additives. The rest of the matrices exclude one matrix at a time.
-5. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
-6. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
-7. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
-8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
-9. Writes a bunch of `.csv` files for use by an R script to plot correlation heatmaps and perform hierarchical clustering. These files are written to `output/correlation_matrices_1/`.
-10. Writes an Excel workbook that links reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category. Filename is `output/reactions_metabolites_measurements.xlsx`
-
-There are no threads or workers in this script, so execution is simple.
+1. Diagnoses the output of the models sampled by uFBA to help find potential problems and writes the diagnostics in `output/ufba_diagnostics.csv`.
+2. Writes net fluxes of each pair of sinks to `output/net_sink_fluxes.csv`.
+3. Writes data matrices of median fluxes to `output/flux_vector_data_matrices`. One matrix contains all additives. The rest of the matrices exclude one matrix at a time.
+4. Writes a report of all metabolites in each model and whether those metabolites are measured or have sinks to `output/measurements_and_sinks_report.csv`.
+5. Writes an aggregated report for each model detailing the total numbers of metabolites, measurements, and sinks to `output/measurements_and_sinks_report_by_model.csv`.
+6. `output/control_vs_treatment.csv`: Potentially interesting additives/times/reactions for further investigation. See the documentation for the function `compare_flux_distributions()` in `UfbaSamplerAnalysisAndViz.jl` for more information.
+7. Writes a bunch of `.csv` files for use by an R script to plot correlation heatmaps and perform hierarchical clustering. These files are written to `output/correlation_matrices_1/`.
+8. Writes an Excel workbook that links reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category. Filename is `output/reactions_metabolites_measurements.xlsx`
+9. Writes an Excel workbook of comparing treatments with respect to reactions and time points. Filename is `output/reaction_treatment_comparison.xlsx`
 
 On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
 ```
-JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_analysis_and_viz.jl
+JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_analysis.jl
 ```
 
 On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 
 ```
-julia --project=. ufba_sampler_analysis_and_viz.jl
+julia --project=. ufba_sampler_analysis.jl
 ```
 
-### (6) `model_graph.jl`: Analyze the uFBA models as graphs
+### (6) `ufba_sampler_viz.jl`: Visualize uFBA analysis results as plots
+
+Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
+
+Uses the following input files:
+
+1. Reads the uFBA sampling results file at `output/ufba_sampling.csv`.
+2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.xml`
+
+Outputs the following files:
+
+1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
+8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+
+On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
+
+```
+JULIA_NUM_THREADS=7 julia --project=. ufba_sampler_viz.jl
+```
+
+On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
+
+```
+julia --project=. ufba_sampler_viz.jl
+```
+
+### (7) `model_graph.jl`: Analyze the uFBA models as graphs
 
 Analyzes the uFBA models as graphs.
 
