@@ -362,6 +362,25 @@ end
 # EFFECT SIZE PCA/K-MEANS                                           #
 #####################################################################
 
+"""
+    prepare_treatment_effects_dfs(
+        control_vs_treatments_signif_df;
+        complete_only = true,
+    )
+
+Prepares the DataFrames for PCA and k-means analysis of treatment vs control Cohen's effects.
+    
+# Arguments
+1. `control_vs_treatments_signif_df`: Treatment effects filtered down to significant treatments.
+2. `complete_only = true`: If `true`, only gathers results from treatments where all possible timepoints are present.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `final_times`: Sorted vector of all final times found.
+2. `effects_dfs`: Dictionary mapping integer final times to DataFrames, pivoted wide, with columns of Cohen's effects for each reaction.
+"""
 function prepare_treatment_effects_dfs(
     control_vs_treatments_signif_df;
     complete_only = true,
@@ -398,6 +417,22 @@ function prepare_treatment_effects_dfs(
     return result
 end
 
+"""
+    k_means_treatment_effects(
+        prepared_treatments_result;
+        k = 5,
+        seed = 123,
+        maxiter = 300,
+    )
+
+Finds k-means clusters of treatments using treatment effects as features calculated for each time point.
+
+# Arguments
+1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_treatment_effects_dfs)
+2. `k = 5`: The number of clusters to create.
+3. `seed = 123`: RNG seed
+4. `maxiter = 300`: Maximum iterations of clustering algorithm.
+"""
 function k_means_treatment_effects(
     prepared_treatments_result;
     k = 5,
@@ -427,6 +462,22 @@ function k_means_treatment_effects(
     return treatment_k_means_df
 end
 
+"""
+    pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
+
+Finds principal components of treatments treatment effects as features calculated for each time point.
+
+# Arguments
+1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_treatment_effects_dfs)
+2. `n_pcs = 5`: Number of principal components to calculate.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `pca_df`: Rows with treatment, final time, and PC values
+2. `loadings_df`: Loadings of each reaction effect on each PC.
+"""
 function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
     final_times = prepared_treatments_result.final_times
     effects_dfs = prepared_treatments_result.effects_dfs
@@ -463,6 +514,15 @@ function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
     return result
 end
 
+"""
+    plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
+
+Creates a scatter plot for each time point with a dot for each treatment plotted on a plane defined by PC1 and PC2, colored by k-means cluster. Saves each plot to the filesystem as it goes along. Makes a nice progress bar.
+
+# Arguments
+1. `pca_df`: DataFrame of principal components for each treatment/final time.
+2. `treatment_k_means_df`: Clusters to color the points.
+"""
 function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
     n_clusters = maximum(treatment_k_means_df.cluster)
     all_time_df = @chain pca_df begin
