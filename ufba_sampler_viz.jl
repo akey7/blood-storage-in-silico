@@ -17,7 +17,7 @@ println("Num threads $num_threads")
 ###########################################################
 
 @info "Reading sampling file and valid additive / time combinations"
-sampling_results = load_sampling_results()
+sampling_results = load_and_select_sampling_results()
 sampling_df = sampling_results.sampling_df
 working_models_df = sampling_results.working_models_df
 working_model_filename = joinpath("output", "ufba_sampling_complete_additives.csv")
@@ -45,15 +45,6 @@ println("Wrote $working_model_filename")
 #     treatment_additive = treatment_additive,
 #     bins = 80,
 # )
-
-# @info "3D histogram/KDE plot things"
-# long_sampling_df = pivot_sampling_df_long(sampling_df)
-# flux_df = @rsubset(long_sampling_df, :additive == "01-Ctrl AS3", :reaction_id == "R_ORNDC")
-# display(first(flux_df, 10))
-# p_kde = stacked_flux_kde_3d(flux_df)
-# p_kde_filename = joinpath("output", "uFBA_3d_histograms", "line_kde_3d.html")
-# savefig(p_kde, p_kde_filename)
-# println("Wrote $p_kde_filename")
 
 ###########################################################
 # ANALYSIS FOR DATA VIZ PIPELINE                          #

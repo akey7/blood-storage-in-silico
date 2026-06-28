@@ -24,7 +24,7 @@ export stacked_flux_kde_3d,
     plot_all_distributions_for_reactions,
     densities_for_reaction,
     histograms_for_reaction_v2,
-    load_sampling_results,
+    load_and_select_sampling_results,
     pca_treatment_effects,
     prepare_treatment_effects_dfs,
     k_means_treatment_effects,
@@ -35,7 +35,19 @@ export stacked_flux_kde_3d,
     plot_median_fluxes_kmeans_pca,
     treatment_distances_from_control
 
-function load_sampling_results()
+"""
+    load_and_select_sampling_results()
+
+Loads the uFBA sampling results previously generated. Returns the raw sampling results alongside a set of sampling results filtered down to only those additives that have complete models for all possible timepoints.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following fields:
+1. `sampling_df`: The wide sampling DataFrame with all additives (including incomplete ones)
+2. `working_models_df`: A sampling DataFrame with results from only additives that have working models from all time points.
+"""
+function load_and_select_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
     sampling_df = CSV.read(sampling_filename, DataFrame)
     final_times = sort(unique(sampling_df.final_time))
@@ -79,213 +91,6 @@ function pivot_sampling_df_long(sampling_df)
         value_name = :flux,
     )
     return long_sampling_df
-end
-
-"""
-    stacked_flux_kde_3d(
-        df::DataFrame;
-        z_spacing::Real = 0.35,
-        npoints::Int = 256,
-        bandwidth = nothing,
-        line_width::Real = 5,
-        peak_projection_width::Real = 2,
-        plane_opacity::Real = 0.10,
-        fig_title::AbstractString = "3D KDE Curves Across Weeks",
-    )
-
-Makes a 3D plot of a given flux distribution trajectory through time. Kernel density estimation are plotted up the z axis and a line connecting the mode bins of all the KDEs is plotted behind these histograms to show the trajectory of flux over time. Lines from the peak of each curve to the trajectory line make the plot more readable.
-
-# Arguments
-1. `df::DataFrame`: Long format DataFrame of flux sampling results.
-2. `z_spacing::Real = 0.35`: How far apart each histogram is up the z axis.
-3. `npoints::Int = 256`: Number of points on the KDE curve
-4. `bandwidth = nothing`: Bandwidth of KDE, if specified.
-5. `line_width::Real = 5`: Line width of the plot.
-6. `peak_projection_width::Real = 2`: Width of line between peaks of curves and the mode trajectory line.
-7. `plane_opacity::Real = 0.10`: Opacity of reference planes.
-8. `fig_title::AbstractString = "3D KDE Curves Across Weeks"`: Figure title if specified.
-
-# Returns
-`PlotlyJS.Plot`
-
-A PlotlyJS plot to display or save.
-"""
-function stacked_flux_kde_3d(
-    df::DataFrame;
-    z_spacing::Real = 0.35,
-    npoints::Int = 256,
-    bandwidth = nothing,
-    line_width::Real = 5,
-    peak_projection_width::Real = 2,
-    plane_opacity::Real = 0.10,
-    fig_title::AbstractString = "3D KDE Curves Across Weeks",
-)
-    weeks = sort(unique(df.final_time))
-    length(weeks) > 0 || error("No weeks found in flux_df")
-    z_spacing > 0 || error("z_spacing must be positive")
-    npoints >= 32 || error("npoints should be at least 32 for a smooth KDE curve")
-    all_flux = Float64.(df.flux)
-    xmin = minimum(all_flux)
-    xmax = maximum(all_flux)
-    if isapprox(xmin, xmax)
-        δ = max(abs(xmin) * 0.05, 1e-6)
-        xmin -= δ
-        xmax += δ
-    end
-    week_z = Dict(week => (i - 1) * z_spacing for (i, week) in enumerate(weeks))
-    zvals = [week_z[w] for w in weeks]
-    palette = [
-        "#1f77b4",
-        "#d62728",
-        "#2ca02c",
-        "#ff7f0e",
-        "#9467bd",
-        "#8c564b",
-        "#e377c2",
-        "#7f7f7f",
-        "#bcbd22",
-        "#17becf",
-    ]
-    week_colors =
-        Dict(week => palette[mod1(i, length(palette))] for (i, week) in enumerate(weeks))
-    kdes = Dict{eltype(weeks),Any}()
-    ymax = 0.0
-
-    for week in weeks
-        vals = Float64.(df[df.final_time .== week, :flux])
-
-        kd = if bandwidth === nothing
-            kde(vals; boundary = (xmin, xmax), npoints = npoints)
-        else
-            kde(vals; boundary = (xmin, xmax), npoints = npoints, bandwidth = bandwidth)
-        end
-
-        kdes[week] = kd
-        ymax = max(ymax, maximum(kd.density))
-    end
-    zmin = minimum(zvals) - 0.12
-    zmax = maximum(zvals) + 0.12
-    traces = GenericTrace[]
-    push!(
-        traces,
-        PlotlyJS.surface(
-            x = [xmin, xmax],
-            y = [0.0, ymax],
-            z = fill(zmin, 2, 2),
-            colorscale = [[0.0, "white"], [1.0, "white"]],
-            opacity = plane_opacity,
-            showscale = false,
-            hoverinfo = "skip",
-            showlegend = false,
-            name = "XY plane",
-        ),
-    )
-    push!(
-        traces,
-        PlotlyJS.surface(
-            x = [xmin, xmax],
-            y = fill(0.0, 2, 2),
-            z = [zmin zmin; zmax zmax],
-            colorscale = [[0.0, "white"], [1.0, "white"]],
-            opacity = plane_opacity,
-            showscale = false,
-            hoverinfo = "skip",
-            showlegend = false,
-            name = "XZ plane",
-        ),
-    )
-    peak_x = Float64[]
-    peak_y = Float64[]
-    peak_z = Float64[]
-    for week in weeks
-        kd = kdes[week]
-        zpos = week_z[week]
-        x_curve = Float64.(kd.x)
-        y_curve = Float64.(kd.density)
-        z_curve = fill(zpos, length(x_curve))
-        push!(
-            traces,
-            scatter3d(
-                x = x_curve,
-                y = y_curve,
-                z = z_curve,
-                mode = "lines",
-                name = "Week $week",
-                line = attr(width = line_width, color = week_colors[week]),
-                hovertemplate = "Week $week<br>Flux: %{x:.4f}<br>Density: %{y:.4f}<extra></extra>",
-            ),
-        )
-        peak_idx = argmax(y_curve)
-        px = x_curve[peak_idx]
-        py = y_curve[peak_idx]
-        push!(peak_x, px)
-        push!(peak_y, 0.0)
-        push!(peak_z, zpos)
-        push!(
-            traces,
-            scatter3d(
-                x = [px, px],
-                y = [0.0, py],
-                z = [zpos, zpos],
-                mode = "lines",
-                name = "Peak projection",
-                showlegend = false,
-                line = attr(
-                    width = peak_projection_width,
-                    color = week_colors[week],
-                    dash = "dot",
-                ),
-                hoverinfo = "skip",
-            ),
-        )
-    end
-    push!(
-        traces,
-        scatter3d(
-            x = peak_x,
-            y = peak_y,
-            z = peak_z,
-            mode = "lines+markers",
-            name = "KDE peak trajectory",
-            line = attr(width = 6, color = "black"),
-            marker = attr(size = 5, color = "black"),
-            hovertemplate = "Week: %{text}<br>Peak flux: %{x:.4f}<extra></extra>",
-            text = string.(weeks),
-        ),
-    )
-    layout = Layout(
-        title = fig_title,
-        paper_bgcolor = "white",
-        plot_bgcolor = "white",
-        scene = attr(
-            xaxis = attr(
-                title = "Flux",
-                backgroundcolor = "white",
-                gridcolor = "lightgray",
-                zerolinecolor = "lightgray",
-            ),
-            yaxis = attr(
-                title = "Density",
-                backgroundcolor = "white",
-                gridcolor = "lightgray",
-                zerolinecolor = "lightgray",
-            ),
-            zaxis = attr(
-                title = "Week",
-                tickmode = "array",
-                tickvals = zvals,
-                ticktext = ["Week $w" for w in weeks],
-                backgroundcolor = "white",
-                gridcolor = "lightgray",
-                zerolinecolor = "lightgray",
-            ),
-            aspectmode = "manual",
-            aspectratio = attr(x = 1.6, y = 1.0, z = 0.7),
-            camera = attr(eye = attr(x = 1.7, y = 1.4, z = 1.1)),
-        ),
-        showlegend = true,
-    )
-    return PlotlyJS.plot(traces, layout)
 end
 
 """
@@ -557,6 +362,25 @@ end
 # EFFECT SIZE PCA/K-MEANS                                           #
 #####################################################################
 
+"""
+    prepare_treatment_effects_dfs(
+        control_vs_treatments_signif_df;
+        complete_only = true,
+    )
+
+Prepares the DataFrames for PCA and k-means analysis of treatment vs control Cohen's effects.
+    
+# Arguments
+1. `control_vs_treatments_signif_df`: Treatment effects filtered down to significant treatments.
+2. `complete_only = true`: If `true`, only gathers results from treatments where all possible timepoints are present.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `final_times`: Sorted vector of all final times found.
+2. `effects_dfs`: Dictionary mapping integer final times to DataFrames, pivoted wide, with columns of Cohen's effects for each reaction.
+"""
 function prepare_treatment_effects_dfs(
     control_vs_treatments_signif_df;
     complete_only = true,
@@ -593,6 +417,27 @@ function prepare_treatment_effects_dfs(
     return result
 end
 
+"""
+    k_means_treatment_effects(
+        prepared_treatments_result;
+        k = 5,
+        seed = 123,
+        maxiter = 300,
+    )
+
+Finds k-means clusters of treatments using treatment effects as features calculated for each time point.
+
+# Arguments
+1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_treatment_effects_dfs)
+2. `k = 5`: The number of clusters to create.
+3. `seed = 123`: RNG seed
+4. `maxiter = 300`: Maximum iterations of clustering algorithm.
+
+# Returns
+`DataFrame`
+
+K-Means cluster assignments for each additive and final time, ordered by additive and final time.
+"""
 function k_means_treatment_effects(
     prepared_treatments_result;
     k = 5,
@@ -622,6 +467,22 @@ function k_means_treatment_effects(
     return treatment_k_means_df
 end
 
+"""
+    pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
+
+Finds principal components of treatments treatment effects as features calculated for each time point.
+
+# Arguments
+1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_treatment_effects_dfs)
+2. `n_pcs = 5`: Number of principal components to calculate.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `pca_df`: Rows with treatment, final time, and PC values
+2. `loadings_df`: Loadings of each reaction effect on each PC.
+"""
 function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
     final_times = prepared_treatments_result.final_times
     effects_dfs = prepared_treatments_result.effects_dfs
@@ -658,6 +519,15 @@ function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
     return result
 end
 
+"""
+    plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
+
+Creates a scatter plot for each time point with a dot for each treatment plotted on a plane defined by PC1 and PC2, colored by k-means cluster. Saves each plot to the filesystem as it goes along. Makes a nice progress bar.
+
+# Arguments
+1. `pca_df`: DataFrame of principal components for each treatment/final time.
+2. `treatment_k_means_df`: Clusters to color the points.
+"""
 function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
     n_clusters = maximum(treatment_k_means_df.cluster)
     all_time_df = @chain pca_df begin
@@ -697,6 +567,19 @@ end
 # MEDIAN FLUX PCA/K-MEANS                                           #
 #####################################################################
 
+"""
+    zscore_col(xs)
+
+Calculates the z-scores of a column of values. Helper function for [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+
+# Arguments
+1. `xs`: Vector of values for which to compute z-scores.
+
+# Returns
+`Vector{Float64}`
+
+Returns vector of z-score values.
+"""
 function zscore_col(xs)
     μ = mean(skipmissing(xs))
     σ = std(skipmissing(xs))
@@ -707,6 +590,22 @@ function zscore_col(xs)
     end
 end
 
+"""
+    prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
+
+Prepares centered and scaled median fluxes for each treatment grouped by time.
+
+# Arguments
+1. `median_fluxes_df`: DataFrame of median flux values for each additive and time point.
+2. `complete_only = true`: If `true`, filters treatments to only those that have results for the complete set of time points.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `final_times`: The vector of all final times.
+2. `centered_scaled_dfs`: Dictionary mapping final times to centered and scaled DataFrames of median fluxes per additive.
+"""
 function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
     final_times = sort(unique(median_fluxes_df.final_time))
     n_final_times = length(final_times)
@@ -736,6 +635,23 @@ function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
     return result
 end
 
+"""
+   treatment_distances_from_control(
+        prepare_median_fluxes_result;
+        control_additive = "AS3",
+    )
+
+For each time point and using centered and scaled median fluxes for all reactions as features, computes Euclidean distance from the control for each additive.
+
+# Argument
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+2. `control_additive = "AS3"`: Additive to be treated as the control.
+
+# Returns
+`DataFrame`
+
+DataFrame with additives ranked by their distances from control.
+"""
 function treatment_distances_from_control(
     prepare_median_fluxes_result;
     control_additive = "AS3",
@@ -777,6 +693,22 @@ function treatment_distances_from_control(
     return ranked_df
 end
 
+"""
+    k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
+
+Calculates k-means clusters for treatments using median fluxes of reactions as features.
+
+# Arguments
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+2. `k = 5`: The number of clusters to create.
+3. `seed = 123`: RNG seed
+4. `maxiter = 300`: Maximum iterations of clustering algorithm.
+
+# Returns
+`DataFrame`
+
+K-Means cluster assignments for each additive and final time, ordered by additive and final time.
+"""
 function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
     final_times = prepared_medians_result.final_times
     centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
@@ -801,6 +733,22 @@ function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxit
     return fluxes_k_means_df
 end
 
+"""
+    pca_median_fluxes(prepared_medians_result; n_pcs = 5)
+
+Finds principal components of median fluxes for each additive/time point
+
+# Arguments
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+2. `n_pcs = 5`: Number of principal components to calculate.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `pca_df`: Rows with treatment, final time, and PC values
+2. `loadings_df`: Loadings of each reaction effect on each PC.
+"""
 function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
     final_times = prepared_medians_result.final_times
     centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
@@ -837,6 +785,15 @@ function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
     return result
 end
 
+"""
+    plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
+
+Plots treatments on a plane defined by PC1 and PC2, colored by k-means cluster assignment. Saves plots for each time point as it goes along, and has a nice progress bar along the way.
+
+# Arguments
+1. `pca_df`: DataFrame with PC values
+2. `fluxes_k_means_df`: DataFrame with cluster assignments.
+"""
 function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
     n_clusters = maximum(fluxes_k_means_df.cluster)
     all_time_df = @chain pca_df begin

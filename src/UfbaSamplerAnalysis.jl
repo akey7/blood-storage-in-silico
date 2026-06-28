@@ -30,7 +30,6 @@ export diagnose_flux_stats,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
     write_all_flux_vector_matrices,
     reactions_metabolites_report_dfs,
@@ -410,11 +409,8 @@ For each (non-control) additive, time point, and reaction, compare all additives
 `NamedTuple`
 
 Returns a tuple of two DataFrames:
-1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions. The most important columns in this DataFrame are `treatment_additive`, `final_time`, and `reaction_id`.
-2. `score_ranking_df`: Ranking reactions by their most influential treatment additive and time point.
-3. `effects_wide_df`: Standardized Cohen's effect sizes in a wide format for plotting in a heatmap. Ordered in descending order of the maximum effect size across all additives per each reaction.
-4. `significance_wide_df`: Minimum t-test p-values across all additives per reaction in a wide format for plotting in a heatmap. Ordered the same way as the wide signficance DataFrame.
-5. `heatmap_rank_df`: The DataFrame used to order the wide effects and significance DataFrames.
+1. `control_vs_treatments_df`: DataFrame with interesting additives/time points/reactions.
+2. `control_vs_treatments_signif_df`: Only significant additives/time points/reactions as determine by adjusted by p-values and Cohen's effect threshold.
 """
 function compare_flux_distributions(
     sampling_df,
@@ -534,102 +530,9 @@ function compare_flux_distributions(
     end
     control_vs_treatments_signif_df =
         @rsubset(control_vs_treatments_df, :t_test_significant && :mw_significant)
-    # log_p_max = 2.0
-    # score_ranking_df = @chain test_df begin
-    #     leftjoin(
-    #         reaction_cohen_effect_z_df;
-    #         on = [:treatment_additive, :final_time, :reaction_id],
-    #     )
-    #     @rtransform(
-    #         :score =
-    #             abs(:reaction_cohen_effect_z) * min(-log10(:adj_t_test_p), log_p_max)
-    #     )
-    #     @groupby(:reaction_id)
-    #     @combine @astable begin
-    #         idx = argmax(:score)
-    #         :treatment_additive = :treatment_additive[idx]
-    #         :final_time = :final_time[idx]
-    #         :max_score = :score[idx]
-    #         :reaction_cohen_effect_z = :reaction_cohen_effect_z[idx]
-    #         :adj_t_test_p = :adj_t_test_p[idx]
-    #     end
-    #     @orderby(-:max_score)
-    # end
-    # heatmap_rank_df = @chain score_ranking_df begin
-    #     @groupby(:reaction_id)
-    #     @combine(:max_max_score = maximum(:max_score))
-    #     @orderby(-:max_max_score)
-    # end
-    # effects_wide_df = @chain control_vs_treatments_df begin
-    #     @select(:reaction_id, :treatment_additive, :reaction_cohen_effect_z)
-    #     unstack(
-    #         :reaction_id,
-    #         :treatment_additive,
-    #         :reaction_cohen_effect_z;
-    #         combine = abs_maximum,
-    #     )
-    #     innerjoin(heatmap_rank_df, on = :reaction_id)
-    #     @orderby(-:max_max_score)
-    #     @select(Not(:max_max_score))
-    # end
-    # significance_wide_df = @chain control_vs_treatments_df begin
-    #     @select(:reaction_id, :treatment_additive, :adj_t_test_p)
-    #     unstack(:reaction_id, :treatment_additive, :adj_t_test_p; combine = minimum)
-    #     innerjoin(heatmap_rank_df, on = :reaction_id)
-    #     @orderby(-:max_max_score)
-    #     @select(Not(:max_max_score))
-    # end
     result = (
         control_vs_treatments_df = control_vs_treatments_df,
         control_vs_treatments_signif_df = control_vs_treatments_signif_df,
-        # score_ranking_df = score_ranking_df,
-        # effects_wide_df = effects_wide_df,
-        # significance_wide_df = significance_wide_df,
-        # heatmap_rank_df = heatmap_rank_df,
-    )
-    return result
-end
-
-"""
-    remove_reaction_string_prefix(comparison_result)
-
-Goes through all DataFrames in the comparison result and removes the leading `R_` from reaction ids to enhance data readability for humans.
-
-# Arguments
-1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
-
-# Returns
-`NamedTuple`
-
-Returns a named tuple with the same fields containing DataFrames that have reaction ids with the `R_` removed.
-"""
-function remove_reaction_string_prefix(comparison_result)
-    control_vs_treatments_df = @rtransform(
-        comparison_result.control_vs_treatments_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    score_ranking_df = @rtransform(
-        comparison_result.score_ranking_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    effects_wide_df = @rtransform(
-        comparison_result.effects_wide_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    significance_wide_df = @rtransform(
-        comparison_result.significance_wide_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    heatmap_rank_df = @rtransform(
-        comparison_result.heatmap_rank_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    result = (
-        control_vs_treatments_df = control_vs_treatments_df,
-        score_ranking_df = score_ranking_df,
-        effects_wide_df = effects_wide_df,
-        significance_wide_df = significance_wide_df,
-        heatmap_rank_df = heatmap_rank_df,
     )
     return result
 end
