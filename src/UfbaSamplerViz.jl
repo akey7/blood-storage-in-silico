@@ -24,7 +24,7 @@ export stacked_flux_kde_3d,
     plot_all_distributions_for_reactions,
     densities_for_reaction,
     histograms_for_reaction_v2,
-    load_sampling_results,
+    load_and_select_sampling_results,
     pca_treatment_effects,
     prepare_treatment_effects_dfs,
     k_means_treatment_effects,
@@ -35,7 +35,7 @@ export stacked_flux_kde_3d,
     plot_median_fluxes_kmeans_pca,
     treatment_distances_from_control
 
-function load_sampling_results()
+function load_and_select_sampling_results()
     sampling_filename = joinpath("output", "ufba_sampling.csv")
     sampling_df = CSV.read(sampling_filename, DataFrame)
     final_times = sort(unique(sampling_df.final_time))

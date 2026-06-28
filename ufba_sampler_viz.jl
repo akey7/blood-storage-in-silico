@@ -17,7 +17,7 @@ println("Num threads $num_threads")
 ###########################################################
 
 @info "Reading sampling file and valid additive / time combinations"
-sampling_results = load_sampling_results()
+sampling_results = load_and_select_sampling_results()
 sampling_df = sampling_results.sampling_df
 working_models_df = sampling_results.working_models_df
 working_model_filename = joinpath("output", "ufba_sampling_complete_additives.csv")
