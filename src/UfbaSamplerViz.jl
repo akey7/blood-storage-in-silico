@@ -432,6 +432,11 @@ Finds k-means clusters of treatments using treatment effects as features calcula
 2. `k = 5`: The number of clusters to create.
 3. `seed = 123`: RNG seed
 4. `maxiter = 300`: Maximum iterations of clustering algorithm.
+
+# Returns
+`DataFrame`
+
+K-Means cluster assignments for each additive and final time, ordered by additive and final time.
 """
 function k_means_treatment_effects(
     prepared_treatments_result;
@@ -562,6 +567,19 @@ end
 # MEDIAN FLUX PCA/K-MEANS                                           #
 #####################################################################
 
+"""
+    zscore_col(xs)
+
+Calculates the z-scores of a column of values. Helper function for [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+
+# Arguments
+1. `xs`: Vector of values for which to compute z-scores.
+
+# Returns
+`Vector{Float64}`
+
+Returns vector of z-score values.
+"""
 function zscore_col(xs)
     μ = mean(skipmissing(xs))
     σ = std(skipmissing(xs))
@@ -572,6 +590,22 @@ function zscore_col(xs)
     end
 end
 
+"""
+    prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
+
+Prepares centered and scaled median fluxes for each treatment grouped by time.
+
+# Arguments
+1. `median_fluxes_df`: DataFrame of median flux values for each additive and time point.
+2. `complete_only = true`: If `true`, filters treatments to only those that have results for the complete set of time points.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `final_times`: The vector of all final times.
+2. `centered_scaled_dfs`: Dictionary mapping final times to centered and scaled DataFrames of median fluxes per additive.
+"""
 function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
     final_times = sort(unique(median_fluxes_df.final_time))
     n_final_times = length(final_times)
@@ -601,6 +635,23 @@ function prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
     return result
 end
 
+"""
+   treatment_distances_from_control(
+        prepare_median_fluxes_result;
+        control_additive = "AS3",
+    )
+
+For each time point and using centered and scaled median fluxes for all reactions as features, computes Euclidean distance from the control for each additive.
+
+# Argument
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+2. `control_additive = "AS3"`: Additive to be treated as the control.
+
+# Returns
+`DataFrame`
+
+DataFrame with additives ranked by their distances from control.
+"""
 function treatment_distances_from_control(
     prepare_median_fluxes_result;
     control_additive = "AS3",
@@ -642,6 +693,22 @@ function treatment_distances_from_control(
     return ranked_df
 end
 
+"""
+    k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
+
+Calculates k-means clusters for treatments using median fluxes of reactions as features.
+
+# Arguments
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+2. `k = 5`: The number of clusters to create.
+3. `seed = 123`: RNG seed
+4. `maxiter = 300`: Maximum iterations of clustering algorithm.
+
+# Returns
+`DataFrame`
+
+K-Means cluster assignments for each additive and final time, ordered by additive and final time.
+"""
 function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxiter = 300)
     final_times = prepared_medians_result.final_times
     centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
@@ -666,6 +733,22 @@ function k_means_median_fluxes(prepared_medians_result; k = 5, seed = 123, maxit
     return fluxes_k_means_df
 end
 
+"""
+    pca_median_fluxes(prepared_medians_result; n_pcs = 5)
+
+Finds principal components of median fluxes for each additive/time point
+
+# Arguments
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+2. `n_pcs = 5`: Number of principal components to calculate.
+
+# Returns
+`NamedTuple`
+
+Returns a named tuple with the following elements:
+1. `pca_df`: Rows with treatment, final time, and PC values
+2. `loadings_df`: Loadings of each reaction effect on each PC.
+"""
 function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
     final_times = prepared_medians_result.final_times
     centered_scaled_dfs = prepared_medians_result.centered_scaled_dfs
@@ -702,6 +785,15 @@ function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
     return result
 end
 
+"""
+    plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
+
+Plots treatments on a plane defined by PC1 and PC2, colored by k-means cluster assignment. Saves plots for each time point as it goes along, and has a nice progress bar along the way.
+
+# Arguments
+1. `pca_df`: DataFrame with PC values
+2. `fluxes_k_means_df`: DataFrame with cluster assignments.
+"""
 function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
     n_clusters = maximum(fluxes_k_means_df.cluster)
     all_time_df = @chain pca_df begin
