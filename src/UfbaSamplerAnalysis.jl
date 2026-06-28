@@ -30,7 +30,6 @@ export diagnose_flux_stats,
     global_mixed_model_test,
     pivot_sampling_df_long_cat,
     per_reaction_additive_time_test,
-    remove_reaction_string_prefix,
     reaction_correlations_one_additive_one_time,
     write_all_flux_vector_matrices,
     reactions_metabolites_report_dfs,
@@ -586,50 +585,6 @@ function compare_flux_distributions(
         # effects_wide_df = effects_wide_df,
         # significance_wide_df = significance_wide_df,
         # heatmap_rank_df = heatmap_rank_df,
-    )
-    return result
-end
-
-"""
-    remove_reaction_string_prefix(comparison_result)
-
-Goes through all DataFrames in the comparison result and removes the leading `R_` from reaction ids to enhance data readability for humans.
-
-# Arguments
-1. `comparison_result`: Result returned by [`compare_flux_distributions`](@ref BloodStorageInSilico.UfbaSamplerAnalysis.compare_flux_distributions)
-
-# Returns
-`NamedTuple`
-
-Returns a named tuple with the same fields containing DataFrames that have reaction ids with the `R_` removed.
-"""
-function remove_reaction_string_prefix(comparison_result)
-    control_vs_treatments_df = @rtransform(
-        comparison_result.control_vs_treatments_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    score_ranking_df = @rtransform(
-        comparison_result.score_ranking_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    effects_wide_df = @rtransform(
-        comparison_result.effects_wide_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    significance_wide_df = @rtransform(
-        comparison_result.significance_wide_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    heatmap_rank_df = @rtransform(
-        comparison_result.heatmap_rank_df,
-        :reaction_id = replace(:reaction_id, "R_" => "")
-    )
-    result = (
-        control_vs_treatments_df = control_vs_treatments_df,
-        score_ranking_df = score_ranking_df,
-        effects_wide_df = effects_wide_df,
-        significance_wide_df = significance_wide_df,
-        heatmap_rank_df = heatmap_rank_df,
     )
     return result
 end
