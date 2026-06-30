@@ -178,12 +178,14 @@ Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
 Uses the following input files:
 
 1. Reads the uFBA sampling results file at `output/ufba_sampling.csv`.
-2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.xml`
+2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.xml`.
+3. Reads the median reaction fluxes at `output/ufba_median_fluxes.csv`.
 
 Outputs the following files:
 
 1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
-8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+2. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+3. PCA and k-means analysis of Cohen's effects between control and treatments and median fluxes, along with distances between control and treatments to sheets in `output/viz_k_means_pca_distance.xlsx`.
 
 On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
