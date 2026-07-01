@@ -2,6 +2,17 @@
 
 This project studies refrigerated blood storage with unsteady flux balance analysis (uFBA).
 
+## Reviewer Mental Model
+
+This repository is organized as a script-driven Julia analysis pipeline.
+
+- Root-level `*.jl` files are command-line entrypoints.
+- Files in `src/` contain the reusable modeling, data-processing, optimization, sampling, analysis, and diagnostic visualization logic.
+- Root-level scripts mostly connect `src/` modules to the filesystem, command-line options, and the ordered workflow.
+- The primary scientific workflow is documented in `EXECUTION.md`.
+- Installation, proprietary input setup, and output directory setup are documented in `INSTALLATION.md`.
+- Publication-quality final figures are produced in a separate Python/R repository, `blood-storage-in-silico-viz`.
+
 ## Documentation
 
 1. [Installation instructions](INSTALLATION.md), covering installing dependencies and formatting docstrings.
@@ -12,7 +23,7 @@ This project studies refrigerated blood storage with unsteady flux balance analy
 
 4. [New to Julia documentation](NEW_TO_JULIA.md) for users new to the Julia programming language.
 
-5. [Guide for reviewer](GUIDE_FOR_REVIEWERS.md) for a guide on checking the code for the purposes of scientific peer review.
+5. [Reviewer Quick Start](REVIEWER_QUICK_START.md) for a guide on checking the code for the purposes of scientific peer review.
 
 6. **Once built**, `docs/build/index.html` contains documentation about the modules in `src/` and functions in those modules that encode the functionality of this repo.
 
