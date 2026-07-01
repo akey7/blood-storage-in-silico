@@ -1,20 +1,22 @@
 # Blood Storage in Silico - uFBA Analysis Workflow
 
-## UfbaSamplerAnalysisAndViz
+## UfbaSamplerAnalysis
 
 Because the `UfbaSampler.jl` module was becoming huge, I split the visualization and analysis functions for `UfbaSampler.jl` into their own module.
+
+Running this module is very time-consuming, so it was split from the second analysis module.
 
 ```@autodocs
 Modules = [BloodStorageInSilico.UfbaSamplerAnalysis]
 Order   = [:function]
 ```
 
-## UfbaSamplerViz3D
+## UfbaSamplerAnalysis2
 
 3D plots for the uFBA sampler results.
 
 ```@autodocs
-Modules = [BloodStorageInSilico.UfbaSamplerViz]
+Modules = [BloodStorageInSilico.UfbaSamplerAnalysis2]
 Order   = [:function]
 ```
 

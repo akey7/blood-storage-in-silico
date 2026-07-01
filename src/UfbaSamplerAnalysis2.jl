@@ -1,4 +1,4 @@
-module UfbaSamplerViz
+module UfbaSamplerAnalysis2
 
 using Base.Iterators
 using Random
@@ -20,19 +20,16 @@ using AlgebraOfGraphics
 using ColorSchemes
 using ProgressMeter
 
-export stacked_flux_kde_3d,
-    plot_all_distributions_for_reactions,
+export plot_all_distributions_for_reactions,
     densities_for_reaction,
     histograms_for_reaction_v2,
     load_and_select_sampling_results,
     pca_treatment_effects,
     prepare_treatment_effects_dfs,
     k_means_treatment_effects,
-    plot_treatment_effects_kmeans_pca,
     prepare_median_fluxes_dfs,
     k_means_median_fluxes,
     pca_median_fluxes,
-    plot_median_fluxes_kmeans_pca,
     treatment_distances_from_control
 
 """
@@ -428,7 +425,7 @@ end
 Finds k-means clusters of treatments using treatment effects as features calculated for each time point.
 
 # Arguments
-1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_treatment_effects_dfs)
+1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.prepare_treatment_effects_dfs)
 2. `k = 5`: The number of clusters to create.
 3. `seed = 123`: RNG seed
 4. `maxiter = 300`: Maximum iterations of clustering algorithm.
@@ -473,7 +470,7 @@ end
 Finds principal components of treatments treatment effects as features calculated for each time point.
 
 # Arguments
-1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_treatment_effects_dfs)
+1. `prepared_treatments_result`: Data prepared by [`prepare_treatment_effects_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.prepare_treatment_effects_dfs)
 2. `n_pcs = 5`: Number of principal components to calculate.
 
 # Returns
@@ -526,7 +523,7 @@ end
 """
     zscore_col(xs)
 
-Calculates the z-scores of a column of values. Helper function for [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+Calculates the z-scores of a column of values. Helper function for [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.prepare_median_fluxes_dfs)
 
 # Arguments
 1. `xs`: Vector of values for which to compute z-scores.
@@ -600,7 +597,7 @@ end
 For each time point and using centered and scaled median fluxes for all reactions as features, computes Euclidean distance from the control for each additive.
 
 # Argument
-1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.prepare_median_fluxes_dfs)
 2. `control_additive = "AS3"`: Additive to be treated as the control.
 
 # Returns
@@ -655,7 +652,7 @@ end
 Calculates k-means clusters for treatments using median fluxes of reactions as features.
 
 # Arguments
-1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.prepare_median_fluxes_dfs)
 2. `k = 5`: The number of clusters to create.
 3. `seed = 123`: RNG seed
 4. `maxiter = 300`: Maximum iterations of clustering algorithm.
@@ -695,7 +692,7 @@ end
 Finds principal components of median fluxes for each additive/time point
 
 # Arguments
-1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerViz.prepare_median_fluxes_dfs)
+1. `prepare_median_fluxes_result`: Result from [`prepare_median_fluxes_dfs`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.prepare_median_fluxes_dfs)
 2. `n_pcs = 5`: Number of principal components to calculate.
 
 # Returns

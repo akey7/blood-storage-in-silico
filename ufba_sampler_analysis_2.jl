@@ -6,8 +6,8 @@ using CairoMakie
 using PlotlyJS
 using OrderedCollections
 
-include("src/UfbaSamplerViz.jl")
-using .UfbaSamplerViz
+include("src/UfbaSamplerAnalysis2.jl")
+using .UfbaSamplerAnalysis2
 
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
