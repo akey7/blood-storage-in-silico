@@ -519,50 +519,6 @@ function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
     return result
 end
 
-"""
-    plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
-
-Creates a scatter plot for each time point with a dot for each treatment plotted on a plane defined by PC1 and PC2, colored by k-means cluster. Saves each plot to the filesystem as it goes along. Makes a nice progress bar.
-
-# Arguments
-1. `pca_df`: DataFrame of principal components for each treatment/final time.
-2. `treatment_k_means_df`: Clusters to color the points.
-"""
-function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
-    n_clusters = maximum(treatment_k_means_df.cluster)
-    all_time_df = @chain pca_df begin
-        innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
-        @transform(:cluster = categorical(:cluster))
-        @orderby(:final_time, :cluster)
-        @select(:final_time, :cluster, :PC1, :PC2)
-    end
-    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
-    final_times = sort(unique(all_time_df.final_time))
-    n_plots = length(final_times)
-    prog = Progress(n_plots, "Writing effects k-means PCA plots")
-    for final_time in final_times
-        filename = joinpath(
-            "output",
-            "viz_effects_kmeans_pca",
-            "effects_kmeans_pca_$(final_time).png",
-        )
-        title = "Effects K-Means PCA Final Time $final_time"
-        plt_df = @rsubset(all_time_df, :final_time == final_time)
-        scatter_plt =
-            data(plt_df) *
-            mapping(:PC1, :PC2, color = :cluster) *
-            visual(Scatter, markersize = 14, alpha = 0.75)
-        fig = draw(
-            scatter_plt,
-            scales(Color = (; palette = cluster_colors)),
-            figure = (; size = (500, 500)),
-            axis = (; title = title),
-        )
-        save(filename, fig)
-        next!(prog)
-    end
-end
-
 #####################################################################
 # MEDIAN FLUX PCA/K-MEANS                                           #
 #####################################################################
@@ -783,50 +739,6 @@ function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
     loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
     result = (pca_df = pca_df, loadings_df = loadings_df)
     return result
-end
-
-"""
-    plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
-
-Plots treatments on a plane defined by PC1 and PC2, colored by k-means cluster assignment. Saves plots for each time point as it goes along, and has a nice progress bar along the way.
-
-# Arguments
-1. `pca_df`: DataFrame with PC values
-2. `fluxes_k_means_df`: DataFrame with cluster assignments.
-"""
-function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
-    n_clusters = maximum(fluxes_k_means_df.cluster)
-    all_time_df = @chain pca_df begin
-        innerjoin(fluxes_k_means_df; on = [:additive, :final_time])
-        @transform(:cluster = categorical(:cluster))
-        @orderby(:final_time, :cluster)
-        @select(:final_time, :cluster, :PC1, :PC2)
-    end
-    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
-    final_times = sort(unique(all_time_df.final_time))
-    n_plots = length(final_times)
-    prog = Progress(n_plots, "Writing median flux k-means PCA plots")
-    for final_time in final_times
-        filename = joinpath(
-            "output",
-            "viz_fluxes_kmeans_pca",
-            "median_flux_kmeans_pca_$(final_time).png",
-        )
-        title = "Median Flux K-Means PCA Final Time $final_time"
-        plt_df = @rsubset(all_time_df, :final_time == final_time)
-        scatter_plt =
-            data(plt_df) *
-            mapping(:PC1, :PC2, color = :cluster) *
-            visual(Scatter, markersize = 14, alpha = 0.75)
-        fig = draw(
-            scatter_plt,
-            scales(Color = (; palette = cluster_colors)),
-            figure = (; size = (500, 500)),
-            axis = (; title = title),
-        )
-        save(filename, fig)
-        next!(prog)
-    end
 end
 
 end

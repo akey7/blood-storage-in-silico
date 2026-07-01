@@ -10,6 +10,12 @@ This project studies refrigerated blood storage with unsteady flux balance analy
 
 3. [Works cited that are important to this project](WORKS_CITED.md)
 
+4. [New to Julia documentation](NEW_TO_JULIA.md) for users new to the Julia programming language.
+
+5. [Guide for reviewer](GUIDE_FOR_REVIEWERS.md) for a guide on checking the code for the purposes of scientific peer review.
+
+6. **Once built**, `docs/build/index.html` contains documentation about the modules in `src/` and functions in those modules that encode the functionality of this repo.
+
 ## Folder Structure
 
 Relative to the root of the repo, the top level folders and groups of files are listed below along with breif explanations of their purpose.

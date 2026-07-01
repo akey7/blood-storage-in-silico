@@ -178,12 +178,14 @@ Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
 Uses the following input files:
 
 1. Reads the uFBA sampling results file at `output/ufba_sampling.csv`.
-2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.xml`
+2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.xml`.
+3. Reads the median reaction fluxes at `output/ufba_median_fluxes.csv`.
 
 Outputs the following files:
 
 1. Writes histograms of sampling results (one plot per reaction) to `output/uFBA_histograms_v2/`.
-8. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+2. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
+3. PCA and k-means analysis of Cohen's effects between control and treatments and median fluxes, along with distances between control and treatments to sheets in `output/viz_k_means_pca_distance.xlsx`.
 
 On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
@@ -231,62 +233,3 @@ julia --project=. model_graph.jl
 ## API Runner
 
 The `api_runner.jl` script unifies many aspects of the manual workflow above for execution by the Python API interface.
-
-## Other Scripts
-
-There are other scripts that you can run in this project. They are outside of the main uFBA workflow, and are thus optional. They are documented here for completeness.
-
-### `test_case_1.jl` and `test_case_3.jl`: Test Case 1 and Case 3 sink pruning
-
-I built this script to test Case 1 and Case 3 sink pruning code and to serve as an example for more involved workflows in `UfbaSampler.jl`.
-
-Case 1 on macOS:
-
-```
-JULIA_NUM_THREADS=7 julia --project=. -p 4 test_case_1.jl
-```
-
-Case 1 on Windows:
-
-```
-julia --project=. -p 4 test_case_1.jl
-```
-
-Case 3 on macOS:
-
-```
-JULIA_NUM_THREADS=7 julia --project=. -p 4 test_case_3.jl
-```
-
-Case 3 on Windows:
-
-```
-julia --project=. -p 4 test_case_3.jl
-```
-
-#### Special test for Case 1
-
-For  Case 1 only, as a test, to ensure that indicator variables and sink flux variables are connected via coupling variables, comment out the following line:
-
-```
-optimize_case_1_result = optimize_case_1(case1_ct)
-```
-
-uncomment the following lines
-
-```
-optimize_case_1_result =
-    optimize_case_1(case1_ct; force_first_sink_on = true, force_first_sink_lb = 0.1)
-```
-
-and look for the following output (or something similar)
-
-```
-Info: Case 1: Optimize constraint tree
-objective = 2.000000000000
-R_UNKNOWN_SK_DOWN_10fthf_c   flux = 0.100000000000   indicator = 1.000000000000
-R_UNKNOWN_SK_UP_10fthf_c   flux = -0.100000000000   indicator = 1.000000000000
-FORCED R_UNKNOWN_SK_DOWN_10fthf_c   flux = 0.100000000000   indicator = 1.000000000000
-```
-
-Buried somewhere in the middle of the output.
