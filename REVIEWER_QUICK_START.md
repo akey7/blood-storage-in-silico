@@ -2,20 +2,20 @@
 
 This document outlines reccomended steps for code reviewers interested in examining this code's inputs, quality control outputs, and outputs for downstream data visualization.
 
-## If You're Using Claude Code (or Another AI Coding Assistant) to Help Review This Repo
+## If You're Using Claude Code, Codex, or Another AI Coding Assistant to Help Review This Repo
 
-This repository includes a `CLAUDE.md` file that configures Claude Code's behavior here. This section explains, in plain language, what that configuration means and why it exists — whether you're the one running Claude Code, or you're a reviewer reading this repository and want to know what an AI assistant was and wasn't allowed to do.
+This repository includes a `CLAUDE.md` file that configures Claude Code's behavior here, and an `AGENTS.md` file that gives the same configuration to Codex and other agents that look for that filename instead. `AGENTS.md` defers to `CLAUDE.md` as the canonical source of truth and only adds notes for applying the rules in a Codex-style workflow, so the two files are intended to enforce identical restrictions regardless of which tool you're running. This section explains, in plain language, what that configuration means and why it exists — whether you're the one running the assistant, or you're a reviewer reading this repository and want to know what an AI assistant was and wasn't allowed to do.
 
-**The intended role of Claude Code in this repository is scientific code review support — not code generation.** Concretely, that means it's set up to default to:
+**The intended role of Claude Code, Codex, or any other assistant in this repository is scientific code review support — not code generation.** Concretely, that means it's set up to default to:
 
 - Explaining what a script or function does, and why, in plain language.
 - Helping you trace data provenance: which input file feeds which script, which script produces which output file, and how a given manuscript figure or table traces back to raw data.
 - Answering questions about Julia syntax, package usage, or statistical/modeling choices (see `NEW_TO_JULIA.md` if you're coming from Python or R).
 - Drafting or improving documentation, docstrings, comments, and README-style content, when asked.
 
-It is explicitly configured **not** to write new analysis code, refactor existing modules, run any code, or touch git, by default. Peer review of this repository is about verifying what was actually run to produce the manuscript's results — not about producing a different or "improved" analysis. If you see Claude Code declining a request along these lines, that's expected behavior, not a malfunction.
+It is explicitly configured **not** to write new analysis code, refactor existing modules, run any code, or touch git, by default. Peer review of this repository is about verifying what was actually run to produce the manuscript's results — not about producing a different or "improved" analysis. If you see the assistant declining a request along these lines, that's expected behavior, not a malfunction.
 
-### Restrictions Claude Code follows in this repo
+### Restrictions Claude Code and Codex follow in this repo
 
 1. **No git operations.** It will not create branches, stage files, commit, push, merge, or tag, even if asked to "save" or "finalize" work. All git operations are performed manually by the repository maintainer.
 2. **No writes to `output/`.** It will not create, edit, or delete anything in `output/`, including during a demo or explanation. That folder is populated only by the human running the numbered scripts directly.
@@ -23,7 +23,7 @@ It is explicitly configured **not** to write new analysis code, refactor existin
 4. **No source edits without explicit authorization.** It may read, explain, and propose changes to `src/` modules, the numbered root scripts, `docs/make.jl`, or `test/runtests.jl`, but it will not write a change to disk unless a human names the specific file and change in that session.
 5. **No code execution, period.** It will not run the numbered pipeline scripts, run `test/runtests.jl`, or interactively invoke functions from `src/` — including just to demonstrate behavior on toy data. All execution, including test runs, is performed by the human. This is because the numbered scripts must run in a fixed order, some are long-running and resource-intensive, and they depend on proprietary inputs and a fully configured `output/` directory (see `INSTALLATION.md` and `EXECUTION.md`).
 
-If you want to see exactly how these rules are phrased for the assistant itself, they're in `CLAUDE.md` at the repo root.
+If you want to see exactly how these rules are phrased for the assistant itself, they're in `CLAUDE.md` at the repo root for Claude Code, and `AGENTS.md` at the repo root for Codex and similar tools.
 
 ## Suggested Review Path
 

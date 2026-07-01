@@ -4,7 +4,7 @@ This project studies refrigerated blood storage with unsteady flux balance analy
 
 ## Documentation
 
-Start with [REVIEWER_QUICK_START.md](REVIEWER_QUICK_START.md): it lays out a recommended order for reviewing this code, and explains how [CLAUDE.md](CLAUDE.md) constrains Claude Code (or another AI coding assistant) to a scientific-review-support role in this repo — read it first if you plan to use an assistant while reviewing.
+Start with [REVIEWER_QUICK_START.md](REVIEWER_QUICK_START.md): it lays out a recommended order for reviewing this code, and explains how [CLAUDE.md](CLAUDE.md) and [AGENTS.md](AGENTS.md) constrain Claude Code and Codex, respectively, to the same scientific-review-support role in this repo — read it first if you plan to use either assistant while reviewing.
 
 Once you're ready to set up the repo, [INSTALLATION.md](INSTALLATION.md) covers installing Julia and its dependencies, obtaining the (partly proprietary) input files, and building the `src/` docstring documentation. [EXECUTION.md](EXECUTION.md) then walks through the numbered pipeline scripts in order, including the known limitations and design choices behind how they're split up.
 
