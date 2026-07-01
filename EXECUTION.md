@@ -74,6 +74,39 @@ This table offers a summary of the order of script execution. Full details of sc
                                  (7) model_graph.jl (Graph/DFS Traversal)
 ```
 
+### Map of Significant Data Outputs
+
+This is a non-exhaustive diagram of files that are generated on `output/` by the various steps of the workflow. These are the most important files for modeling and analysis that is fed into the visualization repo `blood-storage-in-silico-viz`.
+
+```text
+input metabolomics files
+        │
+        ▼
+absolute_quant.jl
+        │
+        └── output/concentration_rates.csv
+        │
+        ▼
+ufba_sampler.jl
+        │
+        ├── output/ufba_sampling.csv
+        ├── output/ufba_sampling_status.csv
+        ├── output/ufba_pruning_overview.csv
+        └── output/ufba_models/
+        │
+        ▼
+ufba_sampler_analysis.jl
+        │
+        ├── output/ufba_median_fluxes.csv
+        ├── output/analysis_control_vs_treatments_signif.csv
+        ├── output/measurements_and_sinks_report.csv
+        └── output/flux_vector_data_matrices/
+ufba_sampler_analysis_2.jl
+        │
+        ├── output/ufba_sampling_complete_additives.csv
+        └── output/viz_k_means_pca_distance.xlsx
+```
+
 ## Manually Executing Scripts
 
 All commands are issued from the root of the repo.
