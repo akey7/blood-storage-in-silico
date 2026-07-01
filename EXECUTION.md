@@ -1,5 +1,14 @@
 # Commands to Execute Scripts
 
+## Known Limitations and Design Choices
+
+- Root-level scripts are used as workflow entrypoints instead of a single workflow manager.
+- Some workflow steps are split into separate scripts because they are long-running.
+- Proprietary input files are not committed to the public repository.
+- `output/` contains generated artifacts and diagnostic files; not every file in `output/` is a manuscript result.
+- Diagnostic visualization is kept in this repository, but final publication figures are produced in `blood-storage-in-silico-viz`.
+- Jupyter notebooks are intentionally avoided to preserve deterministic script execution order.
+
 ## Multithreaded Execution
 
 Note that in both macOS commands, the `JULIA_NUM_THREADS` environment variable in the execution command sets the number of threads avaiable to Julia.
@@ -12,9 +21,58 @@ Either way, customize the `JULIA_NUM_THREADS` environment variable to match your
 
 Before you execute these scripts, the `input/` and `output/` folder must be configured as described in [INSTALLATION.md](INSTALLATION.md).
 
-## uFBA Workflow - Order of Script Execution
+## uFBA Workflow: Order of Script Execution
 
-The scripts take input and write output files. Some scripts rely on output files previously written by other scripts. The order of script execution presented here maintains the order of reliance of the scripts on each other if such order is important. Such an arrangment of scripts might not be ideal, but it works for now!
+### Table of Steps
+
+Conceptually, the modeling process involves these steps:
+
+```text
+experimental metabolomics data
+        ↓
+condition-specific metabolite constraints
+        ↓
+red blood cell metabolic model
+        ↓
+feasibility checks and constraint construction
+        ↓
+optimization steps
+        ↓
+flux sampling
+        ↓
+summary tables of sampled flux distributions
+        ↓
+statistical analysis and visualization
+```
+
+This table offers a summary of the order of script execution. Full details of script execution are below.
+
+| Step | Entrypoint                     | Main module(s)                                                                                           | Main inputs                                    | Main outputs                             | Review purpose                             |
+| ---: | ------------------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------- | ------------------------------------------ |
+|    1 | `plot_metabolite_timelines.jl` | `src/MetaboliteTimelines.jl`                                                                             | relative metabolomics inputs                   | timeline plots, correlations             | QC of metabolite trajectories              |
+|    2 | `raw_relative_intensities.jl`  | `src/RawRelativeIntensities.jl`                                                                          | relative quant data                            | PCA loadings and PCA plots               | exploratory QC                             |
+|    3 | `absolute_quant.jl`            | `src/AbsoluteQuant.jl`                                                                                   | relative + absolute quant data                 | concentration rates                      | converts metabolomics to model constraints |
+|    4 | `ufba_sampler.jl`              | `src/UfbaSampler.jl`, `src/FbaModelBuilder.jl`, `src/PruningOptimizations.jl`, `src/MetaboliteBounds.jl` | concentration rates, RBC-GEM, opt-in/out files | uFBA models, sampled fluxes, diagnostics | core modeling/sampling step                |
+|    5 | `ufba_sampler_analysis.jl`     | `src/UfbaSamplerAnalysis.jl`                                                                             | sampled fluxes                                 | median fluxes, diagnostics, comparisons  | primary analysis outputs                   |
+|    6 | `ufba_sampler_viz.jl`          | `src/UfbaSamplerViz.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means workbooks  | diagnostic visualization only              |
+|    7 | `model_graph.jl`               | `src/ModelGraph.jl`                                                                                      | uFBA models, DFS plan                          | graph traversal outputs                  | graph-based inspection                     |
+
+### Conceptual Graphical Map
+
+```text
+[Raw/Relative Quant MS Data] ──> (1) plot_metabolite_timelines.jl (Diagnostic plots of raw relative intensity data)
+                                 (2) raw_relative_intensities.jl (PCAs raw relative intensity data)
+                                      │
+[Absolute Quant Datasheets]  ───> (3) absolute_quant.jl ──> [Rates & Concentrations]
+                                                              │
+[RBC-GEM Metabolic Model]    ─────────────────────────────────┴─> (4) ufba_sampler.jl (Long-running sampling)
+                                                                       │
+                                      ┌────────────────────────────────┘
+                                      ▼
+                                 (5) ufba_sampler_analysis.jl (Long-running analysis)
+                                 (6) ufba_sampler_analysis_2.jl (Faster analysis)
+                                 (7) model_graph.jl (Graph/DFS Traversal)
+```
 
 ## Manually Executing Scripts
 

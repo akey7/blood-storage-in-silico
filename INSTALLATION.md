@@ -6,46 +6,16 @@
 
 ### Obtain and Install Input Files
 
-1. Obtain `Absolute Quant Data Sheet.xlsx` from the author of this package because it can't be distributed publicly. Place this file in the `input/` folder.
-
-2. Obtain [`RBC-GEM.xml` from the RBC-GEM (Haiman et al)](https://github.com/z-haiman/RBC-GEM/blob/main/model/RBC-GEM.xml) and place in the `input/` folder.
-
-Most of the files are tracked in the git repo. The complete `input/` repo should have this structure.
-
-```
-input
-├── Absolute Quant Data Sheet.xlsx
-├── Absolute Quant Extracellular Datasheet.xlsx
-├── Data Sheet 1.CSV
-├── AS Dev Library Trial 1.csv
-├── Proportionation Sheet 2.csv
-├── RBC-GEM.json
-├── RBC-GEM.xml
-├── flux_bounds_overrides.csv
-├── metabolite_measurement_opt_outs_template.csv
-├── Reaction Id to Subsystem and Name Map.csv
-└── Subsystem Category Map.csv
-```
-
-Here are purposes of the input files:
-
-1. `Data Sheet 1.CSV` is the relative quant metabolomics data to be combined with absolute quantification data.
-
-2. `RBC-GEM.*` is the GEM onto which the metabolomics data above are mapped.
-
-3. `Proportination Sheet 2.csv` maps columns from the metabolomics data, splits apart columns that contain multiple RBC-GEM metabolites, and proportionates the intensity values among multiple metabolites (if needed), and maps RBC-GEM identifiers to names in the metabolomics data.
-
-4. `Subsystem Category Map.csv`, maps GEM subsystems into categories for better data visualization. This is the first two columns of [`subsystems.tsv` v1.3.0 of the RBC-GEM](https://github.com/z-haiman/RBC-GEM/blob/1.3.0/data/curation/subsystems.tsv)
-
-5. `flux_bounds_overrides.csv`: Flux bounds in this file override what is specified in the RBC-GEM.
-
-6. `Absolute Quant Data Sheet.xlsx` and `Absolute Quant Extracellular Datasheet.xlsx`: Absolute quantification information, to be combined with relative quant data.
-
-7. `metabolite_measurement_opt_outs_template.csv`: An example template for metabolite measurements to ignore when setting up model constriants. See execution of `ufba_sampler.jl` for more information.
-
-8. `Reaction Id to Subsystem and Name Map.csv`: maps reaction ids to human-readable names and subsystems.
-
-9. `AS Dev Library Trial 1.csv`: Second set of relative quantification data.
+| File                                          | Required for full reproduction? |                   Public? | How obtained                                   | Used by                          |
+| --------------------------------------------- | ------------------------------: | ------------------------: | ---------------------------------------------- | -------------------------------- |
+| `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | distributed to trusted reviewers/collaborators | `absolute_quant.jl`              |
+| `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | distributed to trusted reviewers/collaborators | `absolute_quant.jl`              |
+| `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | Included in repo                         | `absolute_quant.jl` |
+| `AS Dev Library Trial 1.csv`                  |                             Yes |                   No | distributed to trusted reviewers/collaborators                             | `absolute_quant.jl`        |
+| `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | Included in repo                             | model construction               |
+| `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | included in repo                               | FBA model construction           |
+| `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | included/template                              | uFBA model construction          |
+| `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | included/template                              | pruning override                 |
 
 ### Create the `output/` Folders
 
