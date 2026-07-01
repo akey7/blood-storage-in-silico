@@ -320,3 +320,19 @@ This script only uses a single thread, so execution on macOS or Window is simple
 ```
 julia --project=. 07_model_graph.jl
 ```
+
+## Tests
+
+There is a small test to ensure testing works:
+
+On macOS:
+
+```
+julia --project=. test/runtests.jl
+```
+
+On Windows
+
+```
+julia --project=. .\test\runtests.jl
+```
