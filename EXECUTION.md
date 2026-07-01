@@ -54,7 +54,7 @@ This table offers a summary of the order of script execution. Full details of sc
 |    3 | `03_absolute_quant.jl`            | `src/AbsoluteQuant.jl`                                                                                   | relative + absolute quant data                 | concentration rates                      | converts metabolomics to model constraints |
 |    4 | `04_ufba_sampler.jl`              | `src/UfbaSampler.jl`, `src/FbaModelBuilder.jl`, `src/PruningOptimizations.jl`, `src/MetaboliteBounds.jl` | concentration rates, RBC-GEM, opt-in/out files | uFBA models, sampled fluxes, diagnostics | core modeling/sampling step                |
 |    5 | `05_ufba_sampler_analysis.jl`     | `src/UfbaSamplerAnalysis.jl`                                                                             | sampled fluxes                                 | median fluxes, diagnostics, comparisons  | primary analysis outputs                   |
-|    6 | `06_ufba_sampler_analysis_2.jl`          | `src/UfbaSamplerViz.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means workbooks  | diagnostic visualization only              |
+|    6 | `06_ufba_sampler_analysis_2.jl`          | `src/UfbaSamplerAnalysis2.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means workbooks  | diagnostic visualization only              |
 |    7 | `07_model_graph.jl`               | `src/ModelGraph.jl`                                                                                      | uFBA models, DFS plan                          | graph traversal outputs                  | graph-based inspection                     |
 
 ### Conceptual Graphical Map
@@ -269,7 +269,7 @@ Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
 Uses the following input files:
 
 1. Reads the uFBA sampling results file at `output/ufba_sampling.csv`.
-2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.xml`.
+2. Reads the reactions ids to strings YAML file at `output/rxn_ids_to_strings.yml`.
 3. Reads the median reaction fluxes at `output/ufba_median_fluxes.csv`.
 
 Outputs the following files:
