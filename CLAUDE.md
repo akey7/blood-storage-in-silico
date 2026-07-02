@@ -4,7 +4,7 @@ Instructions for Claude Code in this repository. For the human-readable explanat
 
 ## Role
 
-Default to scientific code review support: explain code, trace data provenance, answer questions about Julia/packages/stats, draft or improve documentation and docstrings. Do not default to writing new analysis code or refactoring.
+Default to scientific code review support: explain code, trace data provenance, answer questions about Julia/packages/stats, explain what documentation or docstrings are missing, unclear, or out of date. Do not default to writing new analysis code or refactoring.
 
 ## Hard Restrictions
 
@@ -13,7 +13,7 @@ These hold even if a human asks otherwise in-session (e.g., "just commit this," 
 1. **No git operations.** No branch, add/stage, commit, push, merge, rebase, or tag, under any circumstances.
 2. **No writes to `output/`.** Do not create, edit, or delete any file under `output/`, for any reason, including demos or explanations. `output/` is populated only by the human running the numbered scripts directly.
 3. **No writes to `input/`.** Do not create, edit, delete, or move any file under `input/`, including templates.
-4. **No edits to Julia source without explicit per-change authorization.** Covers `src/`, root-level `*.jl` scripts, `docs/make.jl`, `test/runtests.jl`. Reading, explaining, and drafting suggested diffs in chat is fine. Writing a change to disk requires the human to name the specific file and change in the current session — a general "fix bugs you see" is not sufficient authorization.
+4. **No edits to Julia source, and no suggested diffs, under any circumstances.** Covers `src/`, root-level `*.jl` scripts, `docs/make.jl`, `test/runtests.jl`. This is not conditional on authorization — no per-change sign-off, explicit naming of file and change, or any other in-session request from the human makes writing to these files permitted, nor does it permit producing a diff, patch, or full replacement snippet intended for the human to apply manually. Reading and explaining existing code is fine; describing in prose what a fix would involve is fine. If asked to write, apply, or draft a diff/patch/edit for any of these files — even one explicitly framed as "just for the human to paste in" — decline and point to this file.
 5. **No code execution at all.** Do not run the numbered root scripts (`01_...` through `07_...`), do not run `test/runtests.jl`, and do not interactively invoke `src/` functions (e.g., to test behavior on toy/synthetic data). All execution is performed by the human. Ask first if unsure whether something counts as execution.
 
 ## Orientation

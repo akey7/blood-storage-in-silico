@@ -296,9 +296,21 @@ This is similar in spirit to a tidyverse pipeline in R.
 
 The input DataFrame is passed through each step in order. This style is used to make data transformations easier to read from top to bottom.
 
+`@rtransform` is the row-wise counterpart to `@transform`: instead of evaluating its expression once as a vectorized operation over an entire column, it evaluates the expression once per row. Because `mean(:flux)` and `std(:flux)` need the whole column, they have to be computed beforehand; inside `@rtransform` the remaining arithmetic is written without broadcasting dots, since each evaluation only ever sees one row's values.
+
+```julia
+mean_flux = mean(df.flux)
+std_flux = std(df.flux)
+
+@chain df begin
+    @rsubset(:final_time == 3)
+    @rtransform(:scaled_flux = (:flux - mean_flux) / std_flux)
+end
+```
+
 ### DataFramesMeta syntax
 
-`DataFramesMeta.jl` provides macros such as `@rsubset`, `@transform`, and `@combine`.
+`DataFramesMeta.jl` provides macros such as `@rsubset`, `@transform`, `@rtransform`, and `@combine`.
 
 Common examples include:
 
@@ -312,7 +324,15 @@ which keeps rows where `final_time == 3`.
 @transform(df, :new_column = :old_column .* 2)
 ```
 
-which creates a new column.
+which creates a new column. `:old_column` refers to the whole column, so the elementwise multiplication needs the broadcasting dot in `.*`.
+
+`@rtransform` does the same job row-by-row:
+
+```julia
+@rtransform(df, :new_column = :old_column * 2)
+```
+
+Here `:old_column` refers to a single row's value each time the expression is evaluated, so a plain `*` is enough — no broadcasting dot is needed.
 
 ```julia
 @combine(groupby(df, :additive), :mean_flux = mean(:flux))
@@ -402,6 +422,7 @@ These analogies are meant to aid orientation. They are not exact equivalences.
 | `@chain`                         | pandas method chaining or pipe-like workflows | `%>%` or `                                                     | >` |
 | `@rsubset`                       | row filtering with boolean masks              | `filter()`                                                     |    |
 | `@transform`                     | `assign()` or column mutation                 | `mutate()`                                                     |    |
+| `@rtransform`                    | row-wise `apply()` (no broadcasting needed)   | `rowwise()` + `mutate()`                                       |    |
 | `@combine`                       | `groupby().agg()`                             | `summarize()`                                                  |    |
 | `Project.toml`                   | project dependency metadata                   | `DESCRIPTION` or `renv` metadata                               |    |
 | `Manifest.toml`                  | lockfile with exact dependency versions       | `renv.lock`                                                    |    |
@@ -468,6 +489,20 @@ df |>
 ```
 
 or to a pandas workflow involving filtering and `assign`.
+
+If you see `@rtransform` instead of `@transform` in the code, it's the row-wise version of the same idea — the expression is evaluated once per row rather than as a single vectorized operation over the whole column:
+
+```julia
+mean_flux = mean(df.flux)
+std_flux = std(df.flux)
+
+@chain df begin
+    @rsubset(:final_time == 3)
+    @rtransform(:scaled_flux = (:flux - mean_flux) / std_flux)
+end
+```
+
+This is closer to `rowwise()` combined with `mutate()` in R, or a row-by-row `apply` in pandas, since neither `mean_flux` nor `std_flux` can be recomputed from inside a single row.
 
 ### Optimization workflows
 
