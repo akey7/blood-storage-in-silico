@@ -13,7 +13,6 @@ using StatsModels
 using Clustering
 using MultivariateStats
 using Statistics
-using PlotlyJS
 using KernelDensity
 using CairoMakie
 using AlgebraOfGraphics
