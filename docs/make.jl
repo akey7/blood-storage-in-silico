@@ -13,7 +13,7 @@ makedocs(
         BloodStorageInSilico.AbsoluteQuant,
         BloodStorageInSilico.UfbaSampler,
         BloodStorageInSilico.UfbaSamplerAnalysis,
-        BloodStorageInSilico.UfbaSampler,
+        BloodStorageInSilico.UfbaSamplerAnalysis2,
         BloodStorageInSilico.MetaboliteTimelines,
         BloodStorageInSilico.ModelGraph,
         BloodStorageInSilico.UfbaSampler.FbaModelBuilder,

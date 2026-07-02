@@ -8,7 +8,7 @@ include("RawRelativeIntensities.jl")
 include("FbaModelBuilder.jl")
 include("ModelGraph.jl")
 include("MetaboliteBounds.jl")
-include("UfbaSamplerViz.jl")
+include("UfbaSamplerAnalysis2.jl")
 include("RInterface.jl")
 
 export MetaboliteTimelines,
@@ -19,7 +19,7 @@ export MetaboliteTimelines,
     FbaModelBuilder,
     ModelGraph,
     MetaboliteBounds,
-    UfbaSamplerViz,
+    UfbaSamplerAnalysis2,
     RInterface
 
 end
