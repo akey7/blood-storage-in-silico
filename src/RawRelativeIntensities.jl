@@ -9,14 +9,12 @@ using StatsBase
 using StatsModels
 using Statistics
 using Makie
-using GLMakie
 using ThreadsX
 using ProgressMeter
 
 export load_relative_intensities,
     pca_relative_intensities,
     plot_pca_panels,
-    display_pca_scores_3d,
     gather_pca_scores,
     calc_pca_scores_limits,
     pca_loadings_report,
@@ -426,7 +424,7 @@ Computes 3D axis limits for PCA plots across all additives to set the axis limit
 # Returns
 `Tuple{Tuple{Float64,Float64},Tuple{Float64,Float64},Tuple{Float64,Float64}}`
 
-Returns tuple of tuples suitable for passing to GLMakie that define axis limits for each principal component.
+Returns tuple of tuples suitable for passing to plotting functions that define axis limits for each principal component.
 """
 function calc_pca_scores_limits(long_df; margin = 1.1)
     additives = sort(unique(long_df.Additive))
@@ -482,75 +480,6 @@ function detect_week_1_side(pca_result)
     direction = sign(first_week_df[1, :pc1]) <= 0.0 ? :left : :right
     # println(direction)
     return direction
-end
-
-"""
-    display_pca_scores_3d(pca_result, additive)
-
-Plot **and display** a 3D PCA scatter with GLMakie.
-
-# Arguments
-1. `pca_result`: Result from [`pca_relative_intensities`](@ref BloodStorageInSilico.RawRelativeIntensities.pca_relative_intensities).
-2. `additive`: Additive to plot the PCA results for.
-"""
-function display_pca_scores_3d(limits, pca_result, additive)
-    @info "Display PCA for $additive"
-    M = pca_result.model
-    scores = pca_result.scores
-    pc1 = scores[1, :]
-    pc2 = scores[2, :]
-    pc3 = scores[3, :]
-    time_labels = pca_result.patient_time_labels.Time
-    time_color_map = Dict(
-        1 => "#006CD1",
-        2 => "#E66100",
-        3 => "#5D3A9B",
-        4 => "#40B0A6",
-        5 => "#AFAF01",
-        6 => "#222222",
-    )
-    time_shape_map = Dict(
-        1 => :circle,
-        2 => :rect,
-        3 => :diamond,
-        4 => :cross,
-        5 => :utriangle,
-        6 => :dtriangle,
-    )
-    var_explained = principalvars(M) ./ tvar(M)
-    xlabel = "PC1 $(round(var_explained[1]*100, digits = 2))%"
-    ylabel = "PC2 $(round(var_explained[2]*100, digits = 2))%"
-    zlabel = "PC3 $(round(var_explained[3]*100, digits = 2))%"
-    title = "$additive PCA"
-    fig = Figure(size = (750, 750), figure_padding = 75)
-    ax_scatter_3d = Axis3(
-        fig[1, 1],
-        xlabel = xlabel,
-        ylabel = ylabel,
-        zlabel = zlabel,
-        title = title,
-        limits = limits,
-    )
-    unique_times = sort(unique(time_labels))
-    for t in unique_times
-        idxs = findall(==(t), time_labels)
-        n_points = length(idxs)
-        println("$n_points at time $t")
-        scatter!(
-            ax_scatter_3d,
-            pc1[idxs],
-            pc2[idxs],
-            pc3[idxs],
-            color = time_color_map[t],
-            marker = time_shape_map[t],
-            markersize = 15,
-            alpha = 0.75,
-            label = string(t),
-        )
-    end
-    axislegend(ax_scatter_3d, "Week"; position = :rb, margin = (-30, -30, -30, -30))
-    @info "Finished preparing PCA plot"
-    GLMakie.display(fig)
 end
 
 """

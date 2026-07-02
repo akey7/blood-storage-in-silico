@@ -3,7 +3,6 @@ using XLSX
 using YAML
 using DataFrames
 using CairoMakie
-using PlotlyJS
 using OrderedCollections
 
 include("src/UfbaSamplerAnalysis2.jl")
