@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "c06cdc99463cbeeb99568b876a2553dd39e46af2"
+project_hash = "97a06af1e0a3b294488e8accba9f474d150f90e2"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -230,7 +230,7 @@ uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
 version = "0.3.7"
 
 [[deps.BloodStorageInSilico]]
-deps = ["AbstractFBCModels", "Accessors", "AlgebraOfGraphics", "ArgParse", "Arpack", "COBREXA", "CSV", "CairoMakie", "CategoricalArrays", "Chain", "Clustering", "ColorSchemes", "Combinatorics", "ConstraintTrees", "DataFrames", "DataFramesMeta", "DataStructures", "Distances", "Distributed", "Distributions", "EffectSizes", "GLM", "GraphMakie", "Graphs", "HiGHS", "HypothesisTests", "InteractiveUtils", "JSON3", "JSONFBCModels", "JuMP", "JuliaFormatter", "KernelDensity", "LinearAlgebra", "Makie", "MathOptInterface", "MetaGraphs", "MixedModels", "MultipleTesting", "MultivariateStats", "NetworkLayout", "OrderedCollections", "Pkg", "Printf", "ProgressMeter", "Random", "SBML", "SBMLFBCModels", "ShiftedArrays", "Statistics", "StatsBase", "StatsModels", "ThreadsX", "XLSX", "YAML"]
+deps = ["AbstractFBCModels", "Accessors", "AlgebraOfGraphics", "ArgParse", "Arpack", "COBREXA", "CSV", "CairoMakie", "CategoricalArrays", "Chain", "Clustering", "ColorSchemes", "Combinatorics", "ConstraintTrees", "DataFrames", "DataFramesMeta", "DataStructures", "Distances", "Distributed", "Distributions", "EffectSizes", "GLM", "GraphMakie", "Graphs", "HiGHS", "HypothesisTests", "InteractiveUtils", "JSON3", "JuMP", "JuliaFormatter", "KernelDensity", "LinearAlgebra", "Makie", "MathOptInterface", "MetaGraphs", "MixedModels", "MultipleTesting", "MultivariateStats", "NetworkLayout", "OrderedCollections", "Pkg", "Printf", "ProgressMeter", "Random", "SBML", "SBMLFBCModels", "ShiftedArrays", "Statistics", "StatsBase", "StatsModels", "ThreadsX", "XLSX", "YAML"]
 path = "."
 uuid = "12fa0bc3-1996-4702-b249-fafc788310f3"
 version = "1.0.0"
@@ -607,9 +607,9 @@ version = "0.9.5"
 
 [[deps.Documenter]]
 deps = ["ANSIColoredPrinters", "AbstractTrees", "Base64", "CodecZlib", "Dates", "DocStringExtensions", "Downloads", "Git", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "MarkdownAST", "Pkg", "PrecompileTools", "REPL", "RegistryInstances", "SHA", "TOML", "Test", "Unicode"]
-git-tree-sha1 = "b37458ae37d8bdb643d763451585cd8d0e5b4a9e"
+git-tree-sha1 = "56e9c37b5e7c3b4f080ab1da18d72d5c290e184a"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "1.16.1"
+version = "1.17.0"
 
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
@@ -894,15 +894,15 @@ version = "8.5.1+0"
 
 [[deps.HiGHS]]
 deps = ["HiGHS_jll", "LinearAlgebra", "MathOptIIS", "MathOptInterface", "OpenBLAS32_jll", "PrecompileTools", "SparseArrays"]
-git-tree-sha1 = "8b6c49e994b09d646c26ef2c41fabe95f4679b4c"
+git-tree-sha1 = "bf5e946f72ebd1b4620249a6be7ff34832ba9ca0"
 uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
-version = "1.24.0"
+version = "1.23.0"
 
 [[deps.HiGHS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Zlib_jll", "libblastrampoline_jll"]
-git-tree-sha1 = "5b9e398d6e4ed7e1f9a801a6f50ecca92dab0e10"
+git-tree-sha1 = "50ed12dc8c37ebb8d2b759f21755259d8512f2bd"
 uuid = "8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
-version = "1.15.0+0"
+version = "1.14.0+0"
 
 [[deps.HypergeometricFunctions]]
 deps = ["LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
@@ -1120,12 +1120,6 @@ weakdeps = ["ArrowTypes"]
 
     [deps.JSON3.extensions]
     JSON3ArrowExt = ["ArrowTypes"]
-
-[[deps.JSONFBCModels]]
-deps = ["AbstractFBCModels", "DocStringExtensions", "JSON", "PikaParser", "SparseArrays"]
-git-tree-sha1 = "e30aa11baa6ce5430a4bb0a9dee6a478ef8f75ee"
-uuid = "475c1105-d6ed-49c1-9b32-c11adca6d3e8"
-version = "1.1.0"
 
 [[deps.JpegTurbo]]
 deps = ["CEnum", "FileIO", "ImageCore", "JpegTurbo_jll", "TOML"]
@@ -1491,9 +1485,9 @@ version = "1.0.0"
 
 [[deps.NearestNeighbors]]
 deps = ["AbstractTrees", "Distances", "StaticArrays"]
-git-tree-sha1 = "ca562494d657e2b69191e440e9c28b9692d67944"
+git-tree-sha1 = "e2c3bba08dd6dedfe17a17889131b885b8c082f0"
 uuid = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
-version = "0.4.28"
+version = "0.4.27"
 
 [[deps.Netpbm]]
 deps = ["FileIO", "ImageCore", "ImageMetadata"]
@@ -1641,12 +1635,6 @@ deps = ["Dates", "PrecompileTools", "UUIDs"]
 git-tree-sha1 = "32a4e09c5f29402573d673901778a0e03b0807b9"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "2.8.6"
-
-[[deps.PikaParser]]
-deps = ["DocStringExtensions"]
-git-tree-sha1 = "d6ff87de27ff3082131f31a714d25ab6d0a88abf"
-uuid = "3bbf5609-3e7b-44cd-8549-7c69f321e792"
-version = "0.6.1"
 
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
