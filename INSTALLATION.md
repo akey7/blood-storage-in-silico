@@ -42,7 +42,7 @@ This will instantiate the environment, download the dependencies, and compile th
 
 Further documentation on executing the scripts are found elsewhere in [EXECUTION.md](EXECUTION.md).
 
-**macOS and Linux users can now proceed to [EXECUTION.md](EXECUTION.md)**. Windows users should complete the next section.
+**macOS and Linux users can now proceed to execute the workflow at [EXECUTION.md](EXECUTION.md)**. Windows users should complete the next section.
 
 ## *Windows Only*: Setting a required user environment variable on Windows
 
