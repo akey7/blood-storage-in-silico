@@ -6,7 +6,7 @@
 
 ### Configure `input/` folder with necessary data
 
-The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors seprately.** These files are listed below.
+The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors seprately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
 
 | How obtained                                   | File                                          | Required for full reproduction? |                   Public? | Used by                          |
 | ----------------------------------------------- | --------------------------------------------- | ------------------------------: | ------------------------: | -------------------------------- |
