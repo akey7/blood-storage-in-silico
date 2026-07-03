@@ -1,46 +1,27 @@
 # Installation
 
-### Install Julia for Your Platform
+## Install Julia for Your Platform
 
-[Installation instructions can be found on the language's homepage.](https://julialang.org/)
+[Installation instructions can be found on the language's homepage.](https://julialang.org/downloads/)
 
-### Obtain and Install Input Files
+## Configure `input/` folder with necessary data
 
-| File                                          | Required for full reproduction? |                   Public? | How obtained                                   | Used by                          |
-| --------------------------------------------- | ------------------------------: | ------------------------: | ---------------------------------------------- | -------------------------------- |
-| `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | distributed to trusted reviewers/collaborators | `absolute_quant.jl`              |
-| `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | distributed to trusted reviewers/collaborators | `absolute_quant.jl`              |
-| `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | Included in repo                         | `absolute_quant.jl` |
-| `AS Dev Library Trial 1.csv`                  |                             Yes |                   No | distributed to trusted reviewers/collaborators                             | `absolute_quant.jl`        |
-| `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | Included in repo                             | model construction               |
-| `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | included in repo                               | FBA model construction           |
-| `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | included/template                              | uFBA model construction          |
-| `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | included/template                              | pruning override                 |
+There are many data required in `input/` to run this code. The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors separately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
 
-### Create the `output/` Folders
+| How obtained                                   | File                                          | Required for full reproduction? |                   Public? | Used by                          |
+| ----------------------------------------------- | --------------------------------------------- | ------------------------------: | ------------------------: | -------------------------------- |
+| distributed to trusted reviewers/collaborators | `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | `absolute_quant.jl`              |
+| distributed to trusted reviewers/collaborators | `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | `absolute_quant.jl`              |
+| Included in repo                         | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
+| distributed to trusted reviewers/collaborators                             | `AS Dev Library Trial 1.csv`                  |                             Yes |                   No | `absolute_quant.jl`        |
+| Included in repo                             | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
+| included in repo                               | `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | FBA model construction           |
+| included/template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
+| included/template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
 
-There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
+## Install Dependencies
 
-```
-output
-├── pca_plot_dfs
-├── pca_plots
-├── plots
-├── regression_plots
-├── relative_absolute_c_means
-├── relative_absolute_plots
-├── uFBA_histograms_v2
-├── uFBA_densities
-├── uFBA_heatmaps
-├── gem_dfs
-├── ufba_models
-├── flux_vector_data_matrices
-├── relative_quant_2
-```
-
-### Install Dependencies
-
-To install and precompile the Julia dependencies, open a command line in the root of the repo and type the following commands:
+To install and precompile the Julia dependencies, open a command line in the root of the repo and type the following commands **(Note that you need to type `]` at the `julia>` prompt as shown below)**:
 
 ```
 bash-3.2$ julia --project=.
@@ -57,16 +38,51 @@ julia> ]
 (BloodStorageInSilico) pkg> instantiate
 ```
 
-This will instantiate the environment and download the dependencies. After the packages are installed, type backspace and `exit()`.
+This will instantiate the environment, download the dependencies, and compile them. **Compilation takes approximately 15 minutes.** After the packages are installed, type backspace and `exit()`.
 
-Further documentation on executing the scripts are found elsewhere in the documentation.
+Further documentation on executing the scripts are found elsewhere in [EXECUTION.md](EXECUTION.md).
 
-### Build the Documentation
+**macOS and Linux users can now proceed to execute the workflow at [EXECUTION.md](EXECUTION.md)**. Windows users should complete the next section.
 
-The docstrings are rendered into serachable html pages with a subproject using [Documenter.jl](https://documenter.juliadocs.org/stable/)
+## *Windows Only*: Setting a required user environment variable on Windows
+
+The scripts in this project execute on multiple threads to increase performance. By default, only one thread/core is used. To enable Julia to use all cores in the machine, a reasonable value in the JULIA_NUM_THREADS environment variable must be set. On Windows, you can do this at the user account level in the system settings. 
+
+1. Press `Windows + I` to open **Settings**.  
+2. In the left sidebar, click **System**.  
+3. On the right, scroll down and click **About**.  
+4. In the About page, under **Related links**, click **Advanced system settings**. This opens the **System Properties** window.
+5. In the System Properties window, make sure the **Advanced** tab is selected.
+6. Click the **Environment Variables…** button near the bottom. This opens the **Environment Variables** dialog.
+7. In the top section labeled **User variables for \<your username\>**, click **New…**. This ensures the variable is created only for your user account (not system-wide).
+8. In **Variable name**, type `JULIA_NUM_THREADS`  
+9. In **Variable value**, type the number of threads you would like to allocate. For example on my 64-core AMD Threadripper, I set this value to **64**.
+10. Click **OK** to close the New Variable dialog.  
+11. Click **OK** to close the Environment Variables dialog.  
+12. Click **OK** (or **Apply**) to close System Properties.  
+13. Close Settings, then restart any open apps or terminals that need to read the new variable.
+
+You can introduce this in your docs as “Follow these steps on Windows 11 to create a user environment variable” and then list the steps. How would you like to phrase step 7 to make it extra clear that they must use the **User variables** section and not the **System variables** section?
+
+**Ensure that you close and reopen any PowerShell or command prompt windows to ensure these settings take effect.**
+
+On macOS and Linux, you can set the number of threads on the command line, eliminating the need for this extra configuration step.
+
+**Now proceed to the [EXECUTION.md](EXECUTION.md) documentation.**
+
+## *Optional*: Build the Source Code Documentation
+
+The docstrings are rendered into serachable html pages with a subproject using [Documenter.jl](https://documenter.juliadocs.org/stable/). These documentation pages need to be built during installation.
+
+First, launch a Julia REPL in the `docs/` project as shown below.
 
 ```
 bash-3.2$ julia --project=docs/
+```
+
+ **Note that you need to type `]` at the `julia>` prompt as shown below**
+
+```
                _
    _       _ _(_)_     |  Documentation: https://docs.julialang.org
   (_)     | (_) (_)    |
@@ -76,8 +92,11 @@ bash-3.2$ julia --project=docs/
  _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
 |__/                   |
 
+julia> ]
 (BloodStorageInSilico/docs) pkg> instantiate
 ```
+
+This will instantiate the environment and download the dependencies **to build the documentation**. After the packages are installed, type backspace and `exit()`.
 
 After this step is complete build the docs with the following commands from the root of the repo:
 
@@ -92,14 +111,4 @@ When complete, you can open the doucmentation from the following html file relat
 docs/build/index.html
 ```
 
-Which will present you with nicely formatted docstrings for the functions in the modules.
-
-### Note for Windows
-
-The scripts in this project execute on multiple threads to increase performance. By default, only one thread/core is used. To enable Julia to use all cores in the machine, a reasonable value in the JULIA_NUM_THREADS environment variable must be set. On Windows, you can do this at the user account level in the system settings. For example, on a 64-core machine, you can set JULIA_NUM_THREADS to be the following:
-
-```
-JULIA_NUM_THREADS=64
-```
-
-On macOS and Linux, you can set the number of threads on the command line, eliminating the need for this extra configuration step. 
+This will present you with nicely formatted docstrings for the functions in the modules.

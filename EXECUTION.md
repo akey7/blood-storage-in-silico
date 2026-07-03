@@ -47,6 +47,8 @@ statistical analysis and visualization
 
 This table offers a summary of the order of script execution. Full details of script execution are below.
 
+Note: **Steps 3-6 are the core workflow, while steps 1, 2, and 7 are optional.**
+
 | Step | Entrypoint                     | Main module(s)                                                                                           | Main inputs                                    | Main outputs                             | Review purpose                             |
 | ---: | ------------------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------- | ------------------------------------------ |
 |    1 | `01_plot_metabolite_timelines.jl` | `src/MetaboliteTimelines.jl`                                                                             | relative metabolomics inputs                   | timeline plots, correlations             | QC of metabolite trajectories              |
@@ -107,7 +109,7 @@ ufba_sampler_analysis_2.jl
         └── output/viz_k_means_pca_distance.xlsx
 ```
 
-## Manually Executing Scripts
+## *Optional*: Execute the First 2 Pipeline Steps to Explore Relative Quantification Data
 
 All commands are issued from the root of the repo.
 
@@ -115,7 +117,7 @@ All commands are issued from the root of the repo.
 
 Uses `src/MetaboliteTimelines.jl` to generate plots of timerseries of metabolite timelines.
 
-on macOS
+On macOS and Linux
 
 ```
 JULIA_NUM_THREADS=7 julia --project=. 01_plot_metabolite_timelines.jl
@@ -135,7 +137,7 @@ Uses `src/RawRelativeIntensities.jl` to make PCA plots reducing relative metabol
 
 Execution is multithreaded, so the number of threads should be specified.
 
-On macOS:
+On macOS and Linux:
 
 ```
 JULIA_NUM_THREADS=7 julia --project=. 02_raw_relative_intensities.jl
@@ -151,6 +153,8 @@ Outputs:
 1. PCA loadings for all additives to `output/relative_pca_loadings.csv`.
 2. PCA plot DataFrames as `.csv` files to `output/pca_plot_dfs`.
 3. 2D PCA plots of single additives and pairs of additives to `output/pca_plots`.
+
+## *Required*: Execute the Core Workflow (Steps 3 to 6)
 
 ### (3) `03_absolute_quant.jl`: Approximate Absolute Quantifications and Regress Concentration Change Rates
 
@@ -170,7 +174,7 @@ Uses `src/AbsoluteQuant.jl` to perform the following tasks:
 
 This script uses multiple threads to calculate all the regression quickly, so it relies on the `JULIA_NUM_THREADS` variable.
 
-On macOS, executethe following (customize the number of threads to your machine):
+On macOS and Linux, execute the following (customize the number of threads to your machine):
 
 ```
 JULIA_NUM_THREADS=7 julia --project=. 03_absolute_quant.jl
@@ -185,6 +189,12 @@ julia --project=. 03_absolute_quant.jl
 ### (4) `04_ufba_sampler.jl`: Run uFBA Sampling Jobs
 
 In addition to multithreading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
+
+**Default to 4 workers with `-p 4` below unless you have a good reason to do otherwise.** Greater numbers of workers will lengthen script startup time.
+
+**At the end of sampling, job status will be displayed**. Not every model will execute. That isn't a script error; rather, it is a shortcoming of input data. Subsequent data processing will step over missing data. More detail is explained in the paper.
+
+**uFBA sampling can take some time**: On a 64-core AMD Threadripper with 127 threads and 4 workers, the 77-condition dataset takes up to 15 minutes to compute this step.
 
 The command line arguments to the Julia environment and script are the following:
 
@@ -230,9 +240,11 @@ Outputs the following files:
 
 ### (5) `05_ufba_sampler_analysis.jl`: Analyze the results of the uFBA Runs
 
+**Sampling can take some time**: On a 64-core AMD Threadripper with 127 threads and 4 workers, the 77-condition dataset takes up to 30 minutes to compute this step.
+
 Outputs `.csv` and `.xlsx` analyses of the uFBA results. These files can be used by themselves and they also feed into the next step of making visualizations.
 
-Runs code in the `src/UfbaSamplerAnalysis.jl`. Shows nifty status bars to indicate progress.
+Runs code in the `src/UfbaSamplerAnalysis.jl`.
 
 Uses the following input files:
 
@@ -250,7 +262,7 @@ Outputs the following files:
 8. Writes an Excel workbook that links reactions to metabolites and counts the number of measures metabolties per reaction, reaction subsystem, and reaction category. Filename is `output/reactions_metabolites_measurements.xlsx`
 9. Writes an Excel workbook of comparing treatments with respect to reactions and time points. Filename is `output/reaction_treatment_comparison.xlsx`
 
-On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
+On macOS and Linux, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
 ```
 JULIA_NUM_THREADS=7 julia --project=. 05_ufba_sampler_analysis.jl
@@ -263,6 +275,8 @@ julia --project=. 05_ufba_sampler_analysis.jl
 ```
 
 ### (6) `06_ufba_sampler_analysis_2.jl`: Visualize uFBA analysis results as plots
+
+**Unlike this previos two steps, this one goes quickly.**
 
 Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
 
@@ -278,7 +292,7 @@ Outputs the following files:
 2. Writes kernel density estimation of sampling results (one plot per reaction) to `output/uFBA_densities/`.
 3. PCA and k-means analysis of Cohen's effects between control and treatments and median fluxes, along with distances between control and treatments to sheets in `output/viz_k_means_pca_distance.xlsx`.
 
-On macOS, set the `JULIA_NUM_THREADS` environment variable and execute like this:
+On macOS and Linux, set the `JULIA_NUM_THREADS` environment variable and execute like this:
 
 ```
 JULIA_NUM_THREADS=7 julia --project=. 06_ufba_sampler_analysis_2.jl
@@ -289,6 +303,8 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 ```
 julia --project=. 06_ufba_sampler_analysis_2.jl
 ```
+
+## *Optional, not part of publication*: Explore the Reaction Network with Graph Traversal 
 
 ### (7) `07_model_graph.jl`: Analyze the uFBA models as graphs
 
@@ -315,17 +331,17 @@ Outputs
 
 Displays progress bars to show progress as it works through the data.
 
-This script only uses a single thread, so execution on macOS or Window is simple:
+This script only uses a single thread, so execution On macOS and Linux or Window is simple:
 
 ```
 julia --project=. 07_model_graph.jl
 ```
 
-## Tests
+## *Optional*: Tests
 
 There is a small test to ensure testing works:
 
-On macOS:
+On macOS and Linux:
 
 ```
 julia --project=. test/runtests.jl
