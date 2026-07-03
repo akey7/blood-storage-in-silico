@@ -17,27 +17,6 @@
 | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | included/template                              | uFBA model construction          |
 | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | included/template                              | pruning override                 |
 
-### Create the `output/` Folders
-
-There are a lot of modules and scripts in this repo, and they produce a lot of output files. These files go into the `output/` folder and folders nested within it. Create the `output/` folder and the following subfolders:
-
-```
-output
-├── pca_plot_dfs
-├── pca_plots
-├── plots
-├── regression_plots
-├── relative_absolute_c_means
-├── relative_absolute_plots
-├── uFBA_histograms_v2
-├── uFBA_densities
-├── uFBA_heatmaps
-├── gem_dfs
-├── ufba_models
-├── flux_vector_data_matrices
-├── relative_quant_2
-```
-
 ### Install Dependencies
 
 To install and precompile the Julia dependencies, open a command line in the root of the repo and type the following commands:
