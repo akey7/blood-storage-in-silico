@@ -1,12 +1,12 @@
 # Installation
 
-### Install Julia for Your Platform
+## Install Julia for Your Platform
 
-[Installation instructions can be found on the language's homepage.](https://julialang.org/)
+[Installation instructions can be found on the language's homepage.](https://julialang.org/downloads/)
 
-### Configure `input/` folder with necessary data
+## Configure `input/` folder with necessary data
 
-The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors seprately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
+There are many data required in `input/` to run this code. The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors separately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
 
 | How obtained                                   | File                                          | Required for full reproduction? |                   Public? | Used by                          |
 | ----------------------------------------------- | --------------------------------------------- | ------------------------------: | ------------------------: | -------------------------------- |
@@ -19,7 +19,7 @@ The maximum number of publicly accessible input data files are committed to this
 | included/template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
 | included/template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
 
-### Install Dependencies
+## Install Dependencies
 
 To install and precompile the Julia dependencies, open a command line in the root of the repo and type the following commands:
 
@@ -42,7 +42,7 @@ This will instantiate the environment and download the dependencies. After the p
 
 Further documentation on executing the scripts are found elsewhere in the documentation.
 
-### Build the Documentation
+## Build the Documentation
 
 The docstrings are rendered into serachable html pages with a subproject using [Documenter.jl](https://documenter.juliadocs.org/stable/)
 
@@ -75,7 +75,7 @@ docs/build/index.html
 
 Which will present you with nicely formatted docstrings for the functions in the modules.
 
-### Note for Windows
+## Note for Windows
 
 The scripts in this project execute on multiple threads to increase performance. By default, only one thread/core is used. To enable Julia to use all cores in the machine, a reasonable value in the JULIA_NUM_THREADS environment variable must be set. On Windows, you can do this at the user account level in the system settings. For example, on a 64-core machine, you can set JULIA_NUM_THREADS to be the following:
 
