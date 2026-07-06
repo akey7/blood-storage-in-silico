@@ -2,7 +2,6 @@ module ModelGraph
 
 using COBREXA
 import SBMLFBCModels
-import JSONFBCModels
 import AbstractFBCModels as A
 import SBMLFBCModels as S
 using JSON3

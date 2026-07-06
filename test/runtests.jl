@@ -1,5 +1,7 @@
 using Test
 
 @testset "BloodStorageInSilico Core Pipeline Initialization" begin
-    @test isfile(joinpath("input", "RBC-GEM.xml"))
+    repo_root = normpath(joinpath(@__DIR__, ".."))
+    model_path = joinpath(repo_root, "input", "RBC-GEM.xml")
+    @test isfile(model_path)
 end
