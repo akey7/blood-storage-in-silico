@@ -2,7 +2,7 @@
 
 This project studies refrigerated blood storage with unsteady flux balance analysis (uFBA).
 
-**Too long, didn't read:** Reviewers should see the [REVIEWER_QUICK_START.md](REVIEWER_QUICK_START.md) guide for information on code structure, setup, suggested review path, and AI governance in tailored to your use case.
+**Too long, didn't read:** Reviewers should see the [REVIEWER_QUICK_START.md](REVIEWER_QUICK_START.md) guide for information on code structure, setup, suggested review path, and AI governance in this repo tailored to your use case.
 
 ## FAQ
 
