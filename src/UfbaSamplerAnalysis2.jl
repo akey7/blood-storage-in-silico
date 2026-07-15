@@ -493,19 +493,21 @@ function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
         scores = MultivariateStats.transform(M, Xt)
         size_transpose = size(collect(scores'))
         if size_transpose[2] != length(pc_names)
-            error("""
-                PCA output dimension mismatch.
+            error(
+                """
+              PCA output dimension mismatch.
 
-                Expected the number of columns in `size_transpose` to match the number of PC names.
+              Expected the number of columns in `size_transpose` to match the number of PC names.
 
-                Observed:
-                size(size_transpose, 2) = $(size_transpose[2])
-                length(pc_names)        = $(length(pc_names))
+              Observed:
+              size(size_transpose, 2) = $(size_transpose[2])
+              length(pc_names)        = $(length(pc_names))
 
-                Suggested resolution:
-                This is often caused from attempting to run a second phase analysis on an incomplete
-                set of models (such as if --nmodels was not set to -1)
-            """)
+              Suggested resolution:
+              This is often caused from attempting to run a second phase analysis on an incomplete
+              set of models (such as if --nmodels was not set to -1)
+          """,
+            )
         end
         pca_df = DataFrame(collect(scores'), pc_names)
         insertcols!(

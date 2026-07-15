@@ -5,6 +5,7 @@ using COBREXA, HiGHS, JuMP, MathOptInterface
 using Base.Iterators
 import ConstraintTrees as C
 import SBMLFBCModels as S
+import JSONFBCModels as J
 import AbstractFBCModels as A
 using CSV
 using DataFrames
@@ -258,25 +259,27 @@ function sbml_add_constant_to_selfclosing_parameters!(
 end
 
 """
-    save_ufba_model_sbml(model::A.AbstractFBCModel, additive::AbstractString, final_time::Int64)
+    save_ufba_model_sbml_json(model::A.AbstractFBCModel, additive::AbstractString, final_time::Int64)
 
-Save the given uFBA model to the filesystem for later retrieval. Models are saved in SBML format in the `output/ufba_models` folder.
+Save the given uFBA model to the filesystem for later retrieval. Models are saved in SBML and JSON formats in the `output/ufba_models` folder.
 
 # Arguments:
 1. `model::A.AbstractFBCModel`: uFBA model to save.
 2. `additive::AbstractString`: Additive the uFBA model is in.
 3. `final_time::Int64`: Final time of the uFBA model.
 """
-function save_ufba_model_sbml(
+function save_ufba_model_sbml_json(
     model::A.AbstractFBCModel,
     additive::AbstractString,
     final_time::Int64,
 )
-    filename = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).xml")
+    filename_sbml = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).xml")
     sbml_fbc = convert(S.SBMLFBCModel, model)
-    save_model(sbml_fbc, filename)
-    sbml_add_constant_to_selfclosing_parameters!(filename)
-    # println("Wrote $filename")
+    save_model(sbml_fbc, filename_sbml)
+    sbml_add_constant_to_selfclosing_parameters!(filename_sbml)
+    filename_json = joinpath("output", "ufba_models", "uFBA $(additive)_$(final_time).json")
+    json_fbc = convert(J.JSONFBCModel, model)
+    save_model(json_fbc, filename_json)
 end
 
 """
@@ -675,7 +678,7 @@ function make_ufba_models_for_additives_and_times(
 
             # This SBML will have sinks (if added) but not metabolite bounds.
             # For the graph analysis that is not important at this time.
-            save_ufba_model_sbml(pruned_model, additive, final_time)
+            save_ufba_model_sbml_json(pruned_model, additive, final_time)
 
             pruned_with_metabolite_bounds_ct = flux_balance_constraints(pruned_model)
             pruned_metabolite_bounds_result = add_metabolite_bounds_to_constraint_tree!(
