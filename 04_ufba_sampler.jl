@@ -54,7 +54,7 @@ metabolites_to_ignore = load_metabolite_measurement_opt_outs()
 sink_opt_ins_message =
     read_sink_opt_ins ? "Loading sink opt-ins (if available)" : "Skipping sink opt-ins"
 @info sink_opt_ins_message
-sink_opt_ins = read_sink_opt_ins ? load_sink_opt_ins() : nothing
+sink_opt_ins = read_sink_opt_ins ? load_sink_opt_ins() : String[]
 display(sink_opt_ins)
 
 @info "Loading reaction names and subsystems"
