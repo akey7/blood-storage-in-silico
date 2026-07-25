@@ -32,9 +32,16 @@ end
     arg_type = Symbol
     default = :case3
 end
+@add_arg_table s begin
+    "--use-sink-opt-ins"
+    help = "If true, sink opt ins are read and added to every model. If false, sink assignment relies exclusively on pruning."
+    arg_type = Bool
+    default = false
+end
 n_chains = parse_args(s)["nchains"]
 n_models = parse_args(s)["nmodels"]
 prune_method = parse_args(s)["prune-method"]
+read_sink_opt_ins = parse_args(s)["use-sink-opt-ins"]
 
 init_workers!()
 
@@ -44,8 +51,11 @@ flux_bounds_overrides_df = load_flux_bounds_overrides()
 @info "Load metabolite measurement opt-outs (if available)"
 metabolites_to_ignore = load_metabolite_measurement_opt_outs()
 
-@info "Loading sink opt-ins (if available)"
-sink_opt_ins = load_sink_opt_ins()
+sink_opt_ins_message =
+    read_sink_opt_ins ? "Loading sink opt-ins (if available)" : "Skipping sink opt-ins"
+@info sink_opt_ins_message
+sink_opt_ins = read_sink_opt_ins ? load_sink_opt_ins() : nothing
+display(sink_opt_ins)
 
 @info "Loading reaction names and subsystems"
 reaction_names_and_subsystems_df = load_reaction_names_and_subsystems()
