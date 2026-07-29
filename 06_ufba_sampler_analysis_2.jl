@@ -56,7 +56,7 @@ control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename
 prepared_treatments_result =
     prepare_treatment_effects_dfs(control_vs_treatments_signif_df; complete_only = true)
 treatement_pca_result = pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
-treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result; n_pcs = 5)
+treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
 median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
 prepare_median_fluxes_result =
