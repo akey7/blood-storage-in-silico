@@ -7,13 +7,13 @@ using .RawRelativeIntensities
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
-# @info "Reading ORIGINAL relative intensities"
-# long_df = load_relative_intensities()
-# additives = sort(unique(long_df.Additive))
-
-@info "Reading SECOND SET OF relative intensities"
-long_df = load_relative_intensities_2()
+@info "Reading ORIGINAL relative intensities"
+long_df = load_relative_intensities()
 additives = sort(unique(long_df.Additive))
+
+# @info "Reading SECOND SET OF relative intensities"
+# long_df = load_relative_intensities_2()
+# additives = sort(unique(long_df.Additive))
 
 @info "Aggregating loadings"
 loadings_df = pca_loadings_report(long_df)
