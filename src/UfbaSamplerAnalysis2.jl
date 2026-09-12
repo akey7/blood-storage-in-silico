@@ -442,9 +442,9 @@ function k_means_treatment_effects(
 )
     final_times = prepared_treatments_result.final_times
     effects_dfs = prepared_treatments_result.effects_dfs
-    feature_cols = names(effects_dfs[1], Not([:treatment_additive, :final_time]))
     cluster_dfs = DataFrame[]
     for (final_time, effects_df) in zip(final_times, effects_dfs)
+        feature_cols = names(effects_df, Not([:treatment_additive, :final_time]))
         X = Matrix{Float64}(effects_df[:, feature_cols])'
         Random.seed!(seed)
         result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
