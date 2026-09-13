@@ -232,7 +232,7 @@ function subset_long_sampling_df(
     else
         plt_df = @chain long_sampling_df begin
             @rsubset(:reaction_id == reaction_id)
-            @rtransform(:time_span = "Timespan Ending at $(:final_time)")
+            @rtransform(:time_span = "Week $(:final_time)")
         end
         return plt_df
     end
