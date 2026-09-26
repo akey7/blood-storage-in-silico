@@ -1,3 +1,6 @@
 [deps]
 BloodStorageInSilico = "12fa0bc3-1996-4702-b249-fafc788310f3"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[sources]
+BloodStorageInSilico = {path = ".."}
