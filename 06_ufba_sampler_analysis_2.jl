@@ -85,7 +85,7 @@ XLSX.writetable(
     "effects_pca" => treatement_pca_result.pca_df,
     "effects_pca_loadings" => treatement_pca_result.loadings_df,
     "effects_k_means" => treatment_k_means_df,
-    "treatement_distances" => treatement_distances_df,
+    "treatment_distances" => treatement_distances_df,
     overwrite = true,
 )
 println("Wrote $k_means_pca_filename")
