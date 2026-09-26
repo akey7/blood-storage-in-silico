@@ -29,8 +29,8 @@ rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
 # Uncomment to plot from first dataset
-# @info "Plotting uFBA histogram and density plots"
-# plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+@info "Plotting uFBA histogram and density plots"
+plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 
 # Select comment for the an interesting treatement and compare with control
 # Especially ensure the control matches the first or second dataset.
@@ -63,7 +63,7 @@ median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
 prepare_median_fluxes_result =
     prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
-fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
+fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result, k = 2)
 fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 
 # For first dataset
