@@ -934,10 +934,10 @@ function regress_concentration_vs_time(long_df; remove_zero_rates = true)
     unique_metabolites = unique(long_df.Metabolite)
 
     # First set of final_times for first relative quant dataset
-    # final_times = [2, 3, 4, 5, 6]
+    final_times = [2, 3, 4, 5, 6]
 
     # Second set of final_times for second relative quant dataset
-    final_times = [2, 4, 6]
+    # final_times = [2, 4, 6]
 
     tasks = product(unique_metabolites, unique_additives, final_times)
     n_tasks = length(tasks)

@@ -232,7 +232,7 @@ function subset_long_sampling_df(
     else
         plt_df = @chain long_sampling_df begin
             @rsubset(:reaction_id == reaction_id)
-            @rtransform(:time_span = "Timespan Ending at $(:final_time)")
+            @rtransform(:time_span = "Week $(:final_time)")
         end
         return plt_df
     end
@@ -442,9 +442,9 @@ function k_means_treatment_effects(
 )
     final_times = prepared_treatments_result.final_times
     effects_dfs = prepared_treatments_result.effects_dfs
-    feature_cols = names(effects_dfs[1], Not([:treatment_additive, :final_time]))
     cluster_dfs = DataFrame[]
     for (final_time, effects_df) in zip(final_times, effects_dfs)
+        feature_cols = names(effects_df, Not([:treatment_additive, :final_time]))
         X = Matrix{Float64}(effects_df[:, feature_cols])'
         Random.seed!(seed)
         result = kmeans(X, k; maxiter = maxiter, tol = 1.0e-6, display = :none)
@@ -493,19 +493,21 @@ function pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
         scores = MultivariateStats.transform(M, Xt)
         size_transpose = size(collect(scores'))
         if size_transpose[2] != length(pc_names)
-            error("""
-                PCA output dimension mismatch.
+            error(
+                """
+              PCA output dimension mismatch.
 
-                Expected the number of columns in `size_transpose` to match the number of PC names.
+              Expected the number of columns in `size_transpose` to match the number of PC names.
 
-                Observed:
-                size(size_transpose, 2) = $(size_transpose[2])
-                length(pc_names)        = $(length(pc_names))
+              Observed:
+              size(size_transpose, 2) = $(size_transpose[2])
+              length(pc_names)        = $(length(pc_names))
 
-                Suggested resolution:
-                This is often caused from attempting to run a second phase analysis on an incomplete
-                set of models (such as if --nmodels was not set to -1)
-            """)
+              Suggested resolution:
+              This is often caused from attempting to run a second phase analysis on an incomplete
+              set of models (such as if --nmodels was not set to -1)
+          """,
+            )
         end
         pca_df = DataFrame(collect(scores'), pc_names)
         insertcols!(
