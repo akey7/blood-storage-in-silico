@@ -16,6 +16,7 @@ using Statistics
 using KernelDensity
 using CairoMakie
 using AlgebraOfGraphics
+using AlgebraOfGraphics: verbatim
 using ColorSchemes
 using ProgressMeter
 
@@ -767,7 +768,7 @@ function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
         innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
         @transform(:cluster = categorical(:cluster))
         @orderby(:final_time, :cluster)
-        @select(:final_time, :cluster, :PC1, :PC2)
+        @select(:final_time, :cluster, :PC1, :PC2, :treatment_additive)
     end
     cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
     final_times = sort(unique(all_time_df.final_time))
@@ -782,9 +783,12 @@ function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
         title = "Effects K-Means PCA Final Time $final_time"
         plt_df = @rsubset(all_time_df, :final_time == final_time)
         scatter_plt =
-            data(plt_df) *
-            mapping(:PC1, :PC2, color = :cluster) *
-            visual(Scatter, markersize = 14, alpha = 0.75)
+            data(plt_df) * (
+                mapping(:PC1, :PC2, color = :cluster) *
+                visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :treatment_additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            )
         fig = draw(
             scatter_plt,
             scales(Color = (; palette = cluster_colors)),
@@ -802,7 +806,7 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
         innerjoin(fluxes_k_means_df; on = [:additive, :final_time])
         @transform(:cluster = categorical(:cluster))
         @orderby(:final_time, :cluster)
-        @select(:final_time, :cluster, :PC1, :PC2)
+        @select(:final_time, :cluster, :PC1, :PC2, :additive)
     end
     cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
     final_times = sort(unique(all_time_df.final_time))
@@ -817,9 +821,12 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
         title = "Median Flux K-Means PCA Final Time $final_time"
         plt_df = @rsubset(all_time_df, :final_time == final_time)
         scatter_plt =
-            data(plt_df) *
-            mapping(:PC1, :PC2, color = :cluster) *
-            visual(Scatter, markersize = 14, alpha = 0.75)
+            data(plt_df) * (
+                mapping(:PC1, :PC2, color = :cluster) *
+                visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            )
         fig = draw(
             scatter_plt,
             scales(Color = (; palette = cluster_colors)),
