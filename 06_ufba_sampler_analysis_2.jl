@@ -51,7 +51,7 @@ plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 # ANALYSIS FOR DATA VIZ PIPELINE                          #
 ###########################################################
 
-@info "K-Means/PCA analysis and plots of median fluxes and Cohen's effects"
+@info "K-Means/PCA analysis of median fluxes and Cohen's effects"
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
@@ -89,3 +89,11 @@ XLSX.writetable(
     overwrite = true,
 )
 println("Wrote $k_means_pca_filename")
+
+###########################################################
+# DATA VIZ                                                #
+###########################################################
+
+@info "Plotting PCA/k-means of median fluxes and Cohen's effects"
+plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
+plot_median_fluxes_kmeans_pca(fluxes_pca_result.pca_df, fluxes_k_means_df)

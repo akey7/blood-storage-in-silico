@@ -29,7 +29,9 @@ export plot_all_distributions_for_reactions,
     prepare_median_fluxes_dfs,
     k_means_median_fluxes,
     pca_median_fluxes,
-    treatment_distances_from_control
+    treatment_distances_from_control,
+    plot_treatment_effects_kmeans_pca,
+    plot_median_fluxes_kmeans_pca
 
 """
     load_and_select_sampling_results()
