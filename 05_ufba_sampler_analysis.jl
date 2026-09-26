@@ -74,7 +74,23 @@ CSV.write(
 println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
-comparison_result = compare_flux_distributions(sampling_df, working_models_df; alpha = 0.01)
+
+# FIRST dataset
+comparison_result = compare_flux_distributions(
+    sampling_df,
+    working_models_df;
+    alpha = 0.01,
+    control_additive = "01-Ctrl AS3",
+)
+
+# SECOND dataset
+# comparison_result = compare_flux_distributions(
+#     sampling_df,
+#     working_models_df;
+#     alpha = 0.01,
+#     control_additive = "AS3",
+# )
+
 control_vs_treatments_signif_df = comparison_result.control_vs_treatments_signif_df
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
