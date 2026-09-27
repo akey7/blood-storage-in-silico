@@ -762,7 +762,11 @@ end
 # PLOT PCA/K-MEANS                                                  #
 #####################################################################
 
-function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
+function plot_treatment_effects_kmeans_pca(
+    pca_df,
+    treatment_k_means_df;
+    color_clusters = false,
+)
     n_clusters = maximum(treatment_k_means_df.cluster)
     all_time_df = @chain pca_df begin
         innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
@@ -789,24 +793,37 @@ function plot_treatment_effects_kmeans_pca(pca_df, treatment_k_means_df)
         right_pad = 0.30 * x_span_for_padding
         x_limits = (x_min - left_pad, x_max + right_pad)
         scatter_plt =
+            color_clusters ?
             data(plt_df) * (
                 mapping(:PC1, :PC2, color = :cluster) *
                 visual(Scatter, markersize = 14, alpha = 0.75) +
                 mapping(:PC1, :PC2, text = :treatment_additive => verbatim) *
                 visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            ) :
+            data(plt_df) * (
+                mapping(:PC1, :PC2) * visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :treatment_additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
             )
-        fig = draw(
-            scatter_plt,
-            scales(Color = (; palette = cluster_colors)),
-            figure = (; size = (500, 500)),
-            axis = (; title = title, limits = (x_limits, nothing)),
-        )
+        fig =
+            color_clusters ?
+            draw(
+                scatter_plt,
+                scales(Color = (; palette = cluster_colors)),
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, nothing)),
+            ) :
+            draw(
+                scatter_plt,
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, nothing)),
+            )
         save(filename, fig)
         next!(prog)
     end
 end
 
-function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
+function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters = false)
     n_clusters = maximum(fluxes_k_means_df.cluster)
     all_time_df = @chain pca_df begin
         innerjoin(fluxes_k_means_df; on = [:additive, :final_time])
@@ -833,18 +850,31 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df)
         right_pad = 0.30 * x_span_for_padding
         x_limits = (x_min - left_pad, x_max + right_pad)
         scatter_plt =
+            color_clusters ?
             data(plt_df) * (
                 mapping(:PC1, :PC2, color = :cluster) *
                 visual(Scatter, markersize = 14, alpha = 0.75) +
                 mapping(:PC1, :PC2, text = :additive => verbatim) *
                 visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            ) :
+            data(plt_df) * (
+                mapping(:PC1, :PC2) * visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
             )
-        fig = draw(
-            scatter_plt,
-            scales(Color = (; palette = cluster_colors)),
-            figure = (; size = (500, 500)),
-            axis = (; title = title, limits = (x_limits, nothing)),
-        )
+        fig =
+            color_clusters ?
+            draw(
+                scatter_plt,
+                scales(Color = (; palette = cluster_colors)),
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, nothing)),
+            ) :
+            draw(
+                scatter_plt,
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, nothing)),
+            )
         save(filename, fig)
         next!(prog)
     end

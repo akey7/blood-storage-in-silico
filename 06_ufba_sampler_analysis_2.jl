@@ -29,8 +29,8 @@ rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
 # Uncomment to plot from first dataset
-@info "Plotting uFBA histogram and density plots"
-plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+# @info "Plotting uFBA histogram and density plots"
+# plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 
 # Select comment for the an interesting treatement and compare with control
 # Especially ensure the control matches the first or second dataset.
@@ -95,5 +95,13 @@ println("Wrote $k_means_pca_filename")
 ###########################################################
 
 @info "Plotting PCA/k-means of median fluxes and Cohen's effects"
-plot_treatment_effects_kmeans_pca(treatement_pca_result.pca_df, treatment_k_means_df)
-plot_median_fluxes_kmeans_pca(fluxes_pca_result.pca_df, fluxes_k_means_df)
+plot_treatment_effects_kmeans_pca(
+    treatement_pca_result.pca_df,
+    treatment_k_means_df;
+    color_clusters = false,
+)
+plot_median_fluxes_kmeans_pca(
+    fluxes_pca_result.pca_df,
+    fluxes_k_means_df;
+    color_clusters = false,
+)
