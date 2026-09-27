@@ -759,9 +759,23 @@ function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
 end
 
 #####################################################################
-# PLOT PCA/K-MEANS                                                  #
+# PLOT PCA                                                          #
 #####################################################################
 
+"""
+    plot_treatment_effects_kmeans_pca(
+        pca_df,
+        treatment_k_means_df;
+        color_clusters = false,
+    )
+
+Plots the PCA of the standardized treatment Cohen's effects with PC2 on vertical axis and PC1 on horizontal axis with a dot for each treatment additive and each dot labeled with the name of the treatment additive. Saves one plot per treatment additive to `output/viz_effects_kmeans_pca` and displays a progress bar as it goes.
+
+# Arguments
+1. `pca_df`: PCA DataFrame from [`pca_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.pca_median_fluxes)
+2. `treatment_k_means_df`: K-Means DataFrame from [`k_means_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.k_means_median_fluxes)
+3. `color_clusters = false`: If `true`, colors the dots according to the cluster number in the k-means. **Caveat: Just raw k-means clusters will be different per time point.**
+"""
 function plot_treatment_effects_kmeans_pca(
     pca_df,
     treatment_k_means_df;
@@ -828,6 +842,20 @@ function plot_treatment_effects_kmeans_pca(
     end
 end
 
+"""
+    plot_treatment_effects_kmeans_pca(
+        pca_df,
+        treatment_k_means_df;
+        color_clusters = false,
+    )
+
+Plots the PCA of the standardized median fluxes with PC2 on vertical axis and PC1 on horizontal axis with a dot for each treatment additive and each dot labeled with the name of the treatment additive. Saves one plot per treatment additive to `output/viz_fluxes_kmeans_pca` and displays a progress bar as it goes.
+
+# Arguments
+1. `pca_df`: PCA DataFrame from [`pca_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.pca_median_fluxes)
+2. `treatment_k_means_df`: K-Means DataFrame from [`k_means_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.k_means_median_fluxes)
+3. `color_clusters = false`: If `true`, colors the dots according to the cluster number in the k-means. **Caveat: Just raw k-means clusters will be different per time point.**
+"""
 function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters = false)
     n_clusters = maximum(fluxes_k_means_df.cluster)
     all_time_df = @chain pca_df begin
