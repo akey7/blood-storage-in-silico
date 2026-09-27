@@ -792,6 +792,11 @@ function plot_treatment_effects_kmeans_pca(
         left_pad = 0.05 * x_span_for_padding
         right_pad = 0.30 * x_span_for_padding
         x_limits = (x_min - left_pad, x_max + right_pad)
+        y_min, y_max = extrema(plt_df.PC2)
+        y_span = y_max - y_min
+        y_span_for_padding = iszero(y_span) ? 1.0 : y_span
+        y_pad = 0.12 * y_span_for_padding
+        y_limits = (y_min - y_pad, y_max + y_pad)
         scatter_plt =
             color_clusters ?
             data(plt_df) * (
@@ -811,12 +816,12 @@ function plot_treatment_effects_kmeans_pca(
                 scatter_plt,
                 scales(Color = (; palette = cluster_colors)),
                 figure = (; size = (500, 500)),
-                axis = (; title = title, limits = (x_limits, nothing)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
             ) :
             draw(
                 scatter_plt,
                 figure = (; size = (500, 500)),
-                axis = (; title = title, limits = (x_limits, nothing)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
             )
         save(filename, fig)
         next!(prog)
@@ -849,6 +854,11 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
         left_pad = 0.05 * x_span_for_padding
         right_pad = 0.30 * x_span_for_padding
         x_limits = (x_min - left_pad, x_max + right_pad)
+        y_min, y_max = extrema(plt_df.PC2)
+        y_span = y_max - y_min
+        y_span_for_padding = iszero(y_span) ? 1.0 : y_span
+        y_pad = 0.12 * y_span_for_padding
+        y_limits = (y_min - y_pad, y_max + y_pad)
         scatter_plt =
             color_clusters ?
             data(plt_df) * (
@@ -868,12 +878,12 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
                 scatter_plt,
                 scales(Color = (; palette = cluster_colors)),
                 figure = (; size = (500, 500)),
-                axis = (; title = title, limits = (x_limits, nothing)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
             ) :
             draw(
                 scatter_plt,
                 figure = (; size = (500, 500)),
-                axis = (; title = title, limits = (x_limits, nothing)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
             )
         save(filename, fig)
         next!(prog)
