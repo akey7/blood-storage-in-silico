@@ -36,7 +36,7 @@ end
     "--use-sink-opt-ins"
     help = "If true, sink opt ins are read and added to every model. If false, sink assignment relies exclusively on pruning."
     arg_type = Bool
-    default = false
+    default = true
 end
 n_chains = parse_args(s)["nchains"]
 n_models = parse_args(s)["nmodels"]

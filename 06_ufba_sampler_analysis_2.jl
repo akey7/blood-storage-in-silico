@@ -28,16 +28,28 @@ rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
-# Uncomment to plot from first dataset
-@info "Plotting uFBA histogram and density plots"
-plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+# Uncomment to plot from first dataset, all treatment additives
+# @info "Plotting uFBA histogram and density plots all treatment additives"
+# plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+
+# Uncomment to plot from first dataset, 01-Ctrl AS3 vs 02-Adenosine
+control_additive = "01-Ctrl AS3"
+treatment_additive = "02-Adenosine"
+@info "Plotting uFBA histogram and density for $control_additive vs $treatment_additive"
+plot_all_distributions_for_reactions(
+    sampling_df,
+    rxn_ids_to_strings;
+    control_additive = control_additive,
+    treatment_additive = treatment_additive,
+    bins = 80,
+)
 
 # Select comment for the an interesting treatement and compare with control
 # Especially ensure the control matches the first or second dataset.
 # control_additive = "AS3"
 # control_additive = "01-Ctrl AS3"
-# treatment_additive = "adenine"
-# treatment_additive = "arginine"
+# treatment_additive = "adenine"  # First treatment option
+# treatment_additive = "arginine"  # A second treatment option
 # @info "Plotting uFBA histogram and density plots for $control_additive vs $treatment_additive"
 # plot_all_distributions_for_reactions(
 #     sampling_df,
@@ -48,22 +60,22 @@ plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 # )
 
 ###########################################################
-# ANALYSIS FOR DATA VIZ PIPELINE                          #
+# SECOND PHASE ANALYSIS                                   #
 ###########################################################
 
-@info "K-Means/PCA analysis and plots of median fluxes and Cohen's effects"
+@info "K-Means/PCA analysis of median fluxes and Cohen's effects"
 control_vs_treatments_signif_filename =
     joinpath("output", "analysis_control_vs_treatments_signif.csv")
 control_vs_treatments_signif_df = CSV.read(control_vs_treatments_signif_filename, DataFrame)
 prepared_treatments_result =
     prepare_treatment_effects_dfs(control_vs_treatments_signif_df; complete_only = true)
 treatement_pca_result = pca_treatment_effects(prepared_treatments_result; n_pcs = 5)
-treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result)
+treatment_k_means_df = k_means_treatment_effects(prepared_treatments_result, k = 2)
 median_fluxes_filename = joinpath("output", "ufba_median_fluxes.csv")
 median_fluxes_df = CSV.read(median_fluxes_filename, DataFrame)
 prepare_median_fluxes_result =
     prepare_median_fluxes_dfs(median_fluxes_df; complete_only = true)
-fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result)
+fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result, k = 2)
 fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 
 # For first dataset
@@ -85,7 +97,23 @@ XLSX.writetable(
     "effects_pca" => treatement_pca_result.pca_df,
     "effects_pca_loadings" => treatement_pca_result.loadings_df,
     "effects_k_means" => treatment_k_means_df,
-    "treatement_distances" => treatement_distances_df,
+    "treatment_distances" => treatement_distances_df,
     overwrite = true,
 )
 println("Wrote $k_means_pca_filename")
+
+###########################################################
+# DATA VIZ                                                #
+###########################################################
+
+@info "Plotting PCA/k-means of median fluxes and Cohen's effects"
+plot_treatment_effects_kmeans_pca(
+    treatement_pca_result.pca_df,
+    treatment_k_means_df;
+    color_clusters = false,
+)
+plot_median_fluxes_kmeans_pca(
+    fluxes_pca_result.pca_df,
+    fluxes_k_means_df;
+    color_clusters = false,
+)

@@ -78,7 +78,7 @@ Note: **Steps 3-6 are the core workflow, while steps 1, 2, and 7 are optional.**
 
 ### Map of Significant Data Outputs
 
-This is a non-exhaustive diagram of files that are generated on `output/` by the various steps of the workflow. These are the most important files for modeling and analysis that is fed into the visualization repo `blood-storage-in-silico-viz`.
+This is a non-exhaustive diagram of files that are generated on `output/` by the various steps of the workflow. Even though it is non-exhaustive, it does list the files most important for analysis and reporting results from the modeling run.
 
 ```text
 input metabolomics files
@@ -107,6 +107,8 @@ ufba_sampler_analysis_2.jl
         │
         ├── output/ufba_sampling_complete_additives.csv
         └── output/viz_k_means_pca_distance.xlsx
+        └── output/viz_effects_kmeans_pca/
+        └── output/viz_fluxes_kmeans_pca/
 ```
 
 ## *Optional*: Execute the First 2 Pipeline Steps to Explore Relative Quantification Data

@@ -16,6 +16,7 @@ using Statistics
 using KernelDensity
 using CairoMakie
 using AlgebraOfGraphics
+using AlgebraOfGraphics: verbatim
 using ColorSchemes
 using ProgressMeter
 
@@ -29,7 +30,9 @@ export plot_all_distributions_for_reactions,
     prepare_median_fluxes_dfs,
     k_means_median_fluxes,
     pca_median_fluxes,
-    treatment_distances_from_control
+    treatment_distances_from_control,
+    plot_treatment_effects_kmeans_pca,
+    plot_median_fluxes_kmeans_pca
 
 """
     load_and_select_sampling_results()
@@ -753,6 +756,166 @@ function pca_median_fluxes(prepared_medians_result; n_pcs = 5)
     loadings_df = @orderby(vcat(loadings_dfs...), :reaction_id, :final_time)
     result = (pca_df = pca_df, loadings_df = loadings_df)
     return result
+end
+
+#####################################################################
+# PLOT PCA                                                          #
+#####################################################################
+
+"""
+    plot_treatment_effects_kmeans_pca(
+        pca_df,
+        treatment_k_means_df;
+        color_clusters = false,
+    )
+
+Plots the PCA of the standardized treatment Cohen's effects with PC2 on vertical axis and PC1 on horizontal axis with a dot for each treatment additive and each dot labeled with the name of the treatment additive. Saves one plot per treatment additive to `output/viz_effects_kmeans_pca` and displays a progress bar as it goes.
+
+# Arguments
+1. `pca_df`: PCA DataFrame from [`pca_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.pca_median_fluxes)
+2. `treatment_k_means_df`: K-Means DataFrame from [`k_means_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.k_means_median_fluxes)
+3. `color_clusters = false`: If `true`, colors the dots according to the cluster number in the k-means. **Caveat: Just raw k-means clusters will be different per time point.**
+"""
+function plot_treatment_effects_kmeans_pca(
+    pca_df,
+    treatment_k_means_df;
+    color_clusters = false,
+)
+    n_clusters = maximum(treatment_k_means_df.cluster)
+    all_time_df = @chain pca_df begin
+        innerjoin(treatment_k_means_df; on = [:treatment_additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2, :treatment_additive)
+    end
+    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing effects k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_effects_kmeans_pca",
+            "effects_kmeans_pca_$(final_time).png",
+        )
+        title = "Effects K-Means PCA Final Time $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        x_min, x_max = extrema(plt_df.PC1)
+        x_span = x_max - x_min
+        x_span_for_padding = iszero(x_span) ? 1.0 : x_span
+        left_pad = 0.05 * x_span_for_padding
+        right_pad = 0.30 * x_span_for_padding
+        x_limits = (x_min - left_pad, x_max + right_pad)
+        y_min, y_max = extrema(plt_df.PC2)
+        y_span = y_max - y_min
+        y_span_for_padding = iszero(y_span) ? 1.0 : y_span
+        y_pad = 0.12 * y_span_for_padding
+        y_limits = (y_min - y_pad, y_max + y_pad)
+        scatter_plt =
+            color_clusters ?
+            data(plt_df) * (
+                mapping(:PC1, :PC2, color = :cluster) *
+                visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :treatment_additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            ) :
+            data(plt_df) * (
+                mapping(:PC1, :PC2) * visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :treatment_additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            )
+        fig =
+            color_clusters ?
+            draw(
+                scatter_plt,
+                scales(Color = (; palette = cluster_colors)),
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
+            ) :
+            draw(
+                scatter_plt,
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
+            )
+        save(filename, fig)
+        next!(prog)
+    end
+end
+
+"""
+    plot_treatment_effects_kmeans_pca(
+        pca_df,
+        treatment_k_means_df;
+        color_clusters = false,
+    )
+
+Plots the PCA of the standardized median fluxes with PC2 on vertical axis and PC1 on horizontal axis with a dot for each treatment additive and each dot labeled with the name of the treatment additive. Saves one plot per treatment additive to `output/viz_fluxes_kmeans_pca` and displays a progress bar as it goes.
+
+# Arguments
+1. `pca_df`: PCA DataFrame from [`pca_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.pca_median_fluxes)
+2. `treatment_k_means_df`: K-Means DataFrame from [`k_means_median_fluxes`](@ref BloodStorageInSilico.UfbaSamplerAnalysis2.k_means_median_fluxes)
+3. `color_clusters = false`: If `true`, colors the dots according to the cluster number in the k-means. **Caveat: Just raw k-means clusters will be different per time point.**
+"""
+function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters = false)
+    n_clusters = maximum(fluxes_k_means_df.cluster)
+    all_time_df = @chain pca_df begin
+        innerjoin(fluxes_k_means_df; on = [:additive, :final_time])
+        @transform(:cluster = categorical(:cluster))
+        @orderby(:final_time, :cluster)
+        @select(:final_time, :cluster, :PC1, :PC2, :additive)
+    end
+    cluster_colors = get(colorschemes[:okabe_ito], range(0, 1, length = n_clusters))
+    final_times = sort(unique(all_time_df.final_time))
+    n_plots = length(final_times)
+    prog = Progress(n_plots, "Writing median flux k-means PCA plots")
+    for final_time in final_times
+        filename = joinpath(
+            "output",
+            "viz_fluxes_kmeans_pca",
+            "median_flux_kmeans_pca_$(final_time).png",
+        )
+        title = "Median Flux K-Means PCA Final Time $final_time"
+        plt_df = @rsubset(all_time_df, :final_time == final_time)
+        x_min, x_max = extrema(plt_df.PC1)
+        x_span = x_max - x_min
+        x_span_for_padding = iszero(x_span) ? 1.0 : x_span
+        left_pad = 0.05 * x_span_for_padding
+        right_pad = 0.30 * x_span_for_padding
+        x_limits = (x_min - left_pad, x_max + right_pad)
+        y_min, y_max = extrema(plt_df.PC2)
+        y_span = y_max - y_min
+        y_span_for_padding = iszero(y_span) ? 1.0 : y_span
+        y_pad = 0.12 * y_span_for_padding
+        y_limits = (y_min - y_pad, y_max + y_pad)
+        scatter_plt =
+            color_clusters ?
+            data(plt_df) * (
+                mapping(:PC1, :PC2, color = :cluster) *
+                visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            ) :
+            data(plt_df) * (
+                mapping(:PC1, :PC2) * visual(Scatter, markersize = 14, alpha = 0.75) +
+                mapping(:PC1, :PC2, text = :additive => verbatim) *
+                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+            )
+        fig =
+            color_clusters ?
+            draw(
+                scatter_plt,
+                scales(Color = (; palette = cluster_colors)),
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
+            ) :
+            draw(
+                scatter_plt,
+                figure = (; size = (500, 500)),
+                axis = (; title = title, limits = (x_limits, y_limits)),
+            )
+        save(filename, fig)
+        next!(prog)
+    end
 end
 
 end
