@@ -28,16 +28,28 @@ rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
-# Uncomment to plot from first dataset
-# @info "Plotting uFBA histogram and density plots"
+# Uncomment to plot from first dataset, all treatment additives
+# @info "Plotting uFBA histogram and density plots all treatment additives"
 # plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
+
+# Uncomment to plot from first dataset, 01-Ctrl AS3 vs 02-Adenosine
+control_additive = "01-Ctrl AS3"
+treatment_additive = "02-Adenosine"
+@info "Plotting uFBA histogram and density for $control_additive vs $treatment_additive"
+plot_all_distributions_for_reactions(
+    sampling_df,
+    rxn_ids_to_strings;
+    control_additive = control_additive,
+    treatment_additive = treatment_additive,
+    bins = 80,
+)
 
 # Select comment for the an interesting treatement and compare with control
 # Especially ensure the control matches the first or second dataset.
 # control_additive = "AS3"
 # control_additive = "01-Ctrl AS3"
-# treatment_additive = "adenine"
-# treatment_additive = "arginine"
+# treatment_additive = "adenine"  # First treatment option
+# treatment_additive = "arginine"  # A second treatment option
 # @info "Plotting uFBA histogram and density plots for $control_additive vs $treatment_additive"
 # plot_all_distributions_for_reactions(
 #     sampling_df,
@@ -48,7 +60,7 @@ rxn_ids_to_strings =
 # )
 
 ###########################################################
-# ANALYSIS FOR DATA VIZ PIPELINE                          #
+# SECOND PHASE ANALYSIS                                   #
 ###########################################################
 
 @info "K-Means/PCA analysis of median fluxes and Cohen's effects"
