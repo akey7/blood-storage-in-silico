@@ -874,7 +874,7 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
             "viz_fluxes_kmeans_pca",
             "median_flux_kmeans_pca_$(final_time).png",
         )
-        title = "Median Flux K-Means PCA Final Time $final_time"
+        title = "Median Flux PCA, Week $final_time"
         plt_df = @rsubset(all_time_df, :final_time == final_time)
         x_min, x_max = extrema(plt_df.PC1)
         x_span = x_max - x_min
