@@ -41,7 +41,7 @@ Returns a long DataFrame with the following columns:
 """
 function load_relative_intensities()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
-    wide_df = CSV.read(relative_filename, DataFrame)
+    wide_df = CSV.read(relative_filename, DataFrame; ntasks=1)
     long_df = stack(
         wide_df,
         Not([:Sample, :Time, :Additive]),

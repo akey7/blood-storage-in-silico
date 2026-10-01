@@ -75,7 +75,6 @@ println("Wrote $measurements_and_sinks_report_by_model_filename")
 
 @info "Comparing control vs. treatment fluxes"
 
-# FIRST dataset
 comparison_result = compare_flux_distributions(
     sampling_df,
     working_models_df;

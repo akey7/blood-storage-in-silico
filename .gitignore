@@ -49,3 +49,6 @@ output/*.lp
 
 # Ignore PlotlyJS plots
 output/uFBA_3d_histograms/*.html
+
+# To re-incorporate old code, add a folder to hold it, but do not track it
+old_code/*.jl

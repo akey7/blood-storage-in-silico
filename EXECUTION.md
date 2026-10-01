@@ -6,7 +6,6 @@
 - Some workflow steps are split into separate scripts because they are long-running.
 - Proprietary input files are not committed to the public repository.
 - `output/` contains generated artifacts and diagnostic files; not every file in `output/` is a manuscript result.
-- Diagnostic visualization is kept in this repository, but final publication figures are produced in `blood-storage-in-silico-viz`.
 - Jupyter notebooks are intentionally avoided to preserve deterministic script execution order.
 
 ## Multithreaded Execution
@@ -56,7 +55,7 @@ Note: **Steps 3-6 are the core workflow, while steps 1, 2, and 7 are optional.**
 |    3 | `03_absolute_quant.jl`            | `src/AbsoluteQuant.jl`                                                                                   | relative + absolute quant data                 | concentration rates                      | converts metabolomics to model constraints |
 |    4 | `04_ufba_sampler.jl`              | `src/UfbaSampler.jl`, `src/FbaModelBuilder.jl`, `src/PruningOptimizations.jl`, `src/MetaboliteBounds.jl` | concentration rates, RBC-GEM, opt-in/out files | uFBA models, sampled fluxes, diagnostics | core modeling/sampling step                |
 |    5 | `05_ufba_sampler_analysis.jl`     | `src/UfbaSamplerAnalysis.jl`                                                                             | sampled fluxes                                 | median fluxes, diagnostics, comparisons  | primary analysis outputs                   |
-|    6 | `06_ufba_sampler_analysis_2.jl`          | `src/UfbaSamplerAnalysis2.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means workbooks  | diagnostic visualization only              |
+|    6 | `06_ufba_sampler_analysis_2.jl`          | `src/UfbaSamplerAnalysis2.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means spreadsheet  | Final plots in dissertation appendix             |
 |    7 | `07_model_graph.jl`               | `src/ModelGraph.jl`                                                                                      | uFBA models, DFS plan                          | graph traversal outputs                  | graph-based inspection                     |
 
 ### Conceptual Graphical Map
@@ -78,7 +77,7 @@ Note: **Steps 3-6 are the core workflow, while steps 1, 2, and 7 are optional.**
 
 ### Map of Significant Data Outputs
 
-This is a non-exhaustive diagram of files that are generated on `output/` by the various steps of the workflow. These are the most important files for modeling and analysis that is fed into the visualization repo `blood-storage-in-silico-viz`.
+This is a non-exhaustive diagram of files that are generated on `output/` by the various steps of the workflow. Even though it is non-exhaustive, it does list the files most important for analysis and reporting results from the modeling run.
 
 ```text
 input metabolomics files
@@ -107,6 +106,8 @@ ufba_sampler_analysis_2.jl
         │
         ├── output/ufba_sampling_complete_additives.csv
         └── output/viz_k_means_pca_distance.xlsx
+        └── output/viz_effects_kmeans_pca/
+        └── output/viz_fluxes_kmeans_pca/
 ```
 
 ## *Optional*: Execute the First 2 Pipeline Steps to Explore Relative Quantification Data
@@ -186,15 +187,17 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 julia --project=. 03_absolute_quant.jl
 ```
 
+**Note**: Because the most time-consuming part of the analysis is multithreaded, dots are printed instead of a green status indicator for thread safety status reporting.
+
 ### (4) `04_ufba_sampler.jl`: Run uFBA Sampling Jobs
 
 In addition to multithreading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
 
 **Default to 4 workers with `-p 4` below unless you have a good reason to do otherwise.** Greater numbers of workers will lengthen script startup time.
 
-**At the end of sampling, job status will be displayed**. Not every model will execute. That isn't a script error; rather, it is a shortcoming of input data. Subsequent data processing will step over missing data. More detail is explained in the paper.
+**At the end of sampling, job status will be displayed**. Not every model will execute. That isn't a script error; rather, it is a shortcoming of input data. Subsequent data processing will step over missing data. More detail is explained in the dissertation appendix.
 
-**uFBA sampling can take some time**: On a 64-core AMD Threadripper with 127 threads and 4 workers, the 77-condition dataset takes up to 15 minutes to compute this step.
+**uFBA sampling may take some time**: The uFBA sampling is a computationally intensive step and the duration of the task will depend on the number of cores you have devoted to the task with the command line options and the number of threads specified with the `JULIA_NUM_THREADS` environment variable.
 
 The command line arguments to the Julia environment and script are the following:
 
@@ -240,8 +243,6 @@ Outputs the following files:
 
 ### (5) `05_ufba_sampler_analysis.jl`: Analyze the results of the uFBA Runs
 
-**Sampling can take some time**: On a 64-core AMD Threadripper with 127 threads and 4 workers, the 77-condition dataset takes up to 30 minutes to compute this step.
-
 Outputs `.csv` and `.xlsx` analyses of the uFBA results. These files can be used by themselves and they also feed into the next step of making visualizations.
 
 Runs code in the `src/UfbaSamplerAnalysis.jl`.
@@ -274,11 +275,11 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 julia --project=. 05_ufba_sampler_analysis.jl
 ```
 
+**Note**: Because the most time-consuming part of the analysis is multithreaded, dots are printed instead of a green status indicator for thread safety status reporting.
+
 ### (6) `06_ufba_sampler_analysis_2.jl`: Visualize uFBA analysis results as plots
 
-**Unlike this previos two steps, this one goes quickly.**
-
-Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
+Creates visualizations (histograms, KDE plots, PCA scatter plots) of the uFBA analysis results.
 
 Uses the following input files:
 
@@ -303,8 +304,6 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 ```
 julia --project=. 06_ufba_sampler_analysis_2.jl
 ```
-
-## *Optional, not part of publication*: Explore the Reaction Network with Graph Traversal 
 
 ### (7) `07_model_graph.jl`: Analyze the uFBA models as graphs
 
