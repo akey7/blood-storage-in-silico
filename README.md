@@ -53,4 +53,3 @@ This repository is organized as a script-driven Julia analysis pipeline.
 - Root-level scripts mostly connect `src/` modules to the filesystem, command-line options, and the ordered workflow.
 - The primary scientific workflow is documented in `EXECUTION.md`.
 - Installation, proprietary input setup, and output directory setup are documented in `INSTALLATION.md`.
-- Publication-quality final figures are produced in a separate Python/R repository, `blood-storage-in-silico-viz`.
