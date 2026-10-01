@@ -10,14 +10,13 @@ There are many data required in `input/` to run this code. The maximum number of
 
 | How obtained                                   | File                                          | Required for full reproduction? |                   Public? | Used by                          |
 | ----------------------------------------------- | --------------------------------------------- | ------------------------------: | ------------------------: | -------------------------------- |
-| distributed to trusted reviewers/collaborators | `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | `absolute_quant.jl`              |
-| distributed to trusted reviewers/collaborators | `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | `absolute_quant.jl`              |
-| Included in repo                         | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
-| distributed to trusted reviewers/collaborators                             | `AS Dev Library Trial 1.csv`                  |                             Yes |                   No | `absolute_quant.jl`        |
-| Included in repo                             | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
-| included in repo                               | `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | FBA model construction           |
-| included/template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
-| included/template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
+| distributed to select reviewers/collaborators | `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | `absolute_quant.jl`              |
+| distributed to select reviewers/collaborators | `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | `absolute_quant.jl`              |
+| Included in repo (citation below) | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
+| Included in repo (citation below) | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
+| Included in repo                               | `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | FBA model construction           |
+| Included, Also With Template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
+| Included, Also With Template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
 
 ## Install Dependencies
 
