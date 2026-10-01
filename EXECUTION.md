@@ -6,7 +6,6 @@
 - Some workflow steps are split into separate scripts because they are long-running.
 - Proprietary input files are not committed to the public repository.
 - `output/` contains generated artifacts and diagnostic files; not every file in `output/` is a manuscript result.
-- Diagnostic visualization is kept in this repository, but final publication figures are produced in `blood-storage-in-silico-viz`.
 - Jupyter notebooks are intentionally avoided to preserve deterministic script execution order.
 
 ## Multithreaded Execution
@@ -56,7 +55,7 @@ Note: **Steps 3-6 are the core workflow, while steps 1, 2, and 7 are optional.**
 |    3 | `03_absolute_quant.jl`            | `src/AbsoluteQuant.jl`                                                                                   | relative + absolute quant data                 | concentration rates                      | converts metabolomics to model constraints |
 |    4 | `04_ufba_sampler.jl`              | `src/UfbaSampler.jl`, `src/FbaModelBuilder.jl`, `src/PruningOptimizations.jl`, `src/MetaboliteBounds.jl` | concentration rates, RBC-GEM, opt-in/out files | uFBA models, sampled fluxes, diagnostics | core modeling/sampling step                |
 |    5 | `05_ufba_sampler_analysis.jl`     | `src/UfbaSamplerAnalysis.jl`                                                                             | sampled fluxes                                 | median fluxes, diagnostics, comparisons  | primary analysis outputs                   |
-|    6 | `06_ufba_sampler_analysis_2.jl`          | `src/UfbaSamplerAnalysis2.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means workbooks  | diagnostic visualization only              |
+|    6 | `06_ufba_sampler_analysis_2.jl`          | `src/UfbaSamplerAnalysis2.jl`                                                                                  | sampled fluxes, median fluxes                  | diagnostic plots, PCA/k-means spreadsheet  | Final plots in dissertation appendix             |
 |    7 | `07_model_graph.jl`               | `src/ModelGraph.jl`                                                                                      | uFBA models, DFS plan                          | graph traversal outputs                  | graph-based inspection                     |
 
 ### Conceptual Graphical Map

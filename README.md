@@ -27,9 +27,6 @@ Some metabolomics datasheets are proprietary and distributed to trusted reviewer
 **Is there a required order for running the scripts?**
 Yes — the root-level `0?_*.jl` scripts are numbered entrypoints meant to run in that sequence, since later steps consume the outputs of earlier ones. The full dependency chain, including which script writes which files, is diagrammed in [EXECUTION.md](EXECUTION.md).
 
-**Where do the final published figures come from?**
-Diagnostic and intermediate visualizations are generated in this repo, but the publication-quality figures are produced downstream in a separate repository, `blood-storage-in-silico-viz`.
-
 **Does this repo use Jupyter notebooks?**
 No, intentionally. Notebooks are avoided in favor of the numbered scripts to keep execution order deterministic and reproducible; see [EXECUTION.md](EXECUTION.md) for the reasoning.
 

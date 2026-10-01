@@ -1,6 +1,6 @@
 # Reviewer Quick Start
 
-This document outlines reccomended steps for code reviewers interested in examining this code's inputs, quality control outputs, and outputs for downstream data visualization.
+This document outlines reccomended steps for code reviewers interested in examining this code's inputs, quality control outputs, and plots found in the dissertation appendix accompanying this repo.
 
 ## Suggested Review Path
 
@@ -25,10 +25,12 @@ For a scientific review, inspect the code in this order:
    - `ufba_prune_breaks.csv`
    - `measurements_and_sinks_report.csv`
    - `measurements_and_sinks_report_by_model.csv`
-6. Outputs the drive data visualization in `blood-storage-in-silico-viz` repo:
+6. Data visualization and final output files for analysis in Excel:
    - `ufba_sampling.csv`
    - `ufba_sampling_status.csv` (also in item 5 above)
    - `viz_k_means_pca_distance.xlsx`
+   - `output/viz_effects_kmeans_pca/*.png`
+   - `output/viz_fluxes_kmeans_pca/*.png`
 
 ## Input Data
 
@@ -48,7 +50,6 @@ Below are the ten complaints this kind of review is most likely to raise, along 
 6. **"This function is defined more than once, which must be a mistake."** Julia allows a single function name to have several versions, each for a different type of input. This is a standard, intentional language feature called multiple dispatch, not a duplication error. See "Multiple dispatch" in [`NEW_TO_JULIA.md`](NEW_TO_JULIA.md).
 7. **"This code has strange, inconsistent-looking syntax"** (extra dots before operators, function names ending in `!`, and similar). These are standard, consistently applied Julia conventions for elementwise operations and for marking functions that modify their input, not typos or inconsistent style. See "Minimal Julia syntax needed to read this code" in [`NEW_TO_JULIA.md`](NEW_TO_JULIA.md).
 8. **"Some of this code is unused or dead."** This repository deliberately keeps exploratory, diagnostic, and even deprecated code alongside the code that generates manuscript results, and documents the distinction between them. See "Code not used for manuscript results" in [`NEW_TO_JULIA.md`](NEW_TO_JULIA.md).
-9. **"The final published figures aren't in this repository."** That's expected — this repo only holds diagnostic, intermediate visualizations. Publication-quality figures are produced downstream in a separate companion repository, `blood-storage-in-silico-viz`.
 
 ## If You're Using Claude Code, Codex, or Another AI Coding Assistant to Help Review This Repo
 

@@ -29,8 +29,6 @@ Julia was chosen because it combines several features that are useful for scient
 
 The purpose of using Julia here is not to argue that Julia is inherently preferable to Python or R for all scientific work. Rather, Julia was selected because the core workflow involves repeated optimization, feasibility checks, and sampling over constrained metabolic models. These are areas where Julia’s scientific computing and optimization ecosystem is well suited.
 
-In this repository, Julia is used primarily for the modeling and sampling pipeline. Downstream visualization, manuscript figure preparation, and some exploratory analyses may be performed in companion Python or R workflows.
-
 ---
 
 ## What parts of the repository generate manuscript results
