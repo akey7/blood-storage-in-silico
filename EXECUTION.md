@@ -196,7 +196,7 @@ In addition to multithreading, the uFBA sampling module uses concurrent worker p
 
 **At the end of sampling, job status will be displayed**. Not every model will execute. That isn't a script error; rather, it is a shortcoming of input data. Subsequent data processing will step over missing data. More detail is explained in the paper.
 
-**uFBA sampling can take some time**: On a 64-core AMD Threadripper with 127 threads and 4 workers, the 77-condition dataset takes up to 15 minutes to compute this step.
+**uFBA sampling may take some time**: The uFBA sampling is a computationally intensive step and the duration of the task will depend on the number of cores you have devoted to the task with the command line options and the number of threads specified with the `JULIA_NUM_THREADS` environment variable.
 
 The command line arguments to the Julia environment and script are the following:
 
@@ -242,8 +242,6 @@ Outputs the following files:
 
 ### (5) `05_ufba_sampler_analysis.jl`: Analyze the results of the uFBA Runs
 
-**Sampling can take some time**: On a 64-core AMD Threadripper with 127 threads and 4 workers, the 77-condition dataset takes up to 30 minutes to compute this step.
-
 Outputs `.csv` and `.xlsx` analyses of the uFBA results. These files can be used by themselves and they also feed into the next step of making visualizations.
 
 Runs code in the `src/UfbaSamplerAnalysis.jl`.
@@ -275,6 +273,8 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 ```
 julia --project=. 05_ufba_sampler_analysis.jl
 ```
+
+**Note**: Because the most time-consuming part of the analysis is multithreaded, dots are printed instead of a green status indicator for thread safety status reporting.
 
 ### (6) `06_ufba_sampler_analysis_2.jl`: Visualize uFBA analysis results as plots
 
