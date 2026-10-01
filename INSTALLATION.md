@@ -112,6 +112,8 @@ docs/build/index.html
 
 This will present you with nicely formatted docstrings for the functions in the modules.
 
+**Note for Windows users**: GitHub may pop up a login window when the documentation is built. *It is not necessary to log in to GitHub to read the docs locally.* This dialog can be closed and the warning that closure creates can be ignored. 
+
 ## Citations
 
 ### RBC-GEM
