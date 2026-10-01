@@ -29,13 +29,15 @@ bash-3.2$ julia --project=.
   (_)     | (_) (_)    |
    _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
   | | | | | | |/ _` |  |
-  | | |_| | | | (_| |  |  Version 1.12.4 (2026-01-06)
+  | | |_| | | | (_| |  |  Version 1.13.1 (2026-09-25)
  _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
 |__/                   |
 
 julia> ]
 (BloodStorageInSilico) pkg> instantiate
 ```
+
+Note that you may have a later version of Julia. That is fine, but keep in mind the version of Julia in the snippet above may not match what is on your command line.
 
 This will instantiate the environment, download the dependencies, and compile them. **Compilation takes approximately 15 minutes.** After the packages are installed, type backspace and `exit()`.
 
@@ -87,13 +89,15 @@ bash-3.2$ julia --project=docs/
   (_)     | (_) (_)    |
    _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
   | | | | | | |/ _` |  |
-  | | |_| | | | (_| |  |  Version 1.12.4 (2026-01-06)
+  | | |_| | | | (_| |  |  Version 1.13.1 (2026-09-25)
  _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
 |__/                   |
 
 julia> ]
 (BloodStorageInSilico/docs) pkg> instantiate
 ```
+
+Note that you may have a later version of Julia. That is fine, but keep in mind the version of Julia in the snippet above may not match what is on your command line.
 
 This will instantiate the environment and download the dependencies **to build the documentation**. After the packages are installed, type backspace and `exit()`.
 
