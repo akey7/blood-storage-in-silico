@@ -68,7 +68,7 @@ end
 """
     pivot_sampling_df_long(sampling_df)
 
-Pivots the sampling DataFrame longer. This function duplicates the function of the same name in `UfbaSamplerVisualization`. It is duplicated so that neither this module nor the visualization module need to import each other, which would mess up the documentation.
+Pivots the sampling DataFrame longer. This function duplicates the function of the same name in `UfbaSamplerAnalysis2`. It is duplicated so that neither this module nor the visualization module need to import each other, which would mess up the documentation.
 
 # Arguments
 1. `sampling_df`: The sampling DataFrame in long format. The DataFrame should have a column for each reaction sampled, along with `:additive` and `:final_time` columns.
@@ -874,7 +874,7 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
             "viz_fluxes_kmeans_pca",
             "median_flux_kmeans_pca_$(final_time).png",
         )
-        title = "Median Flux K-Means PCA Final Time $final_time"
+        title = "Median Flux PCA, Week $final_time"
         plt_df = @rsubset(all_time_df, :final_time == final_time)
         x_min, x_max = extrema(plt_df.PC1)
         x_span = x_max - x_min

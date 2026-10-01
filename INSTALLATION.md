@@ -6,18 +6,17 @@
 
 ## Configure `input/` folder with necessary data
 
-There are many data required in `input/` to run this code. The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors separately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
+There are many data required in `input/` to run this code. The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the dissertation author separately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
 
 | How obtained                                   | File                                          | Required for full reproduction? |                   Public? | Used by                          |
 | ----------------------------------------------- | --------------------------------------------- | ------------------------------: | ------------------------: | -------------------------------- |
-| distributed to trusted reviewers/collaborators | `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | `absolute_quant.jl`              |
-| distributed to trusted reviewers/collaborators | `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | `absolute_quant.jl`              |
-| Included in repo                         | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
-| distributed to trusted reviewers/collaborators                             | `AS Dev Library Trial 1.csv`                  |                             Yes |                   No | `absolute_quant.jl`        |
-| Included in repo                             | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
-| included in repo                               | `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | FBA model construction           |
-| included/template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
-| included/template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
+| distributed to select reviewers/collaborators | `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | `absolute_quant.jl`              |
+| distributed to select reviewers/collaborators | `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | `absolute_quant.jl`              |
+| Included in repo (citation in [WORKS_CITED.md](WORKS_CITED.md)) | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
+| Included in repo (citation in [WORKS_CITED.md](WORKS_CITED.md)) | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
+| Included in repo                               | `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | FBA model construction           |
+| Included, Also With Template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
+| Included, Also With Template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
 
 ## Install Dependencies
 
@@ -30,13 +29,15 @@ bash-3.2$ julia --project=.
   (_)     | (_) (_)    |
    _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
   | | | | | | |/ _` |  |
-  | | |_| | | | (_| |  |  Version 1.12.4 (2026-01-06)
+  | | |_| | | | (_| |  |  Version 1.13.1 (2026-09-25)
  _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
 |__/                   |
 
 julia> ]
 (BloodStorageInSilico) pkg> instantiate
 ```
+
+Note that you may have a later version of Julia. That is fine, but keep in mind the version of Julia in the snippet above may not match what is on your command line.
 
 This will instantiate the environment, download the dependencies, and compile them. **Compilation takes approximately 15 minutes.** After the packages are installed, type backspace and `exit()`.
 
@@ -88,13 +89,15 @@ bash-3.2$ julia --project=docs/
   (_)     | (_) (_)    |
    _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
   | | | | | | |/ _` |  |
-  | | |_| | | | (_| |  |  Version 1.12.4 (2026-01-06)
+  | | |_| | | | (_| |  |  Version 1.13.1 (2026-09-25)
  _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org release
 |__/                   |
 
 julia> ]
 (BloodStorageInSilico/docs) pkg> instantiate
 ```
+
+Note that you may have a later version of Julia. That is fine, but keep in mind the version of Julia in the snippet above may not match what is on your command line.
 
 This will instantiate the environment and download the dependencies **to build the documentation**. After the packages are installed, type backspace and `exit()`.
 
@@ -112,3 +115,5 @@ docs/build/index.html
 ```
 
 This will present you with nicely formatted docstrings for the functions in the modules.
+
+**Note for Windows users**: GitHub may pop up a login window when the documentation is built. *It is not necessary to log in to GitHub to read the docs locally.* This dialog can be closed and the warning that closure creates can be ignored. 

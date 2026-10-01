@@ -7,7 +7,7 @@ using .RawRelativeIntensities
 num_threads = Threads.nthreads()
 println("Num threads $num_threads")
 
-@info "Reading ORIGINAL relative intensities"
+@info "Reading relative intensities"
 long_df = load_relative_intensities()
 additives = sort(unique(long_df.Additive))
 

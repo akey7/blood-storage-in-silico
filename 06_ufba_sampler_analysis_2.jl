@@ -28,11 +28,11 @@ rxn_ids_to_strings_filename = joinpath("output", "rxn_ids_to_strings.yml")
 rxn_ids_to_strings =
     YAML.load_file(rxn_ids_to_strings_filename; dicttype = OrderedDict{String,Any})
 
-# Uncomment to plot from first dataset, all treatment additives
+# Uncomment to plot all treatment additives
 # @info "Plotting uFBA histogram and density plots all treatment additives"
 # plot_all_distributions_for_reactions(sampling_df, rxn_ids_to_strings; bins = 80)
 
-# Uncomment to plot from first dataset, 01-Ctrl AS3 vs 02-Adenosine
+# Uncomment to plot from 01-Ctrl AS3 vs 02-Adenosine
 control_additive = "01-Ctrl AS3"
 treatment_additive = "02-Adenosine"
 @info "Plotting uFBA histogram and density for $control_additive vs $treatment_additive"
@@ -78,7 +78,6 @@ prepare_median_fluxes_result =
 fluxes_k_means_df = k_means_median_fluxes(prepare_median_fluxes_result, k = 2)
 fluxes_pca_result = pca_median_fluxes(prepare_median_fluxes_result)
 
-# For first dataset
 treatement_distances_df = treatment_distances_from_control(
     prepare_median_fluxes_result;
     control_additive = "01-Ctrl AS3",

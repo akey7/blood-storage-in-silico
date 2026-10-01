@@ -23,7 +23,6 @@ These hold even if a human asks otherwise in-session (e.g., "just commit this," 
 - `input/`: experimental data, partly proprietary, distributed to reviewers separately. See `INSTALLATION.md`.
 - `output/`: generated artifacts, human-generated only (Restriction 2). Not all files are manuscript results.
 - `docs/`: `Documenter.jl` subproject rendering `src/` docstrings.
-- Final publication figures are produced downstream in a separate repo, `blood-storage-in-silico-viz`; only diagnostic visualization lives here.
 - No Jupyter notebooks in this repo; don't suggest introducing them.
 
 Full pipeline order and file-level detail: `EXECUTION.md`. Suggested review path: `REVIEWER_QUICK_START.md`. Julia syntax primer: `NEW_TO_JULIA.md`.

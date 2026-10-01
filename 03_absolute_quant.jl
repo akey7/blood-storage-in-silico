@@ -11,7 +11,7 @@ println("Num threads $num_threads")
 
 Random.seed!(123)
 
-@info "Combining relative and absolute quant, FIRST dataset"
+@info "Combining relative and absolute quant"
 absolute_quant_df, absolute_quant_medians_df = load_absolute_quant()
 absolute_extracellular_quant_df = load_extracellular_absolute_quant()
 fold_changes_df = load_relative_quant()
