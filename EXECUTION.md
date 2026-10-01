@@ -187,6 +187,8 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 julia --project=. 03_absolute_quant.jl
 ```
 
+**Note**: Because the most time-consuming part of the analysis is multithreaded, dots are printed instead of a green status indicator for thread safety status reporting.
+
 ### (4) `04_ufba_sampler.jl`: Run uFBA Sampling Jobs
 
 In addition to multithreading, the uFBA sampling module uses concurrent worker processes to fully utilize the hardware executing the script. There is an optimal point to set the number of workers: if there are too few workers, the job will take a needlessly long time to execute. With too many workers, the script takes too long to launch.
