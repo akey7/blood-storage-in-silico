@@ -9,10 +9,6 @@ using .FbaModelBuilder
 include("src/MetaboliteBounds.jl")
 using .MetaboliteBounds
 
-metabolites_bounds_df = load_metabolite_bounds()
-
-# println(query_metabolite_bounds(metabolites_bounds_df, "01-Ctrl AS3", "cys__L_c", 2))
-
 s = ArgParseSettings()
 @add_arg_table! s begin
     "--nchains"
@@ -32,18 +28,14 @@ end
     arg_type = Symbol
     default = :case3
 end
-@add_arg_table s begin
-    "--use-sink-opt-ins"
-    help = "If true, sink opt ins are read and added to every model. If false, sink assignment relies exclusively on pruning."
-    arg_type = Bool
-    default = true
-end
 n_chains = parse_args(s)["nchains"]
 n_models = parse_args(s)["nmodels"]
 prune_method = parse_args(s)["prune-method"]
-read_sink_opt_ins = parse_args(s)["use-sink-opt-ins"]
 
 init_workers!()
+
+@info "Loading metabolite bounds..."
+metabolites_bounds_df = load_metabolite_bounds()
 
 @info "Load flux bounds overrides"
 flux_bounds_overrides_df = load_flux_bounds_overrides()
@@ -51,11 +43,8 @@ flux_bounds_overrides_df = load_flux_bounds_overrides()
 @info "Load metabolite measurement opt-outs (if available)"
 metabolites_to_ignore = load_metabolite_measurement_opt_outs()
 
-sink_opt_ins_message =
-    read_sink_opt_ins ? "Loading sink opt-ins (if available)" : "Skipping sink opt-ins"
-@info sink_opt_ins_message
-sink_opt_ins = read_sink_opt_ins ? load_sink_opt_ins() : String[]
-display(sink_opt_ins)
+@info "Loading sink opt-ins..."
+sink_opt_ins = load_sink_opt_ins()
 
 @info "Loading reaction names and subsystems"
 reaction_names_and_subsystems_df = load_reaction_names_and_subsystems()
