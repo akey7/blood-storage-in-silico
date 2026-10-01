@@ -278,9 +278,7 @@ julia --project=. 05_ufba_sampler_analysis.jl
 
 ### (6) `06_ufba_sampler_analysis_2.jl`: Visualize uFBA analysis results as plots
 
-**Unlike this previos two steps, this one goes quickly.**
-
-Creates visualizations (histograms and KDE plots) of the uFBA analysis results.
+Creates visualizations (histograms, KDE plots, PCA scatter plots) of the uFBA analysis results.
 
 Uses the following input files:
 
@@ -305,8 +303,6 @@ On Windows, ensure that `JULIA_NUM_THREADS` is set and execute:
 ```
 julia --project=. 06_ufba_sampler_analysis_2.jl
 ```
-
-## *Optional, not part of publication*: Explore the Reaction Network with Graph Traversal 
 
 ### (7) `07_model_graph.jl`: Analyze the uFBA models as graphs
 
