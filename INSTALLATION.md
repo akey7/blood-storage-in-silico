@@ -6,14 +6,14 @@
 
 ## Configure `input/` folder with necessary data
 
-There are many data required in `input/` to run this code. The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the paper authors separately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
+There are many data required in `input/` to run this code. The maximum number of publicly accessible input data files are committed to this repo directly. However, **there are proprietary input files that cannot be committed to a public repo and must be obtained from the dissertation author separately.** Files that must be obtained from the authors are listed as "distributed to trusted reviewers/collaborators" in the table below.
 
 | How obtained                                   | File                                          | Required for full reproduction? |                   Public? | Used by                          |
 | ----------------------------------------------- | --------------------------------------------- | ------------------------------: | ------------------------: | -------------------------------- |
 | distributed to select reviewers/collaborators | `Absolute Quant Data Sheet.xlsx`              |                             Yes |                        No | `absolute_quant.jl`              |
 | distributed to select reviewers/collaborators | `Absolute Quant Extracellular Datasheet.xlsx` |                             Yes |                        No | `absolute_quant.jl`              |
-| Included in repo (citation below) | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
-| Included in repo (citation below) | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
+| Included in repo (citation in [WORKS_CITED.md](WORKS_CITED.md)) | `Data Sheet 1.CSV`                            |                             Yes |                   Yes/repo-tracked | `absolute_quant.jl` |
+| Included in repo (citation in [WORKS_CITED.md](WORKS_CITED.md)) | `RBC-GEM.xml`                                 |                             Yes |                       Yes/repo-tracked | model construction               |
 | Included in repo                               | `flux_bounds_overrides.csv`                   |                             Yes |          Yes/repo-tracked | FBA model construction           |
 | Included, Also With Template                              | `metabolite_measurement_opt_outs.csv`         |             Yes | Yes/repo-tracked or local | uFBA model construction          |
 | Included, Also With Template                              | `sink_opt_ins.csv`                            |             Yes | Yes/repo-tracked or local | pruning override                 |
@@ -117,22 +117,3 @@ docs/build/index.html
 This will present you with nicely formatted docstrings for the functions in the modules.
 
 **Note for Windows users**: GitHub may pop up a login window when the documentation is built. *It is not necessary to log in to GitHub to read the docs locally.* This dialog can be closed and the warning that closure creates can be ignored. 
-
-## Citations
-
-### RBC-GEM
-
-The RBC-GEM files are from the following publication:
-
-> Haiman ZB, Key A, D'Alessandro A, Palsson BO. RBC-GEM: A genome-scale metabolic model for systems biology of the human red blood cell. PLoS Comput Biol. 2025 Mar 12;21(3):e1012109. doi: 10.1371/journal.pcbi.1012109. PMID: 40072998; PMCID: PMC11925312.
-
-The `.xml` and `.json` versions in this repo were retrieved February 17, 2026 and October 27, 2025 respectively.
-
-The GitHub repo for the RBC-GEM project is at [https://github.com/z-haiman/rbc-gem](https://github.com/z-haiman/rbc-gem)
-
-### Relative Quantification Metabolomics
-
-The relative quantification metabolomics file (`input/Data Sheet 1.CSV`) is from supplemental material of the following paper:
-
-> Nemkov, T., Yoshida, T., Nikulina, M. & D’Alessandro, A. High-Throughput Metabolomics Platform for the Rapid Data-Driven Development of Novel Additive Solutions for Blood Storage. Front. Physiol. 13, 833242 (2022).
-

@@ -193,7 +193,7 @@ In addition to multithreading, the uFBA sampling module uses concurrent worker p
 
 **Default to 4 workers with `-p 4` below unless you have a good reason to do otherwise.** Greater numbers of workers will lengthen script startup time.
 
-**At the end of sampling, job status will be displayed**. Not every model will execute. That isn't a script error; rather, it is a shortcoming of input data. Subsequent data processing will step over missing data. More detail is explained in the paper.
+**At the end of sampling, job status will be displayed**. Not every model will execute. That isn't a script error; rather, it is a shortcoming of input data. Subsequent data processing will step over missing data. More detail is explained in the dissertation appendix.
 
 **uFBA sampling may take some time**: The uFBA sampling is a computationally intensive step and the duration of the task will depend on the number of cores you have devoted to the task with the command line options and the number of threads specified with the `JULIA_NUM_THREADS` environment variable.
 

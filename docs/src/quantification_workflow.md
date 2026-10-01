@@ -17,7 +17,7 @@ Order   = [:function]
 
 RawRelativeIntensities works with the relative quantification data. This includes exploratory analysis of the relative intensity data and preparation to incorporate with absolute quantification data.
 
-The paper it is designed to work with is from the following paper:
+The relative quantification metabolomics it is designed to work with is from the following paper:
 
 > Nemkov, T., Yoshida, T., Nikulina, M. & D’Alessandro, A. High-Throughput Metabolomics Platform for the Rapid Data-Driven Development of Novel Additive Solutions for Blood Storage. Front. Physiol. 13, 833242 (2022).
 
