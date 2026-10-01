@@ -24,15 +24,20 @@ Unsteady flux balance analysis (uFBA) is the main modeling method of this repo a
 
 > Bordbar, A. et al. Elucidating dynamic metabolic physiology through network integration of quantitative time-course metabolomics. Sci Rep 7, 46249 (2017).
 
-### HiGHS Solver
-
-HiGHS is the open-source solver used for the LP and MILP problems in this repo.
-
-> Huangfu, Q. & Hall, J. A. J. Parallelizing the dual revised simplex method. Math. Prog. Comp. 10, 119–142 (2018).
-
 ### COBREXA 2
 
 COBREXA.jl is the constraint-based modeling framework used to do flux sampling.
 
 > Kratochvíl, M., Wilken, S. E., Ebenhöh, O., Schneider, R. & Satagopam, V. P. COBREXA 2: tidy and scalable construction of complex metabolic models. Bioinformatics 41, btaf056 (2025).
 
+### JuMP.jl
+
+In this repo, JuMP acts as an interface between COBREXA and the solver, among other capabilities.
+
+> Lubin, M. et al. JuMP 1.0: recent improvements to a modeling language for mathematical optimization. Math. Prog. Comp. 15, 581–589 (2023).
+
+### HiGHS Solver
+
+HiGHS is the open-source solver used for the LP and MILP problems in this repo.
+
+> Huangfu, Q. & Hall, J. A. J. Parallelizing the dual revised simplex method. Math. Prog. Comp. 10, 119–142 (2018).
