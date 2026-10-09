@@ -35,12 +35,13 @@ rxn_ids_to_strings =
 # Uncomment to plot from 01-Ctrl AS3 vs 02-Adenosine
 control_additive = "01-Ctrl AS3"
 treatment_additive = "02-Adenosine"
-@info "Plotting uFBA histogram and density for $control_additive vs $treatment_additive"
+@info "Plotting uFBA densities for $control_additive vs $treatment_additive"
 plot_all_distributions_for_reactions(
     sampling_df,
     rxn_ids_to_strings;
     control_additive = control_additive,
     treatment_additive = treatment_additive,
+    plot_histograms = false,
     bins = 80,
 )
 

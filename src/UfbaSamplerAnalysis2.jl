@@ -109,6 +109,7 @@ function plot_all_distributions_for_reactions(
     rxn_ids_to_strings;
     control_additive = nothing,
     treatment_additive = nothing,
+    plot_histograms = false,
     bins = 20,
 )
     if nrow(sampling_df) == 0
@@ -121,20 +122,25 @@ function plot_all_distributions_for_reactions(
         for reaction_id in reaction_ids
             reaction_string = rxn_ids_to_strings[reaction_id]["rxn_string"]
             subsystem = rxn_ids_to_strings[reaction_id]["subsystem"]
+            category = rxn_ids_to_strings[reaction_id]["category"]
             # reaction_name = rxn_ids_to_strings[reaction_id]["name"]
-            fig_hist = histograms_for_reaction_v2(
-                long_sampling_df,
-                reaction_id,
-                reaction_string,
-                subsystem;
-                control_additive = control_additive,
-                treatment_additive = treatment_additive,
-                bins = bins,
-            )
+            if plot_histograms
+                fig_hist = histograms_for_reaction_v2(
+                    long_sampling_df,
+                    reaction_id,
+                    reaction_string,
+                    subsystem;
+                    control_additive = control_additive,
+                    treatment_additive = treatment_additive,
+                    bins = bins,
+                )
+                save(filename_hist, fig_hist)
+            end
             fig_density = densities_for_reaction(
                 long_sampling_df,
                 reaction_id,
                 reaction_string,
+                category,
                 subsystem;
                 control_additive = control_additive,
                 treatment_additive = treatment_additive,
@@ -149,7 +155,6 @@ function plot_all_distributions_for_reactions(
                 "uFBA_densities",
                 "$treatment_additive $reaction_id Densities.png",
             )
-            save(filename_hist, fig_hist)
             save(filename_density, fig_density)
             next!(prog)
         end
@@ -242,7 +247,7 @@ function subset_long_sampling_df(
 end
 
 """
-    densities_for_reaction(long_sampling_df, reaction_id, reaction_string, subsystem)
+    densities_for_reaction(long_sampling_df, reaction_id, reaction_string, category, subsystem)
 
 Plots KDEs of the flux distributions for the reaction in the various additives.
 
@@ -250,9 +255,10 @@ Plots KDEs of the flux distributions for the reaction in the various additives.
 1. `long_sampling_df`: Sampling DataFrame, pivoted long
 2. `reaction_id`: The reaction id for which the samples are being plotted.
 3. `reaction_string`: The human-readable reaction string to place as a subtitle on the plot.
-4. `subsystem`: Human-readable susbsytem of the reaction
-5. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
-6. `treatment_additive = nothing`: See `control_additive` above.
+4. `category`: Human-readable category of the reaction.
+5. `subsystem`: Human-readable subsystem of the reaction.
+6. `control_additive = nothing`: If both this and `treatment_additive` are specified, the densities/histograms will just be between these two conditions and the color palette will be fixed.
+7. `treatment_additive = nothing`: See `control_additive` above.
 
 # Returns
 `Figure`
@@ -263,6 +269,7 @@ function densities_for_reaction(
     long_sampling_df,
     reaction_id,
     reaction_string,
+    category,
     subsystem;
     control_additive = nothing,
     treatment_additive = nothing,
@@ -274,7 +281,8 @@ function densities_for_reaction(
         treatment_additive = treatment_additive,
     )
     clean_reaction_id = replace(reaction_id, "R_" => "")
-    title = "$clean_reaction_id ($subsystem)\n$reaction_string"
+    clean_reaction_string = replace(reaction_string, r"\s*\([^)]*\)" => "")
+    title = "$clean_reaction_id ($category)\n$clean_reaction_string"
     additive_palette = additive_comparison_palette(control_additive, treatment_additive)
     density_layer =
         data(plt_df) *
