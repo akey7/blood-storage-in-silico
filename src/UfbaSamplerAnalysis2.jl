@@ -301,8 +301,25 @@ function densities_for_reaction(
             X = (; label = "Flux (mM/week)"),
             Y = (; label = "Density"),
         );
-        facet = (; linkxaxes = :all, linkyaxes = :all),
-        figure = (; title = title, size = (700, 700)),
+        axis = (;
+            xlabelsize = 18,
+            ylabelsize = 18,
+            xticklabelsize = 15,
+            yticklabelsize = 15,
+        ),
+        legend = (;
+            titlesize = 17,
+            labelsize = 15,
+        ),
+        facet = (;
+            linkxaxes = :all,
+            linkyaxes = :all,
+        ),
+        figure = (;
+            title = title,
+            titlesize = 22,
+            size = (700, 700),
+        ),
     )
 end
 
