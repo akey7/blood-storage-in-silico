@@ -309,19 +309,9 @@ function densities_for_reaction(
             xticklabelsize = 15,
             yticklabelsize = 15,
         ),
-        legend = (;
-            titlesize = 17,
-            labelsize = 15,
-        ),
-        facet = (;
-            linkxaxes = :all,
-            linkyaxes = :all,
-        ),
-        figure = (;
-            title = title,
-            titlesize = 22,
-            size = (700, 700),
-        ),
+        legend = (; titlesize = 17, labelsize = 15),
+        facet = (; linkxaxes = :all, linkyaxes = :all),
+        figure = (; title = title, titlesize = 22, size = (700, 700)),
     )
 end
 
@@ -932,13 +922,33 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
             draw(
                 scatter_plt,
                 scales(Color = (; palette = cluster_colors)),
-                figure = (; size = (500, 500)),
-                axis = (; title = title, limits = (x_limits, y_limits)),
+                figure = (; size = (700, 700)),
+                axis = (;
+                    title = title,
+                    titlesize = 22,
+                    xlabelsize = 18,
+                    ylabelsize = 18,
+                    xlabelfont = :bold,
+                    ylabelfont = :bold,
+                    xticklabelsize = 15,
+                    yticklabelsize = 15,
+                    limits = (x_limits, y_limits),
+                ),
             ) :
             draw(
                 scatter_plt,
-                figure = (; size = (500, 500)),
-                axis = (; title = title, limits = (x_limits, y_limits)),
+                figure = (; size = (700, 700)),
+                axis = (;
+                    title = title,
+                    titlesize = 22,
+                    xlabelsize = 18,
+                    ylabelsize = 18,
+                    xlabelfont = :bold,
+                    ylabelfont = :bold,
+                    xticklabelsize = 15,
+                    yticklabelsize = 15,
+                    limits = (x_limits, y_limits),
+                ),
             )
         save(filename, fig)
         next!(prog)

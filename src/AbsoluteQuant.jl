@@ -112,7 +112,7 @@ Returns a DataFrame (pivoted from wide to long) with the following columns:
 """
 function load_relative_quant()
     relative_filename = joinpath("input", "Data Sheet 1.CSV")
-    wide_df = CSV.read(relative_filename, DataFrame; ntasks=1)
+    wide_df = CSV.read(relative_filename, DataFrame; ntasks = 1)
     proportination_filename = joinpath("input", "Proportionation Sheet 2.csv")
     proportination_df = CSV.read(proportination_filename, DataFrame)
     long_df = stack(

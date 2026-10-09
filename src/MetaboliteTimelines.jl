@@ -37,7 +37,7 @@ Returns a DataFrame, pivoted long, with the following columns:
 """
 function load_and_clean()
     filename = joinpath("input", "Data Sheet 1.CSV")
-    df1 = CSV.read(filename, DataFrame; ntasks=1)
+    df1 = CSV.read(filename, DataFrame; ntasks = 1)
     df2 = stack(
         df1,
         Not([:Sample, :Time, :Additive]),
