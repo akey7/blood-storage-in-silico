@@ -897,7 +897,7 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
         x_span = x_max - x_min
         x_span_for_padding = iszero(x_span) ? 1.0 : x_span
         left_pad = 0.05 * x_span_for_padding
-        right_pad = 0.30 * x_span_for_padding
+        right_pad = 0.40 * x_span_for_padding
         x_limits = (x_min - left_pad, x_max + right_pad)
         y_min, y_max = extrema(plt_df.PC2)
         y_span = y_max - y_min
@@ -908,14 +908,22 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
             color_clusters ?
             data(plt_df) * (
                 mapping(:PC1, :PC2, color = :cluster) *
-                visual(Scatter, markersize = 14, alpha = 0.75) +
-                mapping(:PC1, :PC2, text = :additive => verbatim) *
-                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+                visual(Scatter, markersize = 14, alpha = 0.50) +
+                mapping(:PC1, :PC2, text = :additive => verbatim) * visual(
+                    Makie.Text,
+                    align = (:left, :bottom),
+                    offset = (5, 5),
+                    fontsize = 22.5,
+                )
             ) :
             data(plt_df) * (
-                mapping(:PC1, :PC2) * visual(Scatter, markersize = 14, alpha = 0.75) +
-                mapping(:PC1, :PC2, text = :additive => verbatim) *
-                visual(Makie.Text, align = (:left, :bottom), offset = (5, 5))
+                mapping(:PC1, :PC2) * visual(Scatter, markersize = 14, alpha = 0.50) +
+                mapping(:PC1, :PC2, text = :additive => verbatim) * visual(
+                    Makie.Text,
+                    align = (:left, :bottom),
+                    offset = (5, 5),
+                    fontsize = 22.5,
+                )
             )
         fig =
             color_clusters ?
@@ -925,9 +933,9 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
                 figure = (; size = (700, 700)),
                 axis = (;
                     title = title,
-                    titlesize = 22,
-                    xlabelsize = 18,
-                    ylabelsize = 18,
+                    titlesize = 24,
+                    xlabelsize = 20,
+                    ylabelsize = 20,
                     xlabelfont = :bold,
                     ylabelfont = :bold,
                     xticklabelsize = 15,
