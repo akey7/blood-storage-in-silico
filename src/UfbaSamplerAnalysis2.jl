@@ -304,6 +304,8 @@ function densities_for_reaction(
         axis = (;
             xlabelsize = 18,
             ylabelsize = 18,
+            xlabelfont = :bold,
+            ylabelfont = :bold,
             xticklabelsize = 15,
             yticklabelsize = 15,
         ),
