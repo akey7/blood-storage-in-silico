@@ -913,7 +913,7 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
                     Makie.Text,
                     align = (:left, :bottom),
                     offset = (5, 5),
-                    fontsize = 22.5,
+                    fontsize = 22,
                 )
             ) :
             data(plt_df) * (
@@ -922,7 +922,7 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
                     Makie.Text,
                     align = (:left, :bottom),
                     offset = (5, 5),
-                    fontsize = 22.5,
+                    fontsize = 22,
                 )
             )
         fig =
@@ -933,9 +933,9 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
                 figure = (; size = (700, 700)),
                 axis = (;
                     title = title,
-                    titlesize = 24,
-                    xlabelsize = 20,
-                    ylabelsize = 20,
+                    titlesize = 28,
+                    xlabelsize = 22,
+                    ylabelsize = 22,
                     xlabelfont = :bold,
                     ylabelfont = :bold,
                     xticklabelsize = 15,
@@ -948,9 +948,9 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
                 figure = (; size = (700, 700)),
                 axis = (;
                     title = title,
-                    titlesize = 22,
-                    xlabelsize = 18,
-                    ylabelsize = 18,
+                    titlesize = 28,
+                    xlabelsize = 22,
+                    ylabelsize = 22,
                     xlabelfont = :bold,
                     ylabelfont = :bold,
                     xticklabelsize = 15,
