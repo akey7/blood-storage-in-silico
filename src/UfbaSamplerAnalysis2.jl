@@ -134,6 +134,12 @@ function plot_all_distributions_for_reactions(
                     treatment_additive = treatment_additive,
                     bins = bins,
                 )
+                filename_hist = joinpath(
+                    "output",
+                    "uFBA_histograms_v2",
+                    # "$treatment_additive $reaction_id Histograms.png",
+                    "$treatment_additive $reaction_id Histograms.svg",
+                )
                 save(filename_hist, fig_hist)
             end
             fig_density = densities_for_reaction(
@@ -145,15 +151,11 @@ function plot_all_distributions_for_reactions(
                 control_additive = control_additive,
                 treatment_additive = treatment_additive,
             )
-            filename_hist = joinpath(
-                "output",
-                "uFBA_histograms_v2",
-                "$treatment_additive $reaction_id Histograms.png",
-            )
             filename_density = joinpath(
                 "output",
                 "uFBA_densities",
-                "$treatment_additive $reaction_id Densities.png",
+                # "$treatment_additive $reaction_id Densities.png",
+                "$treatment_additive $reaction_id Densities.svg",
             )
             save(filename_density, fig_density)
             next!(prog)
@@ -889,7 +891,8 @@ function plot_median_fluxes_kmeans_pca(pca_df, fluxes_k_means_df; color_clusters
         filename = joinpath(
             "output",
             "viz_fluxes_kmeans_pca",
-            "median_flux_kmeans_pca_$(final_time).png",
+            # "median_flux_kmeans_pca_$(final_time).png",
+            "median_flux_kmeans_pca_$(final_time).svg",
         )
         title = "Median Flux PCA, Week $final_time"
         plt_df = @rsubset(all_time_df, :final_time == final_time)
